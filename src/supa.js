@@ -3,7 +3,17 @@ import { createClient } from "@supabase/supabase-js";
 export const SUPABASE_URL = "https://pfuxtnhehextvlukbkef.supabase.co";
 export const ANON_KEY = "sb_publishable_7fRBEMXol7wML2varcvPzA_pvCv7Bb4";
 
-export const supa = createClient(SUPABASE_URL, ANON_KEY);
+// Force every REST request (all `.from()`/`.rpc()` reads) to bypass the
+// browser's HTTP cache. Without this, a fresh/cold page load can reuse a
+// cached GET response for an identical query URL (e.g. the Riwayat Publish
+// history query) and transiently miss rows inserted moments earlier, even
+// though the exact same query issued via in-app soft navigation fetches
+// over the network and sees the latest data.
+const noStoreFetch = (input, init) => fetch(input, { ...init, cache: "no-store" });
+
+export const supa = createClient(SUPABASE_URL, ANON_KEY, {
+  global: { fetch: noStoreFetch },
+});
 
 /** Panggil edge function `generate` dengan JWT user. */
 export async function callGenerate(body) {
