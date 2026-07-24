@@ -459,9 +459,15 @@ export function Planner({ ws, refresh, tick }) {
       supa.from("content_items").select("*, influencers(name)").order("scheduled_date", { ascending: true }),
       supa.from("influencers").select("id,name").order("name"),
       callSocial({ action: "list_connections" }).catch(() => ({ connections: [] })),
-      supa.from("publish_jobs").select("*, content_items(title), social_connections(platform, external_account_name)").order("created_at", { ascending: false }).limit(20),
+      supa.from("publish_jobs").select("*, content_items(title)").order("created_at", { ascending: false }).limit(20),
     ]);
-    return { pillars: unwrap(pillars), items: unwrap(items), inf: unwrap(inf), conns: connRes.connections || [], jobs: unwrap(jobs) };
+    const conns = connRes.connections || [];
+    const connById = Object.fromEntries(conns.map((c) => [c.id, c]));
+    const jobsRaw = unwrap(jobs) || [];
+    return {
+      pillars: unwrap(pillars), items: unwrap(items), inf: unwrap(inf), conns,
+      jobs: jobsRaw.map((j) => ({ ...j, _connAccountName: connById[j.connection_id]?.external_account_name || null })),
+    };
   }, [ws.id, tick]);
   const [err, setErr] = useState(null);
   const [publishOpenId, setPublishOpenId] = useState(null);
@@ -643,7 +649,7 @@ export function Planner({ ws, refresh, tick }) {
                 <tr key={j.id}>
                   <td className="bold">{j.content_items?.title || "—"}</td>
                   <td className="muted">{j.platform === "instagram" ? "Instagram" : "TikTok"}</td>
-                  <td className="tiny muted">{j.social_connections?.external_account_name || "—"}</td>
+                  <td className="tiny muted">{j._connAccountName || "—"}</td>
                   <td><Badge tone={statusTone(j.status === "succeeded" ? "succeeded" : j.status === "failed" ? "failed" : "queued")}>{j.status}</Badge></td>
                   <td className="tiny" style={{ maxWidth: 220 }} title={j.error || j.external_post_id || ""}>
                     {j.error ? <span style={{ color: "#dc2626" }}>{j.error.slice(0, 60)}</span> : (j.external_post_id || "—")}
