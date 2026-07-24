@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useCallback } from "react";
-import { supa, callGenerate, callSocial, STATUS_LABELS, TYPE_LABELS, usd } from "./supa.js";
+import { supa, callGenerate, callSocial, callCalendar, STATUS_LABELS, TYPE_LABELS, usd } from "./supa.js";
 
 // ---------- Hooks ----------
 // Throws if a Supabase result carries an error, so useQuery's catch can
@@ -611,20 +611,29 @@ export function Planner({ ws, refresh, tick }) {
   }
   async function addItem(e) {
     e.preventDefault(); setErr(null); const f = new FormData(e.target);
-    const { error } = await supa.from("content_items").insert({
+    const scheduledDate = f.get("scheduled_date") || null;
+    const { data: inserted, error } = await supa.from("content_items").insert({
       workspace_id: ws.id, title: f.get("title"),
       influencer_id: f.get("influencer_id") || null, pillar_id: f.get("pillar_id") || null,
       content_type: f.get("content_type"), platform: f.get("platform"),
-      scheduled_date: f.get("scheduled_date") || null,
+      scheduled_date: scheduledDate,
       hook: f.get("hook"), script: f.get("script"),
-    });
+    }).select("id").single();
     if (error) { setErr(error.message); return; }
     e.target.reset(); reload(); refresh();
+    // Best-effort Google Calendar reminder — silently ignore "not connected"/no-op
+    // errors so this never blocks the planner if Ron hasn't set up the calendar yet.
+    if (scheduledDate && inserted?.id) {
+      callCalendar({ action: "sync_item", content_item_id: inserted.id }).catch(() => {});
+    }
   }
   async function setStatus(id, status) {
     const { error } = await supa.from("content_items").update({ status }).eq("id", id);
     if (error) { setErr(error.message); return; }
     reload();
+    if (status === "scheduled") {
+      callCalendar({ action: "sync_item", content_item_id: id }).catch(() => {});
+    }
   }
 
   return (
@@ -1004,6 +1013,94 @@ function SocialConnections({ ws, tick, query }) {
   );
 }
 
+// ---------- Google Calendar reminder connection ----------
+function CalendarConnection({ ws, tick, query }) {
+  const [status, statusReload, statusErr] = useQuery(async () =>
+    callCalendar({ action: "config_status" }), [ws.id, tick]);
+  const [msg, setMsg] = useState(null);
+  const [busy, setBusy] = useState(false);
+
+  useEffect(() => {
+    if (!query) return;
+    const p = new URLSearchParams(query);
+    const connected = p.get("calendar_connected");
+    const calErr = p.get("calendar_error");
+    if (connected) setMsg("Google Calendar berhasil terhubung.");
+    if (calErr) setMsg(`Gagal menghubungkan Google Calendar: ${calErr}`);
+    if (connected || calErr) window.history.replaceState(null, "", window.location.pathname + window.location.search + "#/settings");
+  }, [query]);
+
+  async function saveConfig(e) {
+    e.preventDefault();
+    const f = new FormData(e.target);
+    const idVal = String(f.get("client_id") || "").trim();
+    const secretVal = String(f.get("client_secret") || "").trim();
+    if (idVal.length < 3 || secretVal.length < 3) { setMsg("Client ID dan Client Secret wajib diisi (min. 3 karakter)."); return; }
+    setBusy(true); setMsg(null);
+    try {
+      await callCalendar({ action: "set_config", client_id: idVal, client_secret: secretVal });
+      setMsg("Konfigurasi disimpan."); e.target.reset(); statusReload();
+    } catch (e2) { setMsg(e2.message); }
+    setBusy(false);
+  }
+  async function connect() {
+    setBusy(true); setMsg(null);
+    try {
+      const r = await callCalendar({ action: "connect_url" });
+      if (r.authorize_url) { window.location.href = r.authorize_url; return; }
+    } catch (e2) { setMsg(e2.message); }
+    setBusy(false);
+  }
+  async function disconnect() {
+    setBusy(true); setMsg(null);
+    try { await callCalendar({ action: "disconnect" }); statusReload(); }
+    catch (e2) { setMsg(e2.message); }
+    setBusy(false);
+  }
+
+  if (!status) return statusErr
+    ? <div className="msg-err">Gagal memuat status Google Calendar: {statusErr}</div>
+    : <div className="muted">Memuat…</div>;
+
+  return (
+    <div className="card p6 mb4">
+      <div className="bold mb1">Reminder Google Calendar</div>
+      <p className="tiny muted mb3">
+        Tidak ada auto-post ke sosial media dari sini — fitur ini hanya membuat event pengingat (all-day)
+        di Google Calendar-mu setiap kali konten di Planner diberi tanggal jadwal, supaya kamu ingat untuk
+        publish manual. Butuh Google Cloud OAuth Client (Calendar API) — redirect URI berikut harus
+        didaftarkan sebagai "Authorized redirect URI":
+      </p>
+      <div className="card p3 mb3" style={{ background: "#f4f4f5" }}>
+        <code className="tiny" style={{ wordBreak: "break-all" }}>{status.callback_url}</code>
+      </div>
+      {msg && <div className={msg.startsWith("Gagal") ? "msg-err mb3" : "msg-ok mb3"}>{msg}</div>}
+      <div className="card p4 mb3" style={{ background: "#fafafa" }}>
+        <div className="row mb2" style={{ justifyContent: "space-between" }}>
+          <div className="bold">Google Client ID/Secret</div>
+          <Badge tone={status.configured ? "green" : "amber"}>{status.configured ? "terpasang" : "belum diisi"}</Badge>
+        </div>
+        <form onSubmit={saveConfig} className="mb2">
+          <input name="client_id" className="input mb1" placeholder="Google OAuth Client ID" style={{ fontSize: 12 }} />
+          <input name="client_secret" type="password" className="input mb2" placeholder="Google OAuth Client Secret" style={{ fontSize: 12 }} />
+          <button className="btn" style={{ fontSize: 12, width: "100%", justifyContent: "center" }} disabled={busy}>Simpan Client ID/Secret</button>
+        </form>
+      </div>
+      <div className="row" style={{ justifyContent: "space-between", alignItems: "center" }}>
+        <div>
+          <Badge tone={status.connected ? "green" : "zinc"}>{status.connected ? "terhubung" : "belum terhubung"}</Badge>
+          {status.connected && status.google_email && <span className="tiny muted ml2">{status.google_email}</span>}
+        </div>
+        {status.connected ? (
+          <button type="button" className="tiny" style={{ background: "none", border: "none", color: "#dc2626", fontWeight: 700, cursor: "pointer" }} onClick={disconnect} disabled={busy}>Putuskan</button>
+        ) : (
+          <button type="button" className="btn" disabled={busy || !status.configured} onClick={connect}>+ Hubungkan Google Calendar</button>
+        )}
+      </div>
+    </div>
+  );
+}
+
 // ---------- Settings ----------
 export function Settings({ ws, refresh, tick, spend, spendError, query }) {
   const [models, reload, modelsError] = useQuery(async () =>
@@ -1094,6 +1191,7 @@ export function Settings({ ws, refresh, tick, spend, spendError, query }) {
         </div>
       </div>
       <SocialConnections ws={ws} tick={tick} query={query} />
+      <CalendarConnection ws={ws} tick={tick} query={query} />
       <div className="card p6">
         <div className="bold mb1">Katalog Model</div>
         <p className="tiny muted mb3">Harga indikatif (riset Jul 2026) untuk estimasi + budget guard. Verifikasi dengan harga resmi provider, lalu perbarui di sini.</p>
