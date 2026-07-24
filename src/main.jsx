@@ -129,7 +129,7 @@ function App() {
   let view;
   if (routePath === "/") view = <Dashboard {...props} />;
   else if (routePath === "/influencers") view = <Influencers {...props} />;
-  else if (routePath.startsWith("/influencers/")) view = <InfluencerDetail {...props} id={routePath.split("/")[2]} />;
+  else if (routePath.startsWith("/influencers/")) view = <InfluencerDetail {...props} key={routePath.split("/")[2]} id={routePath.split("/")[2]} />;
   else if (routePath === "/studio") view = <Studio {...props} />;
   else if (routePath === "/planner") view = <Planner {...props} />;
   else if (routePath === "/tasks") view = <Tasks {...props} />;

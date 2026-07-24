@@ -15,6 +15,7 @@ function useQuery(fn, deps) {
   const [error, setError] = useState(null);
   const reload = useCallback(() => {
     setError(null);
+    setData(null);
     fn().then(setData).catch((e) => setError(e?.message || String(e)));
   }, deps); // eslint-disable-line
   useEffect(() => { reload(); }, [reload]);
