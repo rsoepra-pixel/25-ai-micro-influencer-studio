@@ -126,11 +126,56 @@ const Empty = ({ text, cta, href }) => (
 );
 
 // ---------- Influencers ----------
+// Starter niche ideas for the "create influencer" form, based on a quick
+// market scan of what's working for Indonesian micro-influencers (skincare/
+// beauty, food/culinary, and fitness/wellness are all well-established;
+// personal finance is included too but flagged, since OJK actively scrutinizes
+// financial-content creators and the compliance implications for an
+// AI-generated persona in that niche haven't been separately verified).
+// This is a starting point, not an exhaustive or final list — the niche
+// field stays fully free-text either way.
+const NICHE_IDEAS = [
+  {
+    id: "skincare",
+    label: "Skincare & Beauty",
+    niche: "Skincare & beauty",
+    bioHint: "Reviewer skincare & beauty yang jujur dan approachable, suka membagikan rutinitas dan tips sesuai jenis kulit. Tidak memberi klaim medis — hanya pengalaman & preferensi pribadi.",
+  },
+  {
+    id: "kuliner",
+    label: "Kuliner / Food Hunter",
+    niche: "Kuliner & review makanan",
+    bioHint: "Pemburu warung, kafe, dan jajanan kaki lima di kota. Review jujur dan santai — cocok untuk konten video pendek yang sering dan variatif.",
+  },
+  {
+    id: "fitness",
+    label: "Fitness & Wellness",
+    niche: "Fitness & wellness harian",
+    bioHint: "Berbagi rutinitas olahraga dan gaya hidup sehat sehari-hari. Tidak memberi klaim medis/kesehatan spesifik — hanya rutinitas & motivasi pribadi.",
+  },
+  {
+    id: "finance",
+    label: "Keuangan Pribadi",
+    niche: "Keuangan pribadi & budgeting",
+    bioHint: "Tips menabung dan mengatur keuangan untuk anak muda. PENTING: verifikasi aturan OJK soal konten finansial (\"finfluencer\") sebelum publikasi apa pun yang bisa dibaca sebagai saran investasi.",
+    warning: "Perlu riset regulasi OJK dulu sebelum publikasi live",
+  },
+];
+
 export function Influencers({ ws, refresh, tick }) {
   const [list, reload, listError] = useQuery(async () =>
     unwrap(await supa.from("influencers").select("*").order("created_at")), [ws.id, tick]);
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState(null);
+  const [niche, setNiche] = useState("");
+  const [bioHint, setBioHint] = useState("");
+  const [selectedIdea, setSelectedIdea] = useState(null);
+
+  function pickIdea(idea) {
+    setSelectedIdea(idea.id);
+    setNiche(idea.niche);
+    setBioHint(idea.bioHint);
+  }
 
   async function create(e) {
     e.preventDefault();
@@ -146,7 +191,7 @@ export function Influencers({ ws, refresh, tick }) {
     });
     setBusy(false);
     if (error) { setErr(error.message); return; }
-    e.target.reset(); reload(); refresh();
+    e.target.reset(); setNiche(""); setBioHint(""); setSelectedIdea(null); reload(); refresh();
   }
 
   if (!list) return listError ? <div className="msg-err">Gagal memuat influencers: {listError}</div> : <div className="muted">Memuat…</div>;
@@ -172,10 +217,26 @@ export function Influencers({ ws, refresh, tick }) {
       {list.length < 25 && (
         <form onSubmit={create} className="card p6" style={{ maxWidth: 620 }}>
           <div className="bold mb3">Buat influencer baru</div>
+          <label className="label">Ide niche (opsional, klik untuk isi otomatis)</label>
+          <div className="grid mb3" style={{ gridTemplateColumns: "repeat(auto-fill,minmax(200px,1fr))", gap: 8 }}>
+            {NICHE_IDEAS.map((idea) => (
+              <button type="button" key={idea.id} onClick={() => pickIdea(idea)}
+                className="card p3" style={{
+                  textAlign: "left", cursor: "pointer",
+                  border: selectedIdea === idea.id ? "2px solid #7c3aed" : "1px solid var(--border)",
+                }}>
+                <div className="row" style={{ justifyContent: "space-between" }}>
+                  <span className="bold small">{idea.label}</span>
+                  {selectedIdea === idea.id && <span className="tiny" style={{ color: "#7c3aed" }}>✓ Terpilih</span>}
+                </div>
+                {idea.warning && <div className="tiny mt1" style={{ color: "#b45309" }}>⚠️ {idea.warning}</div>}
+              </button>
+            ))}
+          </div>
           <div className="grid mb3" style={{ gridTemplateColumns: "1fr 1fr" }}>
             <div><label className="label">Nama *</label><input name="name" className="input" required placeholder="mis. Kirana" /></div>
             <div><label className="label">Handle</label><input name="handle" className="input" placeholder="@kirana.id" /></div>
-            <div><label className="label">Niche</label><input name="niche" className="input" placeholder="skincare / kuliner / tech" /></div>
+            <div><label className="label">Niche</label><input name="niche" className="input" placeholder="skincare / kuliner / tech" value={niche} onChange={(e) => setNiche(e.target.value)} /></div>
             <div><label className="label">Bahasa</label>
               <select name="language" className="input"><option value="id">Indonesia</option><option value="en">English</option><option value="mix">Campuran</option></select>
             </div>
@@ -183,7 +244,7 @@ export function Influencers({ ws, refresh, tick }) {
           <label className="label">Platform (pisahkan koma)</label>
           <input name="platforms" className="input mb3" defaultValue="tiktok, instagram" />
           <label className="label">Bio / persona</label>
-          <textarea name="bio" className="input mb3" rows={2} placeholder="Kepribadian, gaya bicara, backstory…" />
+          <textarea name="bio" className="input mb3" rows={2} placeholder="Kepribadian, gaya bicara, backstory…" value={bioHint} onChange={(e) => setBioHint(e.target.value)} />
           <label className="label">Identity prompt (deskripsi fisik terkunci)</label>
           <textarea name="identity_prompt" className="input mb1" rows={3}
             placeholder="mis. Indonesian woman, 24yo, oval face, small mole under left eye, shoulder-length wavy black hair…" />
