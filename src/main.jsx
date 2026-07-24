@@ -80,6 +80,7 @@ function App() {
   const [session, setSession] = useState(undefined);
   const [ws, setWs] = useState(null);
   const [spend, setSpend] = useState({ spent: 0, cap: 200, mode: "mock" });
+  const [spendError, setSpendError] = useState(null);
   const [tick, setTick] = useState(0);
   const refresh = useCallback(() => setTick((t) => t + 1), []);
 
@@ -92,20 +93,29 @@ function App() {
   useEffect(() => {
     if (!session) return;
     (async () => {
-      const { data: w } = await supa.from("workspaces").select("*").limit(1).maybeSingle();
-      setWs(w);
-      if (w) {
-        const start = new Date(); start.setDate(1); start.setHours(0, 0, 0, 0);
-        const [{ data: led }, { data: bud }, { data: cfgMode }] = await Promise.all([
-          supa.from("credits_ledger").select("delta_usd").eq("workspace_id", w.id).eq("kind", "usage").gte("created_at", start.toISOString()),
-          supa.from("budget_settings").select("monthly_cap_usd").eq("workspace_id", w.id).maybeSingle(),
-          supa.rpc("get_generation_mode"),
-        ]);
-        setSpend({
-          spent: (led || []).reduce((s, r) => s + Math.abs(Number(r.delta_usd)), 0),
-          cap: Number(bud?.monthly_cap_usd ?? 200),
-          mode: cfgMode || "mock",
-        });
+      setSpendError(null);
+      try {
+        const { data: w, error: wErr } = await supa.from("workspaces").select("*").limit(1).maybeSingle();
+        if (wErr) throw new Error(wErr.message);
+        setWs(w);
+        if (w) {
+          const start = new Date(); start.setDate(1); start.setHours(0, 0, 0, 0);
+          const [{ data: led, error: ledErr }, { data: bud, error: budErr }, { data: cfgMode, error: modeErr }] = await Promise.all([
+            supa.from("credits_ledger").select("delta_usd").eq("workspace_id", w.id).eq("kind", "usage").gte("created_at", start.toISOString()),
+            supa.from("budget_settings").select("monthly_cap_usd").eq("workspace_id", w.id).maybeSingle(),
+            supa.rpc("get_generation_mode"),
+          ]);
+          if (ledErr) throw new Error(ledErr.message);
+          if (budErr) throw new Error(budErr.message);
+          if (modeErr) throw new Error(modeErr.message);
+          setSpend({
+            spent: (led || []).reduce((s, r) => s + Math.abs(Number(r.delta_usd)), 0),
+            cap: Number(bud?.monthly_cap_usd ?? 200),
+            mode: cfgMode || "mock",
+          });
+        }
+      } catch (e) {
+        setSpendError(e?.message || String(e));
       }
     })();
   }, [session, tick]);
@@ -134,7 +144,7 @@ function App() {
   else if (routePath === "/planner") view = <Planner {...props} />;
   else if (routePath === "/tasks") view = <Tasks {...props} />;
   else if (routePath === "/drive") view = <Drive {...props} />;
-  else if (routePath === "/settings") view = <Settings {...props} spend={spend} query={routeQuery} />;
+  else if (routePath === "/settings") view = <Settings {...props} spend={spend} spendError={spendError} query={routeQuery} />;
   else view = <Dashboard {...props} />;
 
   return (
@@ -155,11 +165,17 @@ function App() {
         <div style={{ padding: 14, borderTop: "1px solid var(--border)" }}>
           <div className="card p4" style={{ background: "#fafafa" }}>
             <span className="label">Biaya bulan ini</span>
-            <div style={{ fontSize: 20, fontWeight: 800, color: "#d97706" }}>{usd(spend.spent)}</div>
-            <div className="tiny muted">dari batas {usd(spend.cap)}</div>
-            <span className={`badge mt2`} style={spend.mode === "live" ? { background: "#dcfce7", color: "#15803d" } : { background: "#e4e4e7", color: "#52525b" }}>
-              mode: {spend.mode}
-            </span>
+            {spendError ? (
+              <div className="msg-err tiny mt1">Gagal memuat biaya: {spendError}</div>
+            ) : (
+              <>
+                <div style={{ fontSize: 20, fontWeight: 800, color: "#d97706" }}>{usd(spend.spent)}</div>
+                <div className="tiny muted">dari batas {usd(spend.cap)}</div>
+                <span className={`badge mt2`} style={spend.mode === "live" ? { background: "#dcfce7", color: "#15803d" } : { background: "#e4e4e7", color: "#52525b" }}>
+                  mode: {spend.mode}
+                </span>
+              </>
+            )}
           </div>
           <div className="row mt3" style={{ justifyContent: "space-between" }}>
             <span className="tiny muted" style={{ overflow: "hidden", textOverflow: "ellipsis" }}>{session.user.email}</span>

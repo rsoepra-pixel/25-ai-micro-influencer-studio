@@ -917,7 +917,7 @@ function SocialConnections({ ws, tick, query }) {
 }
 
 // ---------- Settings ----------
-export function Settings({ ws, refresh, tick, spend, query }) {
+export function Settings({ ws, refresh, tick, spend, spendError, query }) {
   const [models, reload, modelsError] = useQuery(async () =>
     unwrap(await supa.from("provider_models").select("*").order("task").order("est_price_usd")), [ws.id, tick]);
   const [budget] = useQuery(async () =>
@@ -998,7 +998,11 @@ export function Settings({ ws, refresh, tick, spend, query }) {
             </label>
             <button className="btn">Simpan</button>
           </form>
-          <div className="tiny muted mt3">Terpakai bulan ini: <b>{usd(spend.spent)}</b> dari {usd(spend.cap)}</div>
+          {spendError ? (
+            <div className="msg-err tiny mt3">Gagal memuat biaya: {spendError}</div>
+          ) : (
+            <div className="tiny muted mt3">Terpakai bulan ini: <b>{usd(spend.spent)}</b> dari {usd(spend.cap)}</div>
+          )}
         </div>
       </div>
       <SocialConnections ws={ws} tick={tick} query={query} />
