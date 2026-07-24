@@ -160,6 +160,33 @@ const NICHE_IDEAS = [
     bioHint: "Tips menabung dan mengatur keuangan untuk anak muda. PENTING: verifikasi aturan OJK soal konten finansial (\"finfluencer\") sebelum publikasi apa pun yang bisa dibaca sebagai saran investasi.",
     warning: "Perlu riset regulasi OJK dulu sebelum publikasi live",
   },
+  {
+    id: "fashion",
+    label: "Fashion & OOTD",
+    niche: "Fashion & styling (thrift/local brand)",
+    bioHint: "Inspirasi outfit sehari-hari, mix-and-match thrift & brand lokal, styling tips dengan budget terjangkau. Beda fokus dari skincare — di sini soal pakaian & gaya, bukan rutinitas kulit.",
+  },
+  {
+    id: "comedy",
+    label: "Komedi & Skit Sehari-hari",
+    niche: "Komedi & skit relatable",
+    bioHint: "Skit lucu tentang situasi sehari-hari yang relatable (kerja, keluarga, pertemanan). Fokus ke humor situasional & caption, bukan timing komedi yang rumit — lebih mudah dieksekusi konsisten untuk karakter AI.",
+    warning: "Niche performa terbaik di Indonesia, tapi timing komedi lebih sulit dieksekusi AI secara konsisten — mulai dari humor situasional yang sederhana",
+  },
+  {
+    id: "tech",
+    label: "Tech & Gadget Review",
+    niche: "Tech & gadget review",
+    bioHint: "Review gadget, HP, dan aplikasi dengan bahasa yang mudah dipahami, bukan cuma buat yang paham teknis. Konten terstruktur (unboxing, perbandingan, tips) — rendah risiko kepatuhan.",
+    warning: "Niche kuat secara global, tapi belum saya verifikasi data spesifik untuk pasar Indonesia",
+  },
+  {
+    id: "travel",
+    label: "Travel & Staycation Lokal",
+    niche: "Travel & staycation domestik",
+    bioHint: "Rekomendasi staycation, hidden gem lokal, dan tips liburan hemat di dalam negeri. Konten visual yang variatif dan mudah dimonetisasi lewat partner pariwisata/hospitality.",
+    warning: "Niche kuat secara global, tapi belum saya verifikasi data spesifik untuk pasar Indonesia",
+  },
 ];
 
 export function Influencers({ ws, refresh, tick }) {
