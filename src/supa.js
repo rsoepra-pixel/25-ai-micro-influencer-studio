@@ -1,7 +1,7 @@
 import { createClient } from "@supabase/supabase-js";
 
-export const SUPABASE_URL = "https://pfuxtnhehextvlukbkef.supabase.co";
-export const ANON_KEY = "sb_publishable_7fRBEMXol7wML2varcvPzA_pvCv7Bb4";
+export const SUPABASE_URL = "https://kheibvzbvnmhdeokokrw.supabase.co";
+export const ANON_KEY = "sb_publishable_tcc5VGEX0O5JM4azzybUYw_nyXN2cnI";
 
 // Force every REST request (all `.from()`/`.rpc()` reads) to bypass the
 // browser's HTTP cache. Without this, a fresh/cold page load can reuse a
@@ -63,6 +63,19 @@ export async function callCalendar(body) {
       apikey: ANON_KEY,
     },
     body: JSON.stringify(body),
+  });
+  const json = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error(json.error || `Error ${res.status}`);
+  return json;
+}
+
+/** Daftar akun via edge function `app` (auto-confirm email, tanpa perlu klik
+ *  link konfirmasi), lalu caller tinggal signInWithPassword. */
+export async function signupConfirmed(email, password) {
+  const res = await fetch(`${SUPABASE_URL}/functions/v1/app`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json", apikey: ANON_KEY },
+    body: JSON.stringify({ action: "signup", email, password }),
   });
   const json = await res.json().catch(() => ({}));
   if (!res.ok) throw new Error(json.error || `Error ${res.status}`);

@@ -1,0 +1,59 @@
+name: Deploy to GitHub Pages
+
+on:
+  push:
+    branches: [main, claude/20-dollar-web-project-rwz3t9]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@v4
+      # Pages must be enabled once by a repo admin (Settings -> Pages ->
+      # Source: GitHub Actions) — GITHUB_TOKEN cannot enable it. Until then,
+      # skip the deploy with a notice instead of failing the whole check.
+      - id: pages_check
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          status=$(curl -s -o /dev/null -w "%{http_code}" \
+            -H "Authorization: Bearer $GH_TOKEN" \
+            -H "Accept: application/vnd.github+json" \
+            "https://api.github.com/repos/${{ github.repository }}/pages")
+          if [ "$status" = "200" ]; then
+            echo "enabled=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "enabled=false" >> "$GITHUB_OUTPUT"
+            echo "::notice title=GitHub Pages belum aktif::Aktifkan sekali di Settings -> Pages -> Source: GitHub Actions, lalu push/re-run untuk deploy otomatis."
+          fi
+      - if: steps.pages_check.outputs.enabled == 'true'
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - if: steps.pages_check.outputs.enabled == 'true'
+        run: npm ci
+      - if: steps.pages_check.outputs.enabled == 'true'
+        run: npm run build
+      - if: steps.pages_check.outputs.enabled == 'true'
+        uses: actions/configure-pages@v5
+      - if: steps.pages_check.outputs.enabled == 'true'
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: dist
+      - if: steps.pages_check.outputs.enabled == 'true'
+        id: deployment
+        uses: actions/deploy-pages@v4

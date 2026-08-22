@@ -2,7 +2,7 @@
   "name": "ai-influencer-spa",
   "private": true,
   "type": "module",
-  "scripts": { "build": "vite build" },
+  "scripts": { "build": "vite build", "build:site": "vite build && node scripts/inline-site.mjs" },
   "dependencies": {
     "@supabase/supabase-js": "^2.45.0",
     "react": "^18.3.1",
