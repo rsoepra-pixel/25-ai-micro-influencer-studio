@@ -41,6 +41,21 @@ Deno.serve(async (req) => {
   if (req.method === "POST") {
     try {
       const body = await req.json().catch(() => ({}));
+      if (body.action === "sync_site") {
+        // Mirror site/ dari repo GitHub publik ke bucket storage `site`
+        // (idempoten & murah — konten publik, aman dipanggil siapa pun).
+        const uploaded: string[] = [];
+        for (const name of ["index.html", "privacy.html", "terms.html"]) {
+          const res = await fetch(`${SITE_BASE}/${name}`);
+          if (!res.ok) throw new Error(`Fetch ${name} gagal: ${res.status}`);
+          const bytes = new Uint8Array(await res.arrayBuffer());
+          const { error } = await admin.storage.from("site")
+            .upload(name, bytes, { contentType: "text/html; charset=utf-8", upsert: true, cacheControl: "300" });
+          if (error) throw new Error(`Upload ${name} gagal: ${error.message}`);
+          uploaded.push(name);
+        }
+        return json({ ok: true, uploaded });
+      }
       if (body.action === "signup") {
         const email = String(body.email || "").trim().toLowerCase();
         const password = String(body.password || "");
