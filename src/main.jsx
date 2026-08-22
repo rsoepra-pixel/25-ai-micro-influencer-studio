@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useCallback } from "react";
 import { createRoot } from "react-dom/client";
-import { supa, STATUS_LABELS, usd } from "./supa.js";
+import { supa, signupConfirmed, STATUS_LABELS, usd } from "./supa.js";
 import {
   Dashboard, Influencers, InfluencerDetail, Studio, Planner, Tasks, Drive, Settings,
 } from "./views.jsx";
@@ -16,6 +16,13 @@ function useRoute() {
   }, []);
   return route;
 }
+
+// Halaman legal ikut path halaman saat ini, supaya jalan baik saat di-host di
+// root (mis. GitHub Pages) maupun di bawah subpath (mis. /functions/v1/app).
+const legalHref = (page) => {
+  const base = window.location.pathname.replace(/\/[^/]*\.html?$/i, "").replace(/\/$/, "");
+  return `${base}/${page}`;
+};
 
 const NAV = [
   ["/", "🏠 Dashboard"],
@@ -38,12 +45,16 @@ function Login() {
   async function submit(e) {
     e.preventDefault();
     setErr(null); setBusy(true);
-    const fn = mode === "signin"
-      ? supa.auth.signInWithPassword({ email, password: pw })
-      : supa.auth.signUp({ email, password: pw });
-    const { error } = await fn;
+    try {
+      // Signup lewat edge function agar email langsung terkonfirmasi (tanpa
+      // menunggu link konfirmasi), lalu langsung sign-in.
+      if (mode === "signup") await signupConfirmed(email, pw);
+      const { error } = await supa.auth.signInWithPassword({ email, password: pw });
+      if (error) throw new Error(error.message);
+    } catch (e2) {
+      setErr(e2.message);
+    }
     setBusy(false);
-    if (error) setErr(error.message);
   }
 
   return (
@@ -68,9 +79,9 @@ function Login() {
           {mode === "signin" ? "Belum punya akun? Daftar" : "Sudah punya akun? Masuk"}
         </button>
         <div className="tiny muted mt4" style={{ textAlign: "center" }}>
-          <a href="/privacy.html" target="_blank" rel="noreferrer" style={{ color: "#a1a1aa" }}>Kebijakan Privasi</a>
+          <a href={legalHref("privacy.html")} target="_blank" rel="noreferrer" style={{ color: "#a1a1aa" }}>Kebijakan Privasi</a>
           {" · "}
-          <a href="/terms.html" target="_blank" rel="noreferrer" style={{ color: "#a1a1aa" }}>Syarat & Ketentuan</a>
+          <a href={legalHref("terms.html")} target="_blank" rel="noreferrer" style={{ color: "#a1a1aa" }}>Syarat & Ketentuan</a>
         </div>
       </div>
     </div>
