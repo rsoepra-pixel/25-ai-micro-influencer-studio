@@ -7,7 +7,9 @@ import { createClient } from "npm:@supabase/supabase-js@2";
 
 const SB_URL = Deno.env.get("SUPABASE_URL")!;
 const admin = createClient(SB_URL, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!, { auth: { persistSession: false } });
-const APP_URL = `${SB_URL}/functions/v1/app`;
+// Redirect balik setelah OAuth ke app yang di-host Netlify (supabase.co
+// menolak merender HTML, jadi tidak bisa jadi tujuan redirect).
+const APP_URL = "https://25-ai-microinfluencer.netlify.app/";
 const CALLBACK = `${SB_URL}/functions/v1/social/callback`;
 
 const CORS = {
