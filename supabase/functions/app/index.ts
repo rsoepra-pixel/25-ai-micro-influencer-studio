@@ -9,7 +9,7 @@ const SB_URL = Deno.env.get("SUPABASE_URL")!;
 const admin = createClient(SB_URL, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!, { auth: { persistSession: false } });
 
 const SITE_BASE =
-  "https://raw.githubusercontent.com/rsoepra-pixel/25-ai-micro-influencer-studio/claude/20-dollar-web-project-rwz3t9/site";
+  "https://raw.githubusercontent.com/rsoepra-pixel/25-ai-micro-influencer-studio/main/site";
 const CACHE_TTL_MS = 60_000;
 
 const CORS = {
