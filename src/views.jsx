@@ -5,12 +5,12 @@ import { supa, callGenerate, callSocial, callCalendar, STATUS_LABELS, TYPE_LABEL
 // Throws if a Supabase result carries an error, so useQuery's catch can
 // surface it instead of silently treating a failed query the same as an
 // empty one (e.g. an RLS rejection looking identical to "no data yet").
-function unwrap({ data, error }, fallback = []) {
+export function unwrap({ data, error }, fallback = []) {
   if (error) throw new Error(error.message);
   return data ?? fallback;
 }
 
-function useQuery(fn, deps) {
+export function useQuery(fn, deps) {
   const [data, setData] = useState(null);
   const [error, setError] = useState(null);
   const reload = useCallback(() => {
@@ -541,6 +541,86 @@ export function Studio({ ws, refresh, tick, mode }) {
 
 // ---------- Planner ----------
 const BOARD = ["idea", "scripting", "producing", "review", "scheduled", "published"];
+
+// Kalender bulanan: setiap konten ber-tanggal ditempatkan di sel harinya,
+// dengan titik warna pillar sebagai identitas. Minggu mulai hari Senin.
+const MONTH_FULL_ID = ["Januari", "Februari", "Maret", "April", "Mei", "Juni", "Juli", "Agustus", "September", "Oktober", "November", "Desember"];
+const isoDay = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+
+function PlannerCalendar({ items, pillars, month, setMonth }) {
+  const pillarColor = Object.fromEntries(pillars.map((p) => [p.id, p.color || "#7c3aed"]));
+  const byDay = {};
+  for (const it of items) if (it.scheduled_date) (byDay[it.scheduled_date] ||= []).push(it);
+  const unscheduled = items.filter((it) => !it.scheduled_date && it.status !== "published").length;
+
+  const first = new Date(month.getFullYear(), month.getMonth(), 1);
+  const gridStart = new Date(first);
+  gridStart.setDate(gridStart.getDate() - ((first.getDay() + 6) % 7));
+  const todayIso = isoDay(new Date());
+  const cells = [];
+  for (let i = 0; i < 42; i++) {
+    const day = new Date(gridStart);
+    day.setDate(day.getDate() + i);
+    cells.push(day);
+  }
+  // Buang baris terakhir jika seluruhnya bulan berikutnya
+  const rows = [];
+  for (let r = 0; r < 6; r++) {
+    const week = cells.slice(r * 7, r * 7 + 7);
+    if (r > 0 && week.every((d) => d.getMonth() !== month.getMonth())) break;
+    rows.push(week);
+  }
+  const shift = (n) => setMonth(new Date(month.getFullYear(), month.getMonth() + n, 1));
+
+  return (
+    <div className="card p4">
+      <div className="row mb3" style={{ justifyContent: "space-between" }}>
+        <div className="bold">{MONTH_FULL_ID[month.getMonth()]} {month.getFullYear()}</div>
+        <div className="row" style={{ gap: 6 }}>
+          <button type="button" className="btn btn2" style={{ fontSize: 12, padding: "4px 10px" }} onClick={() => shift(-1)}>←</button>
+          <button type="button" className="btn btn2" style={{ fontSize: 12, padding: "4px 10px" }} onClick={() => setMonth(new Date(new Date().getFullYear(), new Date().getMonth(), 1))}>Hari ini</button>
+          <button type="button" className="btn btn2" style={{ fontSize: 12, padding: "4px 10px" }} onClick={() => shift(1)}>→</button>
+        </div>
+      </div>
+      <div className="grid" style={{ gridTemplateColumns: "repeat(7,1fr)", gap: 4 }}>
+        {["Sen", "Sel", "Rab", "Kam", "Jum", "Sab", "Min"].map((h) => (
+          <div key={h} className="tiny bold muted" style={{ textAlign: "center", textTransform: "uppercase" }}>{h}</div>
+        ))}
+        {rows.flat().map((day) => {
+          const iso = isoDay(day);
+          const inMonth = day.getMonth() === month.getMonth();
+          const dayItems = byDay[iso] || [];
+          return (
+            <div key={iso} style={{
+              minHeight: 88, borderRadius: 8, padding: 4,
+              border: "1px solid var(--border)",
+              background: inMonth ? "#fff" : "#fafafa",
+              opacity: inMonth ? 1 : 0.55,
+            }}>
+              <div className="tiny" style={{
+                fontWeight: iso === todayIso ? 800 : 500,
+                color: iso === todayIso ? "#7c3aed" : "var(--muted)",
+                marginBottom: 2,
+              }}>{day.getDate()}{iso === todayIso ? " · hari ini" : ""}</div>
+              {dayItems.map((it) => (
+                <div key={it.id} className="tiny row" title={`${it.title} — ${it.influencers?.name || "tanpa influencer"} · ${STATUS_LABELS[it.status]}${it.platform ? ` · ${it.platform}` : ""}`}
+                  style={{
+                    gap: 4, alignItems: "center", borderRadius: 6, padding: "2px 4px", marginBottom: 2,
+                    background: it.status === "published" ? "#f0fdf4" : "#f5f3ff",
+                  }}>
+                  <span style={{ width: 7, height: 7, borderRadius: 99, flexShrink: 0, background: pillarColor[it.pillar_id] || "#a1a1aa" }} />
+                  <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", textDecoration: it.status === "published" ? "line-through" : "none" }}>{it.title}</span>
+                  {it.status === "published" && <span style={{ color: "#15803d", flexShrink: 0 }}>✓</span>}
+                </div>
+              ))}
+            </div>
+          );
+        })}
+      </div>
+      <div className="tiny muted mt2">● warna titik = pillar konten. {unscheduled > 0 ? `${unscheduled} konten aktif belum punya tanggal — atur lewat papan atau form di atas.` : "Semua konten aktif sudah terjadwal."}</div>
+    </div>
+  );
+}
 export function Planner({ ws, refresh, tick }) {
   const [d, reload, loadError] = useQuery(async () => {
     const [pillars, items, inf, connRes, jobs] = await Promise.all([
@@ -562,6 +642,8 @@ export function Planner({ ws, refresh, tick }) {
   const [publishOpenId, setPublishOpenId] = useState(null);
   const [publishBusy, setPublishBusy] = useState(false);
   const [publishMsg, setPublishMsg] = useState(null);
+  const [view, setView] = useState("board");
+  const [calMonth, setCalMonth] = useState(() => { const n = new Date(); return new Date(n.getFullYear(), n.getMonth(), 1); });
   if (!d) return loadError ? <div className="msg-err">Gagal memuat planner: {loadError}</div> : <div className="muted">Memuat…</div>;
 
   async function doPublish(e, item) {
@@ -688,6 +770,13 @@ export function Planner({ ws, refresh, tick }) {
         </form>
       </div>
 
+      <div className="row mb3" style={{ gap: 6 }}>
+        <button type="button" className={`btn ${view === "board" ? "" : "btn2"}`} style={{ fontSize: 12, padding: "6px 12px" }} onClick={() => setView("board")}>🗂 Papan</button>
+        <button type="button" className={`btn ${view === "calendar" ? "" : "btn2"}`} style={{ fontSize: 12, padding: "6px 12px" }} onClick={() => setView("calendar")}>📅 Kalender</button>
+      </div>
+      {view === "calendar" ? (
+        <PlannerCalendar items={d.items} pillars={d.pillars} month={calMonth} setMonth={setCalMonth} />
+      ) : (
       <div className="grid" style={{ gridTemplateColumns: "repeat(auto-fit,minmax(180px,1fr))", gap: 10 }}>
         {BOARD.map((status) => {
           const col = d.items.filter((c) => c.status === status);
@@ -735,6 +824,7 @@ export function Planner({ ws, refresh, tick }) {
           );
         })}
       </div>
+      )}
 
       <div className="card p6 mt4">
         <div className="bold mb1">Riwayat Publish</div>

@@ -4,6 +4,7 @@ import { supa, STATUS_LABELS, usd } from "./supa.js";
 import {
   Dashboard, Influencers, InfluencerDetail, Studio, Planner, Tasks, Drive, Settings,
 } from "./views.jsx";
+import { Reports } from "./reports.jsx";
 
 // ---------- Hash router sederhana ----------
 function useRoute() {
@@ -21,6 +22,7 @@ const NAV = [
   ["/influencers", "👥 Influencers"],
   ["/studio", "🎬 Production Studio"],
   ["/planner", "🗓️ Content Planner"],
+  ["/reports", "📊 Laporan"],
   ["/tasks", "✅ Tasks"],
   ["/drive", "📁 Drive"],
   ["/settings", "⚙️ Settings"],
@@ -142,6 +144,7 @@ function App() {
   else if (routePath.startsWith("/influencers/")) view = <InfluencerDetail {...props} key={routePath.split("/")[2]} id={routePath.split("/")[2]} />;
   else if (routePath === "/studio") view = <Studio {...props} />;
   else if (routePath === "/planner") view = <Planner {...props} />;
+  else if (routePath === "/reports") view = <Reports {...props} />;
   else if (routePath === "/tasks") view = <Tasks {...props} />;
   else if (routePath === "/drive") view = <Drive {...props} />;
   else if (routePath === "/settings") view = <Settings {...props} spend={spend} spendError={spendError} query={routeQuery} />;
