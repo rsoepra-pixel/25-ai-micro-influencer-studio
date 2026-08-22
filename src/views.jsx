@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useCallback } from "react";
-import { supa, callGenerate, callSocial, callCalendar, STATUS_LABELS, TYPE_LABELS, usd } from "./supa.js";
+import { supa, callGenerate, callSocial, callCalendar, callApp, STATUS_LABELS, TYPE_LABELS, usd } from "./supa.js";
 
 // ---------- Hooks ----------
 // Throws if a Supabase result carries an error, so useQuery's catch can
@@ -1191,6 +1191,104 @@ function CalendarConnection({ ws, tick, query }) {
   );
 }
 
+// ---------- Akun & Admin (info akun, ganti password sendiri, reset password anggota oleh owner) ----------
+const randomPassword = () => {
+  const chars = "abcdefghijkmnpqrstuvwxyzABCDEFGHJKLMNPQRSTUVWXYZ23456789!@#";
+  return Array.from(crypto.getRandomValues(new Uint32Array(14)), (n) => chars[n % chars.length]).join("");
+};
+
+function AccountAdmin({ ws, tick }) {
+  const [info, reload, infoErr] = useQuery(async () => callApp({ action: "admin_overview" }), [ws.id, tick]);
+  const [msg, setMsg] = useState(null);
+  const [busy, setBusy] = useState(false);
+  const [myPw, setMyPw] = useState("");
+  const [resetId, setResetId] = useState(null);
+  const [resetPw, setResetPw] = useState("");
+
+  async function changeMyPassword(e) {
+    e.preventDefault();
+    if (myPw.length < 8) { setMsg("Password minimal 8 karakter."); return; }
+    setBusy(true); setMsg(null);
+    const { error } = await supa.auth.updateUser({ password: myPw });
+    setBusy(false);
+    if (error) { setMsg(`Gagal ganti password: ${error.message}`); return; }
+    setMyPw(""); setMsg("Password kamu berhasil diganti.");
+  }
+
+  async function resetMemberPassword(e, member) {
+    e.preventDefault();
+    setBusy(true); setMsg(null);
+    try {
+      await callApp({ action: "admin_reset_password", user_id: member.user_id, new_password: resetPw });
+      setMsg(`Password ${member.email} berhasil di-reset. Sampaikan password barunya lewat jalur aman — password tidak disimpan di mana pun selain kolom ini.`);
+      setResetId(null); setResetPw("");
+    } catch (e2) { setMsg(`Gagal reset: ${e2.message}`); }
+    setBusy(false);
+  }
+
+  if (!info) return (
+    <div className="card p6 mb4">
+      <div className="bold mb1">Akun & Admin</div>
+      {infoErr ? <div className="msg-err">Gagal memuat info akun: {infoErr}</div> : <div className="muted small">Memuat…</div>}
+    </div>
+  );
+
+  return (
+    <div className="card p6 mb4">
+      <div className="row mb1" style={{ gap: 8 }}>
+        <div className="bold">Akun & Admin</div>
+        <Badge tone={info.is_owner ? "violet" : "zinc"}>{info.is_owner ? "Owner (admin)" : "Member"}</Badge>
+      </div>
+      <p className="tiny muted mb3">Login sebagai <b>{info.email}</b>.{info.is_owner ? " Sebagai owner, kamu bisa me-reset password anggota workspace di bawah." : ""}</p>
+      {msg && <div className={msg.startsWith("Gagal") ? "msg-err mb3" : "msg-ok mb3"}>{msg}</div>}
+
+      <form onSubmit={changeMyPassword} className="mb4">
+        <label className="label">Ganti password saya</label>
+        <div className="row" style={{ maxWidth: 480 }}>
+          <input className="input" type="password" minLength={8} placeholder="Password baru (min. 8 karakter)"
+            value={myPw} onChange={(e) => setMyPw(e.target.value)} required />
+          <button className="btn" disabled={busy}>Ganti</button>
+        </div>
+      </form>
+
+      {info.is_owner && (
+        <>
+          <div className="bold mb2">Anggota Workspace</div>
+          <table>
+            <thead><tr><th>Email</th><th>Role</th><th>Login terakhir</th><th>Reset password</th></tr></thead>
+            <tbody>
+              {(info.members || []).map((m) => (
+                <tr key={m.user_id}>
+                  <td className="bold">{m.email}</td>
+                  <td><Badge tone={m.role === "owner" ? "violet" : "zinc"}>{m.role}</Badge></td>
+                  <td className="tiny muted">{m.last_sign_in_at ? new Date(m.last_sign_in_at).toLocaleString("id-ID") : "belum pernah"}</td>
+                  <td>
+                    {resetId === m.user_id ? (
+                      <form onSubmit={(e) => resetMemberPassword(e, m)} className="row" style={{ gap: 6 }}>
+                        <input className="input" style={{ fontSize: 12, padding: "4px 8px", width: 170 }} minLength={8} required
+                          placeholder="Password baru" value={resetPw} onChange={(e) => setResetPw(e.target.value)} />
+                        <button type="button" className="btn btn2" style={{ fontSize: 11, padding: "4px 8px" }} title="Buat password acak"
+                          onClick={() => setResetPw(randomPassword())}>🎲</button>
+                        <button className="btn" style={{ fontSize: 11, padding: "4px 8px" }} disabled={busy}>Simpan</button>
+                        <button type="button" className="btn btn2" style={{ fontSize: 11, padding: "4px 8px" }}
+                          onClick={() => { setResetId(null); setResetPw(""); }}>Batal</button>
+                      </form>
+                    ) : (
+                      <button type="button" className="tiny" style={{ background: "none", border: "none", color: "#7c3aed", fontWeight: 700, cursor: "pointer", padding: 0 }}
+                        onClick={() => { setResetId(m.user_id); setResetPw(""); setMsg(null); }}>🔑 Reset…</button>
+                    )}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+          <p className="tiny muted mt2">Password baru langsung aktif — user tinggal login dengan password tersebut. Untuk keamanan, minta user segera menggantinya sendiri lewat kartu ini setelah login.</p>
+        </>
+      )}
+    </div>
+  );
+}
+
 // ---------- Settings ----------
 export function Settings({ ws, refresh, tick, spend, spendError, query }) {
   const [models, reload, modelsError] = useQuery(async () =>
@@ -1243,6 +1341,7 @@ export function Settings({ ws, refresh, tick, spend, spendError, query }) {
   return (
     <div>
       <h1 style={{ fontSize: 24, fontWeight: 800 }} className="mb4">Settings</h1>
+      <AccountAdmin ws={ws} tick={tick} />
       {msg && <div className="msg-ok mb3">{msg}</div>}
       <div className="grid mb4" style={{ gridTemplateColumns: "repeat(auto-fit,minmax(340px,1fr))" }}>
         <div className="card p6">

@@ -82,6 +82,24 @@ export async function signupConfirmed(email, password) {
   return json;
 }
 
+/** Panggil edge function `app` dengan JWT user (aksi akun/admin: admin_overview, admin_reset_password). */
+export async function callApp(body) {
+  const { data: sess } = await supa.auth.getSession();
+  const token = sess?.session?.access_token;
+  const res = await fetch(`${SUPABASE_URL}/functions/v1/app`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${token}`,
+      apikey: ANON_KEY,
+    },
+    body: JSON.stringify(body),
+  });
+  const json = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error(json.error || `Error ${res.status}`);
+  return json;
+}
+
 export const STATUS_LABELS = {
   idea: "Ide", scripting: "Script", producing: "Produksi", review: "Review",
   scheduled: "Terjadwal", published: "Published", failed: "Gagal",
