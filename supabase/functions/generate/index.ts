@@ -302,8 +302,15 @@ Deno.serve(async (req) => {
             `- Kepribadian & gaya bicara: ${a.vibe || "tidak disebut"}\n` +
             `- Target audiens: ${a.audience || "umum"}\n` +
             `- Bahasa konten: ${lang}\n` +
-            `- Basis karakter: ${basisMap[a.basis] || basisMap.flexible}\n\n` +
-            `Aturan penting:\n` +
+            `- Basis karakter: ${basisMap[a.basis] || basisMap.flexible}\n` +
+            (a.current_bio || a.current_identity
+              ? `\nPERBAIKI deskripsi yang sudah ada di bawah ini — pertahankan karakter, usia, dan ciri utamanya, ` +
+                `jangan ganti jadi orang lain. Tugasmu merapikan, menerjemahkan ke format yang benar, dan ` +
+                `membuang hal yang tidak boleh ada di identity prompt.\n` +
+                (a.current_bio ? `- Bio sekarang: ${a.current_bio}\n` : "") +
+                (a.current_identity ? `- Identity prompt sekarang: ${a.current_identity}\n` : "")
+              : "") +
+            `\nAturan penting:\n` +
             `1. "identity_prompt" WAJIB bahasa Inggris, 40-70 kata, dan HANYA ciri fisik tetap: ` +
             `jenis kelamin, perkiraan usia, bentuk wajah, warna/gaya rambut, warna kulit, bentuk mata/alis/hidung, ` +
             `dan 1-2 ciri khas kecil yang mudah diulang (mis. tahi lalat kecil di bawah mata kiri, lesung pipi sebelah). ` +
