@@ -1215,6 +1215,335 @@ function PlannerCalendar({ items, pillars, month, setMonth }) {
     </div>
   );
 }
+// ---------- Wizard rencana konten ----------
+// Warna pillar otomatis: dipilih supaya tetap terbaca sebagai teks di badge
+// terang dan cukup beda satu sama lain (termasuk untuk mata CVD).
+const PLAN_COLORS = ["#7c3aed", "#2a78d6", "#eb6834", "#0f7b56", "#b0308f", "#8a6d1f"];
+
+// Slot hari per minggu untuk tiap frekuensi. Sengaja tidak beruntun agar ada
+// jeda produksi, dan menyisakan akhir pekan hanya saat frekuensinya memang tinggi.
+// 0 = Senin … 6 = Minggu.
+const WEEK_SLOTS = {
+  1: [2], 2: [1, 4], 3: [0, 2, 4], 4: [0, 2, 4, 6],
+  5: [0, 1, 2, 4, 6], 6: [0, 1, 2, 3, 4, 6], 7: [0, 1, 2, 3, 4, 5, 6],
+};
+
+const ymd = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+
+// Penjadwalan dihitung di sini, BUKAN oleh model — model bahasa sering salah
+// memasangkan tanggal dengan hari. Model hanya memberi urutan + weekday_hint,
+// dan hint itu dipakai kalau slot harinya memang tersedia minggu itu (supaya
+// satu series jatuh di hari yang sama tiap minggu).
+function buildSchedule(items, weeks, perWeek, from = new Date()) {
+  const slots = WEEK_SLOTS[perWeek] || WEEK_SLOTS[4];
+  const start = new Date(from.getFullYear(), from.getMonth(), from.getDate());
+  const mondayOffset = (start.getDay() + 6) % 7;            // Minggu(0) → 6
+  const week0 = new Date(start); week0.setDate(start.getDate() - mondayOffset);
+
+  // Kumpulkan tanggal sampai cukup untuk SEMUA ide. Minggu berjalan biasanya
+  // sudah kehilangan sebagian slot (harinya lewat), jadi periode digeser maju
+  // alih-alih membuang ide yang tidak kebagian tanggal.
+  const dates = [];
+  for (let w = 0; dates.length < items.length && w < weeks + 6; w++) {
+    for (const s of slots) {
+      const d = new Date(week0); d.setDate(week0.getDate() + w * 7 + s);
+      if (d >= start) dates.push(d);
+    }
+  }
+
+  // Urutan ide dipertahankan, tapi dalam jendela satu minggu ide boleh menyalip
+  // kalau weekday_hint-nya cocok — supaya satu series jatuh di hari yang sama.
+  const pool = items.map((it) => it);
+  const out = [];
+  for (const d of dates) {
+    if (!pool.length) break;
+    const wd = (d.getDay() + 6) % 7;
+    const win = Math.min(pool.length, perWeek);
+    let pick = pool.slice(0, win).findIndex((it) => it.weekday_hint === wd);
+    if (pick < 0) pick = 0;
+    out.push({ ...pool.splice(pick, 1)[0], date: ymd(d) });
+  }
+  for (const rest of pool) out.push({ ...rest, date: "" });  // jaring pengaman
+  return out;
+}
+
+function PlanWizard({ ws, influencers, pillars, onClose, onSaved }) {
+  const [step, setStep] = useState(1);
+  const [brief, setBrief] = useState({
+    influencer_id: influencers[0]?.id || "", weeks: 4, per_week: 4,
+    platform: "tiktok", focus: "", make_pillars: pillars.length === 0,
+  });
+  const [busy, setBusy] = useState(false);
+  const [err, setErr] = useState(null);
+  const [plan, setPlan] = useState(null);      // { pillars:[{name,target_ratio,why,color}], series, items:[{…,date,_on}] }
+
+  const total = Math.min(brief.weeks * brief.per_week, 40);
+
+  async function generate() {
+    setBusy(true); setErr(null);
+    try {
+      const r = await callGenerate({
+        action: "write", kind: "plan",
+        influencer_id: brief.influencer_id || null,
+        weeks: brief.weeks, per_week: brief.per_week, platform: brief.platform,
+        focus: brief.focus, make_pillars: brief.make_pillars,
+        pillars: pillars.map((p) => p.name),
+      });
+      const p = r.plan || {};
+      setPlan({
+        series: p.series || [],
+        pillars: (p.pillars || []).map((x, i) => ({ ...x, color: PLAN_COLORS[i % PLAN_COLORS.length] })),
+        items: buildSchedule(p.items || [], brief.weeks, brief.per_week).map((it) => ({ ...it, _on: true })),
+      });
+      setStep(2);
+    } catch (e) { setErr(e.message); }
+    setBusy(false);
+  }
+
+  function patchItem(i, patch) {
+    setPlan((p) => ({ ...p, items: p.items.map((it, k) => (k === i ? { ...it, ...patch } : it)) }));
+  }
+
+  const chosen = plan ? plan.items.filter((it) => it._on) : [];
+  // Semua nama pillar yang bisa dipakai: yang sudah ada di workspace + usulan baru.
+  const pillarNames = plan
+    ? [...new Set([...pillars.map((p) => p.name), ...plan.pillars.map((p) => p.name)])]
+    : [];
+  const ratioSum = plan ? plan.pillars.reduce((s, p) => s + Number(p.target_ratio || 0), 0) : 0;
+
+  // Sebaran nyata vs target — inilah yang bikin kolom "Target %" berhenti jadi hiasan.
+  const mix = pillarNames.map((name) => {
+    const n = chosen.filter((it) => it.pillar === name).length;
+    const target = plan.pillars.find((p) => p.name === name)?.target_ratio
+      ?? pillars.find((p) => p.name === name)?.target_ratio ?? null;
+    return {
+      name, n,
+      actual: chosen.length ? Math.round((n / chosen.length) * 100) : 0,
+      target: target === null ? null : Number(target),
+      color: plan.pillars.find((p) => p.name === name)?.color
+        || pillars.find((p) => p.name === name)?.color || "#71717a",
+    };
+  }).filter((m) => m.n > 0 || m.target !== null);
+
+  async function save() {
+    setBusy(true); setErr(null);
+    try {
+      const byName = Object.fromEntries(pillars.map((p) => [p.name.toLowerCase(), p.id]));
+      const fresh = plan.pillars.filter((p) => !byName[p.name.toLowerCase()]);
+      if (fresh.length) {
+        const { data, error } = await supa.from("content_pillars").insert(fresh.map((p) => ({
+          workspace_id: ws.id, name: p.name, target_ratio: p.target_ratio,
+          color: p.color, influencer_id: brief.influencer_id || null,
+        }))).select("id,name");
+        if (error) throw new Error(error.message);
+        for (const row of data || []) byName[row.name.toLowerCase()] = row.id;
+      }
+      const rows = chosen.map((it) => ({
+        workspace_id: ws.id, title: it.title,
+        influencer_id: brief.influencer_id || null,
+        pillar_id: byName[(it.pillar || "").toLowerCase()] || null,
+        content_type: it.content_type, platform: brief.platform,
+        scheduled_date: it.date || null, hook: it.hook, status: "idea",
+      }));
+      if (!rows.length) throw new Error("Tidak ada item yang dicentang.");
+      const { error: e2 } = await supa.from("content_items").insert(rows);
+      if (e2) throw new Error(e2.message);
+      onSaved(rows.length, fresh.length);
+    } catch (e) { setErr(e.message); setBusy(false); }
+  }
+
+  return (
+    <div onClick={onClose}
+      style={{ position: "fixed", inset: 0, background: "rgba(9,9,11,.45)", display: "flex",
+        alignItems: "center", justifyContent: "center", padding: 20, zIndex: 50 }}>
+      <div className="card p6" onClick={(e) => e.stopPropagation()}
+        style={{ width: "100%", maxWidth: step === 1 ? 640 : 980, maxHeight: "90vh", overflowY: "auto" }}>
+        <div className="row mb1" style={{ justifyContent: "space-between" }}>
+          <div className="bold">✨ Rencanakan sebulan dengan AI</div>
+          <button type="button" onClick={onClose}
+            style={{ background: "none", border: "none", cursor: "pointer", color: "var(--muted)", fontSize: 18 }}>×</button>
+        </div>
+
+        {step === 1 && (
+          <>
+            <p className="tiny muted mb3">
+              Jawab 4 hal, AI menyusun content pillar + {total} ide beserta hook dan tanggalnya.
+              Semuanya bisa kamu ubah atau buang sebelum disimpan.
+            </p>
+            <div className="grid mb3" style={{ gridTemplateColumns: "1fr 1fr" }}>
+              <div><label className="label">Influencer</label>
+                <select className="input" value={brief.influencer_id}
+                  onChange={(e) => setBrief({ ...brief, influencer_id: e.target.value })}>
+                  <option value="">— tanpa influencer —</option>
+                  {influencers.map((i) => <option key={i.id} value={i.id}>{i.name}</option>)}
+                </select>
+              </div>
+              <div><label className="label">Platform utama</label>
+                <select className="input" value={brief.platform}
+                  onChange={(e) => setBrief({ ...brief, platform: e.target.value })}>
+                  <option value="tiktok">TikTok</option>
+                  <option value="instagram">Instagram Reels</option>
+                  <option value="youtube">YouTube Shorts</option>
+                </select>
+              </div>
+              <div><label className="label">Periode</label>
+                <select className="input" value={brief.weeks}
+                  onChange={(e) => setBrief({ ...brief, weeks: Number(e.target.value) })}>
+                  <option value={2}>2 minggu</option><option value={4}>4 minggu (sebulan)</option>
+                  <option value={6}>6 minggu</option><option value={8}>8 minggu</option>
+                </select>
+              </div>
+              <div><label className="label">Frekuensi</label>
+                <select className="input" value={brief.per_week}
+                  onChange={(e) => setBrief({ ...brief, per_week: Number(e.target.value) })}>
+                  {[1, 2, 3, 4, 5, 6, 7].map((n) => <option key={n} value={n}>{n}× per minggu</option>)}
+                </select>
+              </div>
+            </div>
+            <label className="label">Fokus periode ini (opsional)</label>
+            <input className="input mb1" value={brief.focus}
+              onChange={(e) => setBrief({ ...brief, focus: e.target.value })}
+              placeholder="mis. launching serum baru, atau: naikkan awareness sebelum Ramadan" />
+            <p className="tiny muted mb3">Kosongkan kalau belum ada tema khusus — AI akan pakai niche influencer-nya.</p>
+            {pillars.length > 0 && (
+              <label className="row small mb3" style={{ gap: 8, cursor: "pointer" }}>
+                <input type="checkbox" checked={brief.make_pillars}
+                  onChange={(e) => setBrief({ ...brief, make_pillars: e.target.checked })} />
+                Usulkan pillar baru (kalau tidak dicentang, AI memakai {pillars.length} pillar yang sudah ada)
+              </label>
+            )}
+            <div className="card p4 mb3" style={{ background: "#fafafa" }}>
+              <div className="tiny bold mb1">Yang akan dijaga AI</div>
+              <ul className="tiny muted" style={{ margin: "0 0 0 16px" }}>
+                <li>Pillar jualan dibatasi maksimal 20% — sisanya edukasi/hiburan</li>
+                <li>2-3 format berulang bernama, jatuh di hari yang sama tiap minggu</li>
+                <li>Tipe konten divariasikan, tidak 100% talking head</li>
+                <li>Sebaran pillar mengikuti target %, dan ditampilkan sebelum disimpan</li>
+              </ul>
+            </div>
+            {err && <div className="msg-err mb3">{err}</div>}
+            <div className="row" style={{ gap: 8 }}>
+              <button type="button" className="btn" disabled={busy} onClick={generate}>
+                {busy ? `Menyusun ${total} ide…` : `Susun rencana (${total} ide)`}
+              </button>
+              <button type="button" className="btn btn2" onClick={onClose}>Batal</button>
+            </div>
+            <p className="tiny muted mt2">Butuh API key penulis AI (Qwen/Kimi) di Settings → Penulis AI.</p>
+          </>
+        )}
+
+        {step === 2 && plan && (
+          <>
+            <p className="tiny muted mb3">
+              {chosen.length} dari {plan.items.length} ide akan disimpan sebagai kartu “Ide” di papan.
+              Hilangkan centang yang tidak kamu suka, atau edit judul & tanggalnya langsung di tabel.
+            </p>
+
+            {plan.pillars.length > 0 && (
+              <div className="card p4 mb3" style={{ background: "#fafafa" }}>
+                <div className="row mb2" style={{ justifyContent: "space-between" }}>
+                  <span className="label" style={{ margin: 0 }}>Pillar baru yang akan dibuat</span>
+                  <span className="tiny" style={{ color: ratioSum === 100 ? "var(--muted)" : "#b45309", fontWeight: 700 }}>
+                    Total {ratioSum}%{ratioSum === 100 ? "" : " — idealnya 100%"}
+                  </span>
+                </div>
+                {plan.pillars.map((p, i) => (
+                  <div key={i} className="row mb2" style={{ gap: 8 }}>
+                    <input type="color" className="input" style={{ width: 44, height: 34, padding: 2 }} value={p.color}
+                      onChange={(e) => setPlan({ ...plan, pillars: plan.pillars.map((x, k) => k === i ? { ...x, color: e.target.value } : x) })} />
+                    <input className="input" style={{ flex: 1 }} value={p.name}
+                      onChange={(e) => setPlan({ ...plan, pillars: plan.pillars.map((x, k) => k === i ? { ...x, name: e.target.value } : x) })} />
+                    <input type="number" min={0} max={100} className="input" style={{ width: 80 }} value={p.target_ratio}
+                      onChange={(e) => setPlan({ ...plan, pillars: plan.pillars.map((x, k) => k === i ? { ...x, target_ratio: Number(e.target.value) } : x) })} />
+                    <span className="tiny muted" style={{ flex: 2 }}>{p.why}</span>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {plan.series.length > 0 && (
+              <div className="card p4 mb3" style={{ background: "#fafafa" }}>
+                <div className="label" style={{ margin: "0 0 6px" }}>Format berulang</div>
+                {plan.series.map((s, i) => (
+                  <div key={i} className="tiny mb1"><b>{s.name}</b> <span className="muted">— {s.format}</span></div>
+                ))}
+              </div>
+            )}
+
+            {mix.length > 0 && (
+              <div className="card p4 mb3" style={{ background: "#fafafa" }}>
+                <div className="label" style={{ margin: "0 0 6px" }}>Sebaran nyata vs target</div>
+                {mix.map((m) => (
+                  <div key={m.name} className="row mb1" style={{ gap: 8 }}>
+                    <span className="tiny" style={{ width: 130, flexShrink: 0 }}>{m.name}</span>
+                    <span style={{ flex: 1, height: 10, background: "#e7e7ec", borderRadius: 99, position: "relative" }}>
+                      <span style={{ display: "block", width: `${m.actual}%`, height: "100%", background: m.color, borderRadius: 99 }} />
+                      {m.target !== null && (
+                        <span title={`Target ${m.target}%`} style={{
+                          position: "absolute", left: `${m.target}%`, top: -3, width: 2, height: 16, background: "#3f3f46",
+                        }} />
+                      )}
+                    </span>
+                    <span className="tiny muted" style={{ width: 96, flexShrink: 0, textAlign: "right" }}>
+                      {m.n} item · {m.actual}%{m.target !== null ? ` / ${m.target}%` : ""}
+                    </span>
+                  </div>
+                ))}
+                <p className="tiny muted mt2">Garis gelap = target pillar. Batang = porsi nyata dari ide yang kamu centang.</p>
+              </div>
+            )}
+
+            <div style={{ maxHeight: "38vh", overflowY: "auto" }}>
+              <table>
+                <thead><tr><th style={{ width: 28 }}></th><th style={{ width: 120 }}>Tanggal</th><th>Judul & hook</th><th style={{ width: 150 }}>Pillar</th><th style={{ width: 110 }}>Tipe</th></tr></thead>
+                <tbody>
+                  {plan.items.map((it, i) => (
+                    <tr key={i} style={{ opacity: it._on ? 1 : 0.45 }}>
+                      <td><input type="checkbox" checked={it._on} onChange={(e) => patchItem(i, { _on: e.target.checked })} /></td>
+                      <td><input type="date" className="input" style={{ fontSize: 11, padding: "3px 6px" }}
+                        value={it.date} onChange={(e) => patchItem(i, { date: e.target.value })} /></td>
+                      <td>
+                        <input className="input" style={{ fontSize: 12, padding: "4px 8px" }}
+                          value={it.title} onChange={(e) => patchItem(i, { title: e.target.value })} />
+                        <div className="tiny muted mt1">
+                          {it.series && <b style={{ color: "#7c3aed" }}>{it.series} · </b>}{it.hook}
+                        </div>
+                      </td>
+                      <td>
+                        <select className="input" style={{ fontSize: 11, padding: "3px 6px" }}
+                          value={it.pillar} onChange={(e) => patchItem(i, { pillar: e.target.value })}>
+                          <option value="">—</option>
+                          {pillarNames.map((n) => <option key={n} value={n}>{n}</option>)}
+                        </select>
+                      </td>
+                      <td>
+                        <select className="input" style={{ fontSize: 11, padding: "3px 6px" }}
+                          value={it.content_type} onChange={(e) => patchItem(i, { content_type: e.target.value })}>
+                          <option value="talking">Talking</option><option value="broll">B-Roll</option>
+                          <option value="photo">Foto</option><option value="carousel">Carousel</option>
+                        </select>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+
+            {err && <div className="msg-err mt3">{err}</div>}
+            <div className="row mt3" style={{ gap: 8, flexWrap: "wrap" }}>
+              <button type="button" className="btn" disabled={busy || !chosen.length} onClick={save}>
+                {busy ? "Menyimpan…" : `Simpan ${chosen.length} ide ke planner`}
+              </button>
+              <button type="button" className="btn btn2" disabled={busy} onClick={generate}>↻ Susun ulang</button>
+              <button type="button" className="btn btn2" onClick={() => setStep(1)}>← Ubah brief</button>
+            </div>
+          </>
+        )}
+      </div>
+    </div>
+  );
+}
+
 export function Planner({ ws, refresh, tick }) {
   const [d, reload, loadError] = useQuery(async () => {
     const [pillars, items, inf, connRes, jobs] = await Promise.all([
@@ -1238,6 +1567,8 @@ export function Planner({ ws, refresh, tick }) {
   const [publishMsg, setPublishMsg] = useState(null);
   const [view, setView] = useState("board");
   const [aiDraftId, setAiDraftId] = useState(null);
+  const [planOpen, setPlanOpen] = useState(false);
+  const [planMsg, setPlanMsg] = useState(null);
   const [calMonth, setCalMonth] = useState(() => { const n = new Date(); return new Date(n.getFullYear(), n.getMonth(), 1); });
   if (!d) return loadError ? <div className="msg-err">Gagal memuat planner: {loadError}</div> : <div className="muted">Memuat…</div>;
 
@@ -1315,10 +1646,38 @@ export function Planner({ ws, refresh, tick }) {
 
   return (
     <div>
-      <h1 style={{ fontSize: 24, fontWeight: 800 }}>Content Planner</h1>
-      <p className="muted small mb4">Content pillars → ide → produksi → publish. Konten AI wajib berlabel disclosure saat diunggah.</p>
+      <div className="row mb4" style={{ justifyContent: "space-between", alignItems: "flex-start" }}>
+        <div>
+          <h1 style={{ fontSize: 24, fontWeight: 800 }}>Content Planner</h1>
+          <p className="muted small mt1">Content pillars → ide → produksi → publish. Konten AI wajib berlabel disclosure saat diunggah.</p>
+        </div>
+        <button type="button" className="btn" style={{ flexShrink: 0 }} onClick={() => setPlanOpen(true)}>
+          ✨ Rencanakan sebulan dengan AI
+        </button>
+      </div>
       {err && <div className="msg-err mb3">{err}</div>}
+      {planMsg && <div className="msg-ok mb3">{planMsg}</div>}
+      {!d.items.length && (
+        <div className="card p6 mb4" style={{ background: "#faf7ff", borderColor: "#ddd0ff" }}>
+          <div className="bold mb1">Papan masih kosong</div>
+          <p className="small muted mb3">
+            Mengisi sebulan konten lewat formulir di bawah berarti ratusan isian manual. Wizard AI menyusun
+            content pillar, ide, hook, dan tanggalnya sekaligus — kamu tinggal buang yang tidak cocok.
+          </p>
+          <button type="button" className="btn" onClick={() => setPlanOpen(true)}>✨ Susun rencana pertama</button>
+        </div>
+      )}
       {publishMsg && <div className={publishMsg.startsWith("Publish gagal") ? "msg-err mb3" : "msg-ok mb3"}>{publishMsg}</div>}
+
+      {planOpen && (
+        <PlanWizard ws={ws} influencers={d.inf} pillars={d.pillars}
+          onClose={() => setPlanOpen(false)}
+          onSaved={(nItems, nPillars) => {
+            setPlanOpen(false);
+            setPlanMsg(`${nItems} ide masuk ke papan${nPillars ? ` dan ${nPillars} pillar baru dibuat` : ""}. Geser kartu ke "Terjadwal" untuk mengirim reminder ke Google Calendar.`);
+            reload(); refresh();
+          }} />
+      )}
 
       <div className="card p6 mb4">
         <div className="bold mb2">Content Pillars</div>
