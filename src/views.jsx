@@ -199,17 +199,49 @@ const PERSONA_QS = [
   { key: "audience", label: "Target audiens (opsional)", ph: "mis. cewek 18-25 di kota besar" },
 ];
 
+// Perkecil foto di browser sebelum dikirim: provider vision hanya menerima
+// base64 (bukan URL), jadi ukuran payload harus ditekan di sisi klien.
+function downscaleToDataUri(file, maxSide = 768, quality = 0.82) {
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    const url = URL.createObjectURL(file);
+    img.onload = () => {
+      URL.revokeObjectURL(url);
+      const scale = Math.min(1, maxSide / Math.max(img.width, img.height));
+      const c = document.createElement("canvas");
+      c.width = Math.round(img.width * scale);
+      c.height = Math.round(img.height * scale);
+      c.getContext("2d").drawImage(img, 0, 0, c.width, c.height);
+      resolve(c.toDataURL("image/jpeg", quality));
+    };
+    img.onerror = () => { URL.revokeObjectURL(url); reject(new Error("File bukan gambar yang valid.")); };
+    img.src = url;
+  });
+}
+
 function PersonaWizard({ onApply, onClose, initialAnswers, refine }) {
   const [ans, setAns] = useState({ language: "id", basis: "flexible", ...(initialAnswers || {}) });
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState(null);
   const [out, setOut] = useState(null);
+  const [photos, setPhotos] = useState([]);
+
+  async function addPhotos(e) {
+    const files = Array.from(e.target.files || []);
+    e.target.value = "";
+    if (!files.length) return;
+    setErr(null);
+    try {
+      const shrunk = await Promise.all(files.slice(0, 4).map((f) => downscaleToDataUri(f)));
+      setPhotos((prev) => [...prev, ...shrunk].slice(0, 4));
+    } catch (e2) { setErr(e2.message); }
+  }
 
   async function generate() {
     setBusy(true); setErr(null);
     try {
-      const r = await callGenerate({ action: "write", kind: "persona", answers: ans });
-      setOut(r.persona);
+      const r = await callGenerate({ action: "write", kind: "persona", answers: ans, photos });
+      setOut({ ...r.persona, _photoUrls: r.photo_urls || [] });
     } catch (e) { setErr(e.message); }
     setBusy(false);
   }
@@ -233,6 +265,33 @@ function PersonaWizard({ onApply, onClose, initialAnswers, refine }) {
 
         {!out && (
           <>
+            <div className="card p4 mb3" style={{ background: "#fafafa" }}>
+              <div className="row mb1" style={{ justifyContent: "space-between" }}>
+                <span className="label" style={{ margin: 0 }}>Foto referensi (opsional, maks. 4)</span>
+                <label className="tiny" style={{ color: "#7c3aed", fontWeight: 700, cursor: "pointer" }}>
+                  + Pilih foto
+                  <input type="file" accept="image/*" multiple onChange={addPhotos} style={{ display: "none" }} />
+                </label>
+              </div>
+              <p className="tiny muted mb2">
+                Kalau kamu upload foto, AI membaca ciri wajah dari foto itu — hasilnya jauh lebih akurat
+                daripada menebak dari teks. Foto diperkecil dulu di browser, lalu disimpan sebagai Identity Kit.
+                Upload hanya foto yang kamu berhak pakai.
+              </p>
+              {photos.length > 0 && (
+                <div className="grid" style={{ gridTemplateColumns: "repeat(4,1fr)", gap: 8 }}>
+                  {photos.map((p, i) => (
+                    <div key={i} style={{ position: "relative" }}>
+                      <div className="thumb" style={{ aspectRatio: "1" }}><img src={p} alt="" /></div>
+                      <button type="button" title="Hapus"
+                        onClick={() => setPhotos(photos.filter((_, k) => k !== i))}
+                        style={{ position: "absolute", top: -6, right: -6, width: 20, height: 20, borderRadius: 99,
+                          border: "none", background: "#17171c", color: "#fff", cursor: "pointer", fontSize: 12, lineHeight: "20px", padding: 0 }}>×</button>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
             {PERSONA_QS.map((q) => (
               <div key={q.key} className="mb3">
                 <label className="label">{q.label}</label>
@@ -259,7 +318,8 @@ function PersonaWizard({ onApply, onClose, initialAnswers, refine }) {
             {err && <div className="msg-err mb3">{err}</div>}
             <div className="row" style={{ gap: 8 }}>
               <button type="button" className="btn" disabled={busy} onClick={generate}>
-                {busy ? "Menulis…" : refine ? "Perbaiki deskripsi" : "Buatkan deskripsi"}
+                {busy ? (photos.length ? "Membaca foto…" : "Menulis…")
+                  : photos.length ? `Buat dari ${photos.length} foto` : refine ? "Perbaiki deskripsi" : "Buatkan deskripsi"}
               </button>
               <button type="button" className="btn btn2" onClick={onClose}>Batal</button>
             </div>
@@ -319,10 +379,15 @@ export function Influencers({ ws, refresh, tick }) {
   // tenggelam di bawah form panjang — tombol di header yang membukanya.
   const [formOpen, setFormOpen] = useState(false);
 
+  // URL foto dari wizard disimpan dulu — influencer-nya belum ada, jadi baru
+  // dilampirkan sebagai Identity Kit setelah insert berhasil.
+  const [pendingRefs, setPendingRefs] = useState([]);
+
   function applyPersona(p) {
     setNiche(p.niche || "");
     setBioHint(p.bio || "");
     setIdentityHint(p.identity_prompt || "");
+    setPendingRefs(p._photoUrls || []);
     setSelectedIdea(null);
     setWizardOpen(false);
   }
@@ -337,17 +402,22 @@ export function Influencers({ ws, refresh, tick }) {
     e.preventDefault();
     setBusy(true); setErr(null);
     const f = new FormData(e.target);
-    const { error } = await supa.from("influencers").insert({
+    const { data: inserted, error } = await supa.from("influencers").insert({
       workspace_id: ws.id,
       name: f.get("name"), handle: f.get("handle"), niche: f.get("niche"),
       language: f.get("language"),
       platforms: String(f.get("platforms") || "tiktok").split(",").map((s) => s.trim()).filter(Boolean),
       persona: { bio: f.get("bio") },
       identity_prompt: f.get("identity_prompt"),
-    });
+    }).select("id").single();
+    if (error) { setBusy(false); setErr(error.message); return; }
+    if (pendingRefs.length && inserted?.id) {
+      try { await callGenerate({ action: "attach_refs", influencer_id: inserted.id, urls: pendingRefs }); }
+      catch (e2) { setErr(`Influencer dibuat, tapi foto referensi gagal dilampirkan: ${e2.message}`); }
+    }
     setBusy(false);
-    if (error) { setErr(error.message); return; }
-    e.target.reset(); setNiche(""); setBioHint(""); setIdentityHint(""); setSelectedIdea(null); reload(); refresh();
+    e.target.reset(); setNiche(""); setBioHint(""); setIdentityHint(""); setPendingRefs([]); setSelectedIdea(null);
+    setFormOpen(false); reload(); refresh();
   }
 
   if (!list) return listError ? <div className="msg-err">Gagal memuat influencers: {listError}</div> : <div className="muted">Memuat…</div>;
@@ -426,6 +496,15 @@ export function Influencers({ ws, refresh, tick }) {
             value={identityHint} onChange={(e) => setIdentityHint(e.target.value)}
             placeholder="mis. Indonesian woman, 24yo, oval face, small mole under left eye, shoulder-length wavy black hair…" />
           <p className="tiny muted mb3">Fragment ini otomatis disuntikkan ke SEMUA generate untuk influencer ini — kunci konsistensi karakter.</p>
+          {pendingRefs.length > 0 && (
+            <div className="card p4 mb3" style={{ background: "#fafafa" }}>
+              <div className="label" style={{ margin: 0 }}>{pendingRefs.length} foto referensi siap dilampirkan</div>
+              <div className="grid mt2" style={{ gridTemplateColumns: "repeat(4,1fr)", gap: 8 }}>
+                {pendingRefs.map((u) => <div key={u} className="thumb" style={{ aspectRatio: "1" }}><img src={u} alt="" /></div>)}
+              </div>
+              <div className="tiny muted mt2">Otomatis masuk Identity Kit setelah influencer dibuat.</div>
+            </div>
+          )}
           {err && <div className="msg-err mb2">{err}</div>}
           <button className="btn" disabled={busy}>Buat Influencer</button>
         </form>
@@ -528,11 +607,18 @@ export function InfluencerDetail({ id, ws, refresh, tick, mode }) {
               current_bio: bioVal,
               current_identity: identityVal,
             }}
-            onApply={(pp) => {
+            onApply={async (pp) => {
               if (pp.bio) setBio(pp.bio);
               if (pp.identity_prompt) setIdentity(pp.identity_prompt);
               setWizardOpen(false);
               setSaveOk(false);
+              // Foto referensi langsung masuk Identity Kit influencer ini.
+              if (pp._photoUrls?.length) {
+                try {
+                  await callGenerate({ action: "attach_refs", influencer_id: id, urls: pp._photoUrls });
+                  reload();
+                } catch (e) { setSaveErr(e.message); }
+              }
             }}
             onClose={() => setWizardOpen(false)}
           />
@@ -1483,6 +1569,7 @@ function AiWriterSettings({ keyState, onSaved }) {
         api_key: f.get("api_key") || "",
         base_url: f.get("base_url") || "",
         model: f.get("model") || "",
+        vision_model: f.get("vision_model") || "",
       });
       setMsg("Konfigurasi penulis AI tersimpan.");
       e.target.reset();
@@ -1519,18 +1606,22 @@ function AiWriterSettings({ keyState, onSaved }) {
               placeholder={preset?.base || "https://…/v1"} defaultValue={active === cur?.provider ? cur?.base_url || "" : ""} />
           </div>
           <div>
-            <label className="label">Model</label>
+            <label className="label">Model teks</label>
             <input name="model" className="input" style={{ fontSize: 12 }}
               placeholder={preset?.model || "nama-model"} defaultValue={active === cur?.provider ? cur?.model || "" : ""} />
           </div>
         </div>
+        <label className="label">Model vision (untuk baca foto referensi)</label>
+        <input name="vision_model" className="input mb1" style={{ fontSize: 12 }}
+          placeholder={preset?.vision || "mis. qwen3-vl-plus"} defaultValue={active === cur?.provider ? cur?.vision_model || "" : ""} />
+        <p className="tiny muted mb3">Model teks biasa tidak bisa membaca gambar — ini dipakai saat kamu upload foto di wizard karakter.</p>
         <label className="label">API key {cur?.configured && <span className="tiny muted">(kosongkan bila tidak ingin mengganti)</span>}</label>
         <div className="row">
           <input name="api_key" className="input" type="password" placeholder="sk-… / API key provider" style={{ fontSize: 12 }} />
           <button className="btn" disabled={busy}>Simpan</button>
         </div>
         <p className="tiny muted mt1">
-          Kosongkan Base URL / Model untuk memakai preset {preset ? `(${preset.base} · ${preset.model})` : "provider"}.
+          Kosongkan Base URL / Model untuk memakai preset {preset ? `(${preset.base} · ${preset.model} · vision ${preset.vision})` : "provider"}.
           Key disimpan di server, tidak pernah tampil di browser.
         </p>
       </form>
