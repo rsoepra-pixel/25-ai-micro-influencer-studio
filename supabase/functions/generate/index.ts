@@ -73,9 +73,11 @@ async function monthSpent(ws: string): Promise<number> {
 }
 
 // ---------- Provider teks (OpenAI-compatible) ----------
-const TEXT_PRESETS: Record<string, { base: string; model: string; label: string }> = {
-  qwen: { base: "https://dashscope-intl.aliyuncs.com/compatible-mode/v1", model: "qwen-plus", label: "Qwen (DashScope)" },
-  kimi: { base: "https://api.moonshot.ai/v1", model: "kimi-k2.5", label: "Kimi (Moonshot)" },
+// `vision` = model multimodal untuk membaca foto referensi. Beda dari model teks:
+// qwen-plus dan sebagian model Kimi tidak bisa menerima gambar.
+const TEXT_PRESETS: Record<string, { base: string; model: string; vision: string; label: string }> = {
+  qwen: { base: "https://dashscope-intl.aliyuncs.com/compatible-mode/v1", model: "qwen-plus", vision: "qwen3-vl-plus", label: "Qwen (DashScope)" },
+  kimi: { base: "https://api.moonshot.ai/v1", model: "kimi-k2.5", vision: "moonshot-v1-8k-vision-preview", label: "Kimi (Moonshot)" },
 };
 
 async function textConfig(ws: string) {
@@ -86,19 +88,32 @@ async function textConfig(ws: string) {
     key: await getSecret(ws, "text_api_key"),
     base: (await getSecret(ws, "text_base_url")) || preset?.base || "",
     model: (await getSecret(ws, "text_model")) || preset?.model || "",
+    vision: (await getSecret(ws, "text_vision_model")) || preset?.vision || "",
   };
 }
 
-async function chat(ws: string, system: string, user: string): Promise<string> {
+// photos = data URI base64. Provider Kimi menolak URL publik, jadi base64 dipakai
+// untuk semua provider agar satu jalur saja.
+async function chat(ws: string, system: string, user: string, photos?: string[]): Promise<string> {
   const cfg = await textConfig(ws);
   if (!cfg.key) throw new Error("API key penulis AI belum dipasang — isi di Settings → Penulis AI.");
   if (!cfg.base || !cfg.model) throw new Error("Base URL / model penulis AI belum lengkap.");
+  const withPhotos = Array.isArray(photos) && photos.length > 0;
+  if (withPhotos && !cfg.vision) {
+    throw new Error("Model vision belum diatur — isi di Settings → Penulis AI (mis. qwen3-vl-plus atau moonshot-v1-8k-vision-preview).");
+  }
+  const userContent = withPhotos
+    ? [
+        { type: "text", text: user },
+        ...photos!.slice(0, 4).map((url) => ({ type: "image_url", image_url: { url } })),
+      ]
+    : user;
   const res = await fetch(`${cfg.base.replace(/\/$/, "")}/chat/completions`, {
     method: "POST",
     headers: { Authorization: `Bearer ${cfg.key}`, "content-type": "application/json" },
     body: JSON.stringify({
-      model: cfg.model,
-      messages: [{ role: "system", content: system }, { role: "user", content: user }],
+      model: withPhotos ? cfg.vision : cfg.model,
+      messages: [{ role: "system", content: system }, { role: "user", content: userContent }],
       temperature: 0.8,
       max_tokens: 1200,
     }),
@@ -242,7 +257,7 @@ Deno.serve(async (req) => {
           fal_key: !!(await getSecret(ws, "fal_key")),
           hf_token: !!(await getSecret(ws, "hf_token")),
           mode,
-          text: { provider: cfg.provider, model: cfg.model, base_url: cfg.base, configured: !!cfg.key },
+          text: { provider: cfg.provider, model: cfg.model, vision_model: cfg.vision, base_url: cfg.base, configured: !!cfg.key },
           text_presets: TEXT_PRESETS,
         });
       }
@@ -263,6 +278,8 @@ Deno.serve(async (req) => {
         await setSecret(ws, "text_base_url", base || TEXT_PRESETS[provider]?.base || "");
         const model = String(body.model || "").trim();
         await setSecret(ws, "text_model", model || TEXT_PRESETS[provider]?.model || "");
+        const vision = String(body.vision_model || "").trim();
+        await setSecret(ws, "text_vision_model", vision || TEXT_PRESETS[provider]?.vision || "");
         if (provider === "custom" && !(base && model)) throw new Error("Provider custom butuh base URL dan nama model.");
         return json({ ok: true });
       }
@@ -290,10 +307,17 @@ Deno.serve(async (req) => {
             real: "Terinspirasi dari deskripsi yang diberikan user; tetap tulis sebagai deskripsi umum, jangan sebut nama orang nyata atau selebriti.",
             flexible: "Fleksibel — tulis deskripsi umum yang konsisten, tanpa mengacu ke orang nyata atau selebriti mana pun.",
           };
+          const photos: string[] = Array.isArray(body.photos) ? body.photos.slice(0, 4) : [];
           const system =
             "Kamu direktur kreatif yang menyiapkan karakter untuk konten AI. " +
             "Jawab HANYA dengan JSON valid, tanpa penjelasan lain. " +
-            "JANGAN pernah menyebut nama selebriti, tokoh publik, atau merek orang nyata sebagai acuan wajah.";
+            "JANGAN pernah menyebut nama selebriti, tokoh publik, atau merek orang nyata sebagai acuan wajah." +
+            (photos.length
+              ? " Kamu diberi foto referensi. Deskripsikan ciri visual yang terlihat secara netral dan faktual " +
+                "(bentuk wajah, rambut, warna kulit, mata, alis, hidung, ciri kecil yang konsisten). " +
+                "JANGAN menebak identitas, nama, suku, agama, atau data pribadi orang di foto. " +
+                "JANGAN menilai daya tarik fisik."
+              : "");
           const user =
             `Buat identitas influencer AI baru dari jawaban berikut:\n` +
             `- Jenis kelamin & usia: ${a.gender_age || "tidak disebut"}\n` +
@@ -310,6 +334,11 @@ Deno.serve(async (req) => {
                 (a.current_bio ? `- Bio sekarang: ${a.current_bio}\n` : "") +
                 (a.current_identity ? `- Identity prompt sekarang: ${a.current_identity}\n` : "")
               : "") +
+            (photos.length
+              ? `\nFoto referensi terlampir. Turunkan \"identity_prompt\" dari ciri fisik yang benar-benar terlihat ` +
+                `di foto (konsisten di semua foto), bukan dari tebakan. Kalau ada yang tidak terlihat jelas, ` +
+                `abaikan saja daripada mengarang.\n`
+              : "") +
             `\nAturan penting:\n` +
             `1. "identity_prompt" WAJIB bahasa Inggris, 40-70 kata, dan HANYA ciri fisik tetap: ` +
             `jenis kelamin, perkiraan usia, bentuk wajah, warna/gaya rambut, warna kulit, bentuk mata/alis/hidung, ` +
@@ -321,9 +350,28 @@ Deno.serve(async (req) => {
             `Format JSON: {"names": ["3 usulan nama"], "handles": ["3 usulan handle diawali @"], ` +
             `"niche": "niche ringkas", "bio": "...", "identity_prompt": "...", ` +
             `"style_notes": "1 kalimat bahasa Indonesia: saran gaya visual untuk ditulis di prompt per-gambar, bukan di identity prompt"}`;
-          const parsed = parseJsonLoose(await chat(ws, system, user)) as Record<string, unknown>;
+          const parsed = parseJsonLoose(await chat(ws, system, user, photos)) as Record<string, unknown>;
+
+          // Simpan foto referensi ke Storage supaya bisa dipakai sebagai Identity Kit.
+          const photoUrls: string[] = [];
+          for (const [i, dataUri] of photos.entries()) {
+            const m = /^data:(image\/[a-z+]+);base64,(.+)$/i.exec(dataUri);
+            if (!m) continue;
+            try {
+              const bin = atob(m[2]);
+              const bytes = new Uint8Array(bin.length);
+              for (let k = 0; k < bin.length; k++) bytes[k] = bin.charCodeAt(k);
+              const ext = m[1].includes("png") ? "png" : m[1].includes("webp") ? "webp" : "jpg";
+              const path = `${ws}/refs/${crypto.randomUUID()}-${i}.${ext}`;
+              const { error: upErr } = await admin.storage.from("media")
+                .upload(path, bytes, { contentType: m[1], upsert: true, cacheControl: "3600" });
+              if (!upErr) photoUrls.push(admin.storage.from("media").getPublicUrl(path).data.publicUrl);
+            } catch (_e) { /* foto ini dilewati; sisanya tetap diproses */ }
+          }
+
           return json({
             ok: true,
+            photo_urls: photoUrls,
             persona: {
               names: Array.isArray(parsed.names) ? parsed.names.map(String).slice(0, 3) : [],
               handles: Array.isArray(parsed.handles) ? parsed.handles.map(String).slice(0, 3) : [],
@@ -378,6 +426,21 @@ Deno.serve(async (req) => {
             hashtags: Array.isArray(parsed.hashtags) ? parsed.hashtags.map(String) : [],
           },
         });
+      }
+      case "attach_refs": {
+        // Daftarkan foto referensi ke Identity Kit influencer + pasang avatar bila kosong.
+        const { data: inf } = await admin.from("influencers").select("id, avatar_url, workspace_id")
+          .eq("id", body.influencer_id).maybeSingle();
+        if (!inf || inf.workspace_id !== ws) throw new Error("Influencer tidak ditemukan.");
+        const urls: string[] = Array.isArray(body.urls) ? body.urls.filter((u: unknown) => typeof u === "string").slice(0, 8) : [];
+        if (!urls.length) throw new Error("Tidak ada foto untuk dilampirkan.");
+        const { error } = await admin.from("character_assets")
+          .insert(urls.map((url) => ({ influencer_id: inf.id, kind: "reference", url })));
+        if (error) throw new Error(error.message);
+        if (!inf.avatar_url) {
+          await admin.from("influencers").update({ avatar_url: urls[0] }).eq("id", inf.id);
+        }
+        return json({ ok: true, attached: urls.length });
       }
       case "apply_draft": {
         // Simpan hasil penulis AI ke content_item (dipisah agar user bisa review dulu).
