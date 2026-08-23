@@ -540,6 +540,85 @@ export function Studio({ ws, refresh, tick, mode }) {
 }
 
 // ---------- Planner ----------
+// Panel penulis AI untuk satu konten: draft dulu, user review, baru simpan.
+function AiDraftPanel({ item, onSaved, onClose }) {
+  const [busy, setBusy] = useState(false);
+  const [err, setErr] = useState(null);
+  const [draft, setDraft] = useState(null);
+  const [copied, setCopied] = useState(false);
+
+  useEffect(() => {
+    let alive = true;
+    setBusy(true); setErr(null);
+    callGenerate({ action: "write", kind: "script", content_item_id: item.id, influencer_id: item.influencer_id })
+      .then((r) => { if (alive) setDraft(r.draft); })
+      .catch((e) => { if (alive) setErr(e.message); })
+      .finally(() => { if (alive) setBusy(false); });
+    return () => { alive = false; };
+  }, [item.id, item.influencer_id]);
+
+  async function save() {
+    setBusy(true); setErr(null);
+    try {
+      await callGenerate({ action: "apply_draft", content_item_id: item.id, hook: draft.hook, script: draft.script });
+      onSaved?.();
+    } catch (e) { setErr(e.message); }
+    setBusy(false);
+  }
+
+  const captionText = draft
+    ? draft.caption + (draft.hashtags?.length ? "\n" + draft.hashtags.map((h) => (h.startsWith("#") ? h : `#${h}`)).join(" ") : "")
+    : "";
+
+  // Modal: kolom kanban terlalu sempit untuk mereview naskah dengan nyaman.
+  return (
+    <div onClick={onClose}
+      style={{ position: "fixed", inset: 0, background: "rgba(9,9,11,.45)", display: "flex",
+        alignItems: "center", justifyContent: "center", padding: 20, zIndex: 50 }}>
+      <div className="card p6" onClick={(e) => e.stopPropagation()}
+        style={{ width: "100%", maxWidth: 620, maxHeight: "88vh", overflowY: "auto" }}>
+        <div className="row mb1" style={{ justifyContent: "space-between" }}>
+          <div className="bold">✨ Tulis dengan AI</div>
+          <button type="button" onClick={onClose}
+            style={{ background: "none", border: "none", cursor: "pointer", color: "var(--muted)", fontSize: 18 }}>×</button>
+        </div>
+        <p className="tiny muted mb3">Draft untuk “{item.title}” — edit dulu sesuai gayamu sebelum disimpan.</p>
+
+        {busy && !draft && <div className="small muted">Menulis…</div>}
+        {err && <div className="msg-err mb3">{err}</div>}
+        {draft && (
+          <>
+            <label className="label">Hook</label>
+            <textarea className="input mb3" rows={2}
+              value={draft.hook} onChange={(e) => setDraft({ ...draft, hook: e.target.value })} />
+            <label className="label">Script</label>
+            <textarea className="input mb3" rows={8}
+              value={draft.script} onChange={(e) => setDraft({ ...draft, script: e.target.value })} />
+            {draft.caption && (
+              <div className="card p4 mb3" style={{ background: "#fafafa" }}>
+                <div className="row mb1" style={{ justifyContent: "space-between" }}>
+                  <span className="label" style={{ margin: 0 }}>Caption + hashtag</span>
+                  <button type="button" className="tiny" style={{ background: "none", border: "none", color: "#7c3aed", fontWeight: 700, cursor: "pointer" }}
+                    onClick={() => navigator.clipboard?.writeText(captionText)
+                      .then(() => { setCopied(true); setTimeout(() => setCopied(false), 2000); }).catch(() => {})}>
+                    {copied ? "✓ Tersalin" : "📋 Salin"}
+                  </button>
+                </div>
+                <div className="small" style={{ whiteSpace: "pre-wrap" }}>{captionText}</div>
+                <div className="tiny muted mt2">Caption tidak ikut tersimpan otomatis — salin saat mau posting.</div>
+              </div>
+            )}
+          </>
+        )}
+        <div className="row" style={{ gap: 8 }}>
+          {draft && <button type="button" className="btn" disabled={busy} onClick={save}>Simpan hook & script</button>}
+          <button type="button" className="btn btn2" onClick={onClose}>Tutup</button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 const BOARD = ["idea", "scripting", "producing", "review", "scheduled", "published"];
 
 // Kalender bulanan: setiap konten ber-tanggal ditempatkan di sel harinya,
@@ -643,6 +722,7 @@ export function Planner({ ws, refresh, tick }) {
   const [publishBusy, setPublishBusy] = useState(false);
   const [publishMsg, setPublishMsg] = useState(null);
   const [view, setView] = useState("board");
+  const [aiDraftId, setAiDraftId] = useState(null);
   const [calMonth, setCalMonth] = useState(() => { const n = new Date(); return new Date(n.getFullYear(), n.getMonth(), 1); });
   if (!d) return loadError ? <div className="msg-err">Gagal memuat planner: {loadError}</div> : <div className="muted">Memuat…</div>;
 
@@ -791,6 +871,12 @@ export function Planner({ ws, refresh, tick }) {
                   <select className="input mt2" style={{ fontSize: 12, padding: "4px 8px" }} value={c.status} onChange={(e) => setStatus(c.id, e.target.value)}>
                     {BOARD.map((s) => <option key={s} value={s}>{STATUS_LABELS[s]}</option>)}
                   </select>
+                  <button type="button" className="tiny mt2" style={{ background: "none", border: "none", color: "#7c3aed", fontWeight: 700, cursor: "pointer", padding: 0, display: "block" }}
+                    onClick={() => setAiDraftId(c.id)}>✨ Tulis dengan AI</button>
+                  {aiDraftId === c.id && (
+                    <AiDraftPanel item={c} onClose={() => setAiDraftId(null)}
+                      onSaved={() => { setAiDraftId(null); reload(); }} />
+                  )}
                   {d.conns.length > 0 && (
                     publishOpenId === c.id ? (
                       <form onSubmit={(e) => doPublish(e, c)} className="mt2" style={{ borderTop: "1px solid var(--border)", paddingTop: 8 }}>
@@ -1191,6 +1277,82 @@ function CalendarConnection({ ws, tick, query }) {
   );
 }
 
+// ---------- Penulis AI (provider teks OpenAI-compatible: Qwen / Kimi / custom) ----------
+function AiWriterSettings({ keyState, onSaved }) {
+  const [provider, setProvider] = useState(null);
+  const [msg, setMsg] = useState(null);
+  const [busy, setBusy] = useState(false);
+  const cur = keyState?.text;
+  const presets = keyState?.text_presets || {};
+  const active = provider ?? cur?.provider ?? "qwen";
+  const preset = presets[active];
+
+  async function save(e) {
+    e.preventDefault();
+    const f = new FormData(e.target);
+    setBusy(true); setMsg(null);
+    try {
+      await callGenerate({
+        action: "set_text_config",
+        provider: active,
+        api_key: f.get("api_key") || "",
+        base_url: f.get("base_url") || "",
+        model: f.get("model") || "",
+      });
+      setMsg("Konfigurasi penulis AI tersimpan.");
+      e.target.reset();
+      onSaved?.();
+    } catch (e2) { setMsg(`Gagal: ${e2.message}`); }
+    setBusy(false);
+  }
+
+  return (
+    <div className="card p6 mb4">
+      <div className="row mb1" style={{ gap: 8 }}>
+        <div className="bold">Penulis AI (hook, script, caption, ide)</div>
+        <Badge tone={cur?.configured ? "green" : "amber"}>{cur?.configured ? "aktif" : "belum diisi"}</Badge>
+      </div>
+      <p className="tiny muted mb3">
+        Dipakai tombol <b>✨ Tulis dengan AI</b> di Content Planner. Provider apa pun yang OpenAI-compatible bisa dipakai —
+        Qwen dan Kimi sudah ada preset-nya, tinggal tempel API key.
+      </p>
+      {msg && <div className={msg.startsWith("Gagal") ? "msg-err mb3" : "msg-ok mb3"}>{msg}</div>}
+      <form onSubmit={save}>
+        <label className="label">Provider</label>
+        <div className="row mb3" style={{ gap: 6, flexWrap: "wrap" }}>
+          {["qwen", "kimi", "custom"].map((p) => (
+            <button type="button" key={p} onClick={() => setProvider(p)}
+              className={`btn ${active === p ? "" : "btn2"}`} style={{ fontSize: 12, padding: "6px 12px" }}>
+              {presets[p]?.label || (p === "custom" ? "Custom / lainnya" : p)}
+            </button>
+          ))}
+        </div>
+        <div className="grid mb3" style={{ gridTemplateColumns: "1fr 1fr" }}>
+          <div>
+            <label className="label">Base URL</label>
+            <input name="base_url" className="input" style={{ fontSize: 12 }}
+              placeholder={preset?.base || "https://…/v1"} defaultValue={active === cur?.provider ? cur?.base_url || "" : ""} />
+          </div>
+          <div>
+            <label className="label">Model</label>
+            <input name="model" className="input" style={{ fontSize: 12 }}
+              placeholder={preset?.model || "nama-model"} defaultValue={active === cur?.provider ? cur?.model || "" : ""} />
+          </div>
+        </div>
+        <label className="label">API key {cur?.configured && <span className="tiny muted">(kosongkan bila tidak ingin mengganti)</span>}</label>
+        <div className="row">
+          <input name="api_key" className="input" type="password" placeholder="sk-… / API key provider" style={{ fontSize: 12 }} />
+          <button className="btn" disabled={busy}>Simpan</button>
+        </div>
+        <p className="tiny muted mt1">
+          Kosongkan Base URL / Model untuk memakai preset {preset ? `(${preset.base} · ${preset.model})` : "provider"}.
+          Key disimpan di server, tidak pernah tampil di browser.
+        </p>
+      </form>
+    </div>
+  );
+}
+
 // ---------- Akun & Admin (info akun, ganti password sendiri, reset password anggota oleh owner) ----------
 const randomPassword = () => {
   const chars = "abcdefghijkmnpqrstuvwxyzABCDEFGHJKLMNPQRSTUVWXYZ23456789!@#";
@@ -1314,12 +1476,13 @@ export function Settings({ ws, refresh, tick, spend, spendError, query }) {
     if (error) { setMsg(error.message); return; }
     setMsg("Budget disimpan."); refresh();
   }
-  async function saveKey(e) {
+  async function saveKey(e, provider) {
     e.preventDefault(); const f = new FormData(e.target);
     try {
-      await callGenerate({ action: "set_key", key: f.get("falkey") });
-      setMsg("FAL key tersimpan aman di server."); e.target.reset();
-      setKeyState((s) => ({ ...s, fal_key: true }));
+      await callGenerate({ action: "set_key", provider, key: f.get("key") });
+      setMsg(provider === "hf" ? "Token Hugging Face tersimpan aman di server." : "FAL key tersimpan aman di server.");
+      e.target.reset();
+      setKeyState((s) => ({ ...s, [provider === "hf" ? "hf_token" : "fal_key"]: true }));
     } catch (e2) { setMsg(e2.message); }
   }
   async function setMode(mode) {
@@ -1342,23 +1505,44 @@ export function Settings({ ws, refresh, tick, spend, spendError, query }) {
     <div>
       <h1 style={{ fontSize: 24, fontWeight: 800 }} className="mb4">Settings</h1>
       <AccountAdmin ws={ws} tick={tick} />
+      <AiWriterSettings keyState={keyState} onSaved={() => callGenerate({ action: "status" }).then(setKeyState).catch(() => {})} />
       {msg && <div className="msg-ok mb3">{msg}</div>}
       <div className="grid mb4" style={{ gridTemplateColumns: "repeat(auto-fit,minmax(340px,1fr))" }}>
         <div className="card p6">
-          <div className="bold mb2">Mode Generate & API Key</div>
-          <div className="small mb2">Mode saat ini: <Badge tone={keyState?.mode === "live" ? "green" : "zinc"}>{keyState?.mode || "…"}</Badge></div>
-          <div className="small mb3">FAL key: <Badge tone={keyState?.fal_key ? "green" : "amber"}>{keyState?.fal_key ? "terpasang" : "belum terpasang"}</Badge></div>
-          <form onSubmit={saveKey} className="mb3">
-            <label className="label">Pasang / ganti FAL API key (fal.ai/dashboard/keys)</label>
-            <div className="row">
-              <input name="falkey" className="input" type="password" placeholder="key fal.ai…" required />
-              <button className="btn">Simpan</button>
+          <div className="bold mb2">Mode Generate & Provider Gambar</div>
+          <div className="small mb3">Mode saat ini: <Badge tone={keyState?.mode === "live" ? "green" : "zinc"}>{keyState?.mode || "…"}</Badge>
+            <span className="tiny muted"> — mock memakai foto contoh, live memanggil provider asli.</span>
+          </div>
+
+          <div className="card p4 mb3" style={{ background: "#fafafa" }}>
+            <div className="row mb2" style={{ justifyContent: "space-between" }}>
+              <span className="bold small">Hugging Face — gratis</span>
+              <Badge tone={keyState?.hf_token ? "green" : "amber"}>{keyState?.hf_token ? "terpasang" : "belum"}</Badge>
             </div>
-            <p className="tiny muted mt1">Key disimpan terenkripsi di server (tabel terkunci, hanya bisa dibaca fungsi server). Tidak pernah tampil di browser.</p>
-          </form>
+            <p className="tiny muted mb2">Gambar saja, sesuai kuota gratis akun HF. Buat token di huggingface.co/settings/tokens dengan izin <b>“Make calls to Inference Providers”</b>.</p>
+            <form onSubmit={(e) => saveKey(e, "hf")} className="row">
+              <input name="key" className="input" type="password" placeholder="hf_…" required style={{ fontSize: 12 }} />
+              <button className="btn" style={{ fontSize: 12 }}>Simpan</button>
+            </form>
+          </div>
+
+          <div className="card p4 mb3" style={{ background: "#fafafa" }}>
+            <div className="row mb2" style={{ justifyContent: "space-between" }}>
+              <span className="bold small">fal.ai — berbayar</span>
+              <Badge tone={keyState?.fal_key ? "green" : "amber"}>{keyState?.fal_key ? "terpasang" : "belum"}</Badge>
+            </div>
+            <p className="tiny muted mb2">Gambar, video, suara, dan lip sync. Ambil key di fal.ai/dashboard/keys.</p>
+            <form onSubmit={(e) => saveKey(e, "fal")} className="row">
+              <input name="key" className="input" type="password" placeholder="key fal.ai…" required style={{ fontSize: 12 }} />
+              <button className="btn" style={{ fontSize: 12 }}>Simpan</button>
+            </form>
+          </div>
+
+          <p className="tiny muted mb2">Semua key disimpan di tabel terkunci server — tidak pernah dikirim balik ke browser.</p>
           <div className="row">
             <button className="btn btn2" onClick={() => setMode("mock")} type="button">Mode Mock</button>
-            <button className="btn" onClick={() => setMode("live")} type="button" disabled={!keyState?.fal_key}>Aktifkan Live</button>
+            <button className="btn" onClick={() => setMode("live")} type="button"
+              disabled={!keyState?.fal_key && !keyState?.hf_token}>Aktifkan Live</button>
           </div>
         </div>
         <div className="card p6">

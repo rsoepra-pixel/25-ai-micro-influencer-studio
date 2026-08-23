@@ -1,5 +1,11 @@
-// Edge function `generate` — job produksi AI (mock & live via fal.ai).
-// Actions: status | set_key | set_mode | submit | poll
+// Edge function `generate` — job produksi AI + penulis teks AI.
+// Actions: status | set_key | set_text_config | set_mode | submit | poll | write
+//
+// Provider gambar/video ditentukan oleh kolom `provider` di provider_models:
+//   fal → fal.ai (berbayar, image/video/tts/lipsync)
+//   hf  → Hugging Face Inference (gratis sesuai kuota akun; image saja)
+// Provider teks (hook/script/caption/ide) memakai endpoint OpenAI-compatible:
+//   qwen → Alibaba DashScope, kimi → Moonshot, custom → base_url sendiri.
 import { createClient } from "npm:@supabase/supabase-js@2";
 
 const SB_URL = Deno.env.get("SUPABASE_URL")!;
@@ -66,6 +72,161 @@ async function monthSpent(ws: string): Promise<number> {
   return (data || []).reduce((s: number, r: { delta_usd: unknown }) => s + Math.abs(Number(r.delta_usd)), 0);
 }
 
+// ---------- Provider teks (OpenAI-compatible) ----------
+const TEXT_PRESETS: Record<string, { base: string; model: string; label: string }> = {
+  qwen: { base: "https://dashscope-intl.aliyuncs.com/compatible-mode/v1", model: "qwen-plus", label: "Qwen (DashScope)" },
+  kimi: { base: "https://api.moonshot.ai/v1", model: "kimi-k2.5", label: "Kimi (Moonshot)" },
+};
+
+async function textConfig(ws: string) {
+  const provider = (await getSecret(ws, "text_provider")) || "qwen";
+  const preset = TEXT_PRESETS[provider];
+  return {
+    provider,
+    key: await getSecret(ws, "text_api_key"),
+    base: (await getSecret(ws, "text_base_url")) || preset?.base || "",
+    model: (await getSecret(ws, "text_model")) || preset?.model || "",
+  };
+}
+
+async function chat(ws: string, system: string, user: string): Promise<string> {
+  const cfg = await textConfig(ws);
+  if (!cfg.key) throw new Error("API key penulis AI belum dipasang — isi di Settings → Penulis AI.");
+  if (!cfg.base || !cfg.model) throw new Error("Base URL / model penulis AI belum lengkap.");
+  const res = await fetch(`${cfg.base.replace(/\/$/, "")}/chat/completions`, {
+    method: "POST",
+    headers: { Authorization: `Bearer ${cfg.key}`, "content-type": "application/json" },
+    body: JSON.stringify({
+      model: cfg.model,
+      messages: [{ role: "system", content: system }, { role: "user", content: user }],
+      temperature: 0.8,
+      max_tokens: 1200,
+    }),
+  });
+  const out = await res.json().catch(() => ({}));
+  if (!res.ok) {
+    const m = out?.error?.message || out?.message || `HTTP ${res.status}`;
+    throw new Error(`Provider teks menolak: ${String(m).slice(0, 300)}`);
+  }
+  const content = out?.choices?.[0]?.message?.content;
+  if (!content) throw new Error("Provider teks tidak mengembalikan konten.");
+  return String(content);
+}
+
+// Ambil objek/array JSON pertama dari balasan model (kadang dibungkus ```json).
+function parseJsonLoose(s: string): unknown {
+  const fenced = s.match(/```(?:json)?\s*([\s\S]*?)```/);
+  const body = fenced ? fenced[1] : s;
+  const start = body.search(/[[{]/);
+  if (start < 0) throw new Error("Balasan AI tidak berisi JSON.");
+  const openCh = body[start];
+  const closeCh = openCh === "[" ? "]" : "}";
+  let depth = 0, inStr = false, esc = false;
+  for (let i = start; i < body.length; i++) {
+    const c = body[i];
+    if (inStr) {
+      if (esc) esc = false;
+      else if (c === "\\") esc = true;
+      else if (c === '"') inStr = false;
+      continue;
+    }
+    if (c === '"') inStr = true;
+    else if (c === openCh) depth++;
+    else if (c === closeCh) {
+      depth--;
+      if (depth === 0) return JSON.parse(body.slice(start, i + 1));
+    }
+  }
+  throw new Error("JSON dari AI tidak lengkap.");
+}
+
+// ---------- Hugging Face Inference Providers ----------
+// Model di HF dilayani provider yang berbeda-beda (hf-inference, nscale, fal-ai, …)
+// dan pemetaannya berubah dari waktu ke waktu, jadi provider di-resolve saat runtime
+// dari metadata model — bukan di-hardcode.
+async function hfResolveProvider(model: string, token: string) {
+  const r = await fetch(`https://huggingface.co/api/models/${model}?expand[]=inferenceProviderMapping`, {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  if (!r.ok) throw new Error(`Tidak bisa membaca info model "${model}" di Hugging Face (HTTP ${r.status}).`);
+  const j = await r.json().catch(() => ({}));
+  const map = (j?.inferenceProviderMapping || {}) as Record<string, { status?: string; providerId?: string; task?: string }>;
+  const live = Object.entries(map).filter(([, v]) => v?.status === "live");
+  if (!live.length) throw new Error(`Model "${model}" sedang tidak dilayani provider inference mana pun di Hugging Face. Pilih model lain di katalog.`);
+  // hf-inference dulu (format terdokumentasi & paling stabil), lalu sisanya.
+  const preferred = ["hf-inference", "nscale", "fal-ai", "together", "replicate", "wavespeed", "novita"];
+  const pick = live.find(([p]) => preferred.includes(p)) || live[0];
+  return { provider: pick[0], providerId: pick[1].providerId || model };
+}
+
+// Ambil bytes gambar dari respons: bisa biner langsung, atau JSON berisi b64/URL.
+async function hfReadImage(res: Response): Promise<{ bytes: Uint8Array; ctype: string }> {
+  const ctype = res.headers.get("content-type") || "";
+  if (ctype.startsWith("image/")) {
+    return { bytes: new Uint8Array(await res.arrayBuffer()), ctype };
+  }
+  const j = await res.json().catch(() => null);
+  const first = j?.data?.[0] || j?.images?.[0] || j;
+  const b64 = first?.b64_json || first?.b64 || (typeof first === "string" && !/^https?:/.test(first) ? first : null);
+  if (b64) {
+    const bin = atob(String(b64));
+    const bytes = new Uint8Array(bin.length);
+    for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+    return { bytes, ctype: "image/png" };
+  }
+  const url = first?.url || first?.image?.url || (typeof first === "string" ? first : null);
+  if (url && /^https?:/.test(String(url))) {
+    const img = await fetch(String(url));
+    if (!img.ok) throw new Error(`Gagal mengunduh gambar hasil (HTTP ${img.status}).`);
+    return { bytes: new Uint8Array(await img.arrayBuffer()), ctype: img.headers.get("content-type") || "image/png" };
+  }
+  throw new Error(`Format respons provider tidak dikenali: ${JSON.stringify(j).slice(0, 200)}`);
+}
+
+async function hfImage(ws: string, modelKey: string, prompt: string, jobId: string): Promise<string> {
+  const token = await getSecret(ws, "hf_token");
+  if (!token) throw new Error("Hugging Face token belum dipasang — isi di Settings.");
+  const { provider, providerId } = await hfResolveProvider(modelKey, token);
+
+  // hf-inference memakai API task klasik ({inputs} → bytes); provider lain memakai
+  // endpoint images OpenAI-compatible di router.
+  const isTaskApi = provider === "hf-inference";
+  const url = isTaskApi
+    ? `https://router.huggingface.co/hf-inference/models/${providerId}`
+    : `https://router.huggingface.co/${provider}/v1/images/generations`;
+  const payload = isTaskApi
+    ? { inputs: prompt, parameters: { width: 768, height: 1024 } }
+    : { model: providerId, prompt, response_format: "b64_json" };
+
+  const res = await fetch(url, {
+    method: "POST",
+    headers: { Authorization: `Bearer ${token}`, "content-type": "application/json" },
+    body: JSON.stringify(payload),
+  });
+  if (!res.ok) {
+    const errText = await res.text().catch(() => "");
+    let msg = errText.slice(0, 300);
+    try { const j = JSON.parse(errText); msg = String(j.error?.message || j.error || j.message || msg).slice(0, 300); } catch { /* teks apa adanya */ }
+    if (res.status === 401 || res.status === 403) {
+      msg = `Token Hugging Face ditolak — pastikan token punya izin "Inference Providers". (${msg})`;
+    } else if (res.status === 402 || /quota|credit|payment/i.test(msg)) {
+      msg = `Kuota inference gratis Hugging Face habis untuk bulan ini. (${msg})`;
+    } else if (res.status === 404) {
+      msg = `Provider ${provider} tidak melayani model ini lagi. Pilih model lain di katalog. (${msg})`;
+    }
+    throw new Error(`Hugging Face (${provider}): ${msg}`);
+  }
+
+  const { bytes, ctype } = await hfReadImage(res);
+  if (bytes.byteLength < 100) throw new Error("Provider mengembalikan data gambar kosong.");
+  const ext = ctype.includes("png") ? "png" : ctype.includes("webp") ? "webp" : "jpg";
+  const path = `${ws}/${jobId}.${ext}`;
+  const { error: upErr } = await admin.storage.from("media")
+    .upload(path, bytes, { contentType: ctype || "image/png", upsert: true, cacheControl: "3600" });
+  if (upErr) throw new Error(`Gagal menyimpan gambar: ${upErr.message}`);
+  return admin.storage.from("media").getPublicUrl(path).data.publicUrl;
+}
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: CORS });
   if (req.method !== "POST") return json({ error: "Method not allowed" }, 405);
@@ -76,19 +237,102 @@ Deno.serve(async (req) => {
 
     switch (body.action) {
       case "status": {
-        return json({ fal_key: !!(await getSecret(ws, "fal_key")), mode });
+        const cfg = await textConfig(ws);
+        return json({
+          fal_key: !!(await getSecret(ws, "fal_key")),
+          hf_token: !!(await getSecret(ws, "hf_token")),
+          mode,
+          text: { provider: cfg.provider, model: cfg.model, base_url: cfg.base, configured: !!cfg.key },
+          text_presets: TEXT_PRESETS,
+        });
       }
       case "set_key": {
+        const provider = body.provider === "hf" ? "hf" : "fal";
         const key = String(body.key || "").trim();
-        if (key.length < 10) throw new Error("FAL key tidak valid.");
-        await setSecret(ws, "fal_key", key);
+        if (key.length < 10) throw new Error("API key tidak valid.");
+        await setSecret(ws, provider === "hf" ? "hf_token" : "fal_key", key);
+        return json({ ok: true });
+      }
+      case "set_text_config": {
+        const provider = String(body.provider || "qwen");
+        if (!TEXT_PRESETS[provider] && provider !== "custom") throw new Error("Provider teks tidak dikenal.");
+        await setSecret(ws, "text_provider", provider);
+        const key = String(body.api_key || "").trim();
+        if (key) await setSecret(ws, "text_api_key", key);
+        const base = String(body.base_url || "").trim();
+        await setSecret(ws, "text_base_url", base || TEXT_PRESETS[provider]?.base || "");
+        const model = String(body.model || "").trim();
+        await setSecret(ws, "text_model", model || TEXT_PRESETS[provider]?.model || "");
+        if (provider === "custom" && !(base && model)) throw new Error("Provider custom butuh base URL dan nama model.");
         return json({ ok: true });
       }
       case "set_mode": {
         const m = body.mode === "live" ? "live" : "mock";
-        if (m === "live" && !(await getSecret(ws, "fal_key"))) throw new Error("Pasang FAL key dulu sebelum mode live.");
+        if (m === "live" && !(await getSecret(ws, "fal_key")) && !(await getSecret(ws, "hf_token"))) {
+          throw new Error("Pasang FAL key atau Hugging Face token dulu sebelum mode live.");
+        }
         await setSecret(ws, "generation_mode", m);
         return json({ ok: true, mode: m });
+      }
+      case "write": {
+        // Penulis AI: kind = script (untuk satu konten) atau ideas (untuk influencer).
+        const kind = body.kind === "ideas" ? "ideas" : "script";
+        let persona = "", niche = "", language = "Indonesia", name = "Kreator";
+        if (body.influencer_id) {
+          const { data: inf } = await admin.from("influencers")
+            .select("name,niche,persona,language,workspace_id").eq("id", body.influencer_id).maybeSingle();
+          if (inf?.workspace_id === ws) {
+            name = inf.name; niche = inf.niche || "";
+            persona = (inf.persona as { bio?: string })?.bio || "";
+            language = inf.language === "en" ? "English" : inf.language === "mix" ? "campuran Indonesia-Inggris" : "Indonesia";
+          }
+        }
+        const system =
+          `Kamu penulis konten short-form video untuk kreator ${name}${niche ? ` di niche ${niche}` : ""}. ` +
+          `Tulis dalam bahasa ${language}, gaya santai dan natural seperti orang bicara, bukan bahasa iklan. ` +
+          `Hindari klaim medis/kesehatan/finansial yang spesifik. Jawab HANYA dengan JSON valid, tanpa penjelasan lain.` +
+          (persona ? ` Persona kreator: ${persona}` : "");
+
+        if (kind === "ideas") {
+          const n = Math.min(Math.max(Number(body.n) || 5, 1), 10);
+          const user =
+            `Buat ${n} ide konten baru${body.topic ? ` seputar: ${body.topic}` : ""}. ` +
+            `Format JSON: [{"title": "judul singkat", "hook": "kalimat pembuka 1-3 detik", "angle": "sudut pandang singkat"}]`;
+          const parsed = parseJsonLoose(await chat(ws, system, user));
+          return json({ ok: true, ideas: Array.isArray(parsed) ? parsed : [] });
+        }
+
+        const { data: item } = await admin.from("content_items").select("*")
+          .eq("id", body.content_item_id).eq("workspace_id", ws).maybeSingle();
+        if (!item) throw new Error("Konten tidak ditemukan.");
+        const platform = item.platform === "instagram" ? "Instagram Reels" : item.platform === "youtube" ? "YouTube Shorts" : "TikTok";
+        const user =
+          `Judul/ide konten: "${item.title}". Platform: ${platform}. Durasi target 30-45 detik.\n` +
+          `Format JSON: {"hook": "kalimat pembuka kuat 1-3 detik", "script": "naskah lengkap siap dibacakan, 90-140 kata, pakai baris baru antar beat", ` +
+          `"caption": "caption siap posting, maksimal 200 karakter", "hashtags": ["tag1","tag2"]}`;
+        const parsed = parseJsonLoose(await chat(ws, system, user)) as Record<string, unknown>;
+        return json({
+          ok: true,
+          draft: {
+            hook: String(parsed.hook || ""),
+            script: String(parsed.script || ""),
+            caption: String(parsed.caption || ""),
+            hashtags: Array.isArray(parsed.hashtags) ? parsed.hashtags.map(String) : [],
+          },
+        });
+      }
+      case "apply_draft": {
+        // Simpan hasil penulis AI ke content_item (dipisah agar user bisa review dulu).
+        const { data: item } = await admin.from("content_items").select("id").eq("id", body.content_item_id)
+          .eq("workspace_id", ws).maybeSingle();
+        if (!item) throw new Error("Konten tidak ditemukan.");
+        const patch: Record<string, unknown> = {};
+        if (typeof body.hook === "string") patch.hook = body.hook;
+        if (typeof body.script === "string") patch.script = body.script;
+        if (!Object.keys(patch).length) throw new Error("Tidak ada yang disimpan.");
+        const { error } = await admin.from("content_items").update(patch).eq("id", item.id);
+        if (error) throw new Error(error.message);
+        return json({ ok: true });
       }
       case "submit": {
         const { task, model_id, influencer_id, prompt = "", text = "", source_image_url, audio_url } = body;
@@ -96,6 +340,7 @@ Deno.serve(async (req) => {
         const { data: model } = await admin.from("provider_models").select("*")
           .eq("id", model_id).eq("active", true).maybeSingle();
         if (!model) throw new Error("Model tidak ditemukan / tidak aktif.");
+        if (model.provider === "hf" && task !== "image") throw new Error("Model Hugging Face di katalog ini hanya untuk gambar.");
 
         let est = Number(model.est_price_usd);
         if (model.unit === "per_second") est *= duration;
@@ -109,9 +354,7 @@ Deno.serve(async (req) => {
         }
         const finalPrompt = [identity, prompt].filter(Boolean).join(", ");
 
-        const falKey = await getSecret(ws, "fal_key");
-        if (mode === "live") {
-          if (!falKey) throw new Error("FAL key belum dipasang.");
+        if (mode === "live" && est > 0) {
           const { data: bud } = await admin.from("budget_settings").select("*").eq("workspace_id", ws).maybeSingle();
           const cap = Number(bud?.monthly_cap_usd ?? 200);
           if ((bud?.hard_stop ?? true)) {
@@ -129,17 +372,41 @@ Deno.serve(async (req) => {
         }).select("*").single();
         if (jobErr) throw new Error(jobErr.message);
 
-        if (mode === "mock") {
-          const url = (MOCK_OUTPUTS[task] || MOCK_OUTPUTS.image)(job.id.slice(0, 8));
-          await admin.from("production_jobs").update({ status: "succeeded", output_url: url, cost_actual_usd: 0 }).eq("id", job.id);
+        const finish = async (url: string, cost: number) => {
+          await admin.from("production_jobs").update({ status: "succeeded", output_url: url, cost_actual_usd: cost }).eq("id", job.id);
           await admin.from("assets").insert({
             workspace_id: ws, influencer_id: influencer_id || null,
-            kind: assetKind(task), url, name: `${task}-${job.id.slice(0, 8)} (mock)`,
+            kind: assetKind(task), url,
+            name: `${task}-${job.id.slice(0, 8)}${mode === "mock" ? " (mock)" : model.provider === "hf" ? " (HF)" : ""}`,
           });
+          if (cost > 0) {
+            await admin.from("credits_ledger").insert({ workspace_id: ws, kind: "usage", delta_usd: -cost, note: `job ${job.id}` });
+          }
+        };
+        const fail = async (msg: string) => {
+          await admin.from("production_jobs").update({ status: "failed", error: msg.slice(0, 500) }).eq("id", job.id);
+        };
+
+        if (mode === "mock") {
+          await finish((MOCK_OUTPUTS[task] || MOCK_OUTPUTS.image)(job.id.slice(0, 8)), 0);
           return json({ ok: true, job_id: job.id, status: "succeeded", mode });
         }
 
-        // live — submit ke fal.ai queue
+        if (model.provider === "hf") {
+          try {
+            const url = await hfImage(ws, model.model_key, finalPrompt || "portrait photo", job.id);
+            await finish(url, 0);
+            return json({ ok: true, job_id: job.id, status: "succeeded", mode, provider: "hf" });
+          } catch (e) {
+            const msg = (e as Error).message || String(e);
+            await fail(msg);
+            throw new Error(msg);
+          }
+        }
+
+        // fal.ai — submit ke antrean, hasil diambil lewat action `poll`
+        const falKey = await getSecret(ws, "fal_key");
+        if (!falKey) throw new Error("FAL key belum dipasang.");
         const input: Record<string, unknown> = {};
         if (task === "image") { input.prompt = finalPrompt; input.image_size = "portrait_4_3"; input.num_images = 1; }
         else if (task === "video") {
@@ -160,11 +427,11 @@ Deno.serve(async (req) => {
         const qr = await res.json().catch(() => ({}));
         if (!res.ok || !qr.request_id) {
           const errMsg = (qr?.detail ? JSON.stringify(qr.detail) : `fal.ai error ${res.status}`).slice(0, 500);
-          await admin.from("production_jobs").update({ status: "failed", error: errMsg }).eq("id", job.id);
+          await fail(errMsg);
           throw new Error(`Gagal submit ke fal.ai: ${errMsg}`);
         }
         await admin.from("production_jobs").update({ status: "running", external_id: qr.request_id }).eq("id", job.id);
-        return json({ ok: true, job_id: job.id, status: "running", mode });
+        return json({ ok: true, job_id: job.id, status: "running", mode, provider: "fal" });
       }
       case "poll": {
         const { data: running } = await admin.from("production_jobs").select("*")
