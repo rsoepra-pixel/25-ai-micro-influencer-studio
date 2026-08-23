@@ -1727,6 +1727,85 @@ function AccountAdmin({ ws, tick }) {
   );
 }
 
+// ---------- Kontrol lewat Claude (MCP) ----------
+function McpSettings({ ws, tick }) {
+  const [st, reload, stErr] = useQuery(async () => callApp({ action: "mcp_token", mode: "status" }), [ws.id, tick]);
+  const [token, setToken] = useState(null);
+  const [busy, setBusy] = useState(false);
+  const [msg, setMsg] = useState(null);
+  const [copied, setCopied] = useState(false);
+
+  async function issue() {
+    setBusy(true); setMsg(null);
+    try {
+      const r = await callApp({ action: "mcp_token" });
+      setToken(r.token);
+      reload();
+    } catch (e) { setMsg(`Gagal: ${e.message}`); }
+    setBusy(false);
+  }
+  async function revoke() {
+    setBusy(true); setMsg(null);
+    try { await callApp({ action: "mcp_token", mode: "revoke" }); setToken(null); setMsg("Token dicabut."); reload(); }
+    catch (e) { setMsg(`Gagal: ${e.message}`); }
+    setBusy(false);
+  }
+
+  const url = st?.url || "";
+  const cmd = token ? `claude mcp add --transport http influencer-studio ${url} --header "Authorization: Bearer ${token}"` : "";
+
+  return (
+    <div className="card p6 mb4">
+      <div className="row mb1" style={{ gap: 8 }}>
+        <div className="bold">Kontrol lewat Claude (MCP)</div>
+        <Badge tone={st?.exists ? "green" : "zinc"}>{st?.exists ? "aktif" : "belum dibuat"}</Badge>
+      </div>
+      <p className="tiny muted mb3">
+        Hubungkan workspace ini ke Claude, lalu kelola lewat percakapan: “influencer apa saja yang aktif?”,
+        “buat 5 ide konten minggu depan untuk Ronny”, “tulis script untuk konten hari Jumat”, “laporan 30 hari terakhir”.
+        Claude yang menulis naskahnya — tidak butuh API key penulis AI untuk jalur ini.
+      </p>
+      {stErr && <div className="msg-err mb3">Gagal memuat status: {stErr}</div>}
+      {msg && <div className={msg.startsWith("Gagal") ? "msg-err mb3" : "msg-ok mb3"}>{msg}</div>}
+
+      {token ? (
+        <div className="card p4 mb3" style={{ background: "#fafafa" }}>
+          <div className="label" style={{ margin: 0 }}>Jalankan sekali di terminal (token hanya tampil sekali)</div>
+          <div className="card p3 mt2" style={{ background: "#f4f4f5" }}>
+            <code className="tiny" style={{ wordBreak: "break-all" }}>{cmd}</code>
+          </div>
+          <button type="button" className="btn mt2" style={{ fontSize: 12 }}
+            onClick={() => navigator.clipboard?.writeText(cmd)
+              .then(() => { setCopied(true); setTimeout(() => setCopied(false), 2000); }).catch(() => {})}>
+            {copied ? "✓ Tersalin" : "📋 Salin perintah"}
+          </button>
+          <div className="tiny muted mt2">
+            Simpan token di tempat aman. Kalau hilang, buat token baru — token lama otomatis tergantikan.
+          </div>
+        </div>
+      ) : (
+        <div className="card p4 mb3" style={{ background: "#fafafa" }}>
+          <div className="tiny muted">Endpoint MCP</div>
+          <code className="tiny" style={{ wordBreak: "break-all" }}>{url || "…"}</code>
+        </div>
+      )}
+
+      <div className="row" style={{ gap: 8 }}>
+        <button type="button" className="btn" disabled={busy} onClick={issue}>
+          {st?.exists ? "Buat token baru" : "Buat token MCP"}
+        </button>
+        {st?.exists && (
+          <button type="button" className="btn btn2" disabled={busy} onClick={revoke}>Cabut token</button>
+        )}
+      </div>
+      <p className="tiny muted mt2">
+        Token ini memberi akses baca–tulis ke data workspace (influencer, konten, task, laporan) —
+        perlakukan seperti password. Cabut kapan saja dari sini.
+      </p>
+    </div>
+  );
+}
+
 // ---------- Settings ----------
 export function Settings({ ws, refresh, tick, spend, spendError, query }) {
   const [models, reload, modelsError] = useQuery(async () =>
@@ -1782,6 +1861,7 @@ export function Settings({ ws, refresh, tick, spend, spendError, query }) {
       <h1 style={{ fontSize: 24, fontWeight: 800 }} className="mb4">Settings</h1>
       <AccountAdmin ws={ws} tick={tick} />
       <AiWriterSettings keyState={keyState} onSaved={() => callGenerate({ action: "status" }).then(setKeyState).catch(() => {})} />
+      <McpSettings ws={ws} tick={tick} />
       {msg && <div className="msg-ok mb3">{msg}</div>}
       <div className="grid mb4" style={{ gridTemplateColumns: "repeat(auto-fit,minmax(340px,1fr))" }}>
         <div className="card p6">

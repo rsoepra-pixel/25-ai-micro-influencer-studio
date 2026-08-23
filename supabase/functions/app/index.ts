@@ -100,6 +100,25 @@ Deno.serve(async (req) => {
         if (error) throw new Error(error.message);
         return json({ ok: true });
       }
+      if (body.action === "mcp_token") {
+        // Token untuk koneksi MCP dari Claude. Hanya owner; ditampilkan sekali.
+        const c = await requireUser(req);
+        if (c.role !== "owner") throw new Error("Hanya owner workspace yang bisa mengelola token MCP.");
+        if (body.mode === "revoke") {
+          await admin.from("app_secrets").delete().eq("workspace_id", c.ws).eq("key", "mcp_token");
+          return json({ ok: true, revoked: true });
+        }
+        if (body.mode === "status") {
+          const { data } = await admin.from("app_secrets").select("updated_at")
+            .eq("workspace_id", c.ws).eq("key", "mcp_token").maybeSingle();
+          return json({ ok: true, exists: !!data, created_at: data?.updated_at || null, url: `${SB_URL}/functions/v1/mcp` });
+        }
+        const token = "mis_" + crypto.randomUUID().replace(/-/g, "") + crypto.randomUUID().replace(/-/g, "").slice(0, 12);
+        const { error } = await admin.from("app_secrets")
+          .upsert({ workspace_id: c.ws, key: "mcp_token", value: token, updated_at: new Date().toISOString() });
+        if (error) throw new Error(error.message);
+        return json({ ok: true, token, url: `${SB_URL}/functions/v1/mcp` });
+      }
       if (body.action === "signup") {
         const email = String(body.email || "").trim().toLowerCase();
         const password = String(body.password || "");
