@@ -189,6 +189,118 @@ const NICHE_IDEAS = [
   },
 ];
 
+// Wizard "Bantu buat dengan AI": beberapa pertanyaan sederhana → persona + identity prompt.
+// identity_prompt sengaja bahasa Inggris & hanya ciri fisik tetap (lihat catatan di edge function).
+const PERSONA_QS = [
+  { key: "gender_age", label: "Jenis kelamin & perkiraan usia", ph: "mis. perempuan, awal 20-an" },
+  { key: "look", label: "Penampilan / latar etnis", ph: "mis. Indonesia, rambut hitam panjang, kulit sawo matang" },
+  { key: "niche", label: "Niche / topik konten", ph: "mis. skincare & beauty" },
+  { key: "vibe", label: "Kepribadian & gaya bicara", ph: "mis. ceria, blak-blakan, suka bercanda tapi tetap informatif" },
+  { key: "audience", label: "Target audiens (opsional)", ph: "mis. cewek 18-25 di kota besar" },
+];
+
+function PersonaWizard({ onApply, onClose }) {
+  const [ans, setAns] = useState({ language: "id", basis: "flexible" });
+  const [busy, setBusy] = useState(false);
+  const [err, setErr] = useState(null);
+  const [out, setOut] = useState(null);
+
+  async function generate() {
+    setBusy(true); setErr(null);
+    try {
+      const r = await callGenerate({ action: "write", kind: "persona", answers: ans });
+      setOut(r.persona);
+    } catch (e) { setErr(e.message); }
+    setBusy(false);
+  }
+
+  return (
+    <div onClick={onClose}
+      style={{ position: "fixed", inset: 0, background: "rgba(9,9,11,.45)", display: "flex",
+        alignItems: "center", justifyContent: "center", padding: 20, zIndex: 50 }}>
+      <div className="card p6" onClick={(e) => e.stopPropagation()}
+        style={{ width: "100%", maxWidth: 640, maxHeight: "88vh", overflowY: "auto" }}>
+        <div className="row mb1" style={{ justifyContent: "space-between" }}>
+          <div className="bold">✨ Bantu buat influencer dengan AI</div>
+          <button type="button" onClick={onClose}
+            style={{ background: "none", border: "none", cursor: "pointer", color: "var(--muted)", fontSize: 18 }}>×</button>
+        </div>
+        <p className="tiny muted mb3">Jawab seadanya — yang kosong akan diisi AI. Hasilnya bisa kamu edit sebelum dipakai.</p>
+
+        {!out && (
+          <>
+            {PERSONA_QS.map((q) => (
+              <div key={q.key} className="mb3">
+                <label className="label">{q.label}</label>
+                <input className="input" placeholder={q.ph} value={ans[q.key] || ""}
+                  onChange={(e) => setAns({ ...ans, [q.key]: e.target.value })} />
+              </div>
+            ))}
+            <div className="grid mb3" style={{ gridTemplateColumns: "1fr 1fr" }}>
+              <div>
+                <label className="label">Bahasa konten</label>
+                <select className="input" value={ans.language} onChange={(e) => setAns({ ...ans, language: e.target.value })}>
+                  <option value="id">Indonesia</option><option value="en">English</option><option value="mix">Campuran</option>
+                </select>
+              </div>
+              <div>
+                <label className="label">Basis karakter</label>
+                <select className="input" value={ans.basis} onChange={(e) => setAns({ ...ans, basis: e.target.value })}>
+                  <option value="flexible">Fleksibel</option>
+                  <option value="fictional">Fiktif sepenuhnya</option>
+                  <option value="real">Ikuti deskripsi saya</option>
+                </select>
+              </div>
+            </div>
+            {err && <div className="msg-err mb3">{err}</div>}
+            <div className="row" style={{ gap: 8 }}>
+              <button type="button" className="btn" disabled={busy} onClick={generate}>
+                {busy ? "Menulis…" : "Buatkan deskripsi"}
+              </button>
+              <button type="button" className="btn btn2" onClick={onClose}>Batal</button>
+            </div>
+            <p className="tiny muted mt2">Butuh API key penulis AI (Qwen/Kimi) di Settings → Penulis AI.</p>
+          </>
+        )}
+
+        {out && (
+          <>
+            {(out.names?.length > 0 || out.handles?.length > 0) && (
+              <div className="card p4 mb3" style={{ background: "#fafafa" }}>
+                {out.names?.length > 0 && <div className="small mb1"><b>Usulan nama:</b> {out.names.join(" · ")}</div>}
+                {out.handles?.length > 0 && <div className="small"><b>Usulan handle:</b> {out.handles.join(" · ")}</div>}
+              </div>
+            )}
+            <label className="label">Niche</label>
+            <input className="input mb3" value={out.niche} onChange={(e) => setOut({ ...out, niche: e.target.value })} />
+            <label className="label">Bio / persona (Indonesia)</label>
+            <textarea className="input mb3" rows={4} value={out.bio} onChange={(e) => setOut({ ...out, bio: e.target.value })} />
+            <label className="label">Identity prompt (Inggris — kunci konsistensi wajah)</label>
+            <textarea className="input mb1" rows={5} value={out.identity_prompt}
+              onChange={(e) => setOut({ ...out, identity_prompt: e.target.value })} />
+            <p className="tiny muted mb3">
+              Sengaja bahasa Inggris (model gambar jauh lebih akurat) dan hanya ciri fisik tetap — tanpa latar,
+              pose, atau baju. Latar tempat ditulis di prompt tiap gambar, bukan di sini.
+            </p>
+            {out.style_notes && (
+              <div className="card p4 mb3" style={{ background: "#fafafa" }}>
+                <div className="label" style={{ margin: 0 }}>Saran gaya visual (untuk prompt per-gambar)</div>
+                <div className="small mt1">{out.style_notes}</div>
+              </div>
+            )}
+            {err && <div className="msg-err mb3">{err}</div>}
+            <div className="row" style={{ gap: 8 }}>
+              <button type="button" className="btn" onClick={() => onApply(out)}>Pakai di formulir</button>
+              <button type="button" className="btn btn2" onClick={() => setOut(null)}>← Ubah jawaban</button>
+              <button type="button" className="btn btn2" onClick={onClose}>Tutup</button>
+            </div>
+          </>
+        )}
+      </div>
+    </div>
+  );
+}
+
 export function Influencers({ ws, refresh, tick }) {
   const [list, reload, listError] = useQuery(async () =>
     unwrap(await supa.from("influencers").select("*").order("created_at")), [ws.id, tick]);
@@ -197,6 +309,16 @@ export function Influencers({ ws, refresh, tick }) {
   const [niche, setNiche] = useState("");
   const [bioHint, setBioHint] = useState("");
   const [selectedIdea, setSelectedIdea] = useState(null);
+  const [wizardOpen, setWizardOpen] = useState(false);
+  const [identityHint, setIdentityHint] = useState("");
+
+  function applyPersona(p) {
+    setNiche(p.niche || "");
+    setBioHint(p.bio || "");
+    setIdentityHint(p.identity_prompt || "");
+    setSelectedIdea(null);
+    setWizardOpen(false);
+  }
 
   function pickIdea(idea) {
     setSelectedIdea(idea.id);
@@ -218,7 +340,7 @@ export function Influencers({ ws, refresh, tick }) {
     });
     setBusy(false);
     if (error) { setErr(error.message); return; }
-    e.target.reset(); setNiche(""); setBioHint(""); setSelectedIdea(null); reload(); refresh();
+    e.target.reset(); setNiche(""); setBioHint(""); setIdentityHint(""); setSelectedIdea(null); reload(); refresh();
   }
 
   if (!list) return listError ? <div className="msg-err">Gagal memuat influencers: {listError}</div> : <div className="muted">Memuat…</div>;
@@ -243,7 +365,11 @@ export function Influencers({ ws, refresh, tick }) {
       </div>
       {list.length < 25 && (
         <form onSubmit={create} className="card p6" style={{ maxWidth: 620 }}>
-          <div className="bold mb3">Buat influencer baru</div>
+          <div className="row mb3" style={{ justifyContent: "space-between" }}>
+            <div className="bold">Buat influencer baru</div>
+            <button type="button" className="btn" style={{ fontSize: 12, padding: "6px 12px" }}
+              onClick={() => setWizardOpen(true)}>✨ Bantu buat dengan AI</button>
+          </div>
           <label className="label">Ide niche (opsional, klik untuk isi otomatis)</label>
           <div className="grid mb3" style={{ gridTemplateColumns: "repeat(auto-fill,minmax(200px,1fr))", gap: 8 }}>
             {NICHE_IDEAS.map((idea) => (
@@ -274,12 +400,14 @@ export function Influencers({ ws, refresh, tick }) {
           <textarea name="bio" className="input mb3" rows={2} placeholder="Kepribadian, gaya bicara, backstory…" value={bioHint} onChange={(e) => setBioHint(e.target.value)} />
           <label className="label">Identity prompt (deskripsi fisik terkunci)</label>
           <textarea name="identity_prompt" className="input mb1" rows={3}
+            value={identityHint} onChange={(e) => setIdentityHint(e.target.value)}
             placeholder="mis. Indonesian woman, 24yo, oval face, small mole under left eye, shoulder-length wavy black hair…" />
           <p className="tiny muted mb3">Fragment ini otomatis disuntikkan ke SEMUA generate untuk influencer ini — kunci konsistensi karakter.</p>
           {err && <div className="msg-err mb2">{err}</div>}
           <button className="btn" disabled={busy}>Buat Influencer</button>
         </form>
       )}
+      {wizardOpen && <PersonaWizard onApply={applyPersona} onClose={() => setWizardOpen(false)} />}
     </div>
   );
 }

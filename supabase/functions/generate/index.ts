@@ -275,8 +275,59 @@ Deno.serve(async (req) => {
         return json({ ok: true, mode: m });
       }
       case "write": {
-        // Penulis AI: kind = script (untuk satu konten) atau ideas (untuk influencer).
-        const kind = body.kind === "ideas" ? "ideas" : "script";
+        // Penulis AI: kind = script | ideas | persona.
+        const kind = ["ideas", "persona"].includes(body.kind) ? body.kind : "script";
+
+        // persona: rakit deskripsi influencer baru dari jawaban wizard.
+        // identity_prompt sengaja dalam bahasa Inggris (model gambar dilatih
+        // dominan dengan caption Inggris) dan HANYA berisi ciri tetap wajah/tubuh
+        // — tanpa latar/aktivitas, karena teks ini disuntikkan ke SETIAP generate.
+        if (kind === "persona") {
+          const a = (body.answers || {}) as Record<string, string>;
+          const lang = a.language === "en" ? "English" : a.language === "mix" ? "campuran Indonesia-Inggris" : "Indonesia";
+          const basisMap: Record<string, string> = {
+            fictional: "Karakter fiktif sepenuhnya — ciptakan ciri wajah khas yang konsisten dan tidak meniru orang nyata mana pun.",
+            real: "Terinspirasi dari deskripsi yang diberikan user; tetap tulis sebagai deskripsi umum, jangan sebut nama orang nyata atau selebriti.",
+            flexible: "Fleksibel — tulis deskripsi umum yang konsisten, tanpa mengacu ke orang nyata atau selebriti mana pun.",
+          };
+          const system =
+            "Kamu direktur kreatif yang menyiapkan karakter untuk konten AI. " +
+            "Jawab HANYA dengan JSON valid, tanpa penjelasan lain. " +
+            "JANGAN pernah menyebut nama selebriti, tokoh publik, atau merek orang nyata sebagai acuan wajah.";
+          const user =
+            `Buat identitas influencer AI baru dari jawaban berikut:\n` +
+            `- Jenis kelamin & usia: ${a.gender_age || "tidak disebut"}\n` +
+            `- Penampilan / latar etnis: ${a.look || "tidak disebut"}\n` +
+            `- Niche / topik konten: ${a.niche || "tidak disebut"}\n` +
+            `- Kepribadian & gaya bicara: ${a.vibe || "tidak disebut"}\n` +
+            `- Target audiens: ${a.audience || "umum"}\n` +
+            `- Bahasa konten: ${lang}\n` +
+            `- Basis karakter: ${basisMap[a.basis] || basisMap.flexible}\n\n` +
+            `Aturan penting:\n` +
+            `1. "identity_prompt" WAJIB bahasa Inggris, 40-70 kata, dan HANYA ciri fisik tetap: ` +
+            `jenis kelamin, perkiraan usia, bentuk wajah, warna/gaya rambut, warna kulit, bentuk mata/alis/hidung, ` +
+            `dan 1-2 ciri khas kecil yang mudah diulang (mis. tahi lalat kecil di bawah mata kiri, lesung pipi sebelah). ` +
+            `DILARANG menyebut latar tempat, background, pencahayaan, pose, aktivitas, atau pakaian tertentu — ` +
+            `teks ini dipakai ulang di semua gambar, jadi harus netral terhadap situasi.\n` +
+            `2. "bio" bahasa Indonesia, 2-3 kalimat: kepribadian, gaya bicara, dan sudut pandang khasnya.\n` +
+            `3. Hindari klaim medis, kesehatan, atau finansial yang spesifik.\n\n` +
+            `Format JSON: {"names": ["3 usulan nama"], "handles": ["3 usulan handle diawali @"], ` +
+            `"niche": "niche ringkas", "bio": "...", "identity_prompt": "...", ` +
+            `"style_notes": "1 kalimat bahasa Indonesia: saran gaya visual untuk ditulis di prompt per-gambar, bukan di identity prompt"}`;
+          const parsed = parseJsonLoose(await chat(ws, system, user)) as Record<string, unknown>;
+          return json({
+            ok: true,
+            persona: {
+              names: Array.isArray(parsed.names) ? parsed.names.map(String).slice(0, 3) : [],
+              handles: Array.isArray(parsed.handles) ? parsed.handles.map(String).slice(0, 3) : [],
+              niche: String(parsed.niche || a.niche || ""),
+              bio: String(parsed.bio || ""),
+              identity_prompt: String(parsed.identity_prompt || ""),
+              style_notes: String(parsed.style_notes || ""),
+            },
+          });
+        }
+
         let persona = "", niche = "", language = "Indonesia", name = "Kreator";
         if (body.influencer_id) {
           const { data: inf } = await admin.from("influencers")
