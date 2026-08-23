@@ -631,12 +631,15 @@ export function InfluencerDetail({ id, ws, refresh, tick, mode }) {
   // Bio & identity prompt dikelola state agar wizard AI bisa mengisinya.
   const [bio, setBio] = useState(null);
   const [identity, setIdentity] = useState(null);
+  // null = belum disentuh: terkunci bila prompt sudah terisi, terbuka bila masih kosong.
+  const [identityLocked, setIdentityLocked] = useState(null);
 
   if (!d) return loadError ? <div className="msg-err">Gagal memuat influencer: {loadError}</div> : <div className="muted">Memuat…</div>;
   if (!d.inf) return <div className="muted">Influencer tidak ditemukan. <a href="#/influencers" style={{ color: "#7c3aed" }}>← Kembali</a></div>;
   const inf = d.inf;
   const bioVal = bio ?? (inf.persona?.bio || "");
   const identityVal = identity ?? (inf.identity_prompt || "");
+  const lockedVal = identityLocked ?? !!(inf.identity_prompt || "").trim();
 
   async function save(e) {
     e.preventDefault();
@@ -685,12 +688,22 @@ export function InfluencerDetail({ id, ws, refresh, tick, mode }) {
           </select>
           <label className="label">Bio / persona</label>
           <textarea name="bio" className="input mb3" rows={3} value={bioVal} onChange={(e) => setBio(e.target.value)} />
-          <label className="label">Identity prompt (kunci konsistensi)</label>
-          <textarea name="identity_prompt" className="input mb1" rows={5} value={identityVal} onChange={(e) => setIdentity(e.target.value)} />
+          <div className="row" style={{ justifyContent: "space-between", alignItems: "center", marginBottom: 4 }}>
+            <label className="label" style={{ margin: 0 }}>Identity prompt (kunci konsistensi)</label>
+            <button type="button" className="btn btn2" style={{ fontSize: 11, padding: "3px 10px" }}
+              title={lockedVal ? "Buka kunci untuk mengedit" : "Kunci agar tidak ikut terubah"}
+              onClick={() => setIdentityLocked(!lockedVal)}>
+              {lockedVal ? "🔒 Terkunci" : "🔓 Terbuka"}
+            </button>
+          </div>
+          <textarea name="identity_prompt" className="input mb1" rows={5} value={identityVal}
+            readOnly={lockedVal} style={lockedVal ? { background: "#f6f6f9", color: "var(--muted)" } : undefined}
+            onChange={(e) => setIdentity(e.target.value)} />
           <p className="tiny muted mb3">
             Teks ini disuntikkan ke SETIAP generate. Isi hanya ciri fisik tetap (wajah, rambut, kulit) —
             jangan latar tempat, pose, atau baju, karena akan bentrok dengan prompt tiap gambar.
-            Bahasa Inggris memberi hasil paling akurat.
+            Bahasa Inggris memberi hasil paling akurat. Saat terkunci, teks tidak bisa diedit
+            dan tidak ditimpa hasil wizard AI.
           </p>
           {saveErr && <div className="msg-err mb2">{saveErr}</div>}
           {saveOk && <div className="msg-ok mb2">Tersimpan.</div>}
@@ -708,7 +721,8 @@ export function InfluencerDetail({ id, ws, refresh, tick, mode }) {
             }}
             onApply={async (pp) => {
               if (pp.bio) setBio(pp.bio);
-              if (pp.identity_prompt) setIdentity(pp.identity_prompt);
+              // Identity prompt yang terkunci tidak boleh ditimpa hasil wizard.
+              if (pp.identity_prompt && !lockedVal) setIdentity(pp.identity_prompt);
               setWizardOpen(false);
               setSaveOk(false);
               // Foto referensi langsung masuk Identity Kit influencer ini.
