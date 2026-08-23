@@ -199,8 +199,8 @@ const PERSONA_QS = [
   { key: "audience", label: "Target audiens (opsional)", ph: "mis. cewek 18-25 di kota besar" },
 ];
 
-function PersonaWizard({ onApply, onClose }) {
-  const [ans, setAns] = useState({ language: "id", basis: "flexible" });
+function PersonaWizard({ onApply, onClose, initialAnswers, refine }) {
+  const [ans, setAns] = useState({ language: "id", basis: "flexible", ...(initialAnswers || {}) });
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState(null);
   const [out, setOut] = useState(null);
@@ -221,11 +221,15 @@ function PersonaWizard({ onApply, onClose }) {
       <div className="card p6" onClick={(e) => e.stopPropagation()}
         style={{ width: "100%", maxWidth: 640, maxHeight: "88vh", overflowY: "auto" }}>
         <div className="row mb1" style={{ justifyContent: "space-between" }}>
-          <div className="bold">✨ Bantu buat influencer dengan AI</div>
+          <div className="bold">{refine ? "✨ Perbaiki deskripsi dengan AI" : "✨ Bantu buat influencer dengan AI"}</div>
           <button type="button" onClick={onClose}
             style={{ background: "none", border: "none", cursor: "pointer", color: "var(--muted)", fontSize: 18 }}>×</button>
         </div>
-        <p className="tiny muted mb3">Jawab seadanya — yang kosong akan diisi AI. Hasilnya bisa kamu edit sebelum dipakai.</p>
+        <p className="tiny muted mb3">
+          {refine
+            ? "Deskripsi yang sekarang dipakai sebagai acuan — AI akan merapikannya, bukan mengganti karakternya. Lengkapi yang masih kosong agar hasilnya lebih tepat."
+            : "Jawab seadanya — yang kosong akan diisi AI. Hasilnya bisa kamu edit sebelum dipakai."}
+        </p>
 
         {!out && (
           <>
@@ -255,7 +259,7 @@ function PersonaWizard({ onApply, onClose }) {
             {err && <div className="msg-err mb3">{err}</div>}
             <div className="row" style={{ gap: 8 }}>
               <button type="button" className="btn" disabled={busy} onClick={generate}>
-                {busy ? "Menulis…" : "Buatkan deskripsi"}
+                {busy ? "Menulis…" : refine ? "Perbaiki deskripsi" : "Buatkan deskripsi"}
               </button>
               <button type="button" className="btn btn2" onClick={onClose}>Batal</button>
             </div>
@@ -311,6 +315,9 @@ export function Influencers({ ws, refresh, tick }) {
   const [selectedIdea, setSelectedIdea] = useState(null);
   const [wizardOpen, setWizardOpen] = useState(false);
   const [identityHint, setIdentityHint] = useState("");
+  // Form dibiarkan tertutup saat sudah ada influencer, supaya daftar tidak
+  // tenggelam di bawah form panjang — tombol di header yang membukanya.
+  const [formOpen, setFormOpen] = useState(false);
 
   function applyPersona(p) {
     setNiche(p.niche || "");
@@ -346,8 +353,18 @@ export function Influencers({ ws, refresh, tick }) {
   if (!list) return listError ? <div className="msg-err">Gagal memuat influencers: {listError}</div> : <div className="muted">Memuat…</div>;
   return (
     <div>
-      <h1 style={{ fontSize: 24, fontWeight: 800 }}>Influencers</h1>
-      <p className="muted small mb4">{list.length} dari 25 slot terpakai. Setiap influencer punya identity kit untuk konsistensi karakter.</p>
+      <div className="row mb4" style={{ justifyContent: "space-between", alignItems: "flex-start" }}>
+        <div>
+          <h1 style={{ fontSize: 24, fontWeight: 800 }}>Influencers</h1>
+          <p className="muted small mt1">{list.length} dari 25 slot terpakai. Setiap influencer punya identity kit untuk konsistensi karakter.</p>
+        </div>
+        {list.length < 25 && (
+          <button type="button" className="btn" style={{ flexShrink: 0 }}
+            onClick={() => { setFormOpen(true); setTimeout(() => document.getElementById("form-influencer-baru")?.scrollIntoView({ behavior: "smooth", block: "start" }), 50); }}>
+            + Buat Influencer Baru
+          </button>
+        )}
+      </div>
       <div className="grid mb6" style={{ gridTemplateColumns: "repeat(auto-fill,minmax(280px,1fr))" }}>
         {list.map((i) => (
           <a key={i.id} href={`#/influencers/${i.id}`} className="card p4">
@@ -363,12 +380,18 @@ export function Influencers({ ws, refresh, tick }) {
           </a>
         ))}
       </div>
-      {list.length < 25 && (
-        <form onSubmit={create} className="card p6" style={{ maxWidth: 620 }}>
+      {list.length < 25 && (formOpen || list.length === 0) && (
+        <form id="form-influencer-baru" onSubmit={create} className="card p6" style={{ maxWidth: 620 }}>
           <div className="row mb3" style={{ justifyContent: "space-between" }}>
             <div className="bold">Buat influencer baru</div>
-            <button type="button" className="btn" style={{ fontSize: 12, padding: "6px 12px" }}
-              onClick={() => setWizardOpen(true)}>✨ Bantu buat dengan AI</button>
+            <div className="row" style={{ gap: 6 }}>
+              <button type="button" className="btn" style={{ fontSize: 12, padding: "6px 12px" }}
+                onClick={() => setWizardOpen(true)}>✨ Bantu buat dengan AI</button>
+              {list.length > 0 && (
+                <button type="button" className="btn btn2" style={{ fontSize: 12, padding: "6px 12px" }}
+                  onClick={() => setFormOpen(false)}>Tutup</button>
+              )}
+            </div>
           </div>
           <label className="label">Ide niche (opsional, klik untuk isi otomatis)</label>
           <div className="grid mb3" style={{ gridTemplateColumns: "repeat(auto-fill,minmax(200px,1fr))", gap: 8 }}>
@@ -426,10 +449,16 @@ export function InfluencerDetail({ id, ws, refresh, tick, mode }) {
 
   const [saveErr, setSaveErr] = useState(null);
   const [saveOk, setSaveOk] = useState(false);
+  const [wizardOpen, setWizardOpen] = useState(false);
+  // Bio & identity prompt dikelola state agar wizard AI bisa mengisinya.
+  const [bio, setBio] = useState(null);
+  const [identity, setIdentity] = useState(null);
 
   if (!d) return loadError ? <div className="msg-err">Gagal memuat influencer: {loadError}</div> : <div className="muted">Memuat…</div>;
   if (!d.inf) return <div className="muted">Influencer tidak ditemukan. <a href="#/influencers" style={{ color: "#7c3aed" }}>← Kembali</a></div>;
   const inf = d.inf;
+  const bioVal = bio ?? (inf.persona?.bio || "");
+  const identityVal = identity ?? (inf.identity_prompt || "");
 
   async function save(e) {
     e.preventDefault();
@@ -456,7 +485,11 @@ export function InfluencerDetail({ id, ws, refresh, tick, mode }) {
       </div>
       <div className="grid" style={{ gridTemplateColumns: "repeat(auto-fit,minmax(380px,1fr))" }}>
         <form onSubmit={save} className="card p6">
-          <div className="bold mb3">Character Sheet</div>
+          <div className="row mb3" style={{ justifyContent: "space-between" }}>
+            <div className="bold">Character Sheet</div>
+            <button type="button" className="btn" style={{ fontSize: 12, padding: "6px 12px" }}
+              onClick={() => setWizardOpen(true)}>✨ Perbaiki dengan AI</button>
+          </div>
           <div className="grid mb3" style={{ gridTemplateColumns: "1fr 1fr" }}>
             <div><label className="label">Nama</label><input name="name" className="input" defaultValue={inf.name} /></div>
             <div><label className="label">Handle</label><input name="handle" className="input" defaultValue={inf.handle || ""} /></div>
@@ -473,13 +506,37 @@ export function InfluencerDetail({ id, ws, refresh, tick, mode }) {
             <option value="id">Indonesia</option><option value="en">English</option><option value="mix">Campuran</option>
           </select>
           <label className="label">Bio / persona</label>
-          <textarea name="bio" className="input mb3" rows={3} defaultValue={inf.persona?.bio || ""} />
+          <textarea name="bio" className="input mb3" rows={3} value={bioVal} onChange={(e) => setBio(e.target.value)} />
           <label className="label">Identity prompt (kunci konsistensi)</label>
-          <textarea name="identity_prompt" className="input mb3" rows={4} defaultValue={inf.identity_prompt || ""} />
+          <textarea name="identity_prompt" className="input mb1" rows={5} value={identityVal} onChange={(e) => setIdentity(e.target.value)} />
+          <p className="tiny muted mb3">
+            Teks ini disuntikkan ke SETIAP generate. Isi hanya ciri fisik tetap (wajah, rambut, kulit) —
+            jangan latar tempat, pose, atau baju, karena akan bentrok dengan prompt tiap gambar.
+            Bahasa Inggris memberi hasil paling akurat.
+          </p>
           {saveErr && <div className="msg-err mb2">{saveErr}</div>}
           {saveOk && <div className="msg-ok mb2">Tersimpan.</div>}
           <button className="btn">Simpan</button>
         </form>
+        {wizardOpen && (
+          <PersonaWizard
+            refine
+            initialAnswers={{
+              niche: inf.niche || "",
+              language: inf.language || "id",
+              vibe: bioVal,
+              current_bio: bioVal,
+              current_identity: identityVal,
+            }}
+            onApply={(pp) => {
+              if (pp.bio) setBio(pp.bio);
+              if (pp.identity_prompt) setIdentity(pp.identity_prompt);
+              setWizardOpen(false);
+              setSaveOk(false);
+            }}
+            onClose={() => setWizardOpen(false)}
+          />
+        )}
         <div>
           <div className="card p6 mb4">
             <div className="bold">Identity Kit</div>
