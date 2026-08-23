@@ -242,6 +242,27 @@ async function hfImage(ws: string, modelKey: string, prompt: string, jobId: stri
   return admin.storage.from("media").getPublicUrl(path).data.publicUrl;
 }
 
+// Simpan foto data-URI ke bucket `media` dan kembalikan URL publiknya.
+// Foto yang gagal dilewati diam-diam — sisa foto tetap diproses.
+async function storePhotos(ws: string, photos: string[]): Promise<string[]> {
+  const urls: string[] = [];
+  for (const [i, dataUri] of photos.entries()) {
+    const m = /^data:(image\/[a-z+]+);base64,(.+)$/i.exec(dataUri);
+    if (!m) continue;
+    try {
+      const bin = atob(m[2]);
+      const bytes = new Uint8Array(bin.length);
+      for (let k = 0; k < bin.length; k++) bytes[k] = bin.charCodeAt(k);
+      const ext = m[1].includes("png") ? "png" : m[1].includes("webp") ? "webp" : "jpg";
+      const path = `${ws}/refs/${crypto.randomUUID()}-${i}.${ext}`;
+      const { error: upErr } = await admin.storage.from("media")
+        .upload(path, bytes, { contentType: m[1], upsert: true, cacheControl: "3600" });
+      if (!upErr) urls.push(admin.storage.from("media").getPublicUrl(path).data.publicUrl);
+    } catch (_e) { /* foto ini dilewati */ }
+  }
+  return urls;
+}
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: CORS });
   if (req.method !== "POST") return json({ error: "Method not allowed" }, 405);
@@ -292,8 +313,49 @@ Deno.serve(async (req) => {
         return json({ ok: true, mode: m });
       }
       case "write": {
-        // Penulis AI: kind = script | ideas | persona.
-        const kind = ["ideas", "persona"].includes(body.kind) ? body.kind : "script";
+        // Penulis AI: kind = script | ideas | persona | lookalike.
+        const kind = ["ideas", "persona", "lookalike"].includes(body.kind) ? body.kind : "script";
+
+        // lookalike: 1 foto acuan → fragment prompt bahasa Inggris.
+        //   aspect=face     → ciri wajah/fisik  → dipakai sebagai identity prompt
+        //   aspect=ambience → mood/cahaya/warna → dipakai sebagai catatan gaya visual,
+        //                     BUKAN identity prompt (biar tidak mengunci wajah ke satu suasana)
+        if (kind === "lookalike") {
+          const photos: string[] = Array.isArray(body.photos) ? body.photos.slice(0, 1) : [];
+          if (!photos.length) throw new Error("Unggah 1 foto acuan dulu.");
+          const aspect = body.aspect === "ambience" ? "ambience" : "face";
+          const system =
+            "Kamu direktur kreatif yang mengubah satu foto acuan menjadi fragment prompt untuk model gambar. " +
+            "Jawab HANYA dengan JSON valid, tanpa penjelasan lain. " +
+            "JANGAN menebak identitas, nama, suku, agama, atau data pribadi orang di foto. " +
+            "JANGAN menyebut nama selebriti atau tokoh publik. JANGAN menilai daya tarik fisik. " +
+            (aspect === "face"
+              ? "Deskripsikan hanya ciri visual yang benar-benar terlihat, secara netral dan faktual."
+              : "Abaikan sepenuhnya siapa pun yang ada di foto — fokus hanya pada suasana visualnya.");
+          const user = aspect === "face"
+            ? `Dari foto terlampir, tulis "identity_prompt": bahasa Inggris, 40-70 kata, HANYA ciri fisik tetap ` +
+              `(jenis kelamin, perkiraan usia, bentuk wajah, warna & gaya rambut, warna kulit, bentuk mata/alis/hidung, ` +
+              `1-2 ciri khas kecil yang mudah diulang). DILARANG menyebut latar tempat, background, pencahayaan, pose, ` +
+              `aktivitas, atau pakaian — teks ini dipakai ulang di SEMUA gambar. Kalau sesuatu tidak terlihat jelas, ` +
+              `lewati saja daripada mengarang.\n` +
+              `Format JSON: {"identity_prompt": "...", "style_notes": "", "summary": "1-2 kalimat bahasa Indonesia menjelaskan apa yang kamu tangkap dari foto"}`
+            : `Dari foto terlampir, tulis "style_notes": bahasa Inggris, 25-45 kata, HANYA suasana visualnya — ` +
+              `jenis & arah cahaya, color grading, latar/lokasi, cuaca/waktu, tekstur, mood, gaya kamera (lensa, kedalaman ruang, grain). ` +
+              `DILARANG mendeskripsikan wajah, tubuh, atau identitas siapa pun di foto.\n` +
+              `Format JSON: {"identity_prompt": "", "style_notes": "...", "summary": "1-2 kalimat bahasa Indonesia menjelaskan suasana yang kamu tangkap"}`;
+          const parsed = parseJsonLoose(await chat(ws, system, user, photos)) as Record<string, unknown>;
+          const photoUrls = await storePhotos(ws, photos);
+          return json({
+            ok: true,
+            aspect,
+            photo_urls: photoUrls,
+            lookalike: {
+              identity_prompt: aspect === "face" ? String(parsed.identity_prompt || "") : "",
+              style_notes: aspect === "ambience" ? String(parsed.style_notes || "") : "",
+              summary: String(parsed.summary || ""),
+            },
+          });
+        }
 
         // persona: rakit deskripsi influencer baru dari jawaban wizard.
         // identity_prompt sengaja dalam bahasa Inggris (model gambar dilatih
@@ -353,21 +415,7 @@ Deno.serve(async (req) => {
           const parsed = parseJsonLoose(await chat(ws, system, user, photos)) as Record<string, unknown>;
 
           // Simpan foto referensi ke Storage supaya bisa dipakai sebagai Identity Kit.
-          const photoUrls: string[] = [];
-          for (const [i, dataUri] of photos.entries()) {
-            const m = /^data:(image\/[a-z+]+);base64,(.+)$/i.exec(dataUri);
-            if (!m) continue;
-            try {
-              const bin = atob(m[2]);
-              const bytes = new Uint8Array(bin.length);
-              for (let k = 0; k < bin.length; k++) bytes[k] = bin.charCodeAt(k);
-              const ext = m[1].includes("png") ? "png" : m[1].includes("webp") ? "webp" : "jpg";
-              const path = `${ws}/refs/${crypto.randomUUID()}-${i}.${ext}`;
-              const { error: upErr } = await admin.storage.from("media")
-                .upload(path, bytes, { contentType: m[1], upsert: true, cacheControl: "3600" });
-              if (!upErr) photoUrls.push(admin.storage.from("media").getPublicUrl(path).data.publicUrl);
-            } catch (_e) { /* foto ini dilewati; sisanya tetap diproses */ }
-          }
+          const photoUrls = await storePhotos(ws, photos);
 
           return json({
             ok: true,
@@ -457,6 +505,9 @@ Deno.serve(async (req) => {
       }
       case "submit": {
         const { task, model_id, influencer_id, prompt = "", text = "", source_image_url, audio_url } = body;
+        // `label` opsional: nama yang terbaca manusia untuk asset hasilnya
+        // (dipakai character sheet: "Ronny — front view", dst).
+        const label = body.label ? String(body.label).slice(0, 120) : null;
         const duration = Number(body.duration || 5);
         const { data: model } = await admin.from("provider_models").select("*")
           .eq("id", model_id).eq("active", true).maybeSingle();
@@ -489,7 +540,7 @@ Deno.serve(async (req) => {
         const { data: job, error: jobErr } = await admin.from("production_jobs").insert({
           workspace_id: ws, influencer_id: influencer_id || null, task,
           model_key: model.model_key, prompt: finalPrompt || String(text).slice(0, 500) || null,
-          status: "queued", cost_estimate_usd: est,
+          status: "queued", cost_estimate_usd: est, label,
         }).select("*").single();
         if (jobErr) throw new Error(jobErr.message);
 
@@ -498,7 +549,7 @@ Deno.serve(async (req) => {
           await admin.from("assets").insert({
             workspace_id: ws, influencer_id: influencer_id || null,
             kind: assetKind(task), url,
-            name: `${task}-${job.id.slice(0, 8)}${mode === "mock" ? " (mock)" : model.provider === "hf" ? " (HF)" : ""}`,
+            name: `${label || `${task}-${job.id.slice(0, 8)}`}${mode === "mock" ? " (mock)" : model.provider === "hf" ? " (HF)" : ""}`,
           });
           if (cost > 0) {
             await admin.from("credits_ledger").insert({ workspace_id: ws, kind: "usage", delta_usd: -cost, note: `job ${job.id}` });
@@ -574,7 +625,7 @@ Deno.serve(async (req) => {
               if (url) {
                 await admin.from("assets").insert({
                   workspace_id: ws, influencer_id: jb.influencer_id,
-                  kind: assetKind(jb.task), url, name: `${jb.task}-${jb.id.slice(0, 8)}`,
+                  kind: assetKind(jb.task), url, name: jb.label || `${jb.task}-${jb.id.slice(0, 8)}`,
                 });
               }
               if (cost > 0) {

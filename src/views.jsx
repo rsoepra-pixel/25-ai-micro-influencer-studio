@@ -365,6 +365,92 @@ function PersonaWizard({ onApply, onClose, initialAnswers, refine }) {
   );
 }
 
+// Look-alike photo: 1 foto acuan → fragment prompt. User memilih APA yang ditiru.
+// Wajah masuk ke identity prompt (dipakai ulang di semua gambar); ambience masuk
+// ke catatan gaya visual — sengaja dipisah supaya suasana satu foto tidak ikut
+// terkunci ke karakternya selamanya.
+function LookAlikePanel({ onFace, onAmbience }) {
+  const [aspect, setAspect] = useState("face");
+  const [file, setFile] = useState(null);      // { dataUri }
+  const [busy, setBusy] = useState(false);
+  const [err, setErr] = useState(null);
+  const [out, setOut] = useState(null);        // { identity_prompt, style_notes, summary, _url }
+
+  async function pick(e) {
+    const f = (e.target.files || [])[0];
+    e.target.value = "";
+    if (!f) return;
+    setErr(null); setOut(null);
+    try { setFile({ dataUri: await downscaleToDataUri(f) }); }
+    catch (e2) { setErr(e2.message); }
+  }
+
+  async function analyse() {
+    if (!file) return;
+    setBusy(true); setErr(null); setOut(null);
+    try {
+      const r = await callGenerate({ action: "write", kind: "lookalike", aspect, photos: [file.dataUri] });
+      setOut({ ...r.lookalike, _url: (r.photo_urls || [])[0] || null });
+    } catch (e2) { setErr(e2.message); }
+    setBusy(false);
+  }
+
+  const text = out ? (aspect === "face" ? out.identity_prompt : out.style_notes) : "";
+  return (
+    <div className="card p4 mb3" style={{ background: "#fafafa" }}>
+      <div className="bold small mb1">📸 Look-alike photo (opsional)</div>
+      <p className="tiny muted mb3">
+        Unggah 1 foto acuan, lalu pilih apa yang ditiru: karakter wajahnya, atau ambience-nya
+        (cahaya, warna, mood). Gunakan foto yang kamu punya haknya.
+      </p>
+      <div className="row mb3" style={{ gap: 16, flexWrap: "wrap" }}>
+        <label className="row small" style={{ gap: 6, cursor: "pointer" }}>
+          <input type="radio" name="lookalike_aspect" checked={aspect === "face"}
+            onChange={() => { setAspect("face"); setOut(null); }} />
+          Tiru karakter wajah
+        </label>
+        <label className="row small" style={{ gap: 6, cursor: "pointer" }}>
+          <input type="radio" name="lookalike_aspect" checked={aspect === "ambience"}
+            onChange={() => { setAspect("ambience"); setOut(null); }} />
+          Tiru ambience / suasana
+        </label>
+      </div>
+      <div className="row mb2" style={{ alignItems: "flex-start", gap: 12 }}>
+        {file && <div className="thumb" style={{ width: 72, aspectRatio: "1", flexShrink: 0 }}><img src={file.dataUri} alt="" /></div>}
+        <div style={{ flex: 1 }}>
+          <input type="file" accept="image/*" className="input mb2" onChange={pick} />
+          <button type="button" className="btn" style={{ fontSize: 12, padding: "6px 12px" }}
+            disabled={!file || busy} onClick={analyse}>
+            {busy ? "Menganalisis…" : "Analisis foto"}
+          </button>
+        </div>
+      </div>
+      {err && <div className="msg-err mb2">{err}</div>}
+      {out && (
+        <div className="mt2">
+          {out.summary && <p className="tiny muted mb2">{out.summary}</p>}
+          <div className="card p4 mb2" style={{ background: "#fff" }}>
+            <div className="label" style={{ margin: 0 }}>
+              {aspect === "face" ? "Identity prompt dari foto" : "Catatan gaya visual (ambience)"}
+            </div>
+            <div className="small mt1" style={{ whiteSpace: "pre-wrap" }}>{text || "— kosong —"}</div>
+          </div>
+          <button type="button" className="btn" style={{ fontSize: 12, padding: "6px 12px" }}
+            disabled={!text}
+            onClick={() => {
+              if (aspect === "face") onFace(text, out._url);
+              else onAmbience(text);
+              setOut(null);
+            }}>
+            {aspect === "face" ? "Pakai sebagai identity prompt" : "Pakai sebagai catatan gaya"}
+          </button>
+          {aspect === "face" && <span className="tiny muted" style={{ marginLeft: 8 }}>Foto ikut dilampirkan ke Identity Kit.</span>}
+        </div>
+      )}
+    </div>
+  );
+}
+
 export function Influencers({ ws, refresh, tick }) {
   const [list, reload, listError] = useQuery(async () =>
     unwrap(await supa.from("influencers").select("*").order("created_at")), [ws.id, tick]);
@@ -375,6 +461,9 @@ export function Influencers({ ws, refresh, tick }) {
   const [selectedIdea, setSelectedIdea] = useState(null);
   const [wizardOpen, setWizardOpen] = useState(false);
   const [identityHint, setIdentityHint] = useState("");
+  // Catatan gaya visual (ambience) — disimpan di persona.style_notes, bukan di
+  // identity prompt, supaya tidak ikut disuntikkan ke setiap generate gambar.
+  const [styleNotes, setStyleNotes] = useState("");
   // Form dibiarkan tertutup saat sudah ada influencer, supaya daftar tidak
   // tenggelam di bawah form panjang — tombol di header yang membukanya.
   const [formOpen, setFormOpen] = useState(false);
@@ -387,6 +476,7 @@ export function Influencers({ ws, refresh, tick }) {
     setNiche(p.niche || "");
     setBioHint(p.bio || "");
     setIdentityHint(p.identity_prompt || "");
+    if (p.style_notes) setStyleNotes(p.style_notes);
     setPendingRefs(p._photoUrls || []);
     setSelectedIdea(null);
     setWizardOpen(false);
@@ -407,7 +497,7 @@ export function Influencers({ ws, refresh, tick }) {
       name: f.get("name"), handle: f.get("handle"), niche: f.get("niche"),
       language: f.get("language"),
       platforms: String(f.get("platforms") || "tiktok").split(",").map((s) => s.trim()).filter(Boolean),
-      persona: { bio: f.get("bio") },
+      persona: { bio: f.get("bio"), style_notes: f.get("style_notes") || "" },
       identity_prompt: f.get("identity_prompt"),
     }).select("id").single();
     if (error) { setBusy(false); setErr(error.message); return; }
@@ -416,7 +506,7 @@ export function Influencers({ ws, refresh, tick }) {
       catch (e2) { setErr(`Influencer dibuat, tapi foto referensi gagal dilampirkan: ${e2.message}`); }
     }
     setBusy(false);
-    e.target.reset(); setNiche(""); setBioHint(""); setIdentityHint(""); setPendingRefs([]); setSelectedIdea(null);
+    e.target.reset(); setNiche(""); setBioHint(""); setIdentityHint(""); setStyleNotes(""); setPendingRefs([]); setSelectedIdea(null);
     setFormOpen(false); reload(); refresh();
   }
 
@@ -496,6 +586,15 @@ export function Influencers({ ws, refresh, tick }) {
             value={identityHint} onChange={(e) => setIdentityHint(e.target.value)}
             placeholder="mis. Indonesian woman, 24yo, oval face, small mole under left eye, shoulder-length wavy black hair…" />
           <p className="tiny muted mb3">Fragment ini otomatis disuntikkan ke SEMUA generate untuk influencer ini — kunci konsistensi karakter.</p>
+          <label className="label">Catatan gaya visual / ambience</label>
+          <textarea name="style_notes" className="input mb1" rows={2}
+            value={styleNotes} onChange={(e) => setStyleNotes(e.target.value)}
+            placeholder="mis. warm golden hour light, soft film grain, muted earthy colors" />
+          <p className="tiny muted mb3">Tidak disuntikkan otomatis — dipakai sebagai pilihan suasana saat generate & bikin character sheet.</p>
+          <LookAlikePanel
+            onFace={(txt, url) => { setIdentityHint(txt); if (url) setPendingRefs((r) => (r.includes(url) ? r : [...r, url])); }}
+            onAmbience={(txt) => setStyleNotes(txt)}
+          />
           {pendingRefs.length > 0 && (
             <div className="card p4 mb3" style={{ background: "#fafafa" }}>
               <div className="label" style={{ margin: 0 }}>{pendingRefs.length} foto referensi siap dilampirkan</div>
@@ -752,12 +851,153 @@ export function GenerateForm({ models, influencers, influencerId, refresh, mode 
   );
 }
 
+// ---------- Character sheet (gambar) ----------
+// Satu klik = beberapa job gambar sekaligus, satu per sudut/ekspresi, semuanya
+// memakai identity prompt influencer yang sama. Prompt shot sengaja bahasa
+// Inggris karena model gambar dilatih dominan dengan caption Inggris.
+const SHEET_SHOTS = [
+  { id: "front", label: "Depan (netral)", prompt: "front view head and shoulders portrait, facing camera directly, neutral relaxed expression, eyes to camera" },
+  { id: "threeq", label: "Serong 3/4", prompt: "three-quarter view head and shoulders portrait, head turned 45 degrees, neutral expression" },
+  { id: "profile", label: "Samping (profil)", prompt: "side profile head and shoulders portrait, 90 degree profile view, neutral expression" },
+  { id: "back", label: "Belakang (rambut)", prompt: "back view of head and shoulders from behind, showing hairstyle and hair length" },
+  { id: "smile", label: "Ekspresi: senyum", prompt: "head and shoulders portrait, warm genuine smile, facing camera" },
+  { id: "serious", label: "Ekspresi: serius", prompt: "head and shoulders portrait, calm serious focused expression, facing camera" },
+  { id: "half", label: "Setengah badan", prompt: "waist-up half body shot, hands visible, relaxed natural posture, facing camera" },
+  { id: "full", label: "Full body (depan)", prompt: "full body standing straight, arms relaxed at sides, facing camera, entire figure visible from head to feet" },
+  { id: "fullq", label: "Full body (3/4)", prompt: "full body three-quarter view, standing in a natural relaxed posture, entire figure visible from head to feet" },
+];
+const DEFAULT_SHOTS = ["front", "threeq", "profile", "smile", "half", "full"];
+const SHEET_BACKDROPS = [
+  { id: "studio", label: "Studio abu netral (disarankan)", prompt: "plain seamless light grey studio background, soft even diffused lighting" },
+  { id: "white", label: "Latar putih bersih", prompt: "plain white seamless background, bright soft lighting" },
+  { id: "daylight", label: "Cahaya alami netral", prompt: "plain neutral beige background, soft natural daylight from the side" },
+];
+const SHEET_BASE = "character reference sheet photo, photorealistic, sharp focus, high detail, consistent same person, single subject, no text, no watermark, no collage";
+
+function CharacterSheetPanel({ models, influencers, refresh, mode }) {
+  const imgModels = models.filter((m) => m.task === "image");
+  const [infId, setInfId] = useState("");
+  const [modelId, setModelId] = useState("");
+  const [shots, setShots] = useState(DEFAULT_SHOTS);
+  const [backdrop, setBackdrop] = useState("studio");
+  const [extra, setExtra] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [progress, setProgress] = useState(null);
+  const [fails, setFails] = useState([]);
+  const [done, setDone] = useState(null);
+
+  const inf = influencers.find((i) => i.id === infId);
+  const styleNotes = inf?.persona?.style_notes || "";
+  const model = imgModels.find((m) => m.id === modelId) || imgModels[0];
+  const est = (model ? Number(model.est_price_usd) : 0) * shots.length;
+
+  function toggle(id) {
+    setShots((s) => (s.includes(id) ? s.filter((x) => x !== id) : [...s, id]));
+  }
+
+  async function run() {
+    if (!inf || !model || !shots.length) return;
+    setBusy(true); setFails([]); setDone(null);
+    const list = SHEET_SHOTS.filter((s) => shots.includes(s.id));
+    const bd = backdrop === "persona"
+      ? { prompt: styleNotes }
+      : SHEET_BACKDROPS.find((b) => b.id === backdrop) || SHEET_BACKDROPS[0];
+    const bad = [];
+    let ok = 0;
+    for (let i = 0; i < list.length; i++) {
+      setProgress({ done: i, total: list.length });
+      const s = list[i];
+      try {
+        await callGenerate({
+          action: "submit", task: "image", model_id: model.id, influencer_id: inf.id,
+          prompt: [s.prompt, bd.prompt, SHEET_BASE, extra.trim()].filter(Boolean).join(", "),
+          label: `Character sheet — ${inf.name} — ${s.label}`,
+        });
+        ok++;
+      } catch (e) { bad.push(`${s.label}: ${e.message}`); }
+    }
+    setProgress(null); setBusy(false); setFails(bad); setDone(ok);
+    refresh?.();
+  }
+
+  return (
+    <div>
+      <p className="tiny muted mb3">
+        Satu klik menghasilkan beberapa gambar acuan karakter — sudut, ekspresi, dan full body —
+        semuanya memakai identity prompt influencer yang sama. Hasilnya masuk ke Drive dengan nama yang terbaca.
+      </p>
+      <div className="grid mb3" style={{ gridTemplateColumns: "1fr 1fr" }}>
+        <div><label className="label">Influencer *</label>
+          <select className="input" value={infId} onChange={(e) => setInfId(e.target.value)}>
+            <option value="">— pilih influencer —</option>
+            {influencers.map((i) => <option key={i.id} value={i.id}>{i.name}</option>)}
+          </select>
+        </div>
+        <div><label className="label">Model gambar</label>
+          <select className="input" value={model?.id || ""} onChange={(e) => setModelId(e.target.value)}>
+            {imgModels.map((m) => <option key={m.id} value={m.id}>{m.label}</option>)}
+          </select>
+        </div>
+      </div>
+      {infId && !inf?.identity_prompt && (
+        <div className="msg-err mb3">
+          {inf?.name} belum punya identity prompt — hasilnya tidak akan konsisten antar gambar.
+          Isi dulu di halaman influencer (bisa pakai ✨ wizard).
+        </div>
+      )}
+      <label className="label">Shot yang dibuat ({shots.length} gambar)</label>
+      <div className="grid mb3" style={{ gridTemplateColumns: "repeat(auto-fill,minmax(170px,1fr))", gap: 8 }}>
+        {SHEET_SHOTS.map((s) => (
+          <label key={s.id} className="card p3 row small" style={{
+            gap: 8, padding: 10, cursor: "pointer",
+            border: shots.includes(s.id) ? "2px solid #7c3aed" : "1px solid var(--border)",
+          }}>
+            <input type="checkbox" checked={shots.includes(s.id)} onChange={() => toggle(s.id)} />
+            {s.label}
+          </label>
+        ))}
+      </div>
+      <div className="grid mb3" style={{ gridTemplateColumns: "1fr 1fr" }}>
+        <div><label className="label">Latar & pencahayaan</label>
+          <select className="input" value={backdrop} onChange={(e) => setBackdrop(e.target.value)}>
+            {SHEET_BACKDROPS.map((b) => <option key={b.id} value={b.id}>{b.label}</option>)}
+            {styleNotes && <option value="persona">Catatan gaya influencer ini</option>}
+          </select>
+        </div>
+        <div><label className="label">Tambahan prompt (opsional)</label>
+          <input className="input" value={extra} onChange={(e) => setExtra(e.target.value)}
+            placeholder="mis. wearing a plain white t-shirt" />
+        </div>
+      </div>
+      {backdrop === "persona" && <p className="tiny muted mb3">Dipakai: {styleNotes}</p>}
+      <div className="row mb2">
+        <button type="button" className="btn" disabled={busy || !infId || !shots.length || !model} onClick={run}>
+          {busy ? `Mengirim ${(progress?.done ?? 0) + 1}/${progress?.total ?? shots.length}…` : `Buat character sheet (${shots.length} gambar)`}
+        </button>
+        <span className="tiny muted">
+          Estimasi: <b style={{ color: "#d97706" }}>${est.toFixed(3)}</b>
+          {mode === "mock" ? " (mock — gratis)" : " (indikatif)"}
+        </span>
+      </div>
+      {done !== null && done > 0 && (
+        <div className="msg-ok mb2">{done} job dikirim — hasilnya muncul di riwayat job & Drive.</div>
+      )}
+      {fails.length > 0 && (
+        <div className="msg-err mb2">
+          {fails.length} shot gagal:
+          <ul style={{ margin: "4px 0 0 16px" }}>{fails.map((f) => <li key={f}>{f}</li>)}</ul>
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ---------- Studio ----------
 export function Studio({ ws, refresh, tick, mode }) {
   const [d, reload, loadError] = useQuery(async () => {
     const [models, inf, jobs] = await Promise.all([
       supa.from("provider_models").select("*").eq("active", true).order("task"),
-      supa.from("influencers").select("id,name").order("name"),
+      supa.from("influencers").select("id,name,identity_prompt,persona").order("name"),
       supa.from("production_jobs").select("*, influencers(name)").order("created_at", { ascending: false }).limit(20),
     ]);
     return { models: unwrap(models), inf: unwrap(inf), jobs: unwrap(jobs) };
@@ -782,6 +1022,10 @@ export function Studio({ ws, refresh, tick, mode }) {
       <div className="card p6 mb4">
         <div className="bold mb3">Generate baru</div>
         <GenerateForm models={d.models} influencers={d.inf} refresh={() => { reload(); refresh(); }} mode={mode} />
+      </div>
+      <div className="card p6 mb4">
+        <div className="bold mb3">🎭 Character sheet (gambar)</div>
+        <CharacterSheetPanel models={d.models} influencers={d.inf} refresh={() => { reload(); refresh(); }} mode={mode} />
       </div>
       <div className="card p6">
         <div className="bold mb3">Riwayat job</div>
