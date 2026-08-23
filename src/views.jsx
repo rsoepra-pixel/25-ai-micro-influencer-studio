@@ -860,7 +860,11 @@ export function GenerateForm({ models, influencers, influencerId, refresh, mode 
       </div>
       {err && <div className="msg-err mb2">{err}</div>}
       {ok && <div className="msg-ok mb2">Job dikirim — hasil muncul di riwayat job / Drive.</div>}
-      <p className="tiny muted">Identity prompt influencer otomatis disuntikkan untuk konsistensi karakter.</p>
+      <p className="tiny muted">
+        Identity prompt influencer otomatis disuntikkan untuk konsistensi karakter.
+        Untuk wajah yang benar-benar mirip, pilih model <b>Qwen-Image Edit Plus</b> —
+        foto referensi Identity Kit ikut dikirim sebagai acuan wajah.
+      </p>
     </form>
   );
 }
