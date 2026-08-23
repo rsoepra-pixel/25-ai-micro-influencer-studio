@@ -4,6 +4,7 @@
 // Provider gambar/video ditentukan oleh kolom `provider` di provider_models:
 //   fal → fal.ai (berbayar, image/video/tts/lipsync)
 //   hf  → Hugging Face Inference (gratis sesuai kuota akun; image saja)
+//   dashscope → Alibaba DashScope (qwen-image/z-image sinkron; video wan async)
 // Provider teks (hook/script/caption/ide) memakai endpoint OpenAI-compatible:
 //   qwen → Alibaba DashScope, kimi → Moonshot, custom → base_url sendiri.
 import { createClient } from "npm:@supabase/supabase-js@2";
@@ -239,6 +240,34 @@ async function hfImage(ws: string, modelKey: string, prompt: string, jobId: stri
   const { error: upErr } = await admin.storage.from("media")
     .upload(path, bytes, { contentType: ctype || "image/png", upsert: true, cacheControl: "3600" });
   if (upErr) throw new Error(`Gagal menyimpan gambar: ${upErr.message}`);
+  return admin.storage.from("media").getPublicUrl(path).data.publicUrl;
+}
+
+// ---------- DashScope (Qwen/Wan image & video) ----------
+// Memakai key yang sama dengan penulis AI kalau provider teksnya qwen — satu
+// akun DashScope melayani teks, gambar (qwen-image/z-image), dan video (wan).
+const DS_BASE = "https://dashscope-intl.aliyuncs.com/api/v1";
+async function dashscopeKey(ws: string): Promise<string | null> {
+  const dedicated = await getSecret(ws, "dashscope_key");
+  if (dedicated) return dedicated;
+  const provider = (await getSecret(ws, "text_provider")) || "qwen";
+  return provider === "qwen" ? await getSecret(ws, "text_api_key") : null;
+}
+
+// Unduh hasil dari URL DashScope (kedaluwarsa 24 jam) dan simpan permanen di
+// bucket media. Dipakai untuk gambar maupun video.
+async function storeRemote(ws: string, url: string, jobId: string, fallbackCtype: string): Promise<string> {
+  const res = await fetch(url);
+  if (!res.ok) throw new Error(`Gagal mengunduh hasil (HTTP ${res.status}).`);
+  const ctype = res.headers.get("content-type") || fallbackCtype;
+  const bytes = new Uint8Array(await res.arrayBuffer());
+  if (bytes.byteLength < 100) throw new Error("Hasil yang diunduh kosong.");
+  const ext = ctype.includes("mp4") || ctype.includes("video") ? "mp4"
+    : ctype.includes("png") ? "png" : ctype.includes("webp") ? "webp" : "jpg";
+  const path = `${ws}/${jobId}.${ext}`;
+  const { error: upErr } = await admin.storage.from("media")
+    .upload(path, bytes, { contentType: ctype, upsert: true, cacheControl: "3600" });
+  if (upErr) throw new Error(`Gagal menyimpan hasil: ${upErr.message}`);
   return admin.storage.from("media").getPublicUrl(path).data.publicUrl;
 }
 
@@ -666,6 +695,64 @@ Deno.serve(async (req) => {
           }
         }
 
+        if (model.provider === "dashscope") {
+          if (task !== "image" && task !== "video") throw new Error("Model DashScope di katalog ini hanya untuk gambar/video.");
+          const dsKey = await dashscopeKey(ws);
+          if (!dsKey) {
+            throw new Error("Key DashScope belum ada — model ini memakai API key Qwen yang sama dengan Penulis AI (Settings → Penulis AI, provider Qwen).");
+          }
+
+          if (task === "image") {
+            // Gambar (qwen-image / z-image): endpoint multimodal-generation, SINKRON —
+            // hasil langsung ada di respons, tidak lewat antrean task.
+            try {
+              const res = await fetch(`${DS_BASE}/services/aigc/multimodal-generation/generation`, {
+                method: "POST",
+                headers: { Authorization: `Bearer ${dsKey}`, "content-type": "application/json" },
+                body: JSON.stringify({
+                  model: model.model_key,
+                  input: { messages: [{ role: "user", content: [{ text: finalPrompt || "portrait photo" }] }] },
+                  parameters: { n: 1 },
+                }),
+              });
+              const out = await res.json().catch(() => ({}));
+              if (!res.ok) throw new Error(String(out?.message || `DashScope error ${res.status}`).slice(0, 400));
+              const content = out?.output?.choices?.[0]?.message?.content;
+              const rawUrl = Array.isArray(content) ? content.find((c: Record<string, unknown>) => c?.image)?.image : null;
+              if (!rawUrl) throw new Error("DashScope tidak mengembalikan gambar.");
+              // URL hasil kedaluwarsa — pindahkan ke storage sendiri.
+              const url = await storeRemote(ws, String(rawUrl), job.id, "image/png");
+              await finish(url, est);
+              return json({ ok: true, job_id: job.id, status: "succeeded", mode, provider: "dashscope" });
+            } catch (e) {
+              const msg = (e as Error).message || String(e);
+              await fail(msg);
+              throw new Error(msg);
+            }
+          }
+
+          // Video (wan): async — buat task, simpan task_id (prefix ds:), hasil
+          // diambil lewat action `poll`, pola yang sama dengan fal.ai.
+          const parameters: Record<string, unknown> = {};
+          // Wan 2.2: 480*832 = paling murah, cocok untuk testing vertikal.
+          // Model lain dibiarkan pakai ukuran default servernya.
+          if (model.model_key === "wan2.2-t2v-plus") parameters.size = "480*832";
+          const res = await fetch(`${DS_BASE}/services/aigc/video-generation/video-synthesis`, {
+            method: "POST",
+            headers: { Authorization: `Bearer ${dsKey}`, "content-type": "application/json", "X-DashScope-Async": "enable" },
+            body: JSON.stringify({ model: model.model_key, input: { prompt: finalPrompt }, parameters }),
+          });
+          const qr = await res.json().catch(() => ({}));
+          const taskId = qr?.output?.task_id;
+          if (!res.ok || !taskId) {
+            const errMsg = String(qr?.message || `DashScope error ${res.status}`).slice(0, 500);
+            await fail(errMsg);
+            throw new Error(`Gagal submit ke DashScope: ${errMsg}`);
+          }
+          await admin.from("production_jobs").update({ status: "running", external_id: `ds:${taskId}` }).eq("id", job.id);
+          return json({ ok: true, job_id: job.id, status: "running", mode, provider: "dashscope" });
+        }
+
         // fal.ai — submit ke antrean, hasil diambil lewat action `poll`
         const falKey = await getSecret(ws, "fal_key");
         if (!falKey) throw new Error("FAL key belum dipasang.");
@@ -699,8 +786,42 @@ Deno.serve(async (req) => {
         const { data: running } = await admin.from("production_jobs").select("*")
           .eq("workspace_id", ws).eq("status", "running").not("external_id", "is", null).limit(10);
         const falKey = await getSecret(ws, "fal_key");
+        const dsKey = await dashscopeKey(ws);
         let updated = 0;
         for (const jb of running || []) {
+          // ---- Task DashScope (external_id berprefix "ds:") ----
+          if (String(jb.external_id).startsWith("ds:")) {
+            if (!dsKey) continue;
+            try {
+              const taskId = String(jb.external_id).slice(3);
+              const tres = await fetch(`${DS_BASE}/tasks/${taskId}`, { headers: { Authorization: `Bearer ${dsKey}` } });
+              const tj = await tres.json().catch(() => ({}));
+              const st = tj?.output?.task_status;
+              if (st === "SUCCEEDED") {
+                const rawUrl = tj?.output?.video_url || tj?.output?.results?.[0]?.url || null;
+                if (!rawUrl) throw new Error("Task selesai tapi tidak ada URL hasil.");
+                // URL DashScope kedaluwarsa 24 jam — pindahkan ke storage sendiri.
+                const url = await storeRemote(ws, String(rawUrl), jb.id, jb.task === "video" ? "video/mp4" : "image/png");
+                const cost = Number(jb.cost_estimate_usd) || 0;
+                await admin.from("production_jobs").update({ status: "succeeded", output_url: url, cost_actual_usd: cost }).eq("id", jb.id);
+                await admin.from("assets").insert({
+                  workspace_id: ws, influencer_id: jb.influencer_id,
+                  kind: assetKind(jb.task), url, name: jb.label || `${jb.task}-${jb.id.slice(0, 8)}`,
+                });
+                if (cost > 0) {
+                  await admin.from("credits_ledger").insert({ workspace_id: ws, kind: "usage", delta_usd: -cost, note: `job ${jb.id}` });
+                }
+                updated++;
+              } else if (st === "FAILED" || st === "CANCELED" || st === "UNKNOWN") {
+                await admin.from("production_jobs").update({
+                  status: "failed",
+                  error: String(tj?.output?.message || tj?.message || `DashScope task ${st}`).slice(0, 500),
+                }).eq("id", jb.id);
+                updated++;
+              }
+            } catch (_e) { /* dicoba lagi di poll berikut */ }
+            continue;
+          }
           if (!falKey) break;
           try {
             const base = `https://queue.fal.run/${jb.model_key}/requests/${jb.external_id}`;
