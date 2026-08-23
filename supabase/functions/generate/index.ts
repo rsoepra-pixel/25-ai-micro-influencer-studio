@@ -4,6 +4,7 @@
 // Provider gambar/video ditentukan oleh kolom `provider` di provider_models:
 //   fal → fal.ai (berbayar, image/video/tts/lipsync)
 //   hf  → Hugging Face Inference (gratis sesuai kuota akun; image saja)
+//   dashscope → Alibaba DashScope (qwen-image/z-image sinkron; video wan async)
 // Provider teks (hook/script/caption/ide) memakai endpoint OpenAI-compatible:
 //   qwen → Alibaba DashScope, kimi → Moonshot, custom → base_url sendiri.
 import { createClient } from "npm:@supabase/supabase-js@2";
@@ -94,7 +95,7 @@ async function textConfig(ws: string) {
 
 // photos = data URI base64. Provider Kimi menolak URL publik, jadi base64 dipakai
 // untuk semua provider agar satu jalur saja.
-async function chat(ws: string, system: string, user: string, photos?: string[]): Promise<string> {
+async function chat(ws: string, system: string, user: string, photos?: string[], maxTokens = 1200): Promise<string> {
   const cfg = await textConfig(ws);
   if (!cfg.key) throw new Error("API key penulis AI belum dipasang — isi di Settings → Penulis AI.");
   if (!cfg.base || !cfg.model) throw new Error("Base URL / model penulis AI belum lengkap.");
@@ -115,7 +116,7 @@ async function chat(ws: string, system: string, user: string, photos?: string[])
       model: withPhotos ? cfg.vision : cfg.model,
       messages: [{ role: "system", content: system }, { role: "user", content: userContent }],
       temperature: 0.8,
-      max_tokens: 1200,
+      max_tokens: maxTokens,
     }),
   });
   const out = await res.json().catch(() => ({}));
@@ -242,6 +243,34 @@ async function hfImage(ws: string, modelKey: string, prompt: string, jobId: stri
   return admin.storage.from("media").getPublicUrl(path).data.publicUrl;
 }
 
+// ---------- DashScope (Qwen/Wan image & video) ----------
+// Memakai key yang sama dengan penulis AI kalau provider teksnya qwen — satu
+// akun DashScope melayani teks, gambar (qwen-image/z-image), dan video (wan).
+const DS_BASE = "https://dashscope-intl.aliyuncs.com/api/v1";
+async function dashscopeKey(ws: string): Promise<string | null> {
+  const dedicated = await getSecret(ws, "dashscope_key");
+  if (dedicated) return dedicated;
+  const provider = (await getSecret(ws, "text_provider")) || "qwen";
+  return provider === "qwen" ? await getSecret(ws, "text_api_key") : null;
+}
+
+// Unduh hasil dari URL DashScope (kedaluwarsa 24 jam) dan simpan permanen di
+// bucket media. Dipakai untuk gambar maupun video.
+async function storeRemote(ws: string, url: string, jobId: string, fallbackCtype: string): Promise<string> {
+  const res = await fetch(url);
+  if (!res.ok) throw new Error(`Gagal mengunduh hasil (HTTP ${res.status}).`);
+  const ctype = res.headers.get("content-type") || fallbackCtype;
+  const bytes = new Uint8Array(await res.arrayBuffer());
+  if (bytes.byteLength < 100) throw new Error("Hasil yang diunduh kosong.");
+  const ext = ctype.includes("mp4") || ctype.includes("video") ? "mp4"
+    : ctype.includes("png") ? "png" : ctype.includes("webp") ? "webp" : "jpg";
+  const path = `${ws}/${jobId}.${ext}`;
+  const { error: upErr } = await admin.storage.from("media")
+    .upload(path, bytes, { contentType: ctype, upsert: true, cacheControl: "3600" });
+  if (upErr) throw new Error(`Gagal menyimpan hasil: ${upErr.message}`);
+  return admin.storage.from("media").getPublicUrl(path).data.publicUrl;
+}
+
 // Simpan foto data-URI ke bucket `media` dan kembalikan URL publiknya.
 // Foto yang gagal dilewati diam-diam — sisa foto tetap diproses.
 async function storePhotos(ws: string, photos: string[]): Promise<string[]> {
@@ -313,8 +342,98 @@ Deno.serve(async (req) => {
         return json({ ok: true, mode: m });
       }
       case "write": {
-        // Penulis AI: kind = script | ideas | persona | lookalike.
-        const kind = ["ideas", "persona", "lookalike"].includes(body.kind) ? body.kind : "script";
+        // Penulis AI: kind = script | ideas | persona | lookalike | plan.
+        const kind = ["ideas", "persona", "lookalike", "plan"].includes(body.kind) ? body.kind : "script";
+
+        // plan: rencana konten satu periode sekaligus — pillar + daftar ide.
+        // TANGGAL sengaja TIDAK diminta ke model: model bahasa buruk soal kalender
+        // (sering meleset hari/tanggal). Model hanya memberi urutan + `weekday_hint`,
+        // penjadwalan tanggalnya dihitung deterministik di klien.
+        if (kind === "plan") {
+          const weeks = Math.min(Math.max(Number(body.weeks) || 4, 1), 8);
+          const perWeek = Math.min(Math.max(Number(body.per_week) || 4, 1), 7);
+          const total = Math.min(weeks * perWeek, 40);
+          const platform = ["tiktok", "instagram", "youtube"].includes(body.platform) ? body.platform : "tiktok";
+          const focus = String(body.focus || "").slice(0, 300);
+          const makePillars = body.make_pillars !== false;
+          const existing: string[] = Array.isArray(body.pillars)
+            ? body.pillars.map((p: unknown) => String(p)).slice(0, 8) : [];
+
+          let iname = "kreator", iniche = "", ibio = "", ilang = "Indonesia";
+          if (body.influencer_id) {
+            const { data: inf } = await admin.from("influencers")
+              .select("name,niche,persona,language,workspace_id").eq("id", body.influencer_id).maybeSingle();
+            if (inf?.workspace_id === ws) {
+              iname = inf.name; iniche = inf.niche || "";
+              ibio = (inf.persona as { bio?: string })?.bio || "";
+              ilang = inf.language === "en" ? "English" : inf.language === "mix" ? "campuran Indonesia-Inggris" : "Indonesia";
+            }
+          }
+          const platformLabel = platform === "instagram" ? "Instagram Reels" : platform === "youtube" ? "YouTube Shorts" : "TikTok";
+
+          const system =
+            `Kamu content strategist short-form video berpengalaman untuk pasar Indonesia. ` +
+            `Kamu menyusun rencana konten satu periode penuh untuk ${iname}${iniche ? `, niche ${iniche}` : ""}, ` +
+            `platform utama ${platformLabel}, bahasa ${ilang}. ` +
+            (ibio ? `Persona kreator: ${ibio} ` : "") +
+            `Jawab HANYA dengan JSON valid, tanpa penjelasan lain.`;
+
+          const pillarRule = makePillars
+            ? `1. "pillars": 3-4 content pillar. Salah satunya WAJIB pillar jualan/promosi dengan "target_ratio" ` +
+              `maksimal 20 — sisanya nilai edukasi/hiburan. Jumlah semua target_ratio HARUS tepat 100.\n`
+            : `1. "pillars": kembalikan array kosong []. Pakai pillar yang sudah ada: ${existing.join(", ")}.\n`;
+
+          const user =
+            `Susun rencana konten untuk ${weeks} minggu ke depan, ${perWeek} post per minggu (total TEPAT ${total} ide).\n` +
+            (focus ? `Fokus/tema periode ini: ${focus}\n` : "") +
+            (existing.length ? `Pillar yang sudah dipakai: ${existing.join(", ")}\n` : "") +
+            `\nAturan yang harus dipatuhi:\n` +
+            pillarRule +
+            `2. "series": 2-3 format berulang bernama (mis. "Mitos vs Fakta", "Isi Tas Aku") yang dipakai ulang ` +
+            `di beberapa ide. Format berulang bikin audiens hafal jadwal — ini penggerak konsistensi terbesar.\n` +
+            `3. "items": TEPAT ${total} ide, tiap ide punya "title" (spesifik, bukan topik umum), ` +
+            `"hook" (kalimat pembuka 1-3 detik, langsung ke inti, tanpa basa-basi "halo guys"), ` +
+            `"pillar" (harus persis salah satu nama pillar), ` +
+            `"content_type" (talking | broll | photo | carousel), ` +
+            `"series" (nama format berulang atau string kosong), ` +
+            `"weekday_hint" (0=Senin … 6=Minggu; satu series sebaiknya jatuh di hari yang sama tiap minggu).\n` +
+            `4. Sebaran pillar di "items" harus mendekati target_ratio-nya, bukan asal rata.\n` +
+            `5. Variasikan content_type — jangan semua talking head. Sisipkan broll/carousel untuk selingan produksi.\n` +
+            `6. Judul tidak boleh mirip satu sama lain; tiap ide harus berdiri sendiri.\n` +
+            `7. Taruh ide paling kuat di urutan awal (dipublikasikan lebih dulu).\n` +
+            `8. Hindari klaim medis, kesehatan, atau finansial yang spesifik.\n` +
+            `\nFormat JSON: {"pillars": [{"name": "...", "target_ratio": 40, "why": "1 kalimat kenapa pillar ini"}], ` +
+            `"series": [{"name": "...", "format": "1 kalimat cara eksekusinya"}], ` +
+            `"items": [{"title": "...", "hook": "...", "pillar": "...", "content_type": "talking", "series": "", "weekday_hint": 0}]}`;
+
+          const parsed = parseJsonLoose(await chat(ws, system, user, undefined, 4000)) as Record<string, unknown>;
+          const rawItems = Array.isArray(parsed.items) ? parsed.items : [];
+          const rawPillars = Array.isArray(parsed.pillars) ? parsed.pillars : [];
+          const TYPES = ["talking", "broll", "photo", "carousel"];
+          return json({
+            ok: true,
+            plan: {
+              pillars: rawPillars.slice(0, 6).map((p: Record<string, unknown>) => ({
+                name: String(p?.name || "").slice(0, 60),
+                target_ratio: Math.min(Math.max(Number(p?.target_ratio) || 0, 0), 100),
+                why: String(p?.why || "").slice(0, 200),
+              })).filter((p) => p.name),
+              series: (Array.isArray(parsed.series) ? parsed.series : []).slice(0, 5)
+                .map((s: Record<string, unknown>) => ({
+                  name: String(s?.name || "").slice(0, 60),
+                  format: String(s?.format || "").slice(0, 200),
+                })).filter((s) => s.name),
+              items: rawItems.slice(0, total).map((it: Record<string, unknown>) => ({
+                title: String(it?.title || "").slice(0, 200),
+                hook: String(it?.hook || "").slice(0, 300),
+                pillar: String(it?.pillar || "").slice(0, 60),
+                content_type: TYPES.includes(String(it?.content_type)) ? String(it?.content_type) : "talking",
+                series: String(it?.series || "").slice(0, 60),
+                weekday_hint: Math.min(Math.max(Number(it?.weekday_hint) || 0, 0), 6),
+              })).filter((it) => it.title),
+            },
+          });
+        }
 
         // lookalike: 1 foto acuan → fragment prompt bahasa Inggris.
         //   aspect=face     → ciri wajah/fisik  → dipakai sebagai identity prompt
@@ -576,6 +695,64 @@ Deno.serve(async (req) => {
           }
         }
 
+        if (model.provider === "dashscope") {
+          if (task !== "image" && task !== "video") throw new Error("Model DashScope di katalog ini hanya untuk gambar/video.");
+          const dsKey = await dashscopeKey(ws);
+          if (!dsKey) {
+            throw new Error("Key DashScope belum ada — model ini memakai API key Qwen yang sama dengan Penulis AI (Settings → Penulis AI, provider Qwen).");
+          }
+
+          if (task === "image") {
+            // Gambar (qwen-image / z-image): endpoint multimodal-generation, SINKRON —
+            // hasil langsung ada di respons, tidak lewat antrean task.
+            try {
+              const res = await fetch(`${DS_BASE}/services/aigc/multimodal-generation/generation`, {
+                method: "POST",
+                headers: { Authorization: `Bearer ${dsKey}`, "content-type": "application/json" },
+                body: JSON.stringify({
+                  model: model.model_key,
+                  input: { messages: [{ role: "user", content: [{ text: finalPrompt || "portrait photo" }] }] },
+                  parameters: { n: 1 },
+                }),
+              });
+              const out = await res.json().catch(() => ({}));
+              if (!res.ok) throw new Error(String(out?.message || `DashScope error ${res.status}`).slice(0, 400));
+              const content = out?.output?.choices?.[0]?.message?.content;
+              const rawUrl = Array.isArray(content) ? content.find((c: Record<string, unknown>) => c?.image)?.image : null;
+              if (!rawUrl) throw new Error("DashScope tidak mengembalikan gambar.");
+              // URL hasil kedaluwarsa — pindahkan ke storage sendiri.
+              const url = await storeRemote(ws, String(rawUrl), job.id, "image/png");
+              await finish(url, est);
+              return json({ ok: true, job_id: job.id, status: "succeeded", mode, provider: "dashscope" });
+            } catch (e) {
+              const msg = (e as Error).message || String(e);
+              await fail(msg);
+              throw new Error(msg);
+            }
+          }
+
+          // Video (wan): async — buat task, simpan task_id (prefix ds:), hasil
+          // diambil lewat action `poll`, pola yang sama dengan fal.ai.
+          const parameters: Record<string, unknown> = {};
+          // Wan 2.2: 480*832 = paling murah, cocok untuk testing vertikal.
+          // Model lain dibiarkan pakai ukuran default servernya.
+          if (model.model_key === "wan2.2-t2v-plus") parameters.size = "480*832";
+          const res = await fetch(`${DS_BASE}/services/aigc/video-generation/video-synthesis`, {
+            method: "POST",
+            headers: { Authorization: `Bearer ${dsKey}`, "content-type": "application/json", "X-DashScope-Async": "enable" },
+            body: JSON.stringify({ model: model.model_key, input: { prompt: finalPrompt }, parameters }),
+          });
+          const qr = await res.json().catch(() => ({}));
+          const taskId = qr?.output?.task_id;
+          if (!res.ok || !taskId) {
+            const errMsg = String(qr?.message || `DashScope error ${res.status}`).slice(0, 500);
+            await fail(errMsg);
+            throw new Error(`Gagal submit ke DashScope: ${errMsg}`);
+          }
+          await admin.from("production_jobs").update({ status: "running", external_id: `ds:${taskId}` }).eq("id", job.id);
+          return json({ ok: true, job_id: job.id, status: "running", mode, provider: "dashscope" });
+        }
+
         // fal.ai — submit ke antrean, hasil diambil lewat action `poll`
         const falKey = await getSecret(ws, "fal_key");
         if (!falKey) throw new Error("FAL key belum dipasang.");
@@ -609,8 +786,42 @@ Deno.serve(async (req) => {
         const { data: running } = await admin.from("production_jobs").select("*")
           .eq("workspace_id", ws).eq("status", "running").not("external_id", "is", null).limit(10);
         const falKey = await getSecret(ws, "fal_key");
+        const dsKey = await dashscopeKey(ws);
         let updated = 0;
         for (const jb of running || []) {
+          // ---- Task DashScope (external_id berprefix "ds:") ----
+          if (String(jb.external_id).startsWith("ds:")) {
+            if (!dsKey) continue;
+            try {
+              const taskId = String(jb.external_id).slice(3);
+              const tres = await fetch(`${DS_BASE}/tasks/${taskId}`, { headers: { Authorization: `Bearer ${dsKey}` } });
+              const tj = await tres.json().catch(() => ({}));
+              const st = tj?.output?.task_status;
+              if (st === "SUCCEEDED") {
+                const rawUrl = tj?.output?.video_url || tj?.output?.results?.[0]?.url || null;
+                if (!rawUrl) throw new Error("Task selesai tapi tidak ada URL hasil.");
+                // URL DashScope kedaluwarsa 24 jam — pindahkan ke storage sendiri.
+                const url = await storeRemote(ws, String(rawUrl), jb.id, jb.task === "video" ? "video/mp4" : "image/png");
+                const cost = Number(jb.cost_estimate_usd) || 0;
+                await admin.from("production_jobs").update({ status: "succeeded", output_url: url, cost_actual_usd: cost }).eq("id", jb.id);
+                await admin.from("assets").insert({
+                  workspace_id: ws, influencer_id: jb.influencer_id,
+                  kind: assetKind(jb.task), url, name: jb.label || `${jb.task}-${jb.id.slice(0, 8)}`,
+                });
+                if (cost > 0) {
+                  await admin.from("credits_ledger").insert({ workspace_id: ws, kind: "usage", delta_usd: -cost, note: `job ${jb.id}` });
+                }
+                updated++;
+              } else if (st === "FAILED" || st === "CANCELED" || st === "UNKNOWN") {
+                await admin.from("production_jobs").update({
+                  status: "failed",
+                  error: String(tj?.output?.message || tj?.message || `DashScope task ${st}`).slice(0, 500),
+                }).eq("id", jb.id);
+                updated++;
+              }
+            } catch (_e) { /* dicoba lagi di poll berikut */ }
+            continue;
+          }
           if (!falKey) break;
           try {
             const base = `https://queue.fal.run/${jb.model_key}/requests/${jb.external_id}`;
