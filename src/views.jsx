@@ -219,7 +219,7 @@ function downscaleToDataUri(file, maxSide = 768, quality = 0.82) {
   });
 }
 
-function PersonaWizard({ onApply, onClose, initialAnswers, refine }) {
+function PersonaWizard({ onApply, onClose, initialAnswers, refine, notice }) {
   const [ans, setAns] = useState({ language: "id", basis: "flexible", ...(initialAnswers || {}) });
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState(null);
@@ -262,6 +262,13 @@ function PersonaWizard({ onApply, onClose, initialAnswers, refine }) {
             ? "Deskripsi yang sekarang dipakai sebagai acuan — AI akan merapikannya, bukan mengganti karakternya. Lengkapi yang masih kosong agar hasilnya lebih tepat."
             : "Jawab seadanya — yang kosong akan diisi AI. Hasilnya bisa kamu edit sebelum dipakai."}
         </p>
+
+        {notice && (
+          <div className="mb3" style={{
+            background: "#fffbeb", border: "1px solid #fde68a", color: "#92400e",
+            borderRadius: 10, padding: 10, fontSize: 13, lineHeight: 1.5,
+          }}>{notice}</div>
+        )}
 
         {!out && (
           <>
@@ -712,6 +719,21 @@ export function InfluencerDetail({ id, ws, refresh, tick, mode }) {
         {wizardOpen && (
           <PersonaWizard
             refine
+            notice={
+              <>
+                <b>Sebelum lanjut.</b> Begitu kamu klik “Pakai di formulir”, isi <b>Bio / persona</b> di
+                formulir diganti hasil AI
+                {lockedVal
+                  ? " — identity prompt aman karena sedang terkunci 🔒."
+                  : ", dan identity prompt ikut ditimpa. Kunci 🔒 dulu kalau mau mempertahankannya."}
+                <br />
+                Perubahan teks itu baru permanen setelah kamu menekan <b>Simpan</b>. Kalau hasilnya kurang
+                pas, tinggal muat ulang halaman tanpa menyimpan.
+                <br />
+                Foto referensi beda perlakuannya: begitu “Pakai di formulir” diklik, foto <b>langsung</b> masuk
+                Identity Kit dan tetap tersimpan walaupun kamu tidak menekan Simpan.
+              </>
+            }
             initialAnswers={{
               niche: inf.niche || "",
               language: inf.language || "id",
