@@ -1,182 +1,166 @@
-# Akses Project Ini dari HP
+# Kendalikan Claude Code Laptop dari HP
 
-Repo ini sudah disiapkan supaya bisa dipegang dari HP, tanpa laptop. Ada **dua
-jalur** yang beda tujuan — kebanyakan orang butuh keduanya.
+Fitur yang dicari namanya **Remote Control**. Claude Code tetap jalan di
+laptopmu — folder asli, file asli, MCP lokal, `.env` lokal, `node_modules` yang
+sudah ada. HP cuma jadi layar dan keyboard jarak jauh.
 
-| | Jalur A — Operasikan studio | Jalur B — Ngoprek kode |
-|---|---|---|
-| **Buat apa** | Bikin ide konten, tulis hook/script, cek laporan | Ubah kode, perbaiki bug, deploy |
-| **Lewat** | Claude app (iOS/Android) + custom connector | Claude Code on the web (`claude.ai/code`) |
-| **Nyentuh** | Database studio | Repo GitHub |
-| **Status** | ✅ Siap pakai | ⚠️ Jalan, tapi ada 1 hal yang belum dipasang |
+Ini beda dari dua hal yang mirip:
 
-Jalur A itu "ngobrol sama studio". Jalur B itu "ngoding dari HP".
+| | Jalan di mana | Foldernya | Dipakai kapan |
+|---|---|---|---|
+| **Remote Control** | Laptopmu | **Folder lokal asli** | Lanjutin kerjaan yang sudah jalan di laptop |
+| Claude Code on the web | Container cloud | Clone segar dari GitHub | Mulai dari nol, laptop lagi tidak ada |
+| Custom connector MCP | Server studio | Tidak ada folder | Cuma mau operasikan data studio |
 
----
-
-## Jalur A — Operasikan studio dari Claude app
-
-Ini yang seluruh kerja OAuth di repo ini dibangun untuknya. Sekali disambungkan,
-kamu bisa buka Claude di HP dan langsung bilang *"bikinin 5 ide konten buat
-Kirana minggu depan, tulis hook-nya sekalian"* — Claude yang menulis, lalu
-menyimpannya sendiri ke planner.
-
-### Sambungkan (sekali saja)
-
-1. Buka **claude.ai** — boleh dari browser HP, tidak harus laptop
-2. **Settings → Connectors → Add custom connector**
-3. Isi URL:
-
-   ```
-   https://25-ai-microinfluencer.netlify.app/mcp
-   ```
-
-4. Claude otomatis menemukan halaman login (lewat OAuth discovery), lalu
-   menampilkan layar consent
-5. Masuk pakai **email + password akun studio yang sama** seperti di web app
-6. Selesai — connector langsung muncul juga di **Claude app di HP**
-
-Tidak ada token yang perlu disalin-tempel. Itu memang tujuannya: claude.ai tidak
-punya tempat mengisi header `Authorization`, jadi seluruh alur dibuat lewat
-OAuth supaya cukup login sekali.
-
-### Yang bisa disuruh dari HP
-
-| Minta | Tool yang dipakai Claude |
-|---|---|
-| "Daftar influencer aktif" | `list_influencers` |
-| "Bikin agent baru, niche skincare" | `create_influencer` |
-| "Konten apa saja yang dijadwalkan minggu ini" | `list_content` |
-| "Tulis script buat konten #12, simpan" | `update_content` |
-| "Pillar mana yang porsinya kurang" | `list_pillars` |
-| "Laporan 30 hari terakhir" | `get_report` |
-
-Akses token berlaku **12 jam**, refresh token **90 hari** — jadi tidak perlu
-login ulang tiap hari. Kalau perlu putus, cabut dari Settings → Connectors.
-
-### Kalau gagal nyambung
-
-| Gejala | Cek |
-|---|---|
-| "Couldn't connect" tanpa layar login | Site Netlify sedang down — discovery di root gagal |
-| Layar login muncul tapi ditolak | Email/password salah, atau akun belum tergabung di workspace |
-| Tadinya jalan, tiba-tiba minta hubungkan ulang | Refresh token kedaluwarsa (90 hari) atau dicabut — sambungkan ulang |
+Halaman ini soal yang pertama.
 
 ---
 
-## Jalur B — Ngoprek kode dari HP
+## Syarat
 
-Buka **`claude.ai/code`** di browser HP (atau lewat Claude app). Sesi berjalan di
-container cloud: repo di-clone segar dari GitHub, Claude kerja di sana, hasilnya
-di-push balik. HP-mu cuma jadi layar — tidak ada yang di-install di HP.
+Cek dulu, karena kalau satu saja tidak terpenuhi, perintahnya langsung menolak.
 
-### Yang sudah siap
+| Syarat | Catatan |
+|---|---|
+| **Paket** Pro, Max, Team, atau Enterprise | API key **tidak didukung** |
+| **Login lewat claude.ai** | `claude auth login`, atau `/login` di dalam Claude Code |
+| **Bukan** token dari `claude setup-token` | Token itu hanya bisa memanggil model, tidak bisa buka sesi remote |
+| **Lewat `api.anthropic.com` langsung** | Bukan Bedrock / Vertex / Foundry, dan `ANTHROPIC_BASE_URL` tidak boleh diarahkan ke gateway atau proxy |
+| Variabel ini **tidak** di-set | `DISABLE_TELEMETRY`, `DO_NOT_TRACK`, `CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC`, `DISABLE_GROWTHBOOK` — semuanya mematikan evaluasi feature flag yang jadi sandaran fitur ini |
+| Folder project sudah pernah di-*trust* | Jalankan `claude` sekali di folder project. Dialog trust tidak pernah menyimpan izin untuk home directory, jadi jangan mulai dari `~` |
+| App Claude di HP | [iOS](https://apps.apple.com/us/app/claude-by-anthropic/id6473753684) / [Android](https://play.google.com/store/apps/details?id=com.anthropic.claude) — atau ketik `/mobile` di Claude Code untuk memunculkan QR download |
 
-- ✅ Repo ada di GitHub dan sudah diberi akses ke Claude
-- ✅ [`.claude/settings.json`](../.claude/settings.json) berisi allowlist tool
-  read-only, jadi Claude tidak bolak-balik minta izin untuk hal yang aman —
-  **ini penting banget di HP**, karena tiap prompt izin artinya kamu harus
-  bolak-balik nge-tap layar kecil
+Kalau pakai akun Team/Enterprise, Owner harus menyalakan toggle Remote Control
+dulu di [claude.ai/admin-settings/claude-code](https://claude.ai/admin-settings/claude-code).
 
-### Yang belum: dependency tidak ter-install otomatis
+---
 
-Tiap sesi web mulai dari container kosong. `node_modules/` masuk `.gitignore`,
-jadi begitu sesi mulai, `npm run build` bakal gagal sampai ada yang menjalankan
-`npm install` duluan. Di laptop itu sepele; di HP, itu satu ronde bolak-balik
-yang tidak perlu.
+## Setup
 
-Perbaikannya: **SessionStart hook** — script yang dijalankan otomatis tiap sesi
-web dimulai.
+### 1. Nyalakan dari laptop
 
-**1.** Buat `.claude/hooks/session-start.sh`:
+Ada tiga cara. Pilih sesuai situasimu:
 
-```bash
-#!/bin/bash
-set -euo pipefail
+| Situasi | Perintah |
+|---|---|
+| **Lagi ngobrol sama Claude, mau dilanjut dari HP** | `/remote-control` (singkatnya `/rc`) |
+| Mau mulai sesi baru yang sejak awal bisa diakses HP | `claude --remote-control "Studio"` (singkatnya `--rc`) |
+| Mau laptop jadi server, banyak sesi sekaligus | `claude remote-control` |
 
-# Hanya untuk sesi di cloud (Claude Code on the web). Di laptop, node_modules
-# sudah ada dan tidak perlu diapa-apakan.
-if [ "${CLAUDE_CODE_REMOTE:-}" != "true" ]; then
-  exit 0
-fi
-
-cd "$CLAUDE_PROJECT_DIR"
-
-# `npm install`, bukan `npm ci` — state container di-cache setelah hook selesai,
-# jadi install berikutnya jauh lebih cepat.
-npm install
-```
-
-Lalu bikin bisa dieksekusi:
+Untuk repo ini, yang paling sering kepakai yang tengah:
 
 ```bash
-chmod +x .claude/hooks/session-start.sh
+cd ~/path/ke/25-ai-micro-influencer-studio
+claude --rc "Studio"
 ```
 
-**2.** Daftarkan di `.claude/settings.json` — **gabung** dengan blok
-`permissions` yang sudah ada, jangan ditimpa:
+Bedanya `--rc` dan `remote-control`: yang pertama tetap sesi interaktif biasa —
+kamu masih bisa ngetik di terminal sambil sesinya juga terbuka di HP. Yang kedua
+jadi proses server murni yang cuma menunggu koneksi.
+
+### 2. Sambungkan dari HP
+
+Tiga cara, sama saja hasilnya:
+
+- **Scan QR code.** Di sesi interaktif, jalankan `/remote-control` lagi untuk
+  membuka panel berisi URL + QR. Di server mode, tekan **spasi**.
+- **Buka URL sesi** yang ditampilkan, di browser HP.
+- **Buka app Claude → tab Code**, cari sesinya di daftar. Sesi Remote Control
+  ditandai ikon komputer dengan titik hijau kalau sedang online.
+
+### 3. (Opsional) Nyalakan otomatis untuk semua sesi
+
+Supaya tidak perlu mengetik `/rc` tiap kali:
+
+```
+/config  →  Enable Remote Control for all sessions
+```
+
+Atau langsung di `~/.claude/settings.json` milikmu:
 
 ```json
-{
-  "permissions": {
-    "allow": [ "... biarkan isinya seperti sekarang ..." ]
-  },
-  "hooks": {
-    "SessionStart": [
-      {
-        "hooks": [
-          {
-            "type": "command",
-            "command": "$CLAUDE_PROJECT_DIR/.claude/hooks/session-start.sh"
-          }
-        ]
-      }
-    ]
-  }
-}
+{ "remoteControlAtStartup": true }
 ```
 
-**3.** Merge ke branch default (`main`). Hook baru terpakai kalau sudah ada di
-branch default — sesi berikutnya otomatis memakainya.
+> Taruh di **user settings** (`~/.claude/settings.json`), bukan di
+> `.claude/settings.json` repo. Di settings project, nilai `true` sengaja
+> diabaikan — supaya file yang ter-commit tidak bisa menyalakan Remote Control
+> untuk semua orang yang membuka repo. Nilai `false` tetap dihormati.
 
-> Hook di atas **sinkron**: sesi baru mulai setelah `npm install` selesai.
-> Jaminannya, dependency pasti siap. Ongkosnya, sesi mulai agak lambat. Kalau
-> mau sesi langsung terbuka dan install jalan di belakang, tambahkan baris
-> `echo '{"async": true, "asyncTimeout": 300000}'` tepat setelah `set -euo
-> pipefail` — risikonya Claude bisa keburu jalan sebelum install kelar.
+### 4. Nyalakan push notification
 
-### Konvensi kerja dari HP
+Ini yang bikin Remote Control kepakai beneran — tanpa ini kamu harus buka app
+terus untuk mengecek.
 
-- **Selalu kerja di branch sendiri**, jangan langsung `main`. Sesi web biasanya
-  sudah otomatis membuat branch `claude/<topik>`.
-- **Commit dan push sebelum menutup sesi.** Container-nya sementara — kalau
-  ditinggal terlalu lama, isinya dibuang. Apa pun yang belum ter-push, hilang.
-- **Minta ringkasan, bukan diff mentah.** Membaca diff panjang di layar HP itu
-  siksaan. Lebih enak: *"jelaskan apa yang berubah dan kenapa"*, baru buka file
-  spesifik kalau perlu.
-- **Titip kerjaan panjang lalu tinggal.** Sesi jalan di cloud, jadi boleh
-  ditinggal — HP mati atau sinyal putus tidak menghentikannya. Buka lagi nanti
-  untuk melihat hasilnya.
+```
+/config  →  Push when Claude decides       (tugas panjang selesai)
+         →  Push when actions required     (butuh izin / pertanyaan)
+```
+
+Yang kedua penting: itu yang membuat **permission prompt nyampe ke HP**, jadi
+kamu bisa menyetujui tool call dari mana saja. Bisa juga minta langsung di
+prompt: *"kabari kalau build-nya sudah selesai"*.
 
 ---
 
-## Mana yang dipakai kapan
+## Kenapa ini cocok buat repo ini
 
-| Situasi | Jalur |
+Karena eksekusinya di laptop, semua yang lokal tetap kepakai:
+
+- `node_modules/` sudah ada — `npm run build` jalan tanpa install ulang
+- MCP lokal (Supabase, Netlify, GitHub) tetap tersambung
+- Kredensial dan `.env` lokal kebaca
+- Ketik `@` di HP tetap meng-autocomplete path file dari project lokal
+
+Jadi dari HP kamu bisa minta hal yang butuh environment lokal — deploy edge
+function, jalankan build, cek log Supabase — yang tidak bisa dilakukan sesi
+cloud tanpa setup ulang.
+
+---
+
+## Yang perlu diterima
+
+| Batasan | Artinya sehari-hari |
 |---|---|
-| Lagi di jalan, kepikiran ide konten | **A** — buka Claude app, langsung dikte |
-| Mau lihat performa minggu ini | **A** — minta `get_report` |
-| Ada bug di web app, mau diperbaiki sekarang | **B** — `claude.ai/code` |
-| Mau nambah tool baru ke MCP | **B** — ubah `supabase/functions/mcp/index.ts` |
-| Mau tahu kenapa connector-nya tiba-tiba error | **B** — Claude bisa baca log Supabase |
+| **Proses lokal harus tetap hidup** | Tutup terminal = sesi mati. Kalau laptop diakses lewat SSH, jalankan di dalam `tmux` atau `screen` |
+| Laptop harus nyala dan online | Kalau tidur atau sinyal putus, Claude Code menyambung ulang sendiri begitu hidup lagi |
+| Sebagian perintah cuma bisa di terminal | `/plugin` dan `/resume` tidak jalan dari HP |
+| Perintah dari HP harus pakai argumen | `/model sonnet`, `/effort high`, `/autocompact 500k` — bukan picker. Yang jalan dari HP: `/compact`, `/clear`, `/context`, `/usage`, `/recap`, `/mcp`, `/config key=value` |
+| Server mode menyerah kalau jaringan mati >10 menit | Prosesnya keluar; jalankan `claude remote-control` lagi |
+| Sesi bisa dibangkitkan ~4 jam setelah server dimatikan | `claude remote-control --continue` di folder yang sama |
+
+---
+
+## Keamanan
+
+- Laptopmu **hanya membuat koneksi keluar** (HTTPS ke Anthropic). Tidak ada port
+  yang dibuka — jadi tidak perlu port forwarding, VPN, atau Tailscale.
+- Eksekusi perintah dan akses file **tetap di laptopmu**.
+- Selama Remote Control aktif, transcript percakapan disimpan di server Anthropic
+  — itu yang membuat percakapannya sinkron antar device dan bisa nyambung lagi
+  setelah koneksi putus.
+- Mau mematikan fitur ini sepenuhnya: setting `disableRemoteControl`.
+
+---
+
+## Kalau gagal
+
+| Pesan error | Perbaikan |
+|---|---|
+| *Remote Control requires a claude.ai subscription* | `claude auth login` dan pilih opsi claude.ai. Kalau `ANTHROPIC_API_KEY` ter-set, unset dulu |
+| *requires a full-scope login token* | Kamu pakai token dari `claude setup-token` atau `CLAUDE_CODE_OAUTH_TOKEN`. Login ulang dengan `claude auth login` |
+| *only available when using Claude via api.anthropic.com* | Unset `ANTHROPIC_BASE_URL` / `CLAUDE_CODE_USE_BEDROCK` / `CLAUDE_CODE_USE_VERTEX`, lalu restart sesi |
+| *requires feature-flag evaluation* | Salah satu dari `DISABLE_TELEMETRY`, `DO_NOT_TRACK`, `CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC`, `DISABLE_GROWTHBOOK` ter-set. Pesannya menyebut yang mana |
+| *isn't enabled for this account* | `claude auth logout` lalu `claude auth login`. Jalankan `claude doctor` untuk melihat cek mana yang gagal |
+| *Remote credentials fetch failed* | Ulangi dengan `claude remote-control --verbose` untuk melihat penyebabnya |
+| Notifikasi tidak sampai | Buka app Claude di HP sekali supaya token push-nya segar. iOS: cek Focus mode. Android: keluarkan app Claude dari battery optimization |
+
+Notifikasi juga sengaja **tidak** dikirim selagi kamu sedang mengetik di
+terminal yang tersambung — bukan bug.
 
 ---
 
 ## Rujukan
 
-- Cara kerja Claude Code on the web (environment, network policy, env var):
-  <https://code.claude.com/docs/en/claude-code-on-the-web>
-- Endpoint MCP: `https://25-ai-microinfluencer.netlify.app/mcp`
-- Definisi tool + auth: [`supabase/functions/mcp/index.ts`](../supabase/functions/mcp/index.ts)
-- Alur OAuth: [`supabase/functions/oauth/index.ts`](../supabase/functions/oauth/index.ts)
-- Routing origin publik: [`netlify.toml`](../netlify.toml)
+- Dokumentasi lengkap: <https://code.claude.com/docs/en/remote-control>
+- Perbandingan dengan sesi cloud: <https://code.claude.com/docs/en/claude-code-on-the-web>
