@@ -1,20 +1,24 @@
-// Edge function `app` — hosting statis untuk SPA + helper signup + aksi admin.
-// File site diambil dari repo GitHub publik (folder site/, hasil `npm run
-// build:site`) dan di-cache di memori — deploy ulang situs cukup `git push`.
-// Deploy dengan verify_jwt=false KARENA ini halaman web publik (dan signup
-// terjadi sebelum ada JWT) — aksi admin diautentikasi manual via Authorization.
+// Edge function `app` — helper signup + aksi admin (akun, token MCP, koneksi).
+//
+// Dulu fungsi ini juga menyajikan HTML situs dari folder `site/` di repo. Itu
+// sudah dilepas: supabase.co memaksa content-type `text/plain` untuk HTML,
+// jadi halamannya tidak pernah benar-benar dirender browser — sementara
+// `site/` jadi artefak build kedua di samping `dist/` milik Netlify, yang bisa
+// basi diam-diam. Situsnya sekarang hanya punya satu sumber: `src/` yang
+// dibangun Netlify. GET di sini tinggal mengarahkan ke sana.
+//
+// Deploy dengan verify_jwt=false KARENA signup terjadi sebelum ada JWT —
+// aksi admin diautentikasi manual via Authorization.
 import { createClient } from "npm:@supabase/supabase-js@2";
 
 const SB_URL = Deno.env.get("SUPABASE_URL")!;
 const admin = createClient(SB_URL, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!, { auth: { persistSession: false } });
 
-// Origin publik tempat endpoint MCP dipasang (Netlify mem-proxy ke edge
-// function; lihat netlify.toml). Inilah URL yang ditempel di claude.ai.
-const MCP_CONNECTOR_URL = "https://25-ai-microinfluencer.netlify.app/mcp";
-
-const SITE_BASE =
-  "https://raw.githubusercontent.com/rsoepra-pixel/25-ai-micro-influencer-studio/main/site";
-const CACHE_TTL_MS = 60_000;
+// Satu-satunya origin publik app ini: Netlify, dibangun dari `src/`.
+// Netlify juga yang mem-proxy /mcp dan /oauth/* ke edge function — lihat
+// netlify.toml. `${APP_ORIGIN}/mcp` inilah URL yang ditempel di claude.ai.
+const APP_ORIGIN = "https://25-ai-microinfluencer.netlify.app";
+const MCP_CONNECTOR_URL = `${APP_ORIGIN}/mcp`;
 
 const CORS = {
   "Access-Control-Allow-Origin": "*",
@@ -34,42 +38,12 @@ async function requireUser(req: Request) {
   return { user: data.user, ws: mem.workspace_id as string, role: mem.role as string };
 }
 
-const cache = new Map<string, { at: number; body: Uint8Array }>();
-async function getFile(name: string): Promise<Uint8Array | null> {
-  const hit = cache.get(name);
-  if (hit && Date.now() - hit.at < CACHE_TTL_MS) return hit.body;
-  try {
-    const res = await fetch(`${SITE_BASE}/${name}`);
-    if (res.ok) {
-      const body = new Uint8Array(await res.arrayBuffer());
-      cache.set(name, { at: Date.now(), body });
-      return body;
-    }
-  } catch (_e) { /* pakai cache lama di bawah jika ada */ }
-  return hit?.body ?? null;
-}
-
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: CORS });
 
   if (req.method === "POST") {
     try {
       const body = await req.json().catch(() => ({}));
-      if (body.action === "sync_site") {
-        // Mirror site/ dari repo GitHub publik ke bucket storage `site`
-        // (idempoten & murah — konten publik, aman dipanggil siapa pun).
-        const uploaded: string[] = [];
-        for (const name of ["index.html", "privacy.html", "terms.html"]) {
-          const res = await fetch(`${SITE_BASE}/${name}`);
-          if (!res.ok) throw new Error(`Fetch ${name} gagal: ${res.status}`);
-          const bytes = new Uint8Array(await res.arrayBuffer());
-          const { error } = await admin.storage.from("site")
-            .upload(name, bytes, { contentType: "text/html; charset=utf-8", upsert: true, cacheControl: "300" });
-          if (error) throw new Error(`Upload ${name} gagal: ${error.message}`);
-          uploaded.push(name);
-        }
-        return json({ ok: true, uploaded });
-      }
       if (body.action === "admin_overview") {
         // Info akun sendiri + (khusus owner) daftar anggota workspace.
         const c = await requireUser(req);
@@ -175,12 +149,11 @@ Deno.serve(async (req) => {
     }
   }
 
-  const url = new URL(req.url);
-  const m = url.pathname.match(/\/(privacy|terms)\.html$/);
-  const name = m ? `${m[1]}.html` : "index.html";
-  const f = await getFile(name);
-  if (!f) return new Response("Site belum tersedia — cek folder site/ di repo.", { status: 404, headers: CORS });
-  return new Response(f, {
-    headers: { "content-type": "text/html; charset=utf-8", "cache-control": "public, max-age=300", ...CORS },
+  // Bookmark lama ke URL fungsi ini diarahkan ke situs sebenarnya, bukan
+  // disajikan salinannya — supaya tidak pernah ada dua versi yang beredar.
+  const m = new URL(req.url).pathname.match(/\/(privacy|terms)\.html$/);
+  return new Response(null, {
+    status: 302,
+    headers: { Location: m ? `${APP_ORIGIN}/${m[1]}.html` : `${APP_ORIGIN}/`, ...CORS },
   });
 });
