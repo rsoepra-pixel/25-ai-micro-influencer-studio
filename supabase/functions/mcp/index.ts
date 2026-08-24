@@ -1,8 +1,11 @@
 // Edge function `mcp` — MCP server (JSON-RPC 2.0 over Streamable HTTP) supaya
 // AI Micro Influencer Studio bisa dioperasikan langsung dari Claude.
 //
-// Otentikasi: header `Authorization: Bearer <token>`; token dibuat di
-// Settings → Kontrol lewat Claude (MCP), disimpan di app_secrets per workspace.
+// Otentikasi lewat header `Authorization: Bearer <token>`, dua jalur:
+//   - access token OAuth (`mcpa_...`) dari edge function `oauth` — dipakai
+//     claude.ai, yang tidak punya tempat mengisi header manual;
+//   - token statik (`mis_...`) dari Settings — dipakai `claude mcp add` di
+//     terminal, yang memang bisa mengirim --header sendiri.
 // Deploy dengan verify_jwt=false KARENA klien MCP mengirim token kita sendiri,
 // bukan JWT Supabase — token diverifikasi manual di bawah.
 //
@@ -18,9 +21,18 @@ const CORS = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, content-type, mcp-protocol-version, mcp-session-id",
   "Access-Control-Allow-Methods": "POST, GET, OPTIONS",
+  // Tanpa ini klien di browser tidak bisa membaca WWW-Authenticate, jadi tidak
+  // tahu ke mana harus mencari metadata OAuth saat kena 401.
+  "Access-Control-Expose-Headers": "www-authenticate",
 };
 
 const PROTOCOL_FALLBACK = "2025-06-18";
+
+// Origin publik (Netlify) — lihat netlify.toml. Dipakai di WWW-Authenticate
+// supaya klien tahu di mana dokumen Protected Resource Metadata berada.
+const ORIGIN = "https://25-ai-microinfluencer.netlify.app";
+const RESOURCE = `${ORIGIN}/mcp`;
+const PRM_URL = `${ORIGIN}/.well-known/oauth-protected-resource`;
 const STATUSES = ["idea", "scripting", "producing", "review", "scheduled", "published"];
 
 type Ctx = { ws: string };
@@ -334,22 +346,63 @@ async function runTool(name: string, args: Record<string, unknown>, ctx: Ctx) {
 class AuthFailed extends Error {}
 class LookupFailed extends Error {}
 
-async function authenticate(req: Request): Promise<Ctx> {
-  const token = (req.headers.get("authorization") || "").replace(/^Bearer\s+/i, "").trim();
-  if (!token) throw new AuthFailed("no token");
+async function sha256hex(s: string): Promise<string> {
+  const d = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(s));
+  return [...new Uint8Array(d)].map((b) => b.toString(16).padStart(2, "0")).join("");
+}
 
+// Kueri sekali-ulang: hanya kegagalan kueri yang di-retry, bukan token salah.
+// PromiseLike, bukan Promise: builder Postgrest itu thenable tapi bukan Promise.
+async function lookup<T>(
+  run: () => PromiseLike<{ data: unknown; error: { message?: string } | null }>,
+): Promise<T | null> {
   let lastErr: unknown = null;
   for (let attempt = 0; attempt < 2; attempt++) {
-    const { data, error } = await admin.from("app_secrets").select("workspace_id")
-      .eq("key", "mcp_token").eq("value", token).maybeSingle();
-    if (!error) {
-      if (!data) throw new AuthFailed("token mismatch");
-      return { ws: data.workspace_id as string };
-    }
+    const { data, error } = await run();
+    if (!error) return (data ?? null) as T | null;
     lastErr = error;
     if (attempt === 0) await new Promise((r) => setTimeout(r, 250));
   }
   throw new LookupFailed(String((lastErr as { message?: string })?.message || lastErr));
+}
+
+// Token statik lama (`mis_...`) — dibuat di Settings, dipakai `claude mcp add`.
+async function authStatic(token: string): Promise<Ctx> {
+  const row = await lookup<{ workspace_id: string }>(() =>
+    admin.from("app_secrets").select("workspace_id")
+      .eq("key", "mcp_token").eq("value", token).maybeSingle());
+  if (!row) throw new AuthFailed("token mismatch");
+  return { ws: row.workspace_id };
+}
+
+// Access token OAuth (`mcpa_...`) — dipakai claude.ai sebagai connector.
+// Disimpan sebagai hash, jadi yang dicocokkan hash-nya.
+async function authOAuth(token: string): Promise<Ctx> {
+  const hash = await sha256hex(token);
+  const row = await lookup<{
+    id: string; workspace_id: string; access_expires_at: string;
+    revoked_at: string | null; last_used_at: string | null;
+  }>(() =>
+    admin.from("oauth_tokens")
+      .select("id, workspace_id, access_expires_at, revoked_at, last_used_at")
+      .eq("access_token_hash", hash).maybeSingle());
+  if (!row) throw new AuthFailed("token mismatch");
+  if (row.revoked_at) throw new AuthFailed("token revoked");
+  if (new Date(row.access_expires_at) < new Date()) throw new AuthFailed("token expired");
+
+  // Catat pemakaian untuk ditampilkan di Settings, tapi jangan tiap request —
+  // ini jalur panas, satu tulis per 5 menit sudah cukup informatif.
+  const last = row.last_used_at ? new Date(row.last_used_at).getTime() : 0;
+  if (Date.now() - last > 5 * 60_000) {
+    await admin.from("oauth_tokens").update({ last_used_at: new Date().toISOString() }).eq("id", row.id);
+  }
+  return { ws: row.workspace_id };
+}
+
+async function authenticate(req: Request): Promise<Ctx> {
+  const token = (req.headers.get("authorization") || "").replace(/^Bearer\s+/i, "").trim();
+  if (!token) throw new AuthFailed("no token");
+  return token.startsWith("mis_") ? await authStatic(token) : await authOAuth(token);
 }
 
 // ---------- JSON-RPC ----------
@@ -396,6 +449,17 @@ async function handleRpc(msg: Record<string, unknown>, ctx: Ctx): Promise<unknow
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: CORS });
   if (req.method === "GET") {
+    // Salinan Protected Resource Metadata, untuk klien yang menembak URL
+    // supabase langsung (bukan lewat origin Netlify).
+    if (new URL(req.url).pathname.endsWith("/.well-known/oauth-protected-resource")) {
+      return new Response(JSON.stringify({
+        resource: RESOURCE,
+        authorization_servers: [ORIGIN],
+        bearer_methods_supported: ["header"],
+        scopes_supported: ["mcp"],
+        resource_name: "AI Micro Influencer Studio",
+      }), { headers: { "content-type": "application/json", ...CORS } });
+    }
     // Transport ini tidak membuka stream SSE terpisah; semua balasan lewat POST.
     return new Response("MCP endpoint — gunakan POST (Streamable HTTP).", { status: 405, headers: CORS });
   }
@@ -411,9 +475,16 @@ Deno.serve(async (req) => {
         headers: { "content-type": "application/json", "retry-after": "2", ...CORS },
       });
     }
-    return new Response(JSON.stringify(rpcErr(null, -32001, "Token MCP tidak valid. Buat token baru di Settings.")), {
+    // RFC 6750: sertakan atribut `error` hanya kalau klien memang mengirim
+    // kredensial. Tanpa kredensial cukup tantangan polos + petunjuk metadata.
+    const missing = (e as Error).message === "no token";
+    const challenge = `Bearer resource_metadata="${PRM_URL}"` +
+      (missing ? "" : `, error="invalid_token", error_description="${(e as Error).message}"`);
+    return new Response(JSON.stringify(rpcErr(null, -32001, missing
+      ? "Butuh otorisasi. Hubungkan lewat OAuth (claude.ai) atau kirim token MCP dari Settings."
+      : "Token MCP tidak berlaku lagi. Hubungkan ulang, atau buat token baru di Settings.")), {
       status: 401,
-      headers: { "content-type": "application/json", "www-authenticate": "Bearer", ...CORS },
+      headers: { "content-type": "application/json", "www-authenticate": challenge, ...CORS },
     });
   }
 

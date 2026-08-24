@@ -1,0 +1,154 @@
+<!doctype html>
+<html lang="id">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="robots" content="noindex, nofollow" />
+    <title>Hubungkan ke AI Micro Influencer Studio</title>
+    <!-- Halaman consent OAuth. Sengaja statis & berdiri sendiri (bukan bagian
+         SPA) supaya ringan dan tidak bergantung pada sesi login di app: user
+         login di sini, lalu di-redirect balik ke aplikasi yang meminta akses.
+         Di-host Netlify KARENA supabase.co tidak merender HTML di browser. -->
+    <style>
+      :root{--bg:#f7f7f9;--card:#fff;--border:#e7e7ec;--text:#17171c;--muted:#71717a;--accent:#7c3aed}
+      *{box-sizing:border-box;margin:0;padding:0}
+      body{background:var(--bg);color:var(--text);font-family:ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+        font-size:14px;display:flex;align-items:center;justify-content:center;min-height:100vh;padding:20px}
+      .card{background:var(--card);border:1px solid var(--border);border-radius:16px;padding:28px;width:100%;max-width:420px}
+      h1{font-size:19px;font-weight:800;margin-bottom:6px}
+      .muted{color:var(--muted)}.small{font-size:12px}.tiny{font-size:11px}.bold{font-weight:700}
+      .mb2{margin-bottom:8px}.mb3{margin-bottom:12px}.mb4{margin-bottom:16px}.mt2{margin-top:8px}.mt4{margin-top:16px}
+      .label{font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.04em;display:block;margin-bottom:4px}
+      .input{width:100%;border:1px solid var(--border);border-radius:10px;padding:9px 12px;font-size:14px;background:#fff;font-family:inherit}
+      .input:focus{outline:2px solid #c4b5fd}
+      .btn{display:inline-flex;align-items:center;justify-content:center;gap:6px;border-radius:10px;padding:10px 14px;
+        font-size:14px;font-weight:600;background:var(--accent);color:#fff;border:none;cursor:pointer;font-family:inherit}
+      .btn:hover{opacity:.9}.btn:disabled{opacity:.5;cursor:not-allowed}
+      .btn2{background:#f3f3f6;color:var(--text);border:1px solid var(--border)}
+      .row{display:flex;gap:10px}.row>.btn{flex:1}
+      .msg-err{color:#dc2626;background:#fef2f2;border-radius:10px;padding:10px;font-size:13px}
+      .scope{background:#faf5ff;border:1px solid #ede9fe;border-radius:10px;padding:12px;font-size:13px}
+      .scope li{margin-left:16px;margin-top:3px}
+      .brand{background:linear-gradient(90deg,#7c3aed,#2563eb);-webkit-background-clip:text;background-clip:text;color:transparent}
+      [hidden]{display:none !important}
+    </style>
+  </head>
+  <body>
+    <div class="card">
+      <div id="fatal" hidden>
+        <h1 class="mb2">Tidak bisa melanjutkan</h1>
+        <div class="msg-err" id="fatal-msg"></div>
+        <p class="tiny muted mt4">Tutup jendela ini dan coba hubungkan ulang dari aplikasinya.</p>
+      </div>
+
+      <form id="form" hidden>
+        <h1 class="mb2"><span id="client">Aplikasi</span> minta akses</h1>
+        <p class="small muted mb4">ke workspace <span class="bold brand">AI Micro Influencer Studio</span> milikmu.</p>
+
+        <div class="scope mb4">
+          Aplikasi ini akan bisa:
+          <ul>
+            <li>membaca &amp; mengubah influencer, konten, pillar, dan task</li>
+            <li>melihat laporan dan daftar aset</li>
+          </ul>
+          <div class="tiny muted mt2">Tidak bisa mengubah password, billing, atau API key.</div>
+        </div>
+
+        <div class="mb3">
+          <label class="label" for="email">Email akun studio</label>
+          <input class="input" type="email" id="email" autocomplete="username" required />
+        </div>
+        <div class="mb4">
+          <label class="label" for="password">Password</label>
+          <input class="input" type="password" id="password" autocomplete="current-password" required />
+        </div>
+
+        <div class="msg-err mb3" id="err" hidden></div>
+
+        <div class="row">
+          <button type="button" class="btn btn2" id="deny">Batal</button>
+          <button type="submit" class="btn" id="allow">Izinkan</button>
+        </div>
+        <p class="tiny muted mt4">
+          Akses bisa dicabut kapan saja di Settings → Kontrol lewat Claude (MCP).
+        </p>
+      </form>
+    </div>
+
+    <script>
+      const q = new URLSearchParams(location.search);
+      const need = ["client_id", "redirect_uri", "code_challenge"];
+      const form = document.getElementById("form");
+      const errBox = document.getElementById("err");
+
+      function fatal(msg) {
+        document.getElementById("fatal-msg").textContent = msg;
+        document.getElementById("fatal").hidden = false;
+        form.hidden = true;
+      }
+      function showErr(msg) {
+        errBox.textContent = msg;
+        errBox.hidden = false;
+      }
+
+      // Kirim semua parameter authorize apa adanya; server yang memvalidasi.
+      function payload(extra) {
+        const body = { deny: false };
+        for (const [k, v] of q.entries()) body[k] = v;
+        return Object.assign(body, extra);
+      }
+
+      async function post(extra) {
+        const res = await fetch("/oauth/approve", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload(extra)),
+        });
+        const json = await res.json().catch(() => ({}));
+        if (json.redirect_to) { location.replace(json.redirect_to); return; }
+        throw new Error(json.error_description || json.error || `Error ${res.status}`);
+      }
+
+      (async function init() {
+        const missing = need.filter((k) => !q.get(k));
+        if (missing.length) return fatal(`Permintaan tidak lengkap (kurang: ${missing.join(", ")}).`);
+        if (q.get("code_challenge_method") !== "S256") return fatal("Aplikasi harus memakai PKCE dengan metode S256.");
+
+        try {
+          const res = await fetch(
+            `/oauth/client?client_id=${encodeURIComponent(q.get("client_id"))}` +
+            `&redirect_uri=${encodeURIComponent(q.get("redirect_uri"))}`);
+          const info = await res.json().catch(() => ({}));
+          if (!res.ok) return fatal(info.error_description || "Aplikasi tidak dikenal.");
+          document.getElementById("client").textContent = info.client_name || "Aplikasi";
+        } catch (e) {
+          return fatal("Tidak bisa menghubungi server: " + e.message);
+        }
+        form.hidden = false;
+        document.getElementById("email").focus();
+      })();
+
+      form.addEventListener("submit", async (e) => {
+        e.preventDefault();
+        errBox.hidden = true;
+        const btn = document.getElementById("allow");
+        btn.disabled = true;
+        btn.textContent = "Menghubungkan…";
+        try {
+          await post({
+            email: document.getElementById("email").value,
+            password: document.getElementById("password").value,
+          });
+        } catch (e2) {
+          showErr(e2.message);
+          btn.disabled = false;
+          btn.textContent = "Izinkan";
+        }
+      });
+
+      document.getElementById("deny").addEventListener("click", async () => {
+        try { await post({ deny: true }); } catch (e) { showErr(e.message); }
+      });
+    </script>
+  </body>
+</html>
