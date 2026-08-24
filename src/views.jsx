@@ -823,6 +823,8 @@ export function GenerateForm({ models, influencers, influencerId, refresh, mode,
   const [ok, setOk] = useState(false);
   const [busy, setBusy] = useState(false);
   const [sourceUrl, setSourceUrl] = useState("");
+  const [ttsText, setTtsText] = useState("");
+  const [step, setStep] = useState(null);
 
   // Foto yang dipilih dari daftar aset langsung memindahkan task sekaligus
   // mengisi URL-nya — sebelumnya URL harus disalin manual dari Drive.
@@ -840,24 +842,72 @@ export function GenerateForm({ models, influencers, influencerId, refresh, mode,
   if (selected?.unit === "per_second") est *= duration;
   if (selected?.unit === "per_1k_chars") est = (est * (text.length || 500)) / 1000;
 
+  // Talking head dari naskah: suaranya dibuat dulu lewat TTS termurah yang
+  // aktif, lalu hasilnya langsung dipakai untuk lipsync — tanpa user perlu
+  // menyalin URL audio dari Drive.
+  const ttsModel = models.filter((m) => m.task === "tts")
+    .sort((a, b) => Number(a.est_price_usd) - Number(b.est_price_usd))[0];
+  const chaining = task === "lipsync" && ttsText.trim().length > 0;
+  if (chaining && ttsModel) {
+    let ttsEst = Number(ttsModel.est_price_usd);
+    if (ttsModel.unit === "per_1k_chars") ttsEst = (ttsEst * ttsText.length) / 1000;
+    if (ttsModel.unit === "per_second") ttsEst *= duration;
+    est += ttsEst;
+  }
+
+  // Server tidak punya worker latar — job baru maju kalau `poll` dipanggil,
+  // jadi penantian di sini yang memanggilnya.
+  async function waitForAudio(jobId) {
+    const deadline = Date.now() + 180000;
+    for (;;) {
+      const { data } = await supa.from("production_jobs")
+        .select("status, output_url, error").eq("id", jobId).maybeSingle();
+      if (data?.status === "succeeded" && data.output_url) return data.output_url;
+      if (data?.status === "failed") throw new Error(data.error || "Pembuatan suara gagal.");
+      if (Date.now() > deadline) {
+        throw new Error("Suara belum selesai setelah 3 menit. Audionya tetap tersimpan di Drive — "
+          + "tempel URL-nya ke kolom URL audio lalu generate lagi.");
+      }
+      await new Promise((r) => setTimeout(r, 3000));
+      await callGenerate({ action: "poll" }).catch(() => {});
+    }
+  }
+
   async function submit(e) {
     e.preventDefault();
-    setErr(null); setOk(false); setBusy(true);
+    setErr(null); setOk(false); setBusy(true); setStep(null);
     const f = new FormData(e.target);
+    const infId = influencerId || f.get("influencer_id") || null;
     try {
+      let audioUrl = f.get("audio_url") || null;
+
+      // Naskah diisi → buat suaranya dulu, tunggu selesai, baru lipsync.
+      if (chaining) {
+        if (!sourceUrl) throw new Error("Pilih dulu foto sumbernya — talking head butuh wajah, bukan audio saja.");
+        if (!ttsModel) throw new Error("Belum ada model suara aktif. Cek Settings → provider.");
+        setStep("Membuat suara dari naskah…");
+        const voice = await callGenerate({
+          action: "submit", task: "tts", model_id: ttsModel.id,
+          influencer_id: infId, text: ttsText, duration: Number(f.get("duration") || 5),
+        });
+        audioUrl = await waitForAudio(voice.job_id);
+        refresh?.();
+        setStep("Menyusun talking head…");
+      }
+
       await callGenerate({
         action: "submit",
         task, model_id: selected?.id,
-        influencer_id: influencerId || f.get("influencer_id") || null,
+        influencer_id: infId,
         prompt: f.get("prompt") || "",
         text: f.get("text") || "",
         duration: Number(f.get("duration") || 5),
         source_image_url: f.get("source_image_url") || null,
-        audio_url: f.get("audio_url") || null,
+        audio_url: audioUrl,
       });
-      setOk(true); refresh?.();
+      setOk(true); setTtsText(""); refresh?.();
     } catch (e2) { setErr(e2.message); }
-    setBusy(false);
+    setStep(null); setBusy(false);
   }
 
   return (
@@ -902,6 +952,20 @@ export function GenerateForm({ models, influencers, influencerId, refresh, mode,
         </div>
       )}
       {task === "lipsync" && (
+        <div className="card p4 mb3" style={{ background: "#faf5ff", borderColor: "#ede9fe" }}>
+          <label className="label">Naskah yang diucapkan (opsional)</label>
+          <textarea className="input" rows={3} value={ttsText} onChange={(e) => setTtsText(e.target.value)}
+            placeholder="Tulis kalimat yang mau diucapkan — suaranya dibuat otomatis, lalu langsung jadi talking head." />
+          <p className="tiny muted mt1">
+            {chaining && ttsModel
+              ? <>Suara dibuat dulu dengan <b>{ttsModel.label}</b>, lalu hasilnya langsung dipakai untuk lipsync.
+                  Kolom URL audio di bawah diabaikan.</>
+              : <>Kalau diisi, kamu tidak perlu menjalankan task Suara (TTS) terpisah lalu menyalin URL-nya.
+                  Biarkan kosong kalau audionya sudah ada.</>}
+          </p>
+        </div>
+      )}
+      {task === "lipsync" && (
         <div className="grid mb3" style={{ gridTemplateColumns: "1fr 1fr" }}>
           <div><label className="label">URL gambar sumber</label><input name="source_image_url" className="input"
             value={sourceUrl} onChange={(e) => setSourceUrl(e.target.value)} placeholder="https://… (pilih dari Aset terbaru)" /></div>
@@ -918,7 +982,7 @@ export function GenerateForm({ models, influencers, influencerId, refresh, mode,
           </p></div>
       )}
       <div className="row mb2">
-        <button className="btn" disabled={busy || !selected}>{busy ? "Generating…" : "Generate"}</button>
+        <button className="btn" disabled={busy || !selected}>{busy ? (step || "Generating…") : "Generate"}</button>
         <span className="tiny muted">Estimasi: <b style={{ color: "#d97706" }}>${est.toFixed(3)}</b>{mode === "mock" ? " (mock — gratis)" : " (indikatif)"}</span>
       </div>
       {err && <div className="msg-err mb2">{err}</div>}
