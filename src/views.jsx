@@ -817,6 +817,7 @@ export function GenerateForm({ models, influencers, influencerId, refresh, mode 
           <select className="input" value={selected?.id || ""} onChange={(e) => setModelId(e.target.value)}>
             {taskModels.map((m) => <option key={m.id} value={m.id}>{m.label}</option>)}
           </select>
+          {selected?.description && <p className="tiny muted" style={{ marginTop: 4 }}>{selected.description}</p>}
         </div>
         {!influencerId && influencers && (
           <div><label className="label">Influencer</label>
@@ -860,7 +861,11 @@ export function GenerateForm({ models, influencers, influencerId, refresh, mode 
       </div>
       {err && <div className="msg-err mb2">{err}</div>}
       {ok && <div className="msg-ok mb2">Job dikirim — hasil muncul di riwayat job / Drive.</div>}
-      <p className="tiny muted">Identity prompt influencer otomatis disuntikkan untuk konsistensi karakter.</p>
+      <p className="tiny muted">
+        Identity prompt influencer otomatis disuntikkan untuk konsistensi karakter.
+        Untuk wajah yang benar-benar mirip, pilih model <b>Qwen-Image Edit Plus</b> —
+        foto referensi Identity Kit ikut dikirim sebagai acuan wajah.
+      </p>
     </form>
   );
 }
@@ -902,8 +907,22 @@ function CharacterSheetPanel({ models, influencers, refresh, mode }) {
 
   const inf = influencers.find((i) => i.id === infId);
   const styleNotes = inf?.persona?.style_notes || "";
-  const model = imgModels.find((m) => m.id === modelId) || imgModels[0];
+  // Jumlah foto referensi Identity Kit influencer terpilih — menentukan model default.
+  const [refCount, setRefCount] = useState(0);
+  useEffect(() => {
+    if (!infId) { setRefCount(0); return; }
+    let alive = true;
+    supa.from("character_assets").select("id", { count: "exact", head: true })
+      .eq("influencer_id", infId).eq("kind", "reference")
+      .then(({ count }) => { if (alive) setRefCount(count || 0); });
+    return () => { alive = false; };
+  }, [infId]);
+  // Ada foto referensi → default ke model image-edit: wajah diambil dari foto,
+  // bukan ditebak dari teks. User tetap bebas memilih model lain.
+  const editModel = imgModels.find((m) => String(m.model_key).includes("image-edit"));
+  const model = imgModels.find((m) => m.id === modelId) || (refCount > 0 && editModel) || imgModels[0];
   const est = (model ? Number(model.est_price_usd) : 0) * shots.length;
+  const modelIsEdit = String(model?.model_key || "").includes("image-edit");
 
   function toggle(id) {
     setShots((s) => (s.includes(id) ? s.filter((x) => x !== id) : [...s, id]));
@@ -951,8 +970,17 @@ function CharacterSheetPanel({ models, influencers, refresh, mode }) {
           <select className="input" value={model?.id || ""} onChange={(e) => setModelId(e.target.value)}>
             {imgModels.map((m) => <option key={m.id} value={m.id}>{m.label}</option>)}
           </select>
+          {model?.description && <p className="tiny muted" style={{ marginTop: 4 }}>{model.description}</p>}
         </div>
       </div>
+      {infId && modelIsEdit && refCount > 0 && (
+        <p className="tiny muted mb3">✓ {Math.min(refCount, 3)} foto Identity Kit dipakai sebagai acuan wajah di setiap shot.</p>
+      )}
+      {infId && modelIsEdit && refCount === 0 && (
+        <div className="msg-err mb3">
+          Model ini butuh minimal 1 foto referensi di Identity Kit {inf?.name} — tambahkan dulu lewat wizard ✨, atau pilih model gambar lain.
+        </div>
+      )}
       {infId && !inf?.identity_prompt && (
         <div className="msg-err mb3">
           {inf?.name} belum punya identity prompt — hasilnya tidak akan konsisten antar gambar.

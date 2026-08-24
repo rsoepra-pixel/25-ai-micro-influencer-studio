@@ -638,10 +638,20 @@ Deno.serve(async (req) => {
         if (model.unit === "per_1k_chars") est = (est * (String(text).length || 500)) / 1000;
 
         let identity = "";
+        // Foto Identity Kit (kind "reference") — dikirim ke model image-edit
+        // sebagai referensi wajah. Teks identity_prompt saja tidak cukup untuk
+        // menyamakan wajah; model text-to-image murni tetap mengabaikan foto.
+        let refPhotos: string[] = [];
         if (influencer_id) {
           const { data: inf } = await admin.from("influencers")
             .select("identity_prompt, workspace_id").eq("id", influencer_id).maybeSingle();
-          if (inf?.workspace_id === ws) identity = inf.identity_prompt || "";
+          if (inf?.workspace_id === ws) {
+            identity = inf.identity_prompt || "";
+            const { data: refs } = await admin.from("character_assets")
+              .select("url").eq("influencer_id", influencer_id).eq("kind", "reference")
+              .not("url", "is", null).order("created_at").limit(3);
+            refPhotos = (refs || []).map((r) => String(r.url)).filter(Boolean);
+          }
         }
         const finalPrompt = [identity, prompt].filter(Boolean).join(", ");
 
@@ -703,22 +713,34 @@ Deno.serve(async (req) => {
           }
 
           if (task === "image") {
-            // Gambar (qwen-image / z-image): endpoint multimodal-generation, SINKRON —
-            // hasil langsung ada di respons, tidak lewat antrean task.
+            // Gambar (qwen-image / z-image / qwen-image-edit): endpoint
+            // multimodal-generation, SINKRON — hasil langsung ada di respons.
+            // Model *image-edit* menerima foto input: foto Identity Kit ikut
+            // dikirim agar wajah hasil generate benar-benar sama.
+            const isEdit = String(model.model_key).includes("image-edit");
             try {
+              if (isEdit && !refPhotos.length) {
+                throw new Error("Model ini butuh minimal 1 foto referensi di Identity Kit influencer — tandai foto sebagai referensi dulu, atau pilih model gambar lain.");
+              }
+              const content = isEdit
+                ? [
+                    ...refPhotos.map((u) => ({ image: u })),
+                    { text: `Generate a new photo of the exact same person as in the reference image(s) — preserve the face, hairstyle, and identity precisely. ${finalPrompt || "portrait photo"}` },
+                  ]
+                : [{ text: finalPrompt || "portrait photo" }];
               const res = await fetch(`${DS_BASE}/services/aigc/multimodal-generation/generation`, {
                 method: "POST",
                 headers: { Authorization: `Bearer ${dsKey}`, "content-type": "application/json" },
                 body: JSON.stringify({
                   model: model.model_key,
-                  input: { messages: [{ role: "user", content: [{ text: finalPrompt || "portrait photo" }] }] },
+                  input: { messages: [{ role: "user", content }] },
                   parameters: { n: 1 },
                 }),
               });
               const out = await res.json().catch(() => ({}));
               if (!res.ok) throw new Error(String(out?.message || `DashScope error ${res.status}`).slice(0, 400));
-              const content = out?.output?.choices?.[0]?.message?.content;
-              const rawUrl = Array.isArray(content) ? content.find((c: Record<string, unknown>) => c?.image)?.image : null;
+              const outContent = out?.output?.choices?.[0]?.message?.content;
+              const rawUrl = Array.isArray(outContent) ? outContent.find((c: Record<string, unknown>) => c?.image)?.image : null;
               if (!rawUrl) throw new Error("DashScope tidak mengembalikan gambar.");
               // URL hasil kedaluwarsa — pindahkan ke storage sendiri.
               const url = await storeRemote(ws, String(rawUrl), job.id, "image/png");
