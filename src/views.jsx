@@ -622,6 +622,13 @@ export function Influencers({ ws, refresh, tick }) {
 
 // ---------- Influencer Detail ----------
 export function InfluencerDetail({ id, ws, refresh, tick, mode }) {
+  // Foto yang dipilih dari "Aset terbaru" untuk dipakai sebagai gambar awal.
+  const [picked, setPicked] = useState(null);
+  const genRef = React.useRef(null);
+  function pickPhoto(url, task) {
+    setPicked((prev) => ({ url, task, n: (prev?.n || 0) + 1 }));
+    genRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
+  }
   const [d, reload, loadError] = useQuery(async () => {
     const [inf, refs, models, assets] = await Promise.all([
       supa.from("influencers").select("*").eq("id", id).maybeSingle(),
@@ -768,18 +775,34 @@ export function InfluencerDetail({ id, ws, refresh, tick, mode }) {
               </div>
             ) : <div className="small muted">Belum ada foto referensi.</div>}
           </div>
-          <div className="card p6 mb4">
+          <div className="card p6 mb4" ref={genRef}>
             <div className="bold mb3">Generate untuk {inf.name}</div>
-            <GenerateForm models={d.models} influencerId={id} refresh={() => { reload(); refresh(); }} mode={mode} />
+            <GenerateForm models={d.models} influencerId={id} refresh={() => { reload(); refresh(); }}
+              mode={mode} picked={picked} />
           </div>
           {d.assets.length > 0 && (
             <div className="card p6">
               <div className="bold mb3">Aset terbaru</div>
-              <div className="grid" style={{ gridTemplateColumns: "repeat(4,1fr)", gap: 8 }}>
+              <p className="tiny muted mb3">
+                Pilih satu foto untuk dipakai sebagai gambar awal — task dan URL-nya terisi otomatis.
+              </p>
+              <div className="grid" style={{ gridTemplateColumns: "repeat(3,1fr)", gap: 10 }}>
                 {d.assets.map((a) => (
-                  <a key={a.id} href={a.url || "#"} target="_blank" rel="noreferrer" className="thumb" style={{ aspectRatio: "1" }}>
-                    {a.kind === "image" && a.url ? <img src={a.url} alt="" /> : a.kind === "video" ? "🎬" : a.kind === "audio" ? "🎧" : "📄"}
-                  </a>
+                  <div key={a.id}>
+                    <a href={a.url || "#"} target="_blank" rel="noreferrer" className="thumb" style={{ aspectRatio: "1" }}>
+                      {a.kind === "image" && a.url ? <img src={a.url} alt="" /> : a.kind === "video" ? "🎬" : a.kind === "audio" ? "🎧" : "📄"}
+                    </a>
+                    {a.kind === "image" && a.url && (
+                      <div className="row mt1" style={{ gap: 4 }}>
+                        <button type="button" className="btn btn2" style={{ fontSize: 10, padding: "3px 6px", flex: 1 }}
+                          title="Pakai sebagai frame awal video b-roll"
+                          onClick={() => pickPhoto(a.url, "video")}>B-roll</button>
+                        <button type="button" className="btn btn2" style={{ fontSize: 10, padding: "3px 6px", flex: 1 }}
+                          title="Pakai sebagai wajah untuk lipsync / talking head"
+                          onClick={() => pickPhoto(a.url, "lipsync")}>Talking</button>
+                      </div>
+                    )}
+                  </div>
                 ))}
               </div>
             </div>
@@ -791,7 +814,7 @@ export function InfluencerDetail({ id, ws, refresh, tick, mode }) {
 }
 
 // ---------- GenerateForm ----------
-export function GenerateForm({ models, influencers, influencerId, refresh, mode }) {
+export function GenerateForm({ models, influencers, influencerId, refresh, mode, picked }) {
   const [task, setTask] = useState("image");
   const [modelId, setModelId] = useState("");
   const [duration, setDuration] = useState(5);
@@ -799,6 +822,17 @@ export function GenerateForm({ models, influencers, influencerId, refresh, mode 
   const [err, setErr] = useState(null);
   const [ok, setOk] = useState(false);
   const [busy, setBusy] = useState(false);
+  const [sourceUrl, setSourceUrl] = useState("");
+
+  // Foto yang dipilih dari daftar aset langsung memindahkan task sekaligus
+  // mengisi URL-nya — sebelumnya URL harus disalin manual dari Drive.
+  // `picked.n` naik tiap klik supaya memilih foto yang sama dua kali tetap jalan.
+  useEffect(() => {
+    if (!picked?.url) return;
+    setTask(picked.task);
+    setModelId("");
+    setSourceUrl(picked.url);
+  }, [picked?.n]);
 
   const taskModels = models.filter((m) => m.task === task);
   const selected = taskModels.find((m) => m.id === modelId) || taskModels[0];
@@ -869,13 +903,19 @@ export function GenerateForm({ models, influencers, influencerId, refresh, mode 
       )}
       {task === "lipsync" && (
         <div className="grid mb3" style={{ gridTemplateColumns: "1fr 1fr" }}>
-          <div><label className="label">URL gambar sumber</label><input name="source_image_url" className="input" placeholder="https://… (dari Drive)" /></div>
+          <div><label className="label">URL gambar sumber</label><input name="source_image_url" className="input"
+            value={sourceUrl} onChange={(e) => setSourceUrl(e.target.value)} placeholder="https://… (pilih dari Aset terbaru)" /></div>
           <div><label className="label">URL audio</label><input name="audio_url" className="input" placeholder="https://… (hasil TTS)" /></div>
         </div>
       )}
       {task === "video" && (
         <div className="mb3"><label className="label">URL gambar awal (opsional, image-to-video)</label>
-          <input name="source_image_url" className="input" placeholder="https://… (foto karakter dari Drive)" /></div>
+          <input name="source_image_url" className="input" value={sourceUrl}
+            onChange={(e) => setSourceUrl(e.target.value)} placeholder="https://… (pilih dari Aset terbaru)" />
+          <p className="tiny muted mt1">
+            Kosong = text-to-video, wajahnya akan acak. Isi dengan foto karakter supaya videonya
+            bergerak dari wajah yang benar.
+          </p></div>
       )}
       <div className="row mb2">
         <button className="btn" disabled={busy || !selected}>{busy ? "Generating…" : "Generate"}</button>
