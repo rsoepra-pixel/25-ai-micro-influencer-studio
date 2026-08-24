@@ -8,6 +8,10 @@ import { createClient } from "npm:@supabase/supabase-js@2";
 const SB_URL = Deno.env.get("SUPABASE_URL")!;
 const admin = createClient(SB_URL, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!, { auth: { persistSession: false } });
 
+// Origin publik tempat endpoint MCP dipasang (Netlify mem-proxy ke edge
+// function; lihat netlify.toml). Inilah URL yang ditempel di claude.ai.
+const MCP_CONNECTOR_URL = "https://25-ai-microinfluencer.netlify.app/mcp";
+
 const SITE_BASE =
   "https://raw.githubusercontent.com/rsoepra-pixel/25-ai-micro-influencer-studio/main/site";
 const CACHE_TTL_MS = 60_000;
@@ -111,13 +115,50 @@ Deno.serve(async (req) => {
         if (body.mode === "status") {
           const { data } = await admin.from("app_secrets").select("updated_at")
             .eq("workspace_id", c.ws).eq("key", "mcp_token").maybeSingle();
-          return json({ ok: true, exists: !!data, created_at: data?.updated_at || null, url: `${SB_URL}/functions/v1/mcp` });
+          return json({
+            ok: true, exists: !!data, created_at: data?.updated_at || null,
+            url: `${SB_URL}/functions/v1/mcp`, connector_url: MCP_CONNECTOR_URL,
+          });
         }
         const token = "mis_" + crypto.randomUUID().replace(/-/g, "") + crypto.randomUUID().replace(/-/g, "").slice(0, 12);
         const { error } = await admin.from("app_secrets")
           .upsert({ workspace_id: c.ws, key: "mcp_token", value: token, updated_at: new Date().toISOString() });
         if (error) throw new Error(error.message);
-        return json({ ok: true, token, url: `${SB_URL}/functions/v1/mcp` });
+        return json({ ok: true, token, url: `${SB_URL}/functions/v1/mcp`, connector_url: MCP_CONNECTOR_URL });
+      }
+      if (body.action === "mcp_connections") {
+        // Aplikasi yang terhubung lewat OAuth (claude.ai dan sejenisnya).
+        // Satu baris aktif per koneksi — refresh token dirotasi, yang lama dicabut.
+        const c = await requireUser(req);
+        const { data, error } = await admin.from("oauth_tokens")
+          .select("id, user_id, connected_at, last_used_at, oauth_clients(client_name)")
+          .eq("workspace_id", c.ws).is("revoked_at", null)
+          .order("connected_at", { ascending: false });
+        if (error) throw new Error(error.message);
+        const rows = [];
+        for (const t of data || []) {
+          const { data: u } = await admin.auth.admin.getUserById(t.user_id);
+          rows.push({
+            id: t.id,
+            client_name: (t.oauth_clients as { client_name?: string } | null)?.client_name || "Aplikasi MCP",
+            email: u?.user?.email || "?",
+            connected_at: t.connected_at,
+            last_used_at: t.last_used_at,
+            mine: t.user_id === c.user.id,
+          });
+        }
+        return json({ ok: true, connections: rows, can_revoke_all: c.role === "owner" });
+      }
+      if (body.action === "mcp_revoke_connection") {
+        // Owner boleh mencabut koneksi siapa pun; anggota hanya miliknya sendiri.
+        const c = await requireUser(req);
+        let q = admin.from("oauth_tokens").update({ revoked_at: new Date().toISOString() })
+          .eq("id", String(body.id || "")).eq("workspace_id", c.ws).is("revoked_at", null);
+        if (c.role !== "owner") q = q.eq("user_id", c.user.id);
+        const { data, error } = await q.select("id").maybeSingle();
+        if (error) throw new Error(error.message);
+        if (!data) throw new Error("Koneksi tidak ditemukan, atau bukan milikmu.");
+        return json({ ok: true });
       }
       if (body.action === "signup") {
         const email = String(body.email || "").trim().toLowerCase();

@@ -2345,12 +2345,17 @@ function AccountAdmin({ ws, tick }) {
 }
 
 // ---------- Kontrol lewat Claude (MCP) ----------
+// Dua jalur, beda mekanisme otorisasi:
+//  - claude.ai: OAuth. Cukup tempel URL connector, login di halaman consent.
+//  - Claude Code (terminal): token statik lewat header, karena CLI memang
+//    menyediakan --header sedangkan claude.ai tidak.
 function McpSettings({ ws, tick }) {
   const [st, reload, stErr] = useQuery(async () => callApp({ action: "mcp_token", mode: "status" }), [ws.id, tick]);
+  const [conns, reloadConns] = useQuery(async () => callApp({ action: "mcp_connections" }), [ws.id, tick]);
   const [token, setToken] = useState(null);
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState(null);
-  const [copied, setCopied] = useState(false);
+  const [copied, setCopied] = useState(null);
 
   async function issue() {
     setBusy(true); setMsg(null);
@@ -2367,57 +2372,129 @@ function McpSettings({ ws, tick }) {
     catch (e) { setMsg(`Gagal: ${e.message}`); }
     setBusy(false);
   }
+  async function disconnect(id) {
+    setBusy(true); setMsg(null);
+    try { await callApp({ action: "mcp_revoke_connection", id }); setMsg("Koneksi dicabut."); reloadConns(); }
+    catch (e) { setMsg(`Gagal: ${e.message}`); }
+    setBusy(false);
+  }
+  function copy(key, text) {
+    navigator.clipboard?.writeText(text)
+      .then(() => { setCopied(key); setTimeout(() => setCopied(null), 2000); }).catch(() => {});
+  }
 
-  const url = st?.url || "";
-  const cmd = token ? `claude mcp add --transport http influencer-studio ${url} --header "Authorization: Bearer ${token}"` : "";
+  // URL connector tidak rahasia, jadi tetap tampil walau status token gagal
+  // dimuat (mis. anggota non-owner yang tidak boleh mengelola token).
+  const connectorUrl = st?.connector_url || "https://25-ai-microinfluencer.netlify.app/mcp";
+  const cmd = token
+    ? `claude mcp add --transport http --scope user influencer-studio ${st?.url || ""} --header "Authorization: Bearer ${token}"`
+    : "";
+  const list = conns?.connections || [];
 
   return (
     <div className="card p6 mb4">
       <div className="row mb1" style={{ gap: 8 }}>
         <div className="bold">Kontrol lewat Claude (MCP)</div>
-        <Badge tone={st?.exists ? "green" : "zinc"}>{st?.exists ? "aktif" : "belum dibuat"}</Badge>
+        <Badge tone={list.length ? "green" : "zinc"}>
+          {list.length ? `${list.length} aplikasi terhubung` : "belum terhubung"}
+        </Badge>
       </div>
-      <p className="tiny muted mb3">
+      <p className="tiny muted mb4">
         Hubungkan workspace ini ke Claude, lalu kelola lewat percakapan: “influencer apa saja yang aktif?”,
         “buat 5 ide konten minggu depan untuk Ronny”, “tulis script untuk konten hari Jumat”, “laporan 30 hari terakhir”.
         Claude yang menulis naskahnya — tidak butuh API key penulis AI untuk jalur ini.
       </p>
-      {stErr && <div className="msg-err mb3">Gagal memuat status: {stErr}</div>}
       {msg && <div className={msg.startsWith("Gagal") ? "msg-err mb3" : "msg-ok mb3"}>{msg}</div>}
 
-      {token ? (
-        <div className="card p4 mb3" style={{ background: "#fafafa" }}>
-          <div className="label" style={{ margin: 0 }}>Jalankan sekali di terminal (token hanya tampil sekali)</div>
-          <div className="card p3 mt2" style={{ background: "#f4f4f5" }}>
-            <code className="tiny" style={{ wordBreak: "break-all" }}>{cmd}</code>
-          </div>
-          <button type="button" className="btn mt2" style={{ fontSize: 12 }}
-            onClick={() => navigator.clipboard?.writeText(cmd)
-              .then(() => { setCopied(true); setTimeout(() => setCopied(false), 2000); }).catch(() => {})}>
-            {copied ? "✓ Tersalin" : "📋 Salin perintah"}
+      {/* ---- Jalur 1: claude.ai ---- */}
+      <div className="card p4 mb4" style={{ background: "#faf5ff", borderColor: "#ede9fe" }}>
+        <div className="bold small mb1">claude.ai — pasang sebagai connector</div>
+        <p className="tiny muted mb3">
+          Di claude.ai: <span className="bold">Settings → Connectors → Add custom connector</span>, tempel URL di bawah,
+          lalu klik Connect. Kamu akan diminta login pakai email &amp; password akun studio ini — tanpa token, tanpa terminal.
+        </p>
+        <div className="card p3 mb2" style={{ background: "#fff" }}>
+          <code className="tiny" style={{ wordBreak: "break-all" }}>{connectorUrl}</code>
+        </div>
+        <button type="button" className="btn" style={{ fontSize: 12 }} onClick={() => copy("url", connectorUrl)}>
+          {copied === "url" ? "✓ Tersalin" : "📋 Salin URL connector"}
+        </button>
+      </div>
+
+      {/* ---- Jalur 2: Claude Code ---- */}
+      <div className="card p4 mb4" style={{ background: "#fafafa" }}>
+        <div className="row mb1" style={{ gap: 8 }}>
+          <div className="bold small">Claude Code (terminal)</div>
+          <Badge tone={st?.exists ? "green" : "zinc"}>{st?.exists ? "token aktif" : "belum dibuat"}</Badge>
+        </div>
+        <p className="tiny muted mb3">
+          CLI bisa mengirim header sendiri, jadi jalur ini pakai token statik. Tidak perlu kalau kamu sudah
+          memakai connector di claude.ai.
+        </p>
+        {stErr && <div className="msg-err mb3 tiny">{stErr}</div>}
+
+        {token && (
+          <>
+            <div className="label" style={{ margin: 0 }}>Jalankan sekali di terminal (token hanya tampil sekali)</div>
+            <div className="card p3 mt2 mb2" style={{ background: "#f4f4f5" }}>
+              <code className="tiny" style={{ wordBreak: "break-all" }}>{cmd}</code>
+            </div>
+            <button type="button" className="btn mb3" style={{ fontSize: 12 }} onClick={() => copy("cmd", cmd)}>
+              {copied === "cmd" ? "✓ Tersalin" : "📋 Salin perintah"}
+            </button>
+            <div className="tiny muted mb3">
+              Simpan token di tempat aman. Kalau hilang, buat token baru — token lama otomatis tergantikan.
+            </div>
+          </>
+        )}
+
+        <div className="row" style={{ gap: 8 }}>
+          <button type="button" className="btn btn2" disabled={busy} onClick={issue} style={{ fontSize: 12 }}>
+            {st?.exists ? "Buat token baru" : "Buat token"}
           </button>
-          <div className="tiny muted mt2">
-            Simpan token di tempat aman. Kalau hilang, buat token baru — token lama otomatis tergantikan.
-          </div>
+          {st?.exists && (
+            <button type="button" className="btn btn2" disabled={busy} onClick={revoke} style={{ fontSize: 12 }}>
+              Cabut token
+            </button>
+          )}
         </div>
+      </div>
+
+      {/* ---- Aplikasi yang terhubung lewat OAuth ---- */}
+      <div className="bold small mb2">Aplikasi terhubung</div>
+      {!conns ? (
+        <div className="tiny muted">Memuat…</div>
+      ) : !list.length ? (
+        <div className="tiny muted">Belum ada aplikasi yang terhubung lewat claude.ai.</div>
       ) : (
-        <div className="card p4 mb3" style={{ background: "#fafafa" }}>
-          <div className="tiny muted">Endpoint MCP</div>
-          <code className="tiny" style={{ wordBreak: "break-all" }}>{url || "…"}</code>
-        </div>
+        <table>
+          <thead>
+            <tr><th>Aplikasi</th><th>Akun</th><th>Sejak</th><th>Terakhir dipakai</th><th></th></tr>
+          </thead>
+          <tbody>
+            {list.map((c) => (
+              <tr key={c.id}>
+                <td className="small bold">{c.client_name}</td>
+                <td className="tiny muted">{c.email}</td>
+                <td className="tiny muted">{new Date(c.connected_at).toLocaleDateString("id-ID")}</td>
+                <td className="tiny muted">
+                  {c.last_used_at ? new Date(c.last_used_at).toLocaleDateString("id-ID") : "belum"}
+                </td>
+                <td style={{ textAlign: "right" }}>
+                  {(conns.can_revoke_all || c.mine) && (
+                    <button type="button" className="btn btn2" style={{ fontSize: 11 }}
+                      disabled={busy} onClick={() => disconnect(c.id)}>Cabut</button>
+                  )}
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
       )}
 
-      <div className="row" style={{ gap: 8 }}>
-        <button type="button" className="btn" disabled={busy} onClick={issue}>
-          {st?.exists ? "Buat token baru" : "Buat token MCP"}
-        </button>
-        {st?.exists && (
-          <button type="button" className="btn btn2" disabled={busy} onClick={revoke}>Cabut token</button>
-        )}
-      </div>
-      <p className="tiny muted mt2">
-        Token ini memberi akses baca–tulis ke data workspace (influencer, konten, task, laporan) —
-        perlakukan seperti password. Cabut kapan saja dari sini.
+      <p className="tiny muted mt3">
+        Akses ini baca–tulis ke data workspace (influencer, konten, task, laporan), tapi tidak bisa mengubah
+        password, billing, atau API key. Cabut kapan saja dari sini.
       </p>
     </div>
   );

@@ -1,0 +1,79 @@
+# Routing Netlify untuk endpoint MCP + OAuth.
+#
+# Kenapa lewat sini dan bukan langsung ke supabase.co: klien MCP (termasuk
+# claude.ai) mencari dokumen discovery di ROOT domain — `/.well-known/...`.
+# Di supabase.co semua path kita terkurung di bawah /functions/v1/ dan root-nya
+# bukan milik kita, jadi discovery selalu gagal. Netlify (yang sudah meng-host
+# app ini) punya root yang kita kontrol, jadi dijadikan origin publik dan
+# permintaan diteruskan (proxy, status 200 — URL di address bar tidak berubah)
+# ke edge function Supabase.
+#
+# Urutan aturan penting: yang cocok duluan yang dipakai.
+
+# ---------- Discovery (RFC 9728 / RFC 8414) ----------
+# Varian tanpa path dan varian path-aware sama-sama dilayani, karena klien
+# berbeda menyusun URL-nya berbeda.
+[[redirects]]
+  from = "/.well-known/oauth-protected-resource"
+  to = "https://kheibvzbvnmhdeokokrw.supabase.co/functions/v1/oauth/.well-known/oauth-protected-resource"
+  status = 200
+  force = true
+
+[[redirects]]
+  from = "/.well-known/oauth-protected-resource/*"
+  to = "https://kheibvzbvnmhdeokokrw.supabase.co/functions/v1/oauth/.well-known/oauth-protected-resource"
+  status = 200
+  force = true
+
+[[redirects]]
+  from = "/.well-known/oauth-authorization-server"
+  to = "https://kheibvzbvnmhdeokokrw.supabase.co/functions/v1/oauth/.well-known/oauth-authorization-server"
+  status = 200
+  force = true
+
+[[redirects]]
+  from = "/.well-known/oauth-authorization-server/*"
+  to = "https://kheibvzbvnmhdeokokrw.supabase.co/functions/v1/oauth/.well-known/oauth-authorization-server"
+  status = 200
+  force = true
+
+# Sebagian klien jatuh ke OpenID Connect Discovery sebagai cadangan.
+[[redirects]]
+  from = "/.well-known/openid-configuration"
+  to = "https://kheibvzbvnmhdeokokrw.supabase.co/functions/v1/oauth/.well-known/oauth-authorization-server"
+  status = 200
+  force = true
+
+[[redirects]]
+  from = "/.well-known/openid-configuration/*"
+  to = "https://kheibvzbvnmhdeokokrw.supabase.co/functions/v1/oauth/.well-known/oauth-authorization-server"
+  status = 200
+  force = true
+
+# ---------- OAuth ----------
+# Halaman consent dilayani sebagai file statis di sini (supabase.co tidak
+# merender HTML di browser). Harus di atas aturan /oauth/* di bawahnya.
+[[redirects]]
+  from = "/oauth/authorize"
+  to = "/oauth-authorize.html"
+  status = 200
+  force = true
+
+[[redirects]]
+  from = "/oauth/*"
+  to = "https://kheibvzbvnmhdeokokrw.supabase.co/functions/v1/oauth/:splat"
+  status = 200
+  force = true
+
+# ---------- Endpoint MCP ----------
+[[redirects]]
+  from = "/mcp"
+  to = "https://kheibvzbvnmhdeokokrw.supabase.co/functions/v1/mcp"
+  status = 200
+  force = true
+
+[[redirects]]
+  from = "/mcp/*"
+  to = "https://kheibvzbvnmhdeokokrw.supabase.co/functions/v1/mcp/:splat"
+  status = 200
+  force = true

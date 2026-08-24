@@ -1,5 +1,6 @@
 // Gabungkan hasil `vite build` menjadi satu file HTML mandiri di site/index.html
-// (dipakai edge function `app` sebagai sumber hosting), plus salin halaman legal.
+// (dipakai edge function `app` sebagai sumber hosting), plus salin halaman legal
+// dan halaman consent OAuth.
 // Jalankan: npm run build:site
 import fs from "fs";
 
@@ -21,6 +22,9 @@ fs.mkdirSync("site", { recursive: true });
 fs.writeFileSync("site/index.html", html);
 fs.copyFileSync("public/privacy.html", "site/privacy.html");
 fs.copyFileSync("public/terms.html", "site/terms.html");
+// Halaman consent OAuth: berdiri sendiri (bukan bagian bundel SPA), dipetakan
+// ke /oauth/authorize oleh netlify.toml.
+fs.copyFileSync("public/oauth-authorize.html", "site/oauth-authorize.html");
 
 const closes = (html.match(/<\/script>/g) || []).length;
 console.log("site/index.html:", html.length, "bytes | </script> count:", closes, closes === 1 ? "(ok)" : "(HARUS 1!)");
