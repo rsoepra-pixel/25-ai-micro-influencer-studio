@@ -642,6 +642,13 @@ Deno.serve(async (req) => {
         // Foto Identity Kit (kind "reference") — dikirim ke model image-edit
         // sebagai referensi wajah. Teks identity_prompt saja tidak cukup untuk
         // menyamakan wajah; model text-to-image murni tetap mengabaikan foto.
+        // Diurutkan TERBARU dulu: dulu urutannya menaik, jadi 3 foto tertua yang
+        // selalu terpakai — foto yang baru diunggah tidak pernah berpengaruh
+        // sampai yang lama dihapus. Sekarang unggahan baru langsung dipakai.
+        // `id` jadi tie-breaker karena created_at default-nya now() = waktu
+        // TRANSAKSI: satu batch unggah memberi timestamp yang sama persis ke
+        // semua fotonya. Tanpa itu, 3 dari batch yang sama dipilih acak dan
+        // bisa berganti tiap generate — wajahnya jadi tidak konsisten.
         let refPhotos: string[] = [];
         if (influencer_id) {
           const { data: inf } = await admin.from("influencers")
@@ -650,7 +657,8 @@ Deno.serve(async (req) => {
             identity = inf.identity_prompt || "";
             const { data: refs } = await admin.from("character_assets")
               .select("url").eq("influencer_id", influencer_id).eq("kind", "reference")
-              .not("url", "is", null).order("created_at").limit(3);
+              .not("url", "is", null)
+              .order("created_at", { ascending: false }).order("id", { ascending: false }).limit(3);
             refPhotos = (refs || []).map((r) => String(r.url)).filter(Boolean);
           }
         }
