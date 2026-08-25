@@ -306,6 +306,7 @@ Deno.serve(async (req) => {
         return json({
           fal_key: !!(await getSecret(ws, "fal_key")),
           hf_token: !!(await getSecret(ws, "hf_token")),
+          dashscope_key: !!(await dashscopeKey(ws)),
           mode,
           text: { provider: cfg.provider, model: cfg.model, vision_model: cfg.vision, base_url: cfg.base, configured: !!cfg.key },
           text_presets: TEXT_PRESETS,
@@ -717,7 +718,10 @@ Deno.serve(async (req) => {
             // multimodal-generation, SINKRON — hasil langsung ada di respons.
             // Model *image-edit* menerima foto input: foto Identity Kit ikut
             // dikirim agar wajah hasil generate benar-benar sama.
-            const isEdit = String(model.model_key).includes("image-edit");
+            // Kemampuan dibaca dari katalog, bukan dari nama model. Dulu ini
+            // mencocokkan string "image-edit"; model baru yang menjaga wajah
+            // tapi namanya lain akan diam-diam berhenti mengirim foto.
+            const isEdit = !!model.keeps_identity;
             try {
               if (isEdit && !refPhotos.length) {
                 throw new Error("Model ini butuh minimal 1 foto referensi di Identity Kit influencer — tandai foto sebagai referensi dulu, atau pilih model gambar lain.");

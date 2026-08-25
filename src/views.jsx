@@ -854,11 +854,24 @@ export function GenerateForm({ models, influencers, influencerId, refresh, mode,
   // Hanya model image-edit yang benar-benar mengirim foto Identity Kit ke
   // provider; sisanya cuma menerima teks. Jadi kalau fotonya ada, model itu
   // yang dipilih duluan — user tetap bebas menggantinya.
-  const editModel = taskModels.find((m) => String(m.model_key).includes("image-edit"));
+  const editModel = taskModels.find((m) => m.keeps_identity);
   const selected = taskModels.find((m) => m.id === modelId)
     || (task === "image" && refCount > 0 && editModel)
     || taskModels[0];
-  const modelKeepsFace = String(selected?.model_key || "").includes("image-edit");
+  const modelKeepsFace = !!selected?.keeps_identity;
+  const initModel = taskModels.find((m) => m.accepts_init_image);
+
+  // Key mana yang sudah terpasang — supaya model yang belum bisa dipakai
+  // ditandai sebelum ditekan, bukan gagal setelah submit.
+  const [keys, setKeys] = useState(null);
+  useEffect(() => {
+    let alive = true;
+    callGenerate({ action: "status" }).then((r) => { if (alive) setKeys(r); }).catch(() => {});
+    return () => { alive = false; };
+  }, []);
+  const KEY_FIELD = { hf: "hf_token", fal: "fal_key", dashscope: "dashscope_key" };
+  // Belum tahu → jangan menghalangi. Hanya `false` yang tegas berarti belum ada.
+  const keyReady = (m) => !keys || !m?.requires_key || keys[KEY_FIELD[m.requires_key]] !== false;
   let est = selected ? Number(selected.est_price_usd) : 0;
   if (selected?.unit === "per_second") est *= duration;
   if (selected?.unit === "per_1k_chars") est = (est * (text.length || 500)) / 1000;
@@ -942,7 +955,11 @@ export function GenerateForm({ models, influencers, influencerId, refresh, mode,
         </div>
         <div><label className="label">Model</label>
           <select className="input" value={selected?.id || ""} onChange={(e) => setModelId(e.target.value)}>
-            {taskModels.map((m) => <option key={m.id} value={m.id}>{m.label}</option>)}
+            {taskModels.map((m) => (
+              <option key={m.id} value={m.id} disabled={!keyReady(m)}>
+                {m.label}{keyReady(m) ? "" : ` — butuh key ${m.requires_key}`}
+              </option>
+            ))}
           </select>
           {selected?.description && <p className="tiny muted" style={{ marginTop: 4 }}>{selected.description}</p>}
         </div>
@@ -1001,6 +1018,22 @@ export function GenerateForm({ models, influencers, influencerId, refresh, mode,
           di Character Sheet, atau pilih model gambar lain.
         </div>
       )}
+      {task === "video" && sourceUrl && !selected?.accepts_init_image && (
+        <div className="mb3" style={{
+          background: "#fffbeb", border: "1px solid #fde68a", color: "#92400e",
+          borderRadius: 10, padding: 10, fontSize: 13, lineHeight: 1.5,
+        }}>
+          Model ini <b>membuang gambar awal</b> — ia hanya mengirim teks ke provider, jadi wajah di
+          videonya akan acak meski fotonya sudah kamu pilih.
+          {initModel && (
+            <>
+              {" "}
+              <button type="button" className="btn" style={{ fontSize: 11, padding: "3px 10px", marginTop: 6 }}
+                onClick={() => setModelId(initModel.id)}>Pakai {initModel.label.split(" —")[0]}</button>
+            </>
+          )}
+        </div>
+      )}
       {task === "lipsync" && (
         <div className="card p4 mb3" style={{ background: "#faf5ff", borderColor: "#ede9fe" }}>
           <label className="label">Naskah yang diucapkan (opsional)</label>
@@ -1027,8 +1060,9 @@ export function GenerateForm({ models, influencers, influencerId, refresh, mode,
           <input name="source_image_url" className="input" value={sourceUrl}
             onChange={(e) => setSourceUrl(e.target.value)} placeholder="https://… (pilih dari Aset terbaru)" />
           <p className="tiny muted mt1">
-            Kosong = text-to-video, wajahnya akan acak. Isi dengan foto karakter supaya videonya
-            bergerak dari wajah yang benar.
+            {selected?.accepts_init_image
+              ? "Kosong = text-to-video, wajahnya akan acak. Isi dengan foto karakter supaya videonya bergerak dari wajah yang benar."
+              : "Model yang dipilih sekarang tidak menerima gambar awal — kolom ini akan diabaikan."}
           </p></div>
       )}
       <div className="row mb2">
@@ -1095,10 +1129,10 @@ function CharacterSheetPanel({ models, influencers, refresh, mode }) {
   }, [infId]);
   // Ada foto referensi → default ke model image-edit: wajah diambil dari foto,
   // bukan ditebak dari teks. User tetap bebas memilih model lain.
-  const editModel = imgModels.find((m) => String(m.model_key).includes("image-edit"));
+  const editModel = imgModels.find((m) => m.keeps_identity);
   const model = imgModels.find((m) => m.id === modelId) || (refCount > 0 && editModel) || imgModels[0];
   const est = (model ? Number(model.est_price_usd) : 0) * shots.length;
-  const modelIsEdit = String(model?.model_key || "").includes("image-edit");
+  const modelIsEdit = !!model?.keeps_identity;
 
   function toggle(id) {
     setShots((s) => (s.includes(id) ? s.filter((x) => x !== id) : [...s, id]));
