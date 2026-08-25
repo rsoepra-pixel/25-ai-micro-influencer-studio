@@ -241,7 +241,7 @@ function PersonaWizard({ onApply, onClose, initialAnswers, refine, notice }) {
     setBusy(true); setErr(null);
     try {
       const r = await callGenerate({ action: "write", kind: "persona", answers: ans, photos });
-      setOut({ ...r.persona, _photoUrls: r.photo_urls || [] });
+      setOut({ ...r.persona, _photoUrls: r.photo_urls || [], _photosFailed: r.photos_failed || [] });
     } catch (e) { setErr(e.message); }
     setBusy(false);
   }
@@ -336,6 +336,23 @@ function PersonaWizard({ onApply, onClose, initialAnswers, refine, notice }) {
 
         {out && (
           <>
+            {out._photosFailed?.length > 0 && (
+              <div className="mb3" style={{
+                background: "#fffbeb", border: "1px solid #fde68a", color: "#92400e",
+                borderRadius: 8, padding: "10px 12px", fontSize: 13, lineHeight: 1.5,
+              }}>
+                <b>{out._photosFailed.length} dari {out._photosFailed.length + out._photoUrls.length} foto gagal disimpan.</b>{" "}
+                Deskripsi di bawah tetap dibuat dari semua foto yang kamu unggah, tapi Identity Kit
+                hanya akan berisi {out._photoUrls.length} foto — dan itulah yang nanti dikirim sebagai
+                acuan wajah saat generate gambar.
+                <ul style={{ margin: "6px 0 0 18px", padding: 0 }}>
+                  {out._photosFailed.map((f) => (
+                    <li key={f.index}>Foto ke-{f.index}: {f.reason}</li>
+                  ))}
+                </ul>
+                <div className="mt1">Unggah ulang foto itu lewat Identity Kit setelah influencer tersimpan.</div>
+              </div>
+            )}
             {(out.names?.length > 0 || out.handles?.length > 0) && (
               <div className="card p4 mb3" style={{ background: "#fafafa" }}>
                 {out.names?.length > 0 && <div className="small mb1"><b>Usulan nama:</b> {out.names.join(" · ")}</div>}
@@ -397,7 +414,8 @@ function LookAlikePanel({ onFace, onAmbience }) {
     setBusy(true); setErr(null); setOut(null);
     try {
       const r = await callGenerate({ action: "write", kind: "lookalike", aspect, photos: [file.dataUri] });
-      setOut({ ...r.lookalike, _url: (r.photo_urls || [])[0] || null });
+      const failed = r.photos_failed || [];
+      setOut({ ...r.lookalike, _url: (r.photo_urls || [])[0] || null, _failReason: failed[0]?.reason || null });
     } catch (e2) { setErr(e2.message); }
     setBusy(false);
   }
@@ -435,6 +453,16 @@ function LookAlikePanel({ onFace, onAmbience }) {
       {err && <div className="msg-err mb2">{err}</div>}
       {out && (
         <div className="mt2">
+          {out._failReason && (
+            <div className="mb2" style={{
+              background: "#fffbeb", border: "1px solid #fde68a", color: "#92400e",
+              borderRadius: 8, padding: "10px 12px", fontSize: 13, lineHeight: 1.5,
+            }}>
+              <b>Foto acuannya gagal disimpan</b> — {out._failReason}{" "}
+              Hasil bacaan di bawah tetap bisa dipakai, tapi fotonya sendiri tidak ikut
+              masuk Identity Kit, jadi tidak akan jadi acuan wajah saat generate gambar.
+            </div>
+          )}
           {out.summary && <p className="tiny muted mb2">{out.summary}</p>}
           <div className="card p4 mb2" style={{ background: "#fff" }}>
             <div className="label" style={{ margin: 0 }}>
@@ -2766,8 +2794,13 @@ export function Settings({ ws, refresh, tick, spend, spendError, query }) {
   async function saveKey(e, provider) {
     e.preventDefault(); const f = new FormData(e.target);
     try {
-      await callGenerate({ action: "set_key", provider, key: f.get("key") });
-      setMsg(provider === "hf" ? "Token Hugging Face tersimpan aman di server." : "FAL key tersimpan aman di server.");
+      const r = await callGenerate({ action: "set_key", provider, key: f.get("key") });
+      const nama = provider === "hf" ? "Token Hugging Face" : "FAL key";
+      // `verified: false` = providernya tidak bisa dihubungi saat disimpan,
+      // BUKAN key-nya ditolak — yang ditolak tidak akan sampai ke sini.
+      setMsg(r.verified === false
+        ? `${nama} tersimpan, tapi belum sempat diuji ke providernya (tidak bisa dihubungi barusan). Kalau generate gagal dengan error kredensial, coba simpan ulang.`
+        : `${nama} tersimpan aman di server, dan sudah diuji ke providernya.`);
       e.target.reset();
       setKeyState((s) => ({ ...s, [provider === "hf" ? "hf_token" : "fal_key"]: true }));
     } catch (e2) { setMsg(e2.message); }

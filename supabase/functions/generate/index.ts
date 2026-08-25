@@ -272,12 +272,22 @@ async function storeRemote(ws: string, url: string, jobId: string, fallbackCtype
 }
 
 // Simpan foto data-URI ke bucket `media` dan kembalikan URL publiknya.
-// Foto yang gagal dilewati diam-diam — sisa foto tetap diproses.
-async function storePhotos(ws: string, photos: string[]): Promise<string[]> {
+// Satu foto yang gagal tidak menggagalkan sisanya — tapi juga tidak lagi
+// hilang tanpa jejak: alasannya ikut dikembalikan supaya UI bisa bilang foto
+// ke berapa yang tidak masuk. Dulu ketiganya (format ditolak, upload gagal,
+// exception) sama-sama di-skip diam-diam, jadi user mengira Identity Kit-nya
+// lengkap padahal kurang — dan itu baru ketahuan saat wajah hasilnya meleset.
+type StoredPhotos = { urls: string[]; failed: { index: number; reason: string }[] };
+async function storePhotos(ws: string, photos: string[]): Promise<StoredPhotos> {
   const urls: string[] = [];
+  const failed: { index: number; reason: string }[] = [];
+  // `index` 1-based: yang dibaca manusia di UI ("Foto ke-4"), bukan indeks array.
   for (const [i, dataUri] of photos.entries()) {
     const m = /^data:(image\/[a-z+]+);base64,(.+)$/i.exec(dataUri);
-    if (!m) continue;
+    if (!m) {
+      failed.push({ index: i + 1, reason: "formatnya tidak dikenali — harus gambar JPEG, PNG, atau WebP." });
+      continue;
+    }
     try {
       const bin = atob(m[2]);
       const bytes = new Uint8Array(bin.length);
@@ -286,10 +296,48 @@ async function storePhotos(ws: string, photos: string[]): Promise<string[]> {
       const path = `${ws}/refs/${crypto.randomUUID()}-${i}.${ext}`;
       const { error: upErr } = await admin.storage.from("media")
         .upload(path, bytes, { contentType: m[1], upsert: true, cacheControl: "3600" });
-      if (!upErr) urls.push(admin.storage.from("media").getPublicUrl(path).data.publicUrl);
-    } catch (_e) { /* foto ini dilewati */ }
+      if (upErr) failed.push({ index: i + 1, reason: upErr.message });
+      else urls.push(admin.storage.from("media").getPublicUrl(path).data.publicUrl);
+    } catch (e) {
+      failed.push({ index: i + 1, reason: (e as Error).message || "gagal diproses." });
+    }
   }
-  return urls;
+  return { urls, failed };
+}
+
+// Cek key ke providernya SEBELUM disimpan. Tanpa ini `set_key` cuma memeriksa
+// panjang string, jadi key yang salah baru ketahuan saat generate pertama —
+// persis yang terjadi dengan FAL key yang formatnya benar (uuid:hex) tapi
+// ditolak 401 oleh fal.ai. Keduanya panggilan read-only, tidak menjalankan
+// model apa pun, jadi tidak ada biaya.
+//
+// "unverified" = providernya sendiri tidak bisa dihubungi. Itu bukan alasan
+// menolak simpan — jaringan yang lagi bermasalah tidak membuat key-nya salah.
+type KeyCheck = { state: "valid" | "rejected" | "unverified"; reason?: string };
+async function verifyKey(provider: string, key: string): Promise<KeyCheck> {
+  try {
+    if (provider === "hf") {
+      const r = await fetch("https://huggingface.co/api/whoami-v2", { headers: { Authorization: `Bearer ${key}` } });
+      if (r.status === 401 || r.status === 403) {
+        return { state: "rejected", reason: `Hugging Face menolak token ini (HTTP ${r.status}). Pastikan tokennya benar dan punya izin "Inference Providers".` };
+      }
+      return { state: "valid" };
+    }
+    // fal.ai: tanya status request yang pasti tidak ada. Key benar → 404/422,
+    // key salah → 401. Endpoint status tidak mengantre job, jadi gratis.
+    const r = await fetch("https://queue.fal.run/fal-ai/flux/requests/00000000-0000-0000-0000-000000000000/status", {
+      headers: { Authorization: `Key ${key}` },
+    });
+    if (r.status === 401 || r.status === 403) {
+      return {
+        state: "rejected",
+        reason: "fal.ai menolak key ini (401 invalid key credentials). Dua sebab yang paling sering: (1) yang tersalin cuma Key ID — di dashboard fal.ai daftar key hanya menampilkan bagian itu, sedangkan yang dipakai adalah key lengkap berbentuk key_id:secret yang cuma muncul sekali saat key dibuat; atau (2) akun fal.ai-nya belum punya billing/credit, sehingga key-nya belum aktif untuk API. Cek Settings → Billing di fal.ai, lalu buat key baru.",
+      };
+    }
+    return { state: "valid" };
+  } catch (_e) {
+    return { state: "unverified" };
+  }
 }
 
 Deno.serve(async (req) => {
@@ -316,8 +364,12 @@ Deno.serve(async (req) => {
         const provider = body.provider === "hf" ? "hf" : "fal";
         const key = String(body.key || "").trim();
         if (key.length < 10) throw new Error("API key tidak valid.");
+        // Ditolak provider → jangan disimpan sama sekali. Lebih baik gagal di
+        // sini, saat user masih memegang key-nya, daripada nanti saat generate.
+        const check = await verifyKey(provider, key);
+        if (check.state === "rejected") throw new Error(check.reason || "Key ditolak provider.");
         await setSecret(ws, provider === "hf" ? "hf_token" : "fal_key", key);
-        return json({ ok: true });
+        return json({ ok: true, verified: check.state === "valid" });
       }
       case "set_text_config": {
         const provider = String(body.provider || "qwen");
@@ -464,11 +516,12 @@ Deno.serve(async (req) => {
               `DILARANG mendeskripsikan wajah, tubuh, atau identitas siapa pun di foto.\n` +
               `Format JSON: {"identity_prompt": "", "style_notes": "...", "summary": "1-2 kalimat bahasa Indonesia menjelaskan suasana yang kamu tangkap"}`;
           const parsed = parseJsonLoose(await chat(ws, system, user, photos)) as Record<string, unknown>;
-          const photoUrls = await storePhotos(ws, photos);
+          const stored = await storePhotos(ws, photos);
           return json({
             ok: true,
             aspect,
-            photo_urls: photoUrls,
+            photo_urls: stored.urls,
+            photos_failed: stored.failed,
             lookalike: {
               identity_prompt: aspect === "face" ? String(parsed.identity_prompt || "") : "",
               style_notes: aspect === "ambience" ? String(parsed.style_notes || "") : "",
@@ -535,11 +588,12 @@ Deno.serve(async (req) => {
           const parsed = parseJsonLoose(await chat(ws, system, user, photos)) as Record<string, unknown>;
 
           // Simpan foto referensi ke Storage supaya bisa dipakai sebagai Identity Kit.
-          const photoUrls = await storePhotos(ws, photos);
+          const stored = await storePhotos(ws, photos);
 
           return json({
             ok: true,
-            photo_urls: photoUrls,
+            photo_urls: stored.urls,
+            photos_failed: stored.failed,
             persona: {
               names: Array.isArray(parsed.names) ? parsed.names.map(String).slice(0, 3) : [],
               handles: Array.isArray(parsed.handles) ? parsed.handles.map(String).slice(0, 3) : [],
@@ -642,6 +696,13 @@ Deno.serve(async (req) => {
         // Foto Identity Kit (kind "reference") — dikirim ke model image-edit
         // sebagai referensi wajah. Teks identity_prompt saja tidak cukup untuk
         // menyamakan wajah; model text-to-image murni tetap mengabaikan foto.
+        // Diurutkan TERBARU dulu: dulu urutannya menaik, jadi 3 foto tertua yang
+        // selalu terpakai — foto yang baru diunggah tidak pernah berpengaruh
+        // sampai yang lama dihapus. Sekarang unggahan baru langsung dipakai.
+        // `id` jadi tie-breaker karena created_at default-nya now() = waktu
+        // TRANSAKSI: satu batch unggah memberi timestamp yang sama persis ke
+        // semua fotonya. Tanpa itu, 3 dari batch yang sama dipilih acak dan
+        // bisa berganti tiap generate — wajahnya jadi tidak konsisten.
         let refPhotos: string[] = [];
         if (influencer_id) {
           const { data: inf } = await admin.from("influencers")
@@ -650,7 +711,8 @@ Deno.serve(async (req) => {
             identity = inf.identity_prompt || "";
             const { data: refs } = await admin.from("character_assets")
               .select("url").eq("influencer_id", influencer_id).eq("kind", "reference")
-              .not("url", "is", null).order("created_at").limit(3);
+              .not("url", "is", null)
+              .order("created_at", { ascending: false }).order("id", { ascending: false }).limit(3);
             refPhotos = (refs || []).map((r) => String(r.url)).filter(Boolean);
           }
         }
@@ -688,6 +750,14 @@ Deno.serve(async (req) => {
         const fail = async (msg: string) => {
           await admin.from("production_jobs").update({ status: "failed", error: msg.slice(0, 500) }).eq("id", job.id);
         };
+        // Ada beberapa jalur keluar SETELAH job dibuat. Kalau cuma `throw`,
+        // baris job-nya menggantung di status "queued" selamanya: `poll` hanya
+        // melihat status "running", jadi tidak pernah ditandai gagal dan tidak
+        // pernah hilang dari daftar. Semua jalur itu lewat sini.
+        const abort = async (msg: string): Promise<never> => {
+          await fail(msg);
+          throw new Error(msg);
+        };
 
         if (mode === "mock") {
           await finish((MOCK_OUTPUTS[task] || MOCK_OUTPUTS.image)(job.id.slice(0, 8)), 0);
@@ -707,10 +777,10 @@ Deno.serve(async (req) => {
         }
 
         if (model.provider === "dashscope") {
-          if (task !== "image" && task !== "video") throw new Error("Model DashScope di katalog ini hanya untuk gambar/video.");
+          if (task !== "image" && task !== "video") await abort("Model DashScope di katalog ini hanya untuk gambar/video.");
           const dsKey = await dashscopeKey(ws);
           if (!dsKey) {
-            throw new Error("Key DashScope belum ada — model ini memakai API key Qwen yang sama dengan Penulis AI (Settings → Penulis AI, provider Qwen).");
+            await abort("Key DashScope belum ada — model ini memakai API key Qwen yang sama dengan Penulis AI (Settings → Penulis AI, provider Qwen).");
           }
 
           if (task === "image") {
@@ -781,7 +851,7 @@ Deno.serve(async (req) => {
 
         // fal.ai — submit ke antrean, hasil diambil lewat action `poll`
         const falKey = await getSecret(ws, "fal_key");
-        if (!falKey) throw new Error("FAL key belum dipasang.");
+        if (!falKey) await abort("FAL key belum dipasang — isi di Settings.");
         const input: Record<string, unknown> = {};
         if (task === "image") { input.prompt = finalPrompt; input.image_size = "portrait_4_3"; input.num_images = 1; }
         else if (task === "video") {
