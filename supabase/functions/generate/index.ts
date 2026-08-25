@@ -272,12 +272,22 @@ async function storeRemote(ws: string, url: string, jobId: string, fallbackCtype
 }
 
 // Simpan foto data-URI ke bucket `media` dan kembalikan URL publiknya.
-// Foto yang gagal dilewati diam-diam — sisa foto tetap diproses.
-async function storePhotos(ws: string, photos: string[]): Promise<string[]> {
+// Satu foto yang gagal tidak menggagalkan sisanya — tapi juga tidak lagi
+// hilang tanpa jejak: alasannya ikut dikembalikan supaya UI bisa bilang foto
+// ke berapa yang tidak masuk. Dulu ketiganya (format ditolak, upload gagal,
+// exception) sama-sama di-skip diam-diam, jadi user mengira Identity Kit-nya
+// lengkap padahal kurang — dan itu baru ketahuan saat wajah hasilnya meleset.
+type StoredPhotos = { urls: string[]; failed: { index: number; reason: string }[] };
+async function storePhotos(ws: string, photos: string[]): Promise<StoredPhotos> {
   const urls: string[] = [];
+  const failed: { index: number; reason: string }[] = [];
+  // `index` 1-based: yang dibaca manusia di UI ("Foto ke-4"), bukan indeks array.
   for (const [i, dataUri] of photos.entries()) {
     const m = /^data:(image\/[a-z+]+);base64,(.+)$/i.exec(dataUri);
-    if (!m) continue;
+    if (!m) {
+      failed.push({ index: i + 1, reason: "formatnya tidak dikenali — harus gambar JPEG, PNG, atau WebP." });
+      continue;
+    }
     try {
       const bin = atob(m[2]);
       const bytes = new Uint8Array(bin.length);
@@ -286,10 +296,13 @@ async function storePhotos(ws: string, photos: string[]): Promise<string[]> {
       const path = `${ws}/refs/${crypto.randomUUID()}-${i}.${ext}`;
       const { error: upErr } = await admin.storage.from("media")
         .upload(path, bytes, { contentType: m[1], upsert: true, cacheControl: "3600" });
-      if (!upErr) urls.push(admin.storage.from("media").getPublicUrl(path).data.publicUrl);
-    } catch (_e) { /* foto ini dilewati */ }
+      if (upErr) failed.push({ index: i + 1, reason: upErr.message });
+      else urls.push(admin.storage.from("media").getPublicUrl(path).data.publicUrl);
+    } catch (e) {
+      failed.push({ index: i + 1, reason: (e as Error).message || "gagal diproses." });
+    }
   }
-  return urls;
+  return { urls, failed };
 }
 
 Deno.serve(async (req) => {
@@ -464,11 +477,12 @@ Deno.serve(async (req) => {
               `DILARANG mendeskripsikan wajah, tubuh, atau identitas siapa pun di foto.\n` +
               `Format JSON: {"identity_prompt": "", "style_notes": "...", "summary": "1-2 kalimat bahasa Indonesia menjelaskan suasana yang kamu tangkap"}`;
           const parsed = parseJsonLoose(await chat(ws, system, user, photos)) as Record<string, unknown>;
-          const photoUrls = await storePhotos(ws, photos);
+          const stored = await storePhotos(ws, photos);
           return json({
             ok: true,
             aspect,
-            photo_urls: photoUrls,
+            photo_urls: stored.urls,
+            photos_failed: stored.failed,
             lookalike: {
               identity_prompt: aspect === "face" ? String(parsed.identity_prompt || "") : "",
               style_notes: aspect === "ambience" ? String(parsed.style_notes || "") : "",
@@ -535,11 +549,12 @@ Deno.serve(async (req) => {
           const parsed = parseJsonLoose(await chat(ws, system, user, photos)) as Record<string, unknown>;
 
           // Simpan foto referensi ke Storage supaya bisa dipakai sebagai Identity Kit.
-          const photoUrls = await storePhotos(ws, photos);
+          const stored = await storePhotos(ws, photos);
 
           return json({
             ok: true,
-            photo_urls: photoUrls,
+            photo_urls: stored.urls,
+            photos_failed: stored.failed,
             persona: {
               names: Array.isArray(parsed.names) ? parsed.names.map(String).slice(0, 3) : [],
               handles: Array.isArray(parsed.handles) ? parsed.handles.map(String).slice(0, 3) : [],
