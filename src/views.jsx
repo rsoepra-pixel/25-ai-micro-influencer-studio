@@ -825,6 +825,20 @@ export function GenerateForm({ models, influencers, influencerId, refresh, mode,
   const [sourceUrl, setSourceUrl] = useState("");
   const [ttsText, setTtsText] = useState("");
   const [step, setStep] = useState(null);
+  const [formInfId, setFormInfId] = useState("");
+
+  // Influencer yang sedang aktif: dari prop (halaman influencer) atau dari
+  // dropdown (Production Studio). Menentukan foto Identity Kit mana yang relevan.
+  const activeInfId = influencerId || formInfId || null;
+  const [refCount, setRefCount] = useState(0);
+  useEffect(() => {
+    if (!activeInfId) { setRefCount(0); return; }
+    let alive = true;
+    supa.from("character_assets").select("id", { count: "exact", head: true })
+      .eq("influencer_id", activeInfId).eq("kind", "reference")
+      .then(({ count }) => { if (alive) setRefCount(count || 0); });
+    return () => { alive = false; };
+  }, [activeInfId]);
 
   // Foto yang dipilih dari daftar aset langsung memindahkan task sekaligus
   // mengisi URL-nya — sebelumnya URL harus disalin manual dari Drive.
@@ -837,7 +851,14 @@ export function GenerateForm({ models, influencers, influencerId, refresh, mode,
   }, [picked?.n]);
 
   const taskModels = models.filter((m) => m.task === task);
-  const selected = taskModels.find((m) => m.id === modelId) || taskModels[0];
+  // Hanya model image-edit yang benar-benar mengirim foto Identity Kit ke
+  // provider; sisanya cuma menerima teks. Jadi kalau fotonya ada, model itu
+  // yang dipilih duluan — user tetap bebas menggantinya.
+  const editModel = taskModels.find((m) => String(m.model_key).includes("image-edit"));
+  const selected = taskModels.find((m) => m.id === modelId)
+    || (task === "image" && refCount > 0 && editModel)
+    || taskModels[0];
+  const modelKeepsFace = String(selected?.model_key || "").includes("image-edit");
   let est = selected ? Number(selected.est_price_usd) : 0;
   if (selected?.unit === "per_second") est *= duration;
   if (selected?.unit === "per_1k_chars") est = (est * (text.length || 500)) / 1000;
@@ -927,7 +948,8 @@ export function GenerateForm({ models, influencers, influencerId, refresh, mode,
         </div>
         {!influencerId && influencers && (
           <div><label className="label">Influencer</label>
-            <select name="influencer_id" className="input" defaultValue="">
+            <select name="influencer_id" className="input" value={formInfId}
+              onChange={(e) => { setFormInfId(e.target.value); setModelId(""); }}>
               <option value="">— tanpa influencer —</option>
               {influencers.map((i) => <option key={i.id} value={i.id}>{i.name}</option>)}
             </select>
@@ -949,6 +971,34 @@ export function GenerateForm({ models, influencers, influencerId, refresh, mode,
             placeholder={task === "image" ? "mis. selfie di cafe aesthetic, natural light, candid smile"
               : task === "lipsync" ? "Gaya penyampaian (opsional)"
               : "mis. walking through Jakarta street market, golden hour"} />
+        </div>
+      )}
+      {/* Cocok-tidaknya model dengan maksud user, dijawab sebelum Generate ditekan.
+          Kasus paling mahal: foto Identity Kit sudah ada tapi modelnya tidak
+          membacanya — hasilnya wajah asing, dan baru ketahuan setelah dibayar. */}
+      {task === "image" && activeInfId && refCount > 0 && !modelKeepsFace && (
+        <div className="mb3" style={{
+          background: "#fffbeb", border: "1px solid #fde68a", color: "#92400e",
+          borderRadius: 10, padding: 10, fontSize: 13, lineHeight: 1.5,
+        }}>
+          Model ini <b>tidak membaca foto Identity Kit</b> — ia hanya menerima teks, jadi wajahnya
+          akan mengikuti deskripsi dan berbeda tiap generate.
+          {editModel && (
+            <>
+              {" "}
+              <button type="button" className="btn" style={{ fontSize: 11, padding: "3px 10px", marginTop: 6 }}
+                onClick={() => setModelId(editModel.id)}>Pakai {editModel.label.split(" —")[0]}</button>
+            </>
+          )}
+        </div>
+      )}
+      {task === "image" && activeInfId && refCount > 0 && modelKeepsFace && (
+        <p className="tiny muted mb3">✓ {Math.min(refCount, 3)} foto Identity Kit dipakai sebagai acuan wajah.</p>
+      )}
+      {task === "image" && activeInfId && refCount === 0 && modelKeepsFace && (
+        <div className="msg-err mb3">
+          Model ini butuh minimal 1 foto di Identity Kit — unggah dulu lewat “✨ Perbaiki dengan AI”
+          di Character Sheet, atau pilih model gambar lain.
         </div>
       )}
       {task === "lipsync" && (
