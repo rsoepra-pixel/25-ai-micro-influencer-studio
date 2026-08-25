@@ -305,6 +305,41 @@ async function storePhotos(ws: string, photos: string[]): Promise<StoredPhotos> 
   return { urls, failed };
 }
 
+// Cek key ke providernya SEBELUM disimpan. Tanpa ini `set_key` cuma memeriksa
+// panjang string, jadi key yang salah baru ketahuan saat generate pertama —
+// persis yang terjadi dengan FAL key yang formatnya benar (uuid:hex) tapi
+// ditolak 401 oleh fal.ai. Keduanya panggilan read-only, tidak menjalankan
+// model apa pun, jadi tidak ada biaya.
+//
+// "unverified" = providernya sendiri tidak bisa dihubungi. Itu bukan alasan
+// menolak simpan — jaringan yang lagi bermasalah tidak membuat key-nya salah.
+type KeyCheck = { state: "valid" | "rejected" | "unverified"; reason?: string };
+async function verifyKey(provider: string, key: string): Promise<KeyCheck> {
+  try {
+    if (provider === "hf") {
+      const r = await fetch("https://huggingface.co/api/whoami-v2", { headers: { Authorization: `Bearer ${key}` } });
+      if (r.status === 401 || r.status === 403) {
+        return { state: "rejected", reason: `Hugging Face menolak token ini (HTTP ${r.status}). Pastikan tokennya benar dan punya izin "Inference Providers".` };
+      }
+      return { state: "valid" };
+    }
+    // fal.ai: tanya status request yang pasti tidak ada. Key benar → 404/422,
+    // key salah → 401. Endpoint status tidak mengantre job, jadi gratis.
+    const r = await fetch("https://queue.fal.run/fal-ai/flux/requests/00000000-0000-0000-0000-000000000000/status", {
+      headers: { Authorization: `Key ${key}` },
+    });
+    if (r.status === 401 || r.status === 403) {
+      return {
+        state: "rejected",
+        reason: "fal.ai menolak key ini (401 invalid key credentials). Dua sebab yang paling sering: (1) yang tersalin cuma Key ID — di dashboard fal.ai daftar key hanya menampilkan bagian itu, sedangkan yang dipakai adalah key lengkap berbentuk key_id:secret yang cuma muncul sekali saat key dibuat; atau (2) akun fal.ai-nya belum punya billing/credit, sehingga key-nya belum aktif untuk API. Cek Settings → Billing di fal.ai, lalu buat key baru.",
+      };
+    }
+    return { state: "valid" };
+  } catch (_e) {
+    return { state: "unverified" };
+  }
+}
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: CORS });
   if (req.method !== "POST") return json({ error: "Method not allowed" }, 405);
@@ -329,8 +364,12 @@ Deno.serve(async (req) => {
         const provider = body.provider === "hf" ? "hf" : "fal";
         const key = String(body.key || "").trim();
         if (key.length < 10) throw new Error("API key tidak valid.");
+        // Ditolak provider → jangan disimpan sama sekali. Lebih baik gagal di
+        // sini, saat user masih memegang key-nya, daripada nanti saat generate.
+        const check = await verifyKey(provider, key);
+        if (check.state === "rejected") throw new Error(check.reason || "Key ditolak provider.");
         await setSecret(ws, provider === "hf" ? "hf_token" : "fal_key", key);
-        return json({ ok: true });
+        return json({ ok: true, verified: check.state === "valid" });
       }
       case "set_text_config": {
         const provider = String(body.provider || "qwen");
@@ -711,6 +750,14 @@ Deno.serve(async (req) => {
         const fail = async (msg: string) => {
           await admin.from("production_jobs").update({ status: "failed", error: msg.slice(0, 500) }).eq("id", job.id);
         };
+        // Ada beberapa jalur keluar SETELAH job dibuat. Kalau cuma `throw`,
+        // baris job-nya menggantung di status "queued" selamanya: `poll` hanya
+        // melihat status "running", jadi tidak pernah ditandai gagal dan tidak
+        // pernah hilang dari daftar. Semua jalur itu lewat sini.
+        const abort = async (msg: string): Promise<never> => {
+          await fail(msg);
+          throw new Error(msg);
+        };
 
         if (mode === "mock") {
           await finish((MOCK_OUTPUTS[task] || MOCK_OUTPUTS.image)(job.id.slice(0, 8)), 0);
@@ -730,10 +777,10 @@ Deno.serve(async (req) => {
         }
 
         if (model.provider === "dashscope") {
-          if (task !== "image" && task !== "video") throw new Error("Model DashScope di katalog ini hanya untuk gambar/video.");
+          if (task !== "image" && task !== "video") await abort("Model DashScope di katalog ini hanya untuk gambar/video.");
           const dsKey = await dashscopeKey(ws);
           if (!dsKey) {
-            throw new Error("Key DashScope belum ada — model ini memakai API key Qwen yang sama dengan Penulis AI (Settings → Penulis AI, provider Qwen).");
+            await abort("Key DashScope belum ada — model ini memakai API key Qwen yang sama dengan Penulis AI (Settings → Penulis AI, provider Qwen).");
           }
 
           if (task === "image") {
@@ -804,7 +851,7 @@ Deno.serve(async (req) => {
 
         // fal.ai — submit ke antrean, hasil diambil lewat action `poll`
         const falKey = await getSecret(ws, "fal_key");
-        if (!falKey) throw new Error("FAL key belum dipasang.");
+        if (!falKey) await abort("FAL key belum dipasang — isi di Settings.");
         const input: Record<string, unknown> = {};
         if (task === "image") { input.prompt = finalPrompt; input.image_size = "portrait_4_3"; input.num_images = 1; }
         else if (task === "video") {

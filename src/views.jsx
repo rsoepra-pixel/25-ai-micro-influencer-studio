@@ -2794,8 +2794,13 @@ export function Settings({ ws, refresh, tick, spend, spendError, query }) {
   async function saveKey(e, provider) {
     e.preventDefault(); const f = new FormData(e.target);
     try {
-      await callGenerate({ action: "set_key", provider, key: f.get("key") });
-      setMsg(provider === "hf" ? "Token Hugging Face tersimpan aman di server." : "FAL key tersimpan aman di server.");
+      const r = await callGenerate({ action: "set_key", provider, key: f.get("key") });
+      const nama = provider === "hf" ? "Token Hugging Face" : "FAL key";
+      // `verified: false` = providernya tidak bisa dihubungi saat disimpan,
+      // BUKAN key-nya ditolak — yang ditolak tidak akan sampai ke sini.
+      setMsg(r.verified === false
+        ? `${nama} tersimpan, tapi belum sempat diuji ke providernya (tidak bisa dihubungi barusan). Kalau generate gagal dengan error kredensial, coba simpan ulang.`
+        : `${nama} tersimpan aman di server, dan sudah diuji ke providernya.`);
       e.target.reset();
       setKeyState((s) => ({ ...s, [provider === "hf" ? "hf_token" : "fal_key"]: true }));
     } catch (e2) { setMsg(e2.message); }
