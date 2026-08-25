@@ -340,6 +340,28 @@ async function verifyKey(provider: string, key: string): Promise<KeyCheck> {
   }
 }
 
+// URL antrean fal dipakai apa adanya dari respons submit — tapi jangan pernah
+// mengirim FAL key ke host yang bukan milik fal. Kalau bentuknya tidak sesuai,
+// kembalikan null dan biarkan pemanggil memakai jalur cadangan.
+function falQueueUrl(raw: unknown): string | null {
+  if (typeof raw !== "string" || !raw) return null;
+  try {
+    const u = new URL(raw);
+    return u.protocol === "https:" && u.hostname === "queue.fal.run" ? u.toString() : null;
+  } catch {
+    return null;
+  }
+}
+
+// Jalur cadangan untuk job lama yang dibuat sebelum `external_url` ada.
+// Dua segmen pertama model_key = namespace antrean fal; sisanya varian model,
+// yang kalau ikut dibawa membuat fal menjawab 405. Ini tetap menebak pola,
+// makanya hanya dipakai kalau provider tidak memberi URL-nya sendiri.
+function falQueueUrlFallback(modelKey: string, requestId: string): string {
+  const ns = String(modelKey).split("/").slice(0, 2).join("/");
+  return `https://queue.fal.run/${ns}/requests/${requestId}`;
+}
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: CORS });
   if (req.method !== "POST") return json({ error: "Method not allowed" }, 405);
@@ -875,7 +897,13 @@ Deno.serve(async (req) => {
           await fail(errMsg);
           throw new Error(`Gagal submit ke fal.ai: ${errMsg}`);
         }
-        await admin.from("production_jobs").update({ status: "running", external_id: qr.request_id }).eq("id", job.id);
+        // Simpan URL antrean apa adanya dari fal. `status_url` fal persis sama
+        // dengan `response_url` + "/status", jadi satu kolom cukup untuk dua-duanya.
+        await admin.from("production_jobs").update({
+          status: "running",
+          external_id: qr.request_id,
+          external_url: falQueueUrl(qr.response_url),
+        }).eq("id", job.id);
         return json({ ok: true, job_id: job.id, status: "running", mode, provider: "fal" });
       }
       case "poll": {
@@ -920,7 +948,8 @@ Deno.serve(async (req) => {
           }
           if (!falKey) break;
           try {
-            const base = `https://queue.fal.run/${jb.model_key}/requests/${jb.external_id}`;
+            const base = falQueueUrl(jb.external_url)
+              || falQueueUrlFallback(jb.model_key, jb.external_id);
             const sres = await fetch(`${base}/status`, { headers: { Authorization: `Key ${falKey}` } });
             const st = await sres.json().catch(() => ({}));
             if (st.status === "COMPLETED") {
