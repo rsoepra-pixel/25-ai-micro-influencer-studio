@@ -877,8 +877,26 @@ Deno.serve(async (req) => {
         const input: Record<string, unknown> = {};
         if (task === "image") { input.prompt = finalPrompt; input.image_size = "portrait_4_3"; input.num_images = 1; }
         else if (task === "video") {
-          input.prompt = finalPrompt; input.duration = String(duration <= 5 ? 5 : 10);
-          if (source_image_url) input.image_url = source_image_url;
+          input.prompt = finalPrompt;
+          input.duration = String(duration <= 5 ? 5 : 10);
+          // Nama field gambar awal dibaca dari katalog, bukan di-hardcode:
+          // sebagian besar model fal memakai `image_url`, tapi Kling 2.6 memakai
+          // `start_image_url`. Diuji langsung ke fal (POST body kosong -> 422
+          // menyebutkan field wajibnya).
+          //
+          // Dan di endpoint image-to-video foto itu WAJIB, bukan opsional —
+          // tanpa itu fal menjawab 422. Digagalkan di sini saja, dengan pesan
+          // yang bisa ditindaklanjuti, daripada menunggu error mentah provider.
+          if (model.init_image_field) {
+            if (!source_image_url) {
+              await abort(
+                "Model ini membuat video DARI sebuah foto, jadi fotonya wajib diisi. " +
+                "Buka halaman influencer, pilih foto yang wajahnya sudah benar, lalu tekan tombol B-roll — " +
+                "atau tempel URL-nya di kolom \"URL gambar awal\".",
+              );
+            }
+            input[String(model.init_image_field)] = source_image_url;
+          }
         } else if (task === "tts") { input.text = String(text); }
         else if (task === "lipsync") {
           if (String(model.model_key).includes("sadtalker")) {
