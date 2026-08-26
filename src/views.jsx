@@ -2799,7 +2799,7 @@ export function Settings({ ws, refresh, tick, spend, spendError, query }) {
       // `verified: false` = providernya tidak bisa dihubungi saat disimpan,
       // BUKAN key-nya ditolak — yang ditolak tidak akan sampai ke sini.
       setMsg(r.verified === false
-        ? `${nama} tersimpan, tapi belum sempat diuji ke providernya (tidak bisa dihubungi barusan). Kalau generate gagal dengan error kredensial, coba simpan ulang.`
+        ? `${nama} tersimpan, tapi BELUM terbukti benar. ${r.verify_note || "Providernya tidak menjawab dengan jelas."} Kalau generate nanti gagal dengan error kredensial, simpan ulang key-nya.`
         : `${nama} tersimpan aman di server, dan sudah diuji ke providernya.`);
       e.target.reset();
       setKeyState((s) => ({ ...s, [provider === "hf" ? "hf_token" : "fal_key"]: true }));

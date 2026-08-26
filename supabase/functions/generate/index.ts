@@ -314,29 +314,46 @@ async function storePhotos(ws: string, photos: string[]): Promise<StoredPhotos> 
 // "unverified" = providernya sendiri tidak bisa dihubungi. Itu bukan alasan
 // menolak simpan — jaringan yang lagi bermasalah tidak membuat key-nya salah.
 type KeyCheck = { state: "valid" | "rejected" | "unverified"; reason?: string };
+
+// HANYA 2xx yang berarti key-nya diterima. Status lain tidak membuktikan
+// apa-apa dan harus dilaporkan apa adanya sebagai "belum terverifikasi".
+//
+// Versi pertama fungsi ini cuma memeriksa 401/403 lalu menganggap SISANYA
+// valid. Itu keliru, dan bukan keliru secara teoretis: menguji dari jalur lain
+// menunjukkan seluruh domain huggingface.co dibalas 404 halaman HTML oleh
+// perantara jaringan — root-nya pun 404, sementara host lain dari jalur yang
+// sama menjawab 200. Kalau hal serupa mengenai edge function, token yang salah
+// akan lolos tersimpan dan dilaporkan "sudah diuji" — persis kegagalan yang
+// `verifyKey` dibuat untuk mencegah.
+function classifyKeyCheck(status: number, rejectedReason: string): KeyCheck {
+  if (status === 401 || status === 403) return { state: "rejected", reason: rejectedReason };
+  if (status >= 200 && status < 300) return { state: "valid" };
+  return {
+    state: "unverified",
+    reason: `Provider menjawab HTTP ${status} — bukan penerimaan, bukan juga penolakan. Key tetap disimpan, tapi belum terbukti benar.`,
+  };
+}
+
 async function verifyKey(provider: string, key: string): Promise<KeyCheck> {
   try {
     if (provider === "hf") {
       const r = await fetch("https://huggingface.co/api/whoami-v2", { headers: { Authorization: `Bearer ${key}` } });
-      if (r.status === 401 || r.status === 403) {
-        return { state: "rejected", reason: `Hugging Face menolak token ini (HTTP ${r.status}). Pastikan tokennya benar dan punya izin "Inference Providers".` };
-      }
-      return { state: "valid" };
+      return classifyKeyCheck(
+        r.status,
+        `Hugging Face menolak token ini (HTTP ${r.status}). Pastikan tokennya benar dan punya izin "Inference Providers".`,
+      );
     }
-    // fal.ai: tanya status request yang pasti tidak ada. Key benar → 404/422,
+    // fal.ai: tanya status request yang pasti tidak ada. Key benar → 200,
     // key salah → 401. Endpoint status tidak mengantre job, jadi gratis.
     const r = await fetch("https://queue.fal.run/fal-ai/flux/requests/00000000-0000-0000-0000-000000000000/status", {
       headers: { Authorization: `Key ${key}` },
     });
-    if (r.status === 401 || r.status === 403) {
-      return {
-        state: "rejected",
-        reason: "fal.ai menolak key ini (401 invalid key credentials). Dua sebab yang paling sering: (1) yang tersalin cuma Key ID — di dashboard fal.ai daftar key hanya menampilkan bagian itu, sedangkan yang dipakai adalah key lengkap berbentuk key_id:secret yang cuma muncul sekali saat key dibuat; atau (2) akun fal.ai-nya belum punya billing/credit, sehingga key-nya belum aktif untuk API. Cek Settings → Billing di fal.ai, lalu buat key baru.",
-      };
-    }
-    return { state: "valid" };
+    return classifyKeyCheck(
+      r.status,
+      "fal.ai menolak key ini (401 invalid key credentials). Dua sebab yang paling sering: (1) yang tersalin cuma Key ID — di dashboard fal.ai daftar key hanya menampilkan bagian itu, sedangkan yang dipakai adalah key lengkap berbentuk key_id:secret yang cuma muncul sekali saat key dibuat; atau (2) akun fal.ai-nya belum punya billing/credit, sehingga key-nya belum aktif untuk API. Cek Settings → Billing di fal.ai, lalu buat key baru.",
+    );
   } catch (_e) {
-    return { state: "unverified" };
+    return { state: "unverified", reason: "Providernya tidak bisa dihubungi dari server." };
   }
 }
 
@@ -391,7 +408,11 @@ Deno.serve(async (req) => {
         const check = await verifyKey(provider, key);
         if (check.state === "rejected") throw new Error(check.reason || "Key ditolak provider.");
         await setSecret(ws, provider === "hf" ? "hf_token" : "fal_key", key);
-        return json({ ok: true, verified: check.state === "valid" });
+        return json({
+          ok: true,
+          verified: check.state === "valid",
+          verify_note: check.state === "valid" ? null : check.reason || null,
+        });
       }
       case "set_text_config": {
         const provider = String(body.provider || "qwen");
