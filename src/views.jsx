@@ -26,9 +26,9 @@ const ErrBanner = ({ error }) => error ? <div className="msg-err mb3">Gagal memu
 
 function Badge({ children, tone = "zinc" }) {
   const tones = {
-    green: ["#dcfce7", "#15803d"], red: ["#fee2e2", "#b91c1c"],
-    amber: ["#fef3c7", "#b45309"], violet: ["#ede9fe", "#6d28d9"],
-    blue: ["#dbeafe", "#1d4ed8"], zinc: ["#f4f4f5", "#52525b"],
+    green: ["var(--ok-line)", "var(--ok)"], red: ["var(--err-line)", "var(--err-strong)"],
+    amber: ["var(--warn-soft)", "var(--warn)"], violet: ["var(--brand-soft)", "var(--brand-strong)"],
+    blue: ["var(--blue-line)", "var(--blue-strong)"], zinc: ["var(--subtle-2)", "var(--ink-3)"],
   };
   const [bg, fg] = tones[tone] || tones.zinc;
   return <span className="badge" style={{ background: bg, color: fg }}>{children}</span>;
@@ -122,7 +122,7 @@ export function Dashboard({ ws, tick }) {
 }
 
 const Empty = ({ text, cta, href }) => (
-  <div className="small muted">{text} <a href={`#${href}`} style={{ color: "#7c3aed", fontWeight: 600 }}>{cta} →</a></div>
+  <div className="small muted">{text} <a href={`#${href}`} style={{ color: "var(--blue-strong)", fontWeight: 600 }}>{cta} →</a></div>
 );
 
 // ---------- Influencers ----------
@@ -264,18 +264,15 @@ function PersonaWizard({ onApply, onClose, initialAnswers, refine, notice }) {
         </p>
 
         {notice && (
-          <div className="mb3" style={{
-            background: "#fffbeb", border: "1px solid #fde68a", color: "#92400e",
-            borderRadius: 10, padding: 10, fontSize: 13, lineHeight: 1.5,
-          }}>{notice}</div>
+          <div className="msg-warn mb3">{notice}</div>
         )}
 
         {!out && (
           <>
-            <div className="card p4 mb3" style={{ background: "#fafafa" }}>
+            <div className="card p4 mb3" style={{ background: "var(--subtle)" }}>
               <div className="row mb1" style={{ justifyContent: "space-between" }}>
                 <span className="label" style={{ margin: 0 }}>Foto referensi (opsional, maks. 4)</span>
-                <label className="tiny" style={{ color: "#7c3aed", fontWeight: 700, cursor: "pointer" }}>
+                <label className="tiny" style={{ color: "var(--brand)", fontWeight: 700, cursor: "pointer" }}>
                   + Pilih foto
                   <input type="file" accept="image/*" multiple onChange={addPhotos} style={{ display: "none" }} />
                 </label>
@@ -293,7 +290,7 @@ function PersonaWizard({ onApply, onClose, initialAnswers, refine, notice }) {
                       <button type="button" title="Hapus"
                         onClick={() => setPhotos(photos.filter((_, k) => k !== i))}
                         style={{ position: "absolute", top: -6, right: -6, width: 20, height: 20, borderRadius: 99,
-                          border: "none", background: "#17171c", color: "#fff", cursor: "pointer", fontSize: 12, lineHeight: "20px", padding: 0 }}>×</button>
+                          border: "none", background: "var(--text)", color: "#fff", cursor: "pointer", fontSize: 12, lineHeight: "20px", padding: 0 }}>×</button>
                     </div>
                   ))}
                 </div>
@@ -337,10 +334,7 @@ function PersonaWizard({ onApply, onClose, initialAnswers, refine, notice }) {
         {out && (
           <>
             {out._photosFailed?.length > 0 && (
-              <div className="mb3" style={{
-                background: "#fffbeb", border: "1px solid #fde68a", color: "#92400e",
-                borderRadius: 8, padding: "10px 12px", fontSize: 13, lineHeight: 1.5,
-              }}>
+              <div className="msg-warn mb3">
                 <b>{out._photosFailed.length} dari {out._photosFailed.length + out._photoUrls.length} foto gagal disimpan.</b>{" "}
                 Deskripsi di bawah tetap dibuat dari semua foto yang kamu unggah, tapi Identity Kit
                 hanya akan berisi {out._photoUrls.length} foto — dan itulah yang nanti dikirim sebagai
@@ -354,7 +348,7 @@ function PersonaWizard({ onApply, onClose, initialAnswers, refine, notice }) {
               </div>
             )}
             {(out.names?.length > 0 || out.handles?.length > 0) && (
-              <div className="card p4 mb3" style={{ background: "#fafafa" }}>
+              <div className="card p4 mb3" style={{ background: "var(--subtle)" }}>
                 {out.names?.length > 0 && <div className="small mb1"><b>Usulan nama:</b> {out.names.join(" · ")}</div>}
                 {out.handles?.length > 0 && <div className="small"><b>Usulan handle:</b> {out.handles.join(" · ")}</div>}
               </div>
@@ -371,7 +365,7 @@ function PersonaWizard({ onApply, onClose, initialAnswers, refine, notice }) {
               pose, atau baju. Latar tempat ditulis di prompt tiap gambar, bukan di sini.
             </p>
             {out.style_notes && (
-              <div className="card p4 mb3" style={{ background: "#fafafa" }}>
+              <div className="card p4 mb3" style={{ background: "var(--subtle)" }}>
                 <div className="label" style={{ margin: 0 }}>Saran gaya visual (untuk prompt per-gambar)</div>
                 <div className="small mt1">{out.style_notes}</div>
               </div>
@@ -422,7 +416,7 @@ function LookAlikePanel({ onFace, onAmbience }) {
 
   const text = out ? (aspect === "face" ? out.identity_prompt : out.style_notes) : "";
   return (
-    <div className="card p4 mb3" style={{ background: "#fafafa" }}>
+    <div className="card p4 mb3" style={{ background: "var(--subtle)" }}>
       <div className="bold small mb1">📸 Look-alike photo (opsional)</div>
       <p className="tiny muted mb3">
         Unggah 1 foto acuan, lalu pilih apa yang ditiru: karakter wajahnya, atau ambience-nya
@@ -454,10 +448,7 @@ function LookAlikePanel({ onFace, onAmbience }) {
       {out && (
         <div className="mt2">
           {out._failReason && (
-            <div className="mb2" style={{
-              background: "#fffbeb", border: "1px solid #fde68a", color: "#92400e",
-              borderRadius: 8, padding: "10px 12px", fontSize: 13, lineHeight: 1.5,
-            }}>
+            <div className="msg-warn mb2">
               <b>Foto acuannya gagal disimpan</b> — {out._failReason}{" "}
               Hasil bacaan di bawah tetap bisa dipakai, tapi fotonya sendiri tidak ikut
               masuk Identity Kit, jadi tidak akan jadi acuan wajah saat generate gambar.
@@ -594,13 +585,13 @@ export function Influencers({ ws, refresh, tick }) {
               <button type="button" key={idea.id} onClick={() => pickIdea(idea)}
                 className="card p3" style={{
                   textAlign: "left", cursor: "pointer",
-                  border: selectedIdea === idea.id ? "2px solid #7c3aed" : "1px solid var(--border)",
+                  border: selectedIdea === idea.id ? "2px solid var(--brand)" : "1px solid var(--border)",
                 }}>
                 <div className="row" style={{ justifyContent: "space-between" }}>
                   <span className="bold small">{idea.label}</span>
-                  {selectedIdea === idea.id && <span className="tiny" style={{ color: "#7c3aed" }}>✓ Terpilih</span>}
+                  {selectedIdea === idea.id && <span className="tiny" style={{ color: "var(--brand)" }}>✓ Terpilih</span>}
                 </div>
-                {idea.warning && <div className="tiny mt1" style={{ color: "#b45309" }}>⚠️ {idea.warning}</div>}
+                {idea.warning && <div className="tiny mt1" style={{ color: "var(--warn)" }}>⚠️ {idea.warning}</div>}
               </button>
             ))}
           </div>
@@ -631,7 +622,7 @@ export function Influencers({ ws, refresh, tick }) {
             onAmbience={(txt) => setStyleNotes(txt)}
           />
           {pendingRefs.length > 0 && (
-            <div className="card p4 mb3" style={{ background: "#fafafa" }}>
+            <div className="card p4 mb3" style={{ background: "var(--subtle)" }}>
               <div className="label" style={{ margin: 0 }}>{pendingRefs.length} foto referensi siap dilampirkan</div>
               <div className="grid mt2" style={{ gridTemplateColumns: "repeat(4,1fr)", gap: 8 }}>
                 {pendingRefs.map((u) => <div key={u} className="thumb" style={{ aspectRatio: "1" }}><img src={u} alt="" /></div>)}
@@ -677,7 +668,7 @@ export function InfluencerDetail({ id, ws, refresh, tick, mode }) {
   const [identityLocked, setIdentityLocked] = useState(null);
 
   if (!d) return loadError ? <div className="msg-err">Gagal memuat influencer: {loadError}</div> : <div className="muted">Memuat…</div>;
-  if (!d.inf) return <div className="muted">Influencer tidak ditemukan. <a href="#/influencers" style={{ color: "#7c3aed" }}>← Kembali</a></div>;
+  if (!d.inf) return <div className="muted">Influencer tidak ditemukan. <a href="#/influencers" style={{ color: "var(--blue-strong)" }}>← Kembali</a></div>;
   const inf = d.inf;
   const bioVal = bio ?? (inf.persona?.bio || "");
   const identityVal = identity ?? (inf.identity_prompt || "");
@@ -698,7 +689,7 @@ export function InfluencerDetail({ id, ws, refresh, tick, mode }) {
 
   return (
     <div>
-      <a href="#/influencers" className="small" style={{ color: "#7c3aed" }}>← Semua influencer</a>
+      <a href="#/influencers" className="small" style={{ color: "var(--blue-strong)" }}>← Semua influencer</a>
       <div className="row mt2 mb4">
         <span className="avatar" style={{ width: 60, height: 60, fontSize: 24 }}>{inf.avatar_url ? <img src={inf.avatar_url} alt="" /> : inf.name[0]}</span>
         <div>
@@ -739,7 +730,7 @@ export function InfluencerDetail({ id, ws, refresh, tick, mode }) {
             </button>
           </div>
           <textarea name="identity_prompt" className="input mb1" rows={5} value={identityVal}
-            readOnly={lockedVal} style={lockedVal ? { background: "#f6f6f9", color: "var(--muted)" } : undefined}
+            readOnly={lockedVal} style={lockedVal ? { background: "var(--subtle)", color: "var(--muted)" } : undefined}
             onChange={(e) => setIdentity(e.target.value)} />
           <p className="tiny muted mb3">
             Teks ini disuntikkan ke SETIAP generate. Isi hanya ciri fisik tetap (wajah, rambut, kulit) —
@@ -1022,10 +1013,7 @@ export function GenerateForm({ models, influencers, influencerId, refresh, mode,
           Kasus paling mahal: foto Identity Kit sudah ada tapi modelnya tidak
           membacanya — hasilnya wajah asing, dan baru ketahuan setelah dibayar. */}
       {task === "image" && activeInfId && refCount > 0 && !modelKeepsFace && (
-        <div className="mb3" style={{
-          background: "#fffbeb", border: "1px solid #fde68a", color: "#92400e",
-          borderRadius: 10, padding: 10, fontSize: 13, lineHeight: 1.5,
-        }}>
+        <div className="msg-warn mb3">
           Model ini <b>tidak membaca foto Identity Kit</b> — ia hanya menerima teks, jadi wajahnya
           akan mengikuti deskripsi dan berbeda tiap generate.
           {editModel && (
@@ -1047,10 +1035,7 @@ export function GenerateForm({ models, influencers, influencerId, refresh, mode,
         </div>
       )}
       {task === "video" && sourceUrl && !selected?.accepts_init_image && (
-        <div className="mb3" style={{
-          background: "#fffbeb", border: "1px solid #fde68a", color: "#92400e",
-          borderRadius: 10, padding: 10, fontSize: 13, lineHeight: 1.5,
-        }}>
+        <div className="msg-warn mb3">
           Model ini <b>membuang gambar awal</b> — ia hanya mengirim teks ke provider, jadi wajah di
           videonya akan acak meski fotonya sudah kamu pilih.
           {initModel && (
@@ -1063,7 +1048,7 @@ export function GenerateForm({ models, influencers, influencerId, refresh, mode,
         </div>
       )}
       {task === "lipsync" && (
-        <div className="card p4 mb3" style={{ background: "#faf5ff", borderColor: "#ede9fe" }}>
+        <div className="card p4 mb3" style={{ background: "var(--brand-soft)", borderColor: "var(--brand-soft)" }}>
           <label className="label">Naskah yang diucapkan (opsional)</label>
           <textarea className="input" rows={3} value={ttsText} onChange={(e) => setTtsText(e.target.value)}
             placeholder="Tulis kalimat yang mau diucapkan — suaranya dibuat otomatis, lalu langsung jadi talking head." />
@@ -1095,7 +1080,7 @@ export function GenerateForm({ models, influencers, influencerId, refresh, mode,
       )}
       <div className="row mb2">
         <button className="btn" disabled={busy || !selected}>{busy ? (step || "Generating…") : "Generate"}</button>
-        <span className="tiny muted">Estimasi: <b style={{ color: "#d97706" }}>${est.toFixed(3)}</b>{mode === "mock" ? " (mock — gratis)" : " (indikatif)"}</span>
+        <span className="tiny muted">Estimasi: <b style={{ color: "var(--orange)" }}>${est.toFixed(3)}</b>{mode === "mock" ? " (mock — gratis)" : " (indikatif)"}</span>
       </div>
       {err && <div className="msg-err mb2">{err}</div>}
       {ok && <div className="msg-ok mb2">Job dikirim — hasil muncul di riwayat job / Drive.</div>}
@@ -1230,7 +1215,7 @@ function CharacterSheetPanel({ models, influencers, refresh, mode }) {
         {SHEET_SHOTS.map((s) => (
           <label key={s.id} className="card p3 row small" style={{
             gap: 8, padding: 10, cursor: "pointer",
-            border: shots.includes(s.id) ? "2px solid #7c3aed" : "1px solid var(--border)",
+            border: shots.includes(s.id) ? "2px solid var(--brand)" : "1px solid var(--border)",
           }}>
             <input type="checkbox" checked={shots.includes(s.id)} onChange={() => toggle(s.id)} />
             {s.label}
@@ -1255,7 +1240,7 @@ function CharacterSheetPanel({ models, influencers, refresh, mode }) {
           {busy ? `Mengirim ${(progress?.done ?? 0) + 1}/${progress?.total ?? shots.length}…` : `Buat character sheet (${shots.length} gambar)`}
         </button>
         <span className="tiny muted">
-          Estimasi: <b style={{ color: "#d97706" }}>${est.toFixed(3)}</b>
+          Estimasi: <b style={{ color: "var(--orange)" }}>${est.toFixed(3)}</b>
           {mode === "mock" ? " (mock — gratis)" : " (indikatif)"}
         </span>
       </div>
@@ -1320,10 +1305,10 @@ export function Studio({ ws, refresh, tick, mode }) {
                   <td className="tiny muted">{j.model_key}</td>
                   <td>
                     <Badge tone={statusTone(j.status)}>{STATUS_LABELS[j.status]}</Badge>
-                    {j.error && <div className="tiny" style={{ color: "#dc2626", maxWidth: 220 }} title={j.error}>{j.error.slice(0, 80)}</div>}
+                    {j.error && <div className="tiny" style={{ color: "var(--err)", maxWidth: 220 }} title={j.error}>{j.error.slice(0, 80)}</div>}
                   </td>
                   <td>{usd(j.cost_actual_usd ?? j.cost_estimate_usd)}</td>
-                  <td>{j.output_url ? <a href={j.output_url} target="_blank" rel="noreferrer" style={{ color: "#7c3aed", fontWeight: 600 }}>Buka →</a> : "—"}</td>
+                  <td>{j.output_url ? <a href={j.output_url} target="_blank" rel="noreferrer" style={{ color: "var(--blue-strong)", fontWeight: 600 }}>Buka →</a> : "—"}</td>
                 </tr>
               ))}
             </tbody>
@@ -1390,10 +1375,10 @@ function AiDraftPanel({ item, onSaved, onClose }) {
             <textarea className="input mb3" rows={8}
               value={draft.script} onChange={(e) => setDraft({ ...draft, script: e.target.value })} />
             {draft.caption && (
-              <div className="card p4 mb3" style={{ background: "#fafafa" }}>
+              <div className="card p4 mb3" style={{ background: "var(--subtle)" }}>
                 <div className="row mb1" style={{ justifyContent: "space-between" }}>
                   <span className="label" style={{ margin: 0 }}>Caption + hashtag</span>
-                  <button type="button" className="tiny" style={{ background: "none", border: "none", color: "#7c3aed", fontWeight: 700, cursor: "pointer" }}
+                  <button type="button" className="tiny" style={{ background: "none", border: "none", color: "var(--brand)", fontWeight: 700, cursor: "pointer" }}
                     onClick={() => navigator.clipboard?.writeText(captionText)
                       .then(() => { setCopied(true); setTimeout(() => setCopied(false), 2000); }).catch(() => {})}>
                     {copied ? "✓ Tersalin" : "📋 Salin"}
@@ -1422,7 +1407,7 @@ const MONTH_FULL_ID = ["Januari", "Februari", "Maret", "April", "Mei", "Juni", "
 const isoDay = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
 
 function PlannerCalendar({ items, pillars, month, setMonth }) {
-  const pillarColor = Object.fromEntries(pillars.map((p) => [p.id, p.color || "#7c3aed"]));
+  const pillarColor = Object.fromEntries(pillars.map((p) => [p.id, p.color || "var(--brand)"]));
   const byDay = {};
   for (const it of items) if (it.scheduled_date) (byDay[it.scheduled_date] ||= []).push(it);
   const unscheduled = items.filter((it) => !it.scheduled_date && it.status !== "published").length;
@@ -1468,23 +1453,23 @@ function PlannerCalendar({ items, pillars, month, setMonth }) {
             <div key={iso} style={{
               minHeight: 88, borderRadius: 8, padding: 4,
               border: "1px solid var(--border)",
-              background: inMonth ? "#fff" : "#fafafa",
+              background: inMonth ? "#fff" : "var(--subtle)",
               opacity: inMonth ? 1 : 0.55,
             }}>
               <div className="tiny" style={{
                 fontWeight: iso === todayIso ? 800 : 500,
-                color: iso === todayIso ? "#7c3aed" : "var(--muted)",
+                color: iso === todayIso ? "var(--brand)" : "var(--muted)",
                 marginBottom: 2,
               }}>{day.getDate()}{iso === todayIso ? " · hari ini" : ""}</div>
               {dayItems.map((it) => (
                 <div key={it.id} className="tiny row" title={`${it.title} — ${it.influencers?.name || "tanpa influencer"} · ${STATUS_LABELS[it.status]}${it.platform ? ` · ${it.platform}` : ""}`}
                   style={{
                     gap: 4, alignItems: "center", borderRadius: 6, padding: "2px 4px", marginBottom: 2,
-                    background: it.status === "published" ? "#f0fdf4" : "#f5f3ff",
+                    background: it.status === "published" ? "var(--ok-soft)" : "var(--brand-soft)",
                   }}>
-                  <span style={{ width: 7, height: 7, borderRadius: 99, flexShrink: 0, background: pillarColor[it.pillar_id] || "#a1a1aa" }} />
+                  <span style={{ width: 7, height: 7, borderRadius: 99, flexShrink: 0, background: pillarColor[it.pillar_id] || "var(--dim)" }} />
                   <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", textDecoration: it.status === "published" ? "line-through" : "none" }}>{it.title}</span>
-                  {it.status === "published" && <span style={{ color: "#15803d", flexShrink: 0 }}>✓</span>}
+                  {it.status === "published" && <span style={{ color: "var(--ok)", flexShrink: 0 }}>✓</span>}
                 </div>
               ))}
             </div>
@@ -1498,7 +1483,11 @@ function PlannerCalendar({ items, pillars, month, setMonth }) {
 // ---------- Wizard rencana konten ----------
 // Warna pillar otomatis: dipilih supaya tetap terbaca sebagai teks di badge
 // terang dan cukup beda satu sama lain (termasuk untuk mata CVD).
-const PLAN_COLORS = ["#7c3aed", "#2a78d6", "#eb6834", "#0f7b56", "#b0308f", "#8a6d1f"];
+// Warna pillar DISIMPAN ke database sebagai `pillar.color`, jadi ini data —
+// bukan style. Harus hex literal: `var(--…)` kehilangan artinya begitu
+// nilainya keluar dari konteks CSS app (ekspor, laporan, klien lain).
+// Enam hue yang saling terbedakan, diselaraskan dengan palet merek.
+const PLAN_COLORS = ["#7c3aed", "#2563eb", "#ea580c", "#0f7b56", "#b0308f", "#b45309"];
 
 // Slot hari per minggu untuk tiap frekuensi. Sengaja tidak beruntun agar ada
 // jeda produksi, dan menyisakan akhir pekan hanya saat frekuensinya memang tinggi.
@@ -1601,7 +1590,7 @@ function PlanWizard({ ws, influencers, pillars, onClose, onSaved }) {
       actual: chosen.length ? Math.round((n / chosen.length) * 100) : 0,
       target: target === null ? null : Number(target),
       color: plan.pillars.find((p) => p.name === name)?.color
-        || pillars.find((p) => p.name === name)?.color || "#71717a",
+        || pillars.find((p) => p.name === name)?.color || "var(--muted)",
     };
   }).filter((m) => m.n > 0 || m.target !== null);
 
@@ -1692,7 +1681,7 @@ function PlanWizard({ ws, influencers, pillars, onClose, onSaved }) {
                 Usulkan pillar baru (kalau tidak dicentang, AI memakai {pillars.length} pillar yang sudah ada)
               </label>
             )}
-            <div className="card p4 mb3" style={{ background: "#fafafa" }}>
+            <div className="card p4 mb3" style={{ background: "var(--subtle)" }}>
               <div className="tiny bold mb1">Yang akan dijaga AI</div>
               <ul className="tiny muted" style={{ margin: "0 0 0 16px" }}>
                 <li>Pillar jualan dibatasi maksimal 20% — sisanya edukasi/hiburan</li>
@@ -1720,10 +1709,10 @@ function PlanWizard({ ws, influencers, pillars, onClose, onSaved }) {
             </p>
 
             {plan.pillars.length > 0 && (
-              <div className="card p4 mb3" style={{ background: "#fafafa" }}>
+              <div className="card p4 mb3" style={{ background: "var(--subtle)" }}>
                 <div className="row mb2" style={{ justifyContent: "space-between" }}>
                   <span className="label" style={{ margin: 0 }}>Pillar baru yang akan dibuat</span>
-                  <span className="tiny" style={{ color: ratioSum === 100 ? "var(--muted)" : "#b45309", fontWeight: 700 }}>
+                  <span className="tiny" style={{ color: ratioSum === 100 ? "var(--muted)" : "var(--warn)", fontWeight: 700 }}>
                     Total {ratioSum}%{ratioSum === 100 ? "" : " — idealnya 100%"}
                   </span>
                 </div>
@@ -1742,7 +1731,7 @@ function PlanWizard({ ws, influencers, pillars, onClose, onSaved }) {
             )}
 
             {plan.series.length > 0 && (
-              <div className="card p4 mb3" style={{ background: "#fafafa" }}>
+              <div className="card p4 mb3" style={{ background: "var(--subtle)" }}>
                 <div className="label" style={{ margin: "0 0 6px" }}>Format berulang</div>
                 {plan.series.map((s, i) => (
                   <div key={i} className="tiny mb1"><b>{s.name}</b> <span className="muted">— {s.format}</span></div>
@@ -1751,16 +1740,16 @@ function PlanWizard({ ws, influencers, pillars, onClose, onSaved }) {
             )}
 
             {mix.length > 0 && (
-              <div className="card p4 mb3" style={{ background: "#fafafa" }}>
+              <div className="card p4 mb3" style={{ background: "var(--subtle)" }}>
                 <div className="label" style={{ margin: "0 0 6px" }}>Sebaran nyata vs target</div>
                 {mix.map((m) => (
                   <div key={m.name} className="row mb1" style={{ gap: 8 }}>
                     <span className="tiny" style={{ width: 130, flexShrink: 0 }}>{m.name}</span>
-                    <span style={{ flex: 1, height: 10, background: "#e7e7ec", borderRadius: 99, position: "relative" }}>
+                    <span style={{ flex: 1, height: 10, background: "var(--border)", borderRadius: 99, position: "relative" }}>
                       <span style={{ display: "block", width: `${m.actual}%`, height: "100%", background: m.color, borderRadius: 99 }} />
                       {m.target !== null && (
                         <span title={`Target ${m.target}%`} style={{
-                          position: "absolute", left: `${m.target}%`, top: -3, width: 2, height: 16, background: "#3f3f46",
+                          position: "absolute", left: `${m.target}%`, top: -3, width: 2, height: 16, background: "var(--ink-2)",
                         }} />
                       )}
                     </span>
@@ -1786,7 +1775,7 @@ function PlanWizard({ ws, influencers, pillars, onClose, onSaved }) {
                         <input className="input" style={{ fontSize: 12, padding: "4px 8px" }}
                           value={it.title} onChange={(e) => patchItem(i, { title: e.target.value })} />
                         <div className="tiny muted mt1">
-                          {it.series && <b style={{ color: "#7c3aed" }}>{it.series} · </b>}{it.hook}
+                          {it.series && <b style={{ color: "var(--brand)" }}>{it.series} · </b>}{it.hook}
                         </div>
                       </td>
                       <td>
@@ -1938,7 +1927,7 @@ export function Planner({ ws, refresh, tick }) {
       {err && <div className="msg-err mb3">{err}</div>}
       {planMsg && <div className="msg-ok mb3">{planMsg}</div>}
       {!d.items.length && (
-        <div className="card p6 mb4" style={{ background: "#faf7ff", borderColor: "#ddd0ff" }}>
+        <div className="card p6 mb4" style={{ background: "var(--brand-soft)", borderColor: "var(--brand-line)" }}>
           <div className="bold mb1">Papan masih kosong</div>
           <p className="small muted mb3">
             Mengisi sebulan konten lewat formulir di bawah berarti ratusan isian manual. Wizard AI menyusun
@@ -1975,7 +1964,7 @@ export function Planner({ ws, refresh, tick }) {
             <select name="influencer_id" className="input" defaultValue=""><option value="">Semua</option>
               {d.inf.map((i) => <option key={i.id} value={i.id}>{i.name}</option>)}</select></div>
           <div style={{ width: 90 }}><label className="label">Target %</label><input name="target_ratio" type="number" min={0} max={100} className="input" defaultValue={25} /></div>
-          <div><label className="label">Warna</label><input name="color" type="color" className="input" defaultValue="#8b5cf6" style={{ height: 38, width: 60 }} /></div>
+          <div><label className="label">Warna</label><input name="color" type="color" className="input" defaultValue="var(--brand)" style={{ height: 38, width: 60 }} /></div>
           <button className="btn">Tambah</button>
         </form>
       </div>
@@ -2015,7 +2004,7 @@ export function Planner({ ws, refresh, tick }) {
         {BOARD.map((status) => {
           const col = d.items.filter((c) => c.status === status);
           return (
-            <div key={status} className="card p4" style={{ background: "#fafafa" }}>
+            <div key={status} className="card p4" style={{ background: "var(--subtle)" }}>
               <div className="tiny bold muted mb2" style={{ textTransform: "uppercase" }}>{STATUS_LABELS[status]} ({col.length})</div>
               {col.map((c) => (
                 <div key={c.id} className="card p4 mb2">
@@ -2025,7 +2014,7 @@ export function Planner({ ws, refresh, tick }) {
                   <select className="input mt2" style={{ fontSize: 12, padding: "4px 8px" }} value={c.status} onChange={(e) => setStatus(c.id, e.target.value)}>
                     {BOARD.map((s) => <option key={s} value={s}>{STATUS_LABELS[s]}</option>)}
                   </select>
-                  <button type="button" className="tiny mt2" style={{ background: "none", border: "none", color: "#7c3aed", fontWeight: 700, cursor: "pointer", padding: 0, display: "block" }}
+                  <button type="button" className="tiny mt2" style={{ background: "none", border: "none", color: "var(--brand)", fontWeight: 700, cursor: "pointer", padding: 0, display: "block" }}
                     onClick={() => setAiDraftId(c.id)}>✨ Tulis dengan AI</button>
                   {aiDraftId === c.id && (
                     <AiDraftPanel item={c} onClose={() => setAiDraftId(null)}
@@ -2054,7 +2043,7 @@ export function Planner({ ws, refresh, tick }) {
                         </div>
                       </form>
                     ) : (
-                      <button type="button" className="tiny mt2" style={{ background: "none", border: "none", color: "#7c3aed", fontWeight: 700, cursor: "pointer", padding: 0, display: "block" }}
+                      <button type="button" className="tiny mt2" style={{ background: "none", border: "none", color: "var(--brand)", fontWeight: 700, cursor: "pointer", padding: 0, display: "block" }}
                         onClick={() => setPublishOpenId(c.id)}>📤 Publish ke sosial</button>
                     )
                   )}
@@ -2080,7 +2069,7 @@ export function Planner({ ws, refresh, tick }) {
                   <td className="tiny muted">{j._connAccountName || "—"}</td>
                   <td><Badge tone={statusTone(j.status === "succeeded" ? "succeeded" : j.status === "failed" ? "failed" : "queued")}>{j.status}</Badge></td>
                   <td className="tiny" style={{ maxWidth: 220 }} title={j.error || j.external_post_id || ""}>
-                    {j.error ? <span style={{ color: "#dc2626" }}>{j.error.slice(0, 60)}</span> : (j.external_post_id || "—")}
+                    {j.error ? <span style={{ color: "var(--err)" }}>{j.error.slice(0, 60)}</span> : (j.external_post_id || "—")}
                   </td>
                   <td className="tiny muted">{new Date(j.created_at).toLocaleString("id-ID")}</td>
                 </tr>
@@ -2130,7 +2119,7 @@ export function Tasks({ ws, refresh, tick }) {
         {TCOLS.map((status) => {
           const col = list.filter((t) => t.status === status);
           return (
-            <div key={status} className="card p4" style={{ background: "#fafafa" }}>
+            <div key={status} className="card p4" style={{ background: "var(--subtle)" }}>
               <div className="tiny bold muted mb2" style={{ textTransform: "uppercase" }}>{STATUS_LABELS[status]} ({col.length})</div>
               {col.map((t) => (
                 <div key={t.id} className="card p4 mb2">
@@ -2197,7 +2186,7 @@ export function Drive({ ws, refresh, tick }) {
                     {d.inf.map((i) => <option key={i.id} value={i.id}>{i.name}</option>)}
                   </select>
                 ) : (
-                  <button className="tiny" style={{ background: "none", border: "none", color: "#7c3aed", fontWeight: 700, cursor: "pointer", padding: 0 }}
+                  <button className="tiny" style={{ background: "none", border: "none", color: "var(--brand)", fontWeight: 700, cursor: "pointer", padding: 0 }}
                     onClick={() => setMarking(a.id)}>+ jadikan referensi</button>
                 ))}
               </div>
@@ -2279,7 +2268,7 @@ function SocialConnections({ ws, tick, query }) {
   const Platform = ({ id, label }) => {
     const s = status[id];
     return (
-      <div className="card p4" style={{ background: "#fafafa" }}>
+      <div className="card p4" style={{ background: "var(--subtle)" }}>
         <div className="row mb2" style={{ justifyContent: "space-between" }}>
           <div className="bold">{label}</div>
           <Badge tone={s.mode === "live" ? "green" : "zinc"}>mode: {s.mode}</Badge>
@@ -2308,7 +2297,7 @@ function SocialConnections({ ws, tick, query }) {
         Mode Mock (default) tidak pernah memanggil API asli — aman untuk uji coba alur connect → publish tanpa akun developer Meta/TikTok.
         Mode Live butuh App ID/Secret dari Meta/TikTok Developer App, dan redirect URI berikut harus didaftarkan di dashboard masing-masing:
       </p>
-      <div className="card p3 mb3" style={{ background: "#f4f4f5" }}>
+      <div className="card p3 mb3" style={{ background: "var(--subtle-2)" }}>
         <code className="tiny" style={{ wordBreak: "break-all" }}>{status.callback_url}</code>
       </div>
       {msg && <div className="msg-ok mb3">{msg}</div>}
@@ -2333,7 +2322,7 @@ function SocialConnections({ ws, tick, query }) {
                 <td className="muted">{c.external_account_name || "—"}</td>
                 <td><Badge tone={c.provider_mode === "live" ? "green" : "zinc"}>{c.provider_mode}</Badge></td>
                 <td className="tiny muted">{new Date(c.connected_at).toLocaleDateString("id-ID")}</td>
-                <td><button type="button" className="tiny" style={{ background: "none", border: "none", color: "#dc2626", fontWeight: 700, cursor: "pointer" }} onClick={() => disconnect(c.id)}>Putuskan</button></td>
+                <td><button type="button" className="tiny" style={{ background: "none", border: "none", color: "var(--err)", fontWeight: 700, cursor: "pointer" }} onClick={() => disconnect(c.id)}>Putuskan</button></td>
               </tr>
             ))}
           </tbody>
@@ -2401,11 +2390,11 @@ function CalendarConnection({ ws, tick, query }) {
         publish manual. Butuh Google Cloud OAuth Client (Calendar API) — redirect URI berikut harus
         didaftarkan sebagai "Authorized redirect URI":
       </p>
-      <div className="card p3 mb3" style={{ background: "#f4f4f5" }}>
+      <div className="card p3 mb3" style={{ background: "var(--subtle-2)" }}>
         <code className="tiny" style={{ wordBreak: "break-all" }}>{status.callback_url}</code>
       </div>
       {msg && <div className={msg.startsWith("Gagal") ? "msg-err mb3" : "msg-ok mb3"}>{msg}</div>}
-      <div className="card p4 mb3" style={{ background: "#fafafa" }}>
+      <div className="card p4 mb3" style={{ background: "var(--subtle)" }}>
         <div className="row mb2" style={{ justifyContent: "space-between" }}>
           <div className="bold">Google Client ID/Secret</div>
           <Badge tone={status.configured ? "green" : "amber"}>{status.configured ? "terpasang" : "belum diisi"}</Badge>
@@ -2422,7 +2411,7 @@ function CalendarConnection({ ws, tick, query }) {
           {status.connected && status.google_email && <span className="tiny muted ml2">{status.google_email}</span>}
         </div>
         {status.connected ? (
-          <button type="button" className="tiny" style={{ background: "none", border: "none", color: "#dc2626", fontWeight: 700, cursor: "pointer" }} onClick={disconnect} disabled={busy}>Putuskan</button>
+          <button type="button" className="tiny" style={{ background: "none", border: "none", color: "var(--err)", fontWeight: 700, cursor: "pointer" }} onClick={disconnect} disabled={busy}>Putuskan</button>
         ) : (
           <button type="button" className="btn" disabled={busy || !status.configured} onClick={connect}>+ Hubungkan Google Calendar</button>
         )}
@@ -2595,7 +2584,7 @@ function AccountAdmin({ ws, tick }) {
                           onClick={() => { setResetId(null); setResetPw(""); }}>Batal</button>
                       </form>
                     ) : (
-                      <button type="button" className="tiny" style={{ background: "none", border: "none", color: "#7c3aed", fontWeight: 700, cursor: "pointer", padding: 0 }}
+                      <button type="button" className="tiny" style={{ background: "none", border: "none", color: "var(--brand)", fontWeight: 700, cursor: "pointer", padding: 0 }}
                         onClick={() => { setResetId(m.user_id); setResetPw(""); setMsg(null); }}>🔑 Reset…</button>
                     )}
                   </td>
@@ -2673,7 +2662,7 @@ function McpSettings({ ws, tick }) {
       {msg && <div className={msg.startsWith("Gagal") ? "msg-err mb3" : "msg-ok mb3"}>{msg}</div>}
 
       {/* ---- Jalur 1: claude.ai ---- */}
-      <div className="card p4 mb4" style={{ background: "#faf5ff", borderColor: "#ede9fe" }}>
+      <div className="card p4 mb4" style={{ background: "var(--brand-soft)", borderColor: "var(--brand-soft)" }}>
         <div className="bold small mb1">claude.ai — pasang sebagai connector</div>
         <p className="tiny muted mb3">
           Di claude.ai: <span className="bold">Settings → Connectors → Add custom connector</span>, tempel URL di bawah,
@@ -2688,7 +2677,7 @@ function McpSettings({ ws, tick }) {
       </div>
 
       {/* ---- Jalur 2: Claude Code ---- */}
-      <div className="card p4 mb4" style={{ background: "#fafafa" }}>
+      <div className="card p4 mb4" style={{ background: "var(--subtle)" }}>
         <div className="row mb1" style={{ gap: 8 }}>
           <div className="bold small">Claude Code (terminal)</div>
           <Badge tone={st?.exists ? "green" : "zinc"}>{st?.exists ? "token aktif" : "belum dibuat"}</Badge>
@@ -2702,7 +2691,7 @@ function McpSettings({ ws, tick }) {
         {token && (
           <>
             <div className="label" style={{ margin: 0 }}>Jalankan sekali di terminal (token hanya tampil sekali)</div>
-            <div className="card p3 mt2 mb2" style={{ background: "#f4f4f5" }}>
+            <div className="card p3 mt2 mb2" style={{ background: "var(--subtle-2)" }}>
               <code className="tiny" style={{ wordBreak: "break-all" }}>{cmd}</code>
             </div>
             <button type="button" className="btn mb3" style={{ fontSize: 12 }} onClick={() => copy("cmd", cmd)}>
@@ -2835,7 +2824,7 @@ export function Settings({ ws, refresh, tick, spend, spendError, query }) {
             <span className="tiny muted"> — mock memakai foto contoh, live memanggil provider asli.</span>
           </div>
 
-          <div className="card p4 mb3" style={{ background: "#fafafa" }}>
+          <div className="card p4 mb3" style={{ background: "var(--subtle)" }}>
             <div className="row mb2" style={{ justifyContent: "space-between" }}>
               <span className="bold small">Hugging Face — gratis</span>
               <Badge tone={keyState?.hf_token ? "green" : "amber"}>{keyState?.hf_token ? "terpasang" : "belum"}</Badge>
@@ -2847,7 +2836,7 @@ export function Settings({ ws, refresh, tick, spend, spendError, query }) {
             </form>
           </div>
 
-          <div className="card p4 mb3" style={{ background: "#fafafa" }}>
+          <div className="card p4 mb3" style={{ background: "var(--subtle)" }}>
             <div className="row mb2" style={{ justifyContent: "space-between" }}>
               <span className="bold small">fal.ai — berbayar</span>
               <Badge tone={keyState?.fal_key ? "green" : "amber"}>{keyState?.fal_key ? "terpasang" : "belum"}</Badge>

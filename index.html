@@ -5,17 +5,56 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>AI Micro Influencer Studio</title>
     <style>
-      :root{--bg:#f7f7f9;--card:#fff;--border:#e7e7ec;--text:#17171c;--muted:#71717a;--accent:#7c3aed}
+      /* ---------- Sistem warna ----------
+         Tiga warna merek: UNGU aksi utama, BIRU pendamping/informasi,
+         ORANYE penekan. Semuanya token, jangan tulis hex lepas di JSX —
+         dulu ada 118 hex tersebar di src/ dan mengubah tema berarti
+         memburu satu per satu.
+
+         Merah (error) dan amber (peringatan) sengaja DIPISAH dari oranye
+         merek. Kalau peringatan ikut dijadikan oranye, ia jadi sulit
+         dibedakan dari error yang merah — dua hal yang justru paling
+         penting untuk tidak tertukar. */
+      :root{
+        /* Ungu — aksi utama, identitas */
+        --brand:#7c3aed; --brand-strong:#6d28d9; --brand-deep:#5b21b6;
+        --brand-soft:#f5f3ff; --brand-line:#ddd6fe;
+
+        /* Biru — pendamping, tautan, deret data utama */
+        --blue:#2563eb; --blue-strong:#1d4ed8;
+        --blue-soft:#eff6ff; --blue-line:#bfdbfe; --blue-pale:#cde2fb;
+
+        /* Oranye — penekan: biaya, sorotan, deret data kedua */
+        --orange:#ea580c; --orange-strong:#c2410c;
+        --orange-soft:#fff7ed; --orange-line:#fed7aa;
+
+        /* Netral */
+        --bg:#f7f7fb; --card:#fff; --border:#e7e7ec; --line-soft:#f0f0f4;
+        --text:#17171c; --muted:#71717a; --dim:#a1a1aa;
+        --subtle:#fafafa; --subtle-2:#f4f4f5; --ink-2:#3f3f46; --ink-3:#52525b;
+
+        /* Semantik */
+        --ok:#15803d; --ok-soft:#f0fdf4; --ok-line:#dcfce7;
+        --warn:#b45309; --warn-strong:#92400e; --warn-soft:#fffbeb; --warn-line:#fde68a;
+        --err:#dc2626; --err-strong:#b91c1c; --err-soft:#fef2f2; --err-line:#fee2e2;
+
+        /* Alias lama — `.btn` dan kode lain masih memakainya */
+        --accent:var(--brand);
+      }
       *{box-sizing:border-box;margin:0;padding:0}
       body{background:var(--bg);color:var(--text);font-family:ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;font-size:14px}
       a{color:inherit;text-decoration:none}
       .card{background:var(--card);border:1px solid var(--border);border-radius:16px}
-      .gradient-title{background:linear-gradient(90deg,#7c3aed,#2563eb);-webkit-background-clip:text;background-clip:text;color:transparent}
-      .btn{display:inline-flex;align-items:center;gap:6px;border-radius:10px;padding:8px 14px;font-size:14px;font-weight:600;background:var(--accent);color:#fff;border:none;cursor:pointer}
+      /* Ketiga warna merek dalam satu sapuan; oranye hanya di ekor supaya
+         jadi aksen, bukan ikut berebut perhatian dengan ungu. */
+      .gradient-title{background:linear-gradient(90deg,var(--brand),var(--blue) 58%,var(--orange));-webkit-background-clip:text;background-clip:text;color:transparent}
+      .btn{display:inline-flex;align-items:center;gap:6px;border-radius:10px;padding:8px 14px;font-size:14px;font-weight:600;background:var(--brand);color:#fff;border:none;cursor:pointer}
       .btn:hover{opacity:.9}.btn:disabled{opacity:.5;cursor:not-allowed}
-      .btn2{background:#f3f3f6;color:var(--text);border:1px solid var(--border)}
+      .btn2{background:var(--subtle-2);color:var(--text);border:1px solid var(--border)}
+      .btn-blue{background:var(--blue)}
+      .btn-orange{background:var(--orange)}
       .input{width:100%;border:1px solid var(--border);border-radius:10px;padding:8px 12px;font-size:14px;background:#fff;font-family:inherit}
-      .input:focus{outline:2px solid #c4b5fd}
+      .input:focus{outline:2px solid var(--brand-line)}
       .label{font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.04em;display:block;margin-bottom:4px}
       .badge{display:inline-flex;align-items:center;border-radius:999px;padding:2px 10px;font-size:12px;font-weight:600}
       .row{display:flex;gap:12px;align-items:center}
@@ -31,15 +70,21 @@
       th{text-align:left;font-size:11px;color:var(--muted);text-transform:uppercase;padding-bottom:8px}
       td{padding:8px 8px 8px 0;border-top:1px solid var(--border);vertical-align:top}
       select.input{appearance:auto}
-      .avatar{border-radius:999px;background:#ede9fe;color:#6d28d9;font-weight:700;display:flex;align-items:center;justify-content:center;overflow:hidden}
+      .avatar{border-radius:999px;background:var(--brand-soft);color:var(--brand-strong);font-weight:700;display:flex;align-items:center;justify-content:center;overflow:hidden}
       .avatar img{width:100%;height:100%;object-fit:cover}
-      .sidebar a.nav{display:flex;align-items:center;gap:10px;border-radius:10px;padding:9px 12px;font-weight:500;color:#3f3f46}
-      .sidebar a.nav:hover,.sidebar a.nav.active{background:#f5f3ff;color:#6d28d9}
-      .thumb{aspect-ratio:3/4;border-radius:10px;background:#f4f4f5;overflow:hidden;display:flex;align-items:center;justify-content:center;font-size:28px}
+      .sidebar a.nav{display:flex;align-items:center;gap:10px;border-radius:10px;padding:9px 12px;font-weight:500;color:var(--ink-2)}
+      .sidebar a.nav:hover{background:var(--brand-soft);color:var(--brand-strong)}
+      /* Halaman aktif ditandai dua hal sekaligus — warna DAN garis tepi —
+         supaya tetap terbaca kalau warnanya sulit dibedakan. */
+      .sidebar a.nav.active{background:var(--brand-soft);color:var(--brand-strong);box-shadow:inset 3px 0 0 var(--brand)}
+      .thumb{aspect-ratio:3/4;border-radius:10px;background:var(--subtle-2);overflow:hidden;display:flex;align-items:center;justify-content:center;font-size:28px}
       .thumb img,.thumb video{width:100%;height:100%;object-fit:cover}
-      .msg-err{color:#dc2626;background:#fef2f2;border-radius:10px;padding:10px;font-size:13px}
-      .msg-ok{color:#15803d;background:#f0fdf4;border-radius:10px;padding:10px;font-size:13px}
-      code{background:#f4f4f5;border-radius:4px;padding:1px 5px;font-size:12px}
+      .msg-err{color:var(--err);background:var(--err-soft);border-radius:10px;padding:10px;font-size:13px}
+      .msg-ok{color:var(--ok);background:var(--ok-soft);border-radius:10px;padding:10px;font-size:13px}
+      /* Kotak peringatan dipakai di beberapa tempat dengan style inline yang
+         sama persis; disatukan jadi kelas supaya tidak berbeda-beda. */
+      .msg-warn{color:var(--warn-strong);background:var(--warn-soft);border:1px solid var(--warn-line);border-radius:10px;padding:10px 12px;font-size:13px;line-height:1.5}
+      code{background:var(--subtle-2);border-radius:4px;padding:1px 5px;font-size:12px}
     </style>
   </head>
   <body>

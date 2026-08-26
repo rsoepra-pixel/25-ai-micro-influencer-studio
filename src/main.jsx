@@ -74,14 +74,14 @@ function Login() {
             {busy ? "Memproses…" : mode === "signin" ? "Masuk" : "Daftar"}
           </button>
         </form>
-        <button className="mt3" style={{ background: "none", border: "none", color: "#7c3aed", fontWeight: 600, cursor: "pointer" }}
+        <button className="mt3" style={{ background: "none", border: "none", color: "var(--brand)", fontWeight: 600, cursor: "pointer" }}
           onClick={() => setMode(mode === "signin" ? "signup" : "signin")}>
           {mode === "signin" ? "Belum punya akun? Daftar" : "Sudah punya akun? Masuk"}
         </button>
         <div className="tiny muted mt4" style={{ textAlign: "center" }}>
-          <a href={legalHref("privacy.html")} target="_blank" rel="noreferrer" style={{ color: "#a1a1aa" }}>Kebijakan Privasi</a>
+          <a href={legalHref("privacy.html")} target="_blank" rel="noreferrer" style={{ color: "var(--dim)" }}>Kebijakan Privasi</a>
           {" · "}
-          <a href={legalHref("terms.html")} target="_blank" rel="noreferrer" style={{ color: "#a1a1aa" }}>Syarat & Ketentuan</a>
+          <a href={legalHref("terms.html")} target="_blank" rel="noreferrer" style={{ color: "var(--dim)" }}>Syarat & Ketentuan</a>
         </div>
       </div>
     </div>
@@ -167,7 +167,7 @@ function App() {
         <div style={{ padding: 18, borderBottom: "1px solid var(--border)" }}>
           <div style={{ fontWeight: 800, fontSize: 17 }}>
             <span className="gradient-title">AI Influencer</span>{" "}
-            <span className="badge" style={{ background: "#fef3c7", color: "#b45309", fontSize: 10 }}>BETA</span>
+            <span className="badge" style={{ background: "var(--warn-soft)", color: "var(--warn)", fontSize: 10 }}>BETA</span>
           </div>
           <div className="tiny muted mt1">{ws.name}</div>
         </div>
@@ -177,15 +177,15 @@ function App() {
           ))}
         </nav>
         <div style={{ padding: 14, borderTop: "1px solid var(--border)" }}>
-          <div className="card p4" style={{ background: "#fafafa" }}>
+          <div className="card p4" style={{ background: "var(--subtle)" }}>
             <span className="label">Biaya bulan ini</span>
             {spendError ? (
               <div className="msg-err tiny mt1">Gagal memuat biaya: {spendError}</div>
             ) : (
               <>
-                <div style={{ fontSize: 20, fontWeight: 800, color: "#d97706" }}>{usd(spend.spent)}</div>
+                <div style={{ fontSize: 20, fontWeight: 800, color: "var(--warn)" }}>{usd(spend.spent)}</div>
                 <div className="tiny muted">dari batas {usd(spend.cap)}</div>
-                <span className={`badge mt2`} style={spend.mode === "live" ? { background: "#dcfce7", color: "#15803d" } : { background: "#e4e4e7", color: "#52525b" }}>
+                <span className={`badge mt2`} style={spend.mode === "live" ? { background: "var(--ok-line)", color: "var(--ok)" } : { background: "var(--border)", color: "var(--ink-3)" }}>
                   mode: {spend.mode}
                 </span>
               </>
@@ -193,7 +193,7 @@ function App() {
           </div>
           <div className="row mt3" style={{ justifyContent: "space-between" }}>
             <span className="tiny muted" style={{ overflow: "hidden", textOverflow: "ellipsis" }}>{session.user.email}</span>
-            <button title="Keluar" style={{ background: "none", border: "none", cursor: "pointer", color: "#a1a1aa" }}
+            <button title="Keluar" style={{ background: "none", border: "none", cursor: "pointer", color: "var(--dim)" }}
               onClick={async () => { await supa.auth.signOut(); }}>⏻</button>
           </div>
         </div>
