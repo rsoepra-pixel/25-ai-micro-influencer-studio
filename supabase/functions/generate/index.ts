@@ -311,8 +311,10 @@ async function storePhotos(ws: string, photos: string[]): Promise<StoredPhotos> 
 // ditolak 401 oleh fal.ai. Keduanya panggilan read-only, tidak menjalankan
 // model apa pun, jadi tidak ada biaya.
 //
-// "unverified" = providernya sendiri tidak bisa dihubungi. Itu bukan alasan
-// menolak simpan — jaringan yang lagi bermasalah tidak membuat key-nya salah.
+// "unverified" = providernya tidak menjawab dengan jelas: tidak bisa dihubungi,
+// atau membalas status yang bukan penerimaan maupun penolakan. Itu bukan alasan
+// menolak simpan — jaringan yang lagi bermasalah tidak membuat key-nya salah —
+// tapi juga tidak boleh dilaporkan sebagai "sudah diuji".
 type KeyCheck = { state: "valid" | "rejected" | "unverified"; reason?: string };
 
 // HANYA 2xx yang berarti key-nya diterima. Status lain tidak membuktikan
