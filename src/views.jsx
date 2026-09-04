@@ -3097,8 +3097,211 @@ const PLATFORM_KEY_LABELS = {
   platform_text_api_key: ["Penulis AI (Qwen/Kimi)", "Dipakai menulis naskah, dan jadi cadangan key DashScope."],
 };
 
-function PlatformConfig({ tick }) {
-  const [st, reload] = useQuery(async () => callApp({ action: "platform_config_status" }), [tick]);
+const rupiah = (n) => "Rp " + Math.round(Number(n) || 0).toLocaleString("id-ID");
+
+// Harga jual: dua angka yang sengaja tidak digabung.
+//
+// Kurs berubah karena dunia; margin berubah karena keputusan. Kalau yang
+// disimpan cuma hasil kalinya, tidak ada lagi yang bisa memberi tahu apakah
+// "22.857" itu margin 30% atau 25% — dan operator yang mau menaikkan margin
+// harus menghitung mundur dulu di kepala.
+function PricingCard({ keys, onSave, busy }) {
+  const val = (k) => keys.find((x) => x.key === k)?.value || "";
+  const forex = Number(val("forex_idr_per_usd"));
+  const margin = Number(val("margin_pct"));
+  const priced = forex > 0 && margin >= 0 && margin < 100;
+  const perUsd = priced ? forex / (1 - margin / 100) : 0;
+
+  return (
+    <div className="card p4 mb3" style={{ background: "var(--subtle)" }}>
+      <div className="row mb2" style={{ justifyContent: "space-between" }}>
+        <span className="bold small">Harga jual kredit</span>
+        <Badge tone={priced ? "green" : "amber"}>{priced ? `${rupiah(perUsd)} / $1` : "kurs belum diisi"}</Badge>
+      </div>
+      <div className="grid mb2" style={{ gridTemplateColumns: "1fr 1fr", gap: 10 }}>
+        <form onSubmit={(e) => onSave(e, "forex_idr_per_usd")}>
+          <label className="label">Kurs pasar (Rp per 1 USD)</label>
+          <div className="row">
+            <input name="value" className="input" defaultValue={val("forex_idr_per_usd")} placeholder="mis. 16000" />
+            <button className="btn" style={{ fontSize: 12 }} disabled={busy}>Simpan</button>
+          </div>
+        </form>
+        <form onSubmit={(e) => onSave(e, "margin_pct")}>
+          <label className="label">Margin kotor (%)</label>
+          <div className="row">
+            <input name="value" className="input" defaultValue={val("margin_pct")} placeholder="30" />
+            <button className="btn" style={{ fontSize: 12 }} disabled={busy}>Simpan</button>
+          </div>
+        </form>
+      </div>
+      {priced ? (
+        <div className="tiny muted">
+          {rupiah(forex)} ÷ (1 − {margin}%) = <b>{rupiah(perUsd)}</b> per $1 kredit.
+          Dari tiap {rupiah(perUsd)} yang masuk, {rupiah(perUsd - forex)} margin —
+          $10 kredit dijual {rupiah(perUsd * 10)}.
+        </div>
+      ) : (
+        <div className="tiny muted">
+          Selama kurs kosong, penawaran harga ditolak — lebih baik tidak menjual daripada
+          menjual dengan angka karangan. Margin kotor: dari tiap Rp 100 yang masuk, Rp {margin || 0} margin.
+        </div>
+      )}
+    </div>
+  );
+}
+
+// Mesin promo. Yang membuatnya berguna bukan diskonnya, melainkan syarat
+// audiensnya — dan syarat yang salah ketik tidak pernah berbunyi, ia cuma
+// diam-diam tidak menembak siapa pun. Karena itu ada tombol pratinjau yang
+// menghitung berapa workspace yang KENA sebelum promonya disimpan.
+const PREDICATE_HELP = {
+  balance_below_pct: ["Saldo tinggal ≤ X%", "dari total kredit yang pernah dibeli workspace itu"],
+  max_logins: ["Login ≤ X sesi", "pendatang baru; sesi dihitung terpisah kalau jeda > 6 jam"],
+  min_logins: ["Login ≥ X sesi", "pelanggan yang sudah terbiasa"],
+  never_topped_up: ["Belum pernah beli", "isi true"],
+  min_days_since_signup: ["Umur akun ≥ X hari", ""],
+  max_days_since_signup: ["Umur akun ≤ X hari", ""],
+  min_days_since_last_topup: ["Tidak beli ≥ X hari", "pelanggan yang menghilang"],
+  min_spend_usd: ["Sudah pakai ≥ $X", ""],
+};
+
+function PromotionsCard({ tick }) {
+  const [st, reload] = useQuery(async () => callApp({ action: "promotions_list" }), [tick]);
+  const [open, setOpen] = useState(false);
+  const [audience, setAudience] = useState({});
+  const [preview, setPreview] = useState(null);
+  const [msg, setMsg] = useState(null);
+  const [busy, setBusy] = useState(false);
+  if (!st?.ok) return null;
+
+  function setPred(k, v) {
+    const next = { ...audience };
+    if (v === "" || v === null) delete next[k];
+    else next[k] = k === "never_topped_up" ? true : Number(v);
+    setAudience(next);
+    setPreview(null);
+  }
+  async function doPreview() {
+    setBusy(true); setMsg(null);
+    try { setPreview(await callApp({ action: "promotion_preview", audience })); }
+    catch (e) { setMsg(e.message); }
+    setBusy(false);
+  }
+  async function save(e) {
+    e.preventDefault();
+    const f = new FormData(e.target);
+    setBusy(true); setMsg(null);
+    try {
+      await callApp({
+        action: "promotion_save",
+        code: f.get("code"), name: f.get("name"),
+        discount_pct: Number(f.get("discount_pct")),
+        audience,
+        ends_at: f.get("ends_at") || null,
+        max_redemptions: f.get("max_redemptions") || null,
+        per_workspace_limit: Number(f.get("per_workspace_limit") || 1),
+      });
+      setMsg("Promo tersimpan."); setOpen(false); setAudience({}); setPreview(null); reload();
+    } catch (e2) { setMsg(e2.message); }
+    setBusy(false);
+  }
+  async function toggle(p) {
+    setBusy(true);
+    try {
+      await callApp({
+        action: "promotion_save", id: p.id, code: p.code, name: p.name,
+        discount_pct: Number(p.discount_pct), audience: p.audience,
+        ends_at: p.ends_at, max_redemptions: p.max_redemptions,
+        per_workspace_limit: p.per_workspace_limit, active: !p.active,
+      });
+      reload();
+    } catch (e) { setMsg(e.message); }
+    setBusy(false);
+  }
+
+  return (
+    <div className="card p6 mb4">
+      <div className="row mb1" style={{ justifyContent: "space-between" }}>
+        <div className="bold">Promo</div>
+        <button type="button" className="btn" style={{ fontSize: 12 }} onClick={() => setOpen(!open)}>
+          {open ? "Batal" : "+ Promo baru"}
+        </button>
+      </div>
+      <p className="tiny muted mb3">
+        Diskon yang menargetkan segmen tertentu — mis. saldo tinggal 25%, atau pendatang baru
+        yang belum pernah beli. Pelanggan hanya melihat promo yang memang berlaku untuknya.
+      </p>
+      {msg && <div className={msg === "Promo tersimpan." ? "msg-ok mb3" : "msg-err mb3"}>{msg}</div>}
+
+      {open && (
+        <form onSubmit={save} className="card p4 mb3" style={{ background: "var(--subtle)" }}>
+          <div className="grid mb2" style={{ gridTemplateColumns: "1fr 2fr 1fr", gap: 8 }}>
+            <div><label className="label">Kode</label><input name="code" className="input" placeholder="SALDOTIPIS" required /></div>
+            <div><label className="label">Nama</label><input name="name" className="input" placeholder="Saldo menipis — isi ulang" required /></div>
+            <div><label className="label">Diskon %</label><input name="discount_pct" className="input" type="number" min="1" max="90" defaultValue="20" required /></div>
+          </div>
+          <label className="label">Syarat audiens — kosongkan yang tidak dipakai</label>
+          <div className="grid mb2" style={{ gridTemplateColumns: "1fr 1fr", gap: 8 }}>
+            {(st.predicates || []).map((k) => (
+              <div key={k}>
+                <div className="tiny bold">{PREDICATE_HELP[k]?.[0] || k}</div>
+                <input className="input" style={{ fontSize: 12 }}
+                  placeholder={k === "never_topped_up" ? "true" : "angka"}
+                  value={audience[k] === undefined ? "" : String(audience[k])}
+                  onChange={(e) => setPred(k, e.target.value)} />
+                {PREDICATE_HELP[k]?.[1] && <div className="tiny muted">{PREDICATE_HELP[k][1]}</div>}
+              </div>
+            ))}
+          </div>
+          <div className="grid mb2" style={{ gridTemplateColumns: "1fr 1fr 1fr", gap: 8 }}>
+            <div><label className="label">Berakhir</label><input name="ends_at" className="input" type="date" /></div>
+            <div><label className="label">Kuota total</label><input name="max_redemptions" className="input" type="number" min="1" placeholder="tanpa batas" /></div>
+            <div><label className="label">Per workspace</label><input name="per_workspace_limit" className="input" type="number" min="1" defaultValue="1" /></div>
+          </div>
+          <div className="row" style={{ gap: 8 }}>
+            <button type="button" className="btn btn2" disabled={busy} onClick={doPreview}>Pratinjau audiens</button>
+            <button className="btn" disabled={busy}>Simpan promo</button>
+          </div>
+          {preview && (
+            <div className={preview.matched === 0 ? "msg-err tiny mt2" : "msg-ok tiny mt2"}>
+              {preview.matched} dari {preview.total_workspaces} workspace kena syarat ini
+              {preview.matched === 0 ? " — syaratnya terlalu ketat, promo ini tidak akan menembak siapa pun." : ""}
+              {preview.sample?.length ? ` (mis. ${preview.sample.map((x) => x.name).join(", ")})` : ""}
+            </div>
+          )}
+        </form>
+      )}
+
+      {(st.promotions || []).length === 0 ? (
+        <div className="small muted">Belum ada promo.</div>
+      ) : (
+        <table>
+          <thead><tr><th>Kode</th><th>Diskon</th><th>Syarat</th><th>Dipakai</th><th>Omzet</th><th></th></tr></thead>
+          <tbody>
+            {st.promotions.map((p) => (
+              <tr key={p.id} style={p.active ? undefined : { opacity: 0.5 }}>
+                <td className="bold">{p.code}<div className="tiny muted">{p.name}</div></td>
+                <td>{Number(p.discount_pct)}%</td>
+                <td className="tiny muted">
+                  {Object.keys(p.audience || {}).length === 0 ? "semua orang"
+                    : Object.entries(p.audience).map(([k, v]) => `${PREDICATE_HELP[k]?.[0] || k}: ${v}`).join(" · ")}
+                </td>
+                <td>{p.redemptions}{p.max_redemptions ? ` / ${p.max_redemptions}` : ""}</td>
+                <td>{p.revenue_idr ? rupiah(p.revenue_idr) : "—"}</td>
+                <td>
+                  <button type="button" className="btn btn2" style={{ fontSize: 11, padding: "3px 8px" }}
+                    disabled={busy} onClick={() => toggle(p)}>{p.active ? "Matikan" : "Nyalakan"}</button>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      )}
+    </div>
+  );
+}
+
+function PlatformConfig({ st, reload }) {
   const [msg, setMsg] = useState(null);
   const [busy, setBusy] = useState(false);
   if (!st?.is_platform_admin) return null;
@@ -3128,7 +3331,8 @@ function PlatformConfig({ tick }) {
         Nilainya tidak pernah ditampilkan balik: yang bisa dilakukan halaman ini mengganti, bukan membaca.
       </p>
       {msg && <div className={msg.includes("tersimpan") || msg.includes("dihapus") ? "msg-ok mb3" : "msg-err mb3"}>{msg}</div>}
-      {(st.keys || []).map((k) => (
+      <PricingCard keys={st.keys || []} onSave={save} busy={busy} />
+      {(st.keys || []).filter((k) => k.kind !== "plain").map((k) => (
         <div key={k.key} className="card p4 mb3" style={{ background: "var(--subtle)" }}>
           <div className="row mb1" style={{ justifyContent: "space-between" }}>
             <span className="bold small">{PLATFORM_KEY_LABELS[k.key]?.[0] || k.key}</span>
@@ -3162,8 +3366,13 @@ function PlatformConfig({ tick }) {
 // fal/DashScope langsung ke kartunya sendiri.
 function BillingCard({ ws, tick }) {
   const [bill] = useQuery(async () => callApp({ action: "billing_status" }), [ws.id, tick]);
+  // Penawaran ditampilkan di sini, bukan lewat email: belum ada infrastruktur
+  // email di app ini, dan penawaran yang muncul tepat di sebelah saldo yang
+  // menipis justru lebih dekat ke momen keputusannya.
+  const [offers] = useQuery(async () => callApp({ action: "my_offers" }), [ws.id, tick]);
   if (!bill || bill.billing_mode !== "credit") return null;
   const low = Number(bill.balance) < 1;
+  const best = offers?.offers?.[0] || null;
   return (
     <div className="card p6 mb4">
       <div className="row mb2" style={{ justifyContent: "space-between" }}>
@@ -3175,6 +3384,19 @@ function BillingCard({ ws, tick }) {
         job-nya ditolak sebelum dikirim ke provider — jadi tidak ada tagihan yang muncul belakangan.
         {low ? " Saldomu menipis: isi ulang sebelum menjalankan job video." : ""}
       </p>
+      {best && (
+        <div className="card p4 mb3" style={{ background: "var(--ok-line)" }}>
+          <div className="row" style={{ justifyContent: "space-between" }}>
+            <span className="bold small">🎁 {best.name}</span>
+            <Badge tone="green">−{best.discount_pct}%</Badge>
+          </div>
+          <div className="tiny muted mt1">
+            Kode <b>{best.code}</b> berlaku untuk isi ulang berikutnya
+            {best.ends_at ? ` sampai ${new Date(best.ends_at).toLocaleDateString("id-ID")}` : ""}.
+            {offers.offers.length > 1 ? ` (${offers.offers.length - 1} penawaran lain juga berlaku)` : ""}
+          </div>
+        </div>
+      )}
       {bill.entries?.length > 0 && (
         <table>
           <thead><tr><th>Waktu</th><th>Jenis</th><th>Jumlah</th><th>Catatan</th></tr></thead>
@@ -3203,6 +3425,11 @@ export function Settings({ ws, refresh, tick, spend, spendError, query }) {
     unwrap(await supa.from("budget_settings").select("*").eq("workspace_id", ws.id).maybeSingle(), null), [ws.id, tick]);
   const [keyState, setKeyState] = useState(null);
   const [msg, setMsg] = useState(null);
+  // Diambil sekali di sini, bukan di dalam tiap kartu operator: kalau tiap
+  // kartu memanggil endpointnya sendiri, setiap pelanggan biasa akan memicu
+  // permintaan yang pasti ditolak hanya untuk memunculkan kartu yang memang
+  // tidak akan muncul.
+  const [platform, reloadPlatform] = useQuery(async () => callApp({ action: "platform_config_status" }), [tick]);
   // Default byo_key selagi status masih dimuat: itu tampilan yang sudah ada
   // sekarang, jadi tidak ada kedipan kartu yang muncul lalu hilang.
   const creditMode = keyState?.billing_mode === "credit";
@@ -3259,7 +3486,8 @@ export function Settings({ ws, refresh, tick, spend, spendError, query }) {
       <AccountAdmin ws={ws} tick={tick} />
       <AiWriterSettings keyState={keyState} onSaved={() => callGenerate({ action: "status" }).then(setKeyState).catch(() => {})} />
       <McpSettings ws={ws} tick={tick} />
-      <PlatformConfig tick={tick} />
+      <PlatformConfig st={platform} reload={reloadPlatform} />
+      {platform?.is_platform_admin && <PromotionsCard tick={tick} />}
       <BillingCard ws={ws} tick={tick} />
       {msg && <div className="msg-ok mb3">{msg}</div>}
       <div className="grid mb4" style={{ gridTemplateColumns: "repeat(auto-fit,minmax(340px,1fr))" }}>

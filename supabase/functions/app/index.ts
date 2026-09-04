@@ -57,6 +57,11 @@ const PLATFORM_SETTABLE: Record<string, "secret" | "plain"> = {
   platform_hf_token: "secret",
   platform_dashscope_key: "secret",
   platform_text_api_key: "secret",
+  // Harga BUKAN rahasia, dan menyembunyikannya justru berbahaya: operator yang
+  // tidak bisa melihat kurs yang sedang berlaku akan menebaknya saat mengubah.
+  // Nilai "plain" dikembalikan apa adanya ke halaman admin; "secret" tidak.
+  forex_idr_per_usd: "plain",
+  margin_pct: "plain",
 };
 
 // Operator platform, BUKAN owner workspace.
@@ -79,6 +84,133 @@ async function requirePlatformAdmin(req: Request) {
     throw new Error("Halaman ini hanya untuk operator platform.");
   }
   return c;
+}
+
+// ---------- Harga ----------
+//
+// Dua angka, bukan satu. `forex_idr_per_usd` berubah karena dunia;
+// `margin_pct` berubah karena keputusan. Menyimpan hasil kalinya saja membuat
+// keduanya tidak bisa dibedakan lagi setelah tersimpan.
+//
+// GROSS MARGIN: harga = kurs / (1 - margin/100). Margin 30% berarti 30 dari
+// tiap 100 yang masuk — BUKAN markup 30% di atas modal (yang cuma menghasilkan
+// margin 23%). Dua-duanya lazim disebut "30%", jadi rumusnya ditulis sekali di
+// sini dan tidak diulang di tempat lain.
+async function pricing(): Promise<{ forex: number; marginPct: number; idrPerUsd: number } | null> {
+  const { data } = await admin.from("service_config").select("key, value")
+    .in("key", ["forex_idr_per_usd", "margin_pct"]);
+  const map = new Map((data || []).map((r) => [r.key, Number(r.value)]));
+  const forex = map.get("forex_idr_per_usd");
+  const marginPct = map.get("margin_pct");
+  if (!forex || !Number.isFinite(forex) || forex <= 0) return null;
+  const m = Number.isFinite(marginPct) ? Number(marginPct) : 0;
+  if (m < 0 || m >= 100) return null;
+  return { forex, marginPct: m, idrPerUsd: forex / (1 - m / 100) };
+}
+
+// ---------- Mesin promo ----------
+//
+// Predikat audiens ditegakkan di sini, bukan di database, dan daftarnya
+// tertutup. Predikat yang tidak dikenali membuat promo TIDAK cocok: salah ketik
+// di halaman admin harus berarti "promo tidak jalan", bukan "promo berlaku
+// untuk semua orang" — arah gagalnya dipilih, bukan kebetulan.
+const AUDIENCE_PREDICATES = [
+  "balance_below_pct",        // saldo <= X% dari total yang pernah dibeli
+  "max_logins",               // pendatang baru: login <= X sesi
+  "min_logins",               // pelanggan yang sudah terbiasa
+  "never_topped_up",          // belum pernah beli sama sekali
+  "min_days_since_signup",
+  "max_days_since_signup",
+  "min_days_since_last_topup", // pelanggan yang menghilang
+  "min_spend_usd",             // sudah membakar sekian dolar
+];
+
+type WsFacts = {
+  balance: number;
+  purchased: number;
+  spend: number;
+  logins: number;
+  daysSinceSignup: number;
+  daysSinceLastTopup: number | null;
+};
+
+async function workspaceFacts(ws: string): Promise<WsFacts> {
+  const [{ data: bal }, { data: bought }, { data: rows }, { data: mem }, { data: w }] = await Promise.all([
+    admin.rpc("credit_balance", { ws }),
+    admin.rpc("credit_purchased", { ws }),
+    admin.from("credits_ledger").select("kind, delta_usd, created_at").eq("workspace_id", ws),
+    admin.from("workspace_members").select("login_count, first_seen_at").eq("workspace_id", ws),
+    admin.from("workspaces").select("created_at").eq("id", ws).maybeSingle(),
+  ]);
+  const ledger = rows || [];
+  const spend = ledger.filter((r) => r.kind === "usage")
+    .reduce((s, r) => s + Math.abs(Number(r.delta_usd)), 0);
+  const topups = ledger.filter((r) => r.kind === "topup")
+    .map((r) => new Date(r.created_at).getTime()).sort((a, b) => b - a);
+  const day = 86400000;
+  // Login dijumlahkan lintas anggota: workspace berisi dua orang yang masing-
+  // masing login 2x sudah lebih "hidup" daripada satu orang yang login 2x.
+  const logins = (mem || []).reduce((s, m) => s + Number(m.login_count || 0), 0);
+  const created = w?.created_at ? new Date(w.created_at).getTime() : Date.now();
+  return {
+    balance: Number(bal || 0),
+    purchased: Number(bought || 0),
+    spend,
+    logins,
+    daysSinceSignup: Math.floor((Date.now() - created) / day),
+    daysSinceLastTopup: topups.length ? Math.floor((Date.now() - topups[0]) / day) : null,
+  };
+}
+
+function audienceMatches(audience: Record<string, unknown>, f: WsFacts): boolean {
+  for (const [k, raw] of Object.entries(audience || {})) {
+    if (!AUDIENCE_PREDICATES.includes(k)) return false; // fail-closed
+    const v = Number(raw);
+    switch (k) {
+      case "balance_below_pct": {
+        // Tanpa pembelian, "sisa 25%" tidak punya penyebut — jadi promo saldo
+        // menipis tidak pernah menembak orang yang belum pernah beli.
+        if (f.purchased <= 0) return false;
+        if ((f.balance / f.purchased) * 100 > v) return false;
+        break;
+      }
+      case "max_logins": if (f.logins > v) return false; break;
+      case "min_logins": if (f.logins < v) return false; break;
+      case "never_topped_up": if ((raw === true || raw === "true") !== (f.purchased <= 0)) return false; break;
+      case "min_days_since_signup": if (f.daysSinceSignup < v) return false; break;
+      case "max_days_since_signup": if (f.daysSinceSignup > v) return false; break;
+      case "min_days_since_last_topup":
+        if (f.daysSinceLastTopup === null || f.daysSinceLastTopup < v) return false;
+        break;
+      case "min_spend_usd": if (f.spend < v) return false; break;
+    }
+  }
+  return true;
+}
+
+// Promo yang benar-benar berlaku untuk sebuah workspace saat ini, terbesar
+// dulu. Batas pemakaian diperiksa di sini juga supaya promo yang kuotanya habis
+// tidak pernah sempat ditampilkan sebagai penawaran.
+async function eligiblePromotions(ws: string) {
+  const now = new Date().toISOString();
+  const { data: promos } = await admin.from("promotions").select("*").eq("active", true);
+  if (!promos?.length) return [];
+  const facts = await workspaceFacts(ws);
+  const { data: reds } = await admin.from("promotion_redemptions")
+    .select("promotion_id, workspace_id");
+  const usedTotal = new Map<string, number>();
+  const usedHere = new Map<string, number>();
+  for (const r of reds || []) {
+    usedTotal.set(r.promotion_id, (usedTotal.get(r.promotion_id) || 0) + 1);
+    if (r.workspace_id === ws) usedHere.set(r.promotion_id, (usedHere.get(r.promotion_id) || 0) + 1);
+  }
+  return promos
+    .filter((p) => !p.starts_at || p.starts_at <= now)
+    .filter((p) => !p.ends_at || p.ends_at >= now)
+    .filter((p) => p.max_redemptions === null || (usedTotal.get(p.id) || 0) < p.max_redemptions)
+    .filter((p) => (usedHere.get(p.id) || 0) < p.per_workspace_limit)
+    .filter((p) => audienceMatches(p.audience as Record<string, unknown>, facts))
+    .sort((a, b) => Number(b.discount_pct) - Number(a.discount_pct));
 }
 
 // `grant_credit` sengaja TIDAK punya jalur JWT sama sekali — bahkan untuk
@@ -196,10 +328,12 @@ Deno.serve(async (req) => {
         return json({ ok: true });
       }
       if (body.action === "platform_config_status") {
-        // Nilainya TIDAK pernah dikembalikan — cuma "terpasang atau belum",
-        // panjangnya, dan siapa yang terakhir mengubah. Key ini membayar
-        // tagihan semua pelanggan; tidak ada alasan ia melintas ke browser,
-        // bahkan browser operatornya sendiri.
+        // Untuk key rahasia yang dikembalikan cuma "terpasang atau belum",
+        // panjangnya, dan siapa yang terakhir mengubah — key itu membayar
+        // tagihan semua pelanggan, tidak ada alasan ia melintas ke browser,
+        // bahkan browser operatornya sendiri. Nilai "plain" (kurs & margin)
+        // justru HARUS terlihat: operator yang tidak bisa membaca kurs yang
+        // sedang berlaku akan menebaknya saat mengubah.
         const c = await requireUser(req);
         const isAdmin = await isPlatformAdmin(c.user.id);
         if (!isAdmin) return json({ ok: true, is_platform_admin: false, keys: [] });
@@ -222,8 +356,13 @@ Deno.serve(async (req) => {
             const v = r?.value ? String(r.value) : "";
             return {
               key: k,
+              kind: PLATFORM_SETTABLE[k],
               set: !!v,
               length: v.length,
+              // Hanya nilai "plain" (harga) yang dikembalikan. Yang "secret"
+              // tidak pernah, bahkan ke operator: halaman ini boleh mengganti
+              // key, tidak boleh membacanya.
+              value: PLATFORM_SETTABLE[k] === "plain" ? v : null,
               updated_at: r?.updated_at || null,
               updated_by_email: r?.updated_by ? emails.get(r.updated_by) || null : null,
             };
@@ -242,12 +381,149 @@ Deno.serve(async (req) => {
           return json({ ok: true, key, cleared: true });
         }
         const value = raw.trim();
-        if (value.length < 8) throw new Error("Nilainya terlalu pendek untuk sebuah API key.");
+        if (PLATFORM_SETTABLE[key] === "plain") {
+          const n = Number(value);
+          if (!Number.isFinite(n) || n < 0) throw new Error("Nilainya harus angka.");
+          if (key === "margin_pct" && n >= 100) throw new Error("Margin harus di bawah 100%.");
+          if (key === "forex_idr_per_usd" && n <= 0) throw new Error("Kurs harus lebih besar dari nol.");
+        } else if (value.length < 8) {
+          throw new Error("Nilainya terlalu pendek untuk sebuah API key.");
+        }
         const { error } = await admin.from("service_config").upsert({
           key, value, updated_at: new Date().toISOString(), updated_by: c.user.id,
         });
         if (error) throw new Error(error.message);
         return json({ ok: true, key, set: true });
+      }
+      if (body.action === "touch") {
+        // Pencacah sesi, bukan page load. Hanya naik kalau kunjungan terakhir
+        // sudah lewat 6 jam — tanpa ambang itu "login 3x" berarti "me-refresh
+        // tab 3 kali dalam semenit", dan promo pendatang baru akan menembak
+        // orang yang cuma memuat ulang halaman.
+        const c = await requireUser(req);
+        const { data: mem } = await admin.from("workspace_members")
+          .select("last_seen_at, login_count, first_seen_at")
+          .eq("workspace_id", c.ws).eq("user_id", c.user.id).maybeSingle();
+        const now = new Date();
+        const last = mem?.last_seen_at ? new Date(mem.last_seen_at).getTime() : 0;
+        const newSession = now.getTime() - last > 6 * 3600e3;
+        await admin.from("workspace_members").update({
+          last_seen_at: now.toISOString(),
+          login_count: (mem?.login_count || 0) + (newSession ? 1 : 0),
+          first_seen_at: mem?.first_seen_at || now.toISOString(),
+        }).eq("workspace_id", c.ws).eq("user_id", c.user.id);
+        return json({ ok: true, counted: newSession });
+      }
+      if (body.action === "price_quote") {
+        // Harga untuk sejumlah kredit, sudah termasuk promo terbaik yang
+        // berlaku untuk workspace ini. Menolak kalau kurs belum diisi: menjual
+        // dengan kurs karangan lebih buruk daripada tidak menjual.
+        const c = await requireUser(req);
+        const usd = Number(body.credit_usd);
+        if (!Number.isFinite(usd) || usd <= 0) throw new Error("credit_usd harus angka positif.");
+        const p = await pricing();
+        if (!p) return json({ ok: true, priced: false, reason: "Kurs jual belum diisi operator." });
+        const promos = await eligiblePromotions(c.ws);
+        const best = promos[0] || null;
+        const listIdr = Math.round(usd * p.idrPerUsd);
+        const discountPct = best ? Number(best.discount_pct) : 0;
+        return json({
+          ok: true, priced: true,
+          credit_usd: usd,
+          idr_per_usd: Math.round(p.idrPerUsd),
+          list_idr: listIdr,
+          discount_pct: discountPct,
+          pay_idr: Math.round(listIdr * (1 - discountPct / 100)),
+          promo: best ? { id: best.id, code: best.code, name: best.name, discount_pct: discountPct } : null,
+        });
+      }
+      if (body.action === "my_offers") {
+        // Yang dikembalikan HANYA promo yang berlaku untuk pemanggil — bukan
+        // seluruh katalog. Pelanggan tidak perlu tahu promo apa saja yang ada
+        // untuk segmen lain, dan membocorkannya mengundang orang menyamar jadi
+        // segmen itu.
+        const c = await requireUser(req);
+        const promos = await eligiblePromotions(c.ws);
+        return json({
+          ok: true,
+          offers: promos.map((p) => ({
+            code: p.code, name: p.name, discount_pct: Number(p.discount_pct), ends_at: p.ends_at,
+          })),
+        });
+      }
+      if (body.action === "promotions_list") {
+        const c = await requirePlatformAdmin(req);
+        void c;
+        const { data: promos } = await admin.from("promotions").select("*").order("created_at", { ascending: false });
+        const { data: reds } = await admin.from("promotion_redemptions").select("promotion_id, discount_pct, paid_idr");
+        const used = new Map<string, { n: number; idr: number }>();
+        for (const r of reds || []) {
+          const cur = used.get(r.promotion_id) || { n: 0, idr: 0 };
+          used.set(r.promotion_id, { n: cur.n + 1, idr: cur.idr + Number(r.paid_idr || 0) });
+        }
+        return json({
+          ok: true,
+          predicates: AUDIENCE_PREDICATES,
+          promotions: (promos || []).map((p) => ({
+            ...p,
+            redemptions: used.get(p.id)?.n || 0,
+            revenue_idr: used.get(p.id)?.idr || 0,
+          })),
+        });
+      }
+      if (body.action === "promotion_save") {
+        const c = await requirePlatformAdmin(req);
+        const code = String(body.code || "").trim().toUpperCase();
+        if (!/^[A-Z0-9_-]{3,32}$/.test(code)) throw new Error("Kode promo: 3-32 karakter huruf/angka/-/_.");
+        const discount = Number(body.discount_pct);
+        if (!Number.isFinite(discount) || discount <= 0 || discount > 90) {
+          throw new Error("Diskon harus antara 0 dan 90 persen.");
+        }
+        // Predikat divalidasi SEBELUM disimpan. Kalau tidak, salah ketik baru
+        // ketahuan saat promo diam-diam tidak pernah cocok dengan siapa pun —
+        // dan itu jenis kegagalan yang tidak pernah berbunyi.
+        const audience = (body.audience && typeof body.audience === "object" && !Array.isArray(body.audience))
+          ? body.audience as Record<string, unknown> : {};
+        for (const k of Object.keys(audience)) {
+          if (!AUDIENCE_PREDICATES.includes(k)) throw new Error(`Syarat audiens "${k}" tidak dikenal.`);
+        }
+        const row: Record<string, unknown> = {
+          code,
+          name: String(body.name || code).slice(0, 120),
+          discount_pct: discount,
+          audience,
+          starts_at: body.starts_at || null,
+          ends_at: body.ends_at || null,
+          max_redemptions: body.max_redemptions ? Number(body.max_redemptions) : null,
+          per_workspace_limit: body.per_workspace_limit ? Number(body.per_workspace_limit) : 1,
+          active: body.active !== false,
+          created_by: c.user.id,
+        };
+        if (body.id) {
+          const { error } = await admin.from("promotions").update(row).eq("id", String(body.id));
+          if (error) throw new Error(error.message);
+          return json({ ok: true, updated: true });
+        }
+        const { error } = await admin.from("promotions").insert(row);
+        if (error) throw new Error(error.message);
+        return json({ ok: true, created: true });
+      }
+      if (body.action === "promotion_preview") {
+        // Berapa workspace yang KENA promo ini sekarang. Promo tanpa pratinjau
+        // audiens adalah tembakan dalam gelap: syarat yang terlalu ketat tidak
+        // menembak siapa pun, dan itu baru ketahuan berminggu-minggu kemudian
+        // saat tidak ada yang menukarkannya.
+        await requirePlatformAdmin(req);
+        const audience = (body.audience && typeof body.audience === "object") ? body.audience as Record<string, unknown> : {};
+        for (const k of Object.keys(audience)) {
+          if (!AUDIENCE_PREDICATES.includes(k)) throw new Error(`Syarat audiens "${k}" tidak dikenal.`);
+        }
+        const { data: all } = await admin.from("workspaces").select("id, name");
+        const hits: { id: string; name: string }[] = [];
+        for (const w of all || []) {
+          if (audienceMatches(audience, await workspaceFacts(w.id))) hits.push({ id: w.id, name: w.name });
+        }
+        return json({ ok: true, total_workspaces: (all || []).length, matched: hits.length, sample: hits.slice(0, 10) });
       }
       if (body.action === "billing_status") {
         // Dibaca Settings. Saldo hanya berarti kalau workspace memang memakai
@@ -308,6 +584,16 @@ Deno.serve(async (req) => {
           if (upErr) throw new Error(upErr.message);
         }
 
+        // Kelayakan promo dinilai SEBELUM kreditnya masuk, dan ini bukan detail
+        // gaya: menilai sesudahnya membuat grant itu sendiri membatalkan
+        // syaratnya. Promo "saldo tinggal 25%" tidak akan pernah cocok, karena
+        // saat diperiksa saldonya sudah terisi. Ketahuan dari uji end-to-end;
+        // dari membaca kode saja urutannya terlihat wajar.
+        const promoCode = String(body.promo_code || "").trim().toUpperCase();
+        const promoMatch = promoCode
+          ? (await eligiblePromotions(wsId)).find((x) => String(x.code).toUpperCase() === promoCode) || null
+          : null;
+
         const kind = body.kind === "refund" ? "refund" : body.kind === "adjustment" ? "adjustment" : "topup";
         const { error: insErr } = await admin.from("credits_ledger").insert({
           workspace_id: wsId, kind, delta_usd: amount,
@@ -324,9 +610,31 @@ Deno.serve(async (req) => {
           }
           throw new Error(insErr.message);
         }
+        // Pemakaiannya baru DICATAT di sini, setelah kreditnya benar-benar
+        // masuk: kalau dicatat lebih dulu, grant yang gagal di tengah akan
+        // menghabiskan jatah promo pelanggan tanpa memberi mereka apa pun.
+        //
+        // Kelayakannya tetap dinilai sendiri di atas, tidak percaya pada apa
+        // yang dikirim pemanggil — kode promo yang datang dari luar tidak
+        // membuktikan pemiliknya berhak atasnya.
+        let promoApplied: Record<string, unknown> | null = null;
+        if (promoCode) {
+          if (promoMatch) {
+            await admin.from("promotion_redemptions").insert({
+              promotion_id: promoMatch.id, workspace_id: wsId,
+              discount_pct: promoMatch.discount_pct, credit_usd: amount,
+              list_idr: body.list_idr ? Number(body.list_idr) : null,
+              paid_idr: body.paid_idr ? Number(body.paid_idr) : null,
+            });
+            promoApplied = { code: promoMatch.code, discount_pct: Number(promoMatch.discount_pct) };
+          } else {
+            promoApplied = { code: promoCode, rejected: "tidak berlaku untuk workspace ini" };
+          }
+        }
+
         const { data: bal, error: balErr } = await admin.rpc("credit_balance", { ws: wsId });
         if (balErr) throw new Error(balErr.message);
-        return json({ ok: true, granted_usd: amount, balance: Number(bal || 0) });
+        return json({ ok: true, granted_usd: amount, balance: Number(bal || 0), promo: promoApplied });
       }
       if (body.action === "signup") {
         const email = String(body.email || "").trim().toLowerCase();

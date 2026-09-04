@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useCallback } from "react";
 import { createRoot } from "react-dom/client";
-import { supa, signupConfirmed, STATUS_LABELS, usd } from "./supa.js";
+import { supa, signupConfirmed, callApp, STATUS_LABELS, usd } from "./supa.js";
 import {
   Dashboard, Influencers, InfluencerDetail, Studio, Planner, Tasks, Drive, Settings,
 } from "./views.jsx";
@@ -102,6 +102,16 @@ function App() {
     const { data: sub } = supa.auth.onAuthStateChange((_e, s) => setSession(s));
     return () => sub.subscription.unsubscribe();
   }, []);
+
+  // Catat kunjungan. Ini yang membuat penargetan "pelanggan baru login 3x"
+  // punya angka untuk dipakai — sebelumnya tidak ada satu pun tempat di app ini
+  // yang menghitung login. Sengaja best-effort: kalau gagal, jangan sampai
+  // menghalangi halaman terbuka. Server yang memutuskan apakah kunjungan ini
+  // sesi baru (jeda > 6 jam), bukan klien.
+  useEffect(() => {
+    if (!session) return;
+    callApp({ action: "touch" }).catch(() => {});
+  }, [session]);
 
   useEffect(() => {
     if (!session) return;
