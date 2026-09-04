@@ -65,6 +65,9 @@ const MOCK_OUTPUTS: Record<string, (seed: string) => string> = {
   lipsync: () => "https://storage.googleapis.com/gtv-videos-bucket/sample/ForBiggerJoyrides.mp4",
 };
 const assetKind = (task: string) => (task === "image" ? "image" : task === "tts" ? "audio" : "video");
+// Dipakai hanya kalau provider tidak mengirim Content-Type saat hasilnya diunduh.
+const defaultCtype = (task: string) =>
+  task === "image" ? "image/png" : task === "tts" ? "audio/mpeg" : "video/mp4";
 
 async function monthSpent(ws: string): Promise<number> {
   const start = new Date(); start.setDate(1); start.setHours(0, 0, 0, 0);
@@ -254,15 +257,19 @@ async function dashscopeKey(ws: string): Promise<string | null> {
   return provider === "qwen" ? await getSecret(ws, "text_api_key") : null;
 }
 
-// Unduh hasil dari URL DashScope (kedaluwarsa 24 jam) dan simpan permanen di
-// bucket media. Dipakai untuk gambar maupun video.
+// Unduh hasil dari URL provider dan simpan permanen di bucket media. Dipakai
+// untuk gambar, video, maupun audio — dari DashScope (URL-nya kedaluwarsa 24
+// jam) dan dari fal.ai (URL-nya awet, tapi tetap milik server orang lain).
 async function storeRemote(ws: string, url: string, jobId: string, fallbackCtype: string): Promise<string> {
   const res = await fetch(url);
   if (!res.ok) throw new Error(`Gagal mengunduh hasil (HTTP ${res.status}).`);
   const ctype = res.headers.get("content-type") || fallbackCtype;
   const bytes = new Uint8Array(await res.arrayBuffer());
   if (bytes.byteLength < 100) throw new Error("Hasil yang diunduh kosong.");
+  // Urutannya penting: "video/mpeg" mengandung "mpeg" juga, jadi video dulu.
   const ext = ctype.includes("mp4") || ctype.includes("video") ? "mp4"
+    : ctype.includes("mpeg") || ctype.includes("mp3") ? "mp3"
+    : ctype.includes("wav") ? "wav"
     : ctype.includes("png") ? "png" : ctype.includes("webp") ? "webp" : "jpg";
   const path = `${ws}/${jobId}.${ext}`;
   const { error: upErr } = await admin.storage.from("media")
@@ -996,7 +1003,22 @@ Deno.serve(async (req) => {
             if (st.status === "COMPLETED") {
               const rres = await fetch(base, { headers: { Authorization: `Key ${falKey}` } });
               const result = await rres.json().catch(() => ({}));
-              const url = findMediaUrl(result);
+              const raw = findMediaUrl(result);
+              // Hasil HF dan DashScope sudah lama dipindahkan ke bucket `media`;
+              // fal satu-satunya yang tidak, jadi Drive menyimpan tautan ke CDN
+              // orang lain yang tidak kita kendalikan masa hidupnya. Pindahkan
+              // juga — tapi jangan pernah menggagalkan job kalau pemindahannya
+              // gagal: job ini sudah selesai dirender DAN sudah dibayar, jadi
+              // URL fal yang masih hidup selalu lebih baik daripada menandai
+              // pekerjaan berbayar sebagai gagal.
+              let url = raw;
+              if (raw) {
+                try {
+                  url = await storeRemote(ws, raw, jb.id, defaultCtype(jb.task));
+                } catch (_e) {
+                  url = raw;
+                }
+              }
               const cost = Number(jb.cost_estimate_usd) || 0;
               await admin.from("production_jobs").update({ status: "succeeded", output_url: url, cost_actual_usd: cost }).eq("id", jb.id);
               if (url) {
