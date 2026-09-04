@@ -477,9 +477,19 @@ function LookAlikePanel({ onFace, onAmbience }) {
   );
 }
 
-export function Influencers({ ws, refresh, tick }) {
+export function Influencers({ ws, refresh, tick, mode }) {
   const [list, reload, listError] = useQuery(async () =>
     unwrap(await supa.from("influencers").select("*").order("created_at")), [ws.id, tick]);
+  // Katalog model dibutuhkan karena pembuatan influencer berlanjut ke langkah
+  // character sheet di halaman ini juga — bukan cuma di Production Studio.
+  const [models] = useQuery(async () =>
+    unwrap(await supa.from("provider_models").select("*").eq("active", true).order("task")), [ws.id, tick]);
+  // Siapa yang sudah punya character sheet. Ditandai lewat nama asetnya, bukan
+  // kolom tersendiri: sheet dibuat sebagai job biasa, jadi tidak ada status yang
+  // bisa ikut basi kalau asetnya dihapus.
+  const [sheetRows, reloadSheets] = useQuery(async () =>
+    unwrap(await supa.from("assets").select("influencer_id").like("name", `${SHEET_LABEL_PREFIX}%`)), [ws.id, tick]);
+  const punyaSheet = new Set((sheetRows || []).map((r) => r.influencer_id).filter(Boolean));
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState(null);
   const [niche, setNiche] = useState("");
@@ -497,6 +507,10 @@ export function Influencers({ ws, refresh, tick }) {
   // URL foto dari wizard disimpan dulu — influencer-nya belum ada, jadi baru
   // dilampirkan sebagai Identity Kit setelah insert berhasil.
   const [pendingRefs, setPendingRefs] = useState([]);
+  // Influencer yang baru saja dibuat, untuk langkah character sheet. Disimpan
+  // utuh dari isian form (bukan menunggu hasil reload) supaya panelnya langsung
+  // punya identity_prompt & style_notes tanpa satu putaran render kosong.
+  const [baruDibuat, setBaruDibuat] = useState(null);
 
   function applyPersona(p) {
     setNiche(p.niche || "");
@@ -531,6 +545,15 @@ export function Influencers({ ws, refresh, tick }) {
       try { await callGenerate({ action: "attach_refs", influencer_id: inserted.id, urls: pendingRefs }); }
       catch (e2) { setErr(`Influencer dibuat, tapi foto referensi gagal dilampirkan: ${e2.message}`); }
     }
+    // Pembuatan influencer belum selesai di sini: tanpa character sheet, setiap
+    // produksi berikutnya berangkat dari nol dan wajahnya gampang bergeser.
+    // Jadi langkah keduanya langsung dimunculkan, terisi untuk influencer ini.
+    setBaruDibuat({
+      id: inserted.id,
+      name: String(f.get("name") || ""),
+      identity_prompt: String(f.get("identity_prompt") || ""),
+      persona: { bio: String(f.get("bio") || ""), style_notes: String(f.get("style_notes") || "") },
+    });
     setBusy(false);
     e.target.reset(); setNiche(""); setBioHint(""); setIdentityHint(""); setStyleNotes(""); setPendingRefs([]); setSelectedIdea(null);
     setFormOpen(false); reload(); refresh();
@@ -551,6 +574,34 @@ export function Influencers({ ws, refresh, tick }) {
           </button>
         )}
       </div>
+      {baruDibuat && (
+        <div className="card p6 mb6" style={{ border: "2px solid var(--brand-line)", background: "var(--brand-soft)" }}>
+          <div className="row mb1" style={{ justifyContent: "space-between", alignItems: "flex-start" }}>
+            <div className="bold">Langkah 2 — character sheet untuk {baruDibuat.name}</div>
+            <button type="button" className="btn btn2" style={{ fontSize: 12, padding: "6px 12px", flexShrink: 0 }}
+              onClick={() => { setBaruDibuat(null); reloadSheets(); }}>
+              Lewati dulu
+            </button>
+          </div>
+          <p className="tiny muted mb3">
+            {baruDibuat.name} sudah tersimpan, tapi belum punya foto acuan. Character sheet adalah
+            beberapa foto wajah dari sudut & ekspresi berbeda yang jadi patokan di semua produksi
+            berikutnya — tanpa itu tiap generate berangkat dari nol dan wajahnya gampang bergeser.
+            Kalau dilewati, influencer ini akan ditandai di daftar dan bisa dibuatkan kapan saja.
+          </p>
+          {models ? (
+            <CharacterSheetPanel
+              models={models}
+              influencers={[baruDibuat]}
+              lockInfluencerId={baruDibuat.id}
+              mode={mode}
+              refresh={() => { reloadSheets(); refresh(); }}
+            />
+          ) : (
+            <div className="muted small">Memuat katalog model…</div>
+          )}
+        </div>
+      )}
       <div className="grid mb6" style={{ gridTemplateColumns: "repeat(auto-fill,minmax(280px,1fr))" }}>
         {list.map((i) => (
           <a key={i.id} href={`#/influencers/${i.id}`} className="card p4">
@@ -563,6 +614,11 @@ export function Influencers({ ws, refresh, tick }) {
               <Badge tone={statusTone(i.status)}>{STATUS_LABELS[i.status]}</Badge>
             </div>
             <div className="tiny muted mt2">{i.persona?.bio || "Belum ada persona."}</div>
+            {/* Ditampilkan hanya kalau datanya sudah dimuat — daftar yang masih
+                null tidak boleh terbaca sebagai "semua belum punya sheet". */}
+            {sheetRows && !punyaSheet.has(i.id) && (
+              <div className="tiny mt2" style={{ color: "var(--warn)" }}>⚠️ Character sheet belum dibuat</div>
+            )}
           </a>
         ))}
       </div>
@@ -1178,10 +1234,18 @@ const SHEET_BACKDROPS = [
   { id: "daylight", label: "Cahaya alami netral", prompt: "plain neutral beige background, soft natural daylight from the side" },
 ];
 const SHEET_BASE = "character reference sheet photo, photorealistic, sharp focus, high detail, consistent same person, single subject, no text, no watermark, no collage";
+// Prefix ini dipakai dua arah: untuk MENAMAI aset hasil character sheet, dan
+// untuk MENDETEKSI influencer mana yang sudah punya. Kalau teksnya diubah di
+// satu sisi saja, deteksinya diam-diam berhenti mengenali sheet lama — jadi
+// satu konstanta, dipakai keduanya.
+const SHEET_LABEL_PREFIX = "Character sheet — ";
 
-function CharacterSheetPanel({ models, influencers, refresh, mode }) {
+// `lockInfluencerId` dipakai saat panel ini muncul sebagai langkah lanjutan
+// pembuatan influencer: influencernya sudah pasti, jadi dropdownnya tidak
+// perlu ada — dan tidak boleh bisa diganti ke orang lain tanpa sengaja.
+function CharacterSheetPanel({ models, influencers, refresh, mode, lockInfluencerId }) {
   const imgModels = models.filter((m) => m.task === "image").sort(byPrice);
-  const [infId, setInfId] = useState("");
+  const [infId, setInfId] = useState(lockInfluencerId || "");
   const [modelId, setModelId] = useState("");
   const [shots, setShots] = useState(DEFAULT_SHOTS);
   const [backdrop, setBackdrop] = useState("studio");
@@ -1230,7 +1294,7 @@ function CharacterSheetPanel({ models, influencers, refresh, mode }) {
         await callGenerate({
           action: "submit", task: "image", model_id: model.id, influencer_id: inf.id,
           prompt: [s.prompt, bd.prompt, SHEET_BASE, extra.trim()].filter(Boolean).join(", "),
-          label: `Character sheet — ${inf.name} — ${s.label}`,
+          label: `${SHEET_LABEL_PREFIX}${inf.name} — ${s.label}`,
         });
         ok++;
       } catch (e) { bad.push(`${s.label}: ${e.message}`); }
@@ -1245,13 +1309,15 @@ function CharacterSheetPanel({ models, influencers, refresh, mode }) {
         Satu klik menghasilkan beberapa gambar acuan karakter — sudut, ekspresi, dan full body —
         semuanya memakai identity prompt influencer yang sama. Hasilnya masuk ke Drive dengan nama yang terbaca.
       </p>
-      <div className="grid mb3" style={{ gridTemplateColumns: "1fr 1fr" }}>
-        <div><label className="label">Influencer *</label>
-          <select className="input" value={infId} onChange={(e) => setInfId(e.target.value)}>
-            <option value="">— pilih influencer —</option>
-            {influencers.map((i) => <option key={i.id} value={i.id}>{i.name}</option>)}
-          </select>
-        </div>
+      <div className="grid mb3" style={{ gridTemplateColumns: lockInfluencerId ? "1fr" : "1fr 1fr" }}>
+        {!lockInfluencerId && (
+          <div><label className="label">Influencer *</label>
+            <select className="input" value={infId} onChange={(e) => setInfId(e.target.value)}>
+              <option value="">— pilih influencer —</option>
+              {influencers.map((i) => <option key={i.id} value={i.id}>{i.name}</option>)}
+            </select>
+          </div>
+        )}
         <div>
           <ModelPicker models={imgModels} value={model?.id || ""} onChange={setModelId} label="Model gambar" />
           {model?.description && <p className="tiny muted" style={{ marginTop: 4 }}>{model.description}</p>}
