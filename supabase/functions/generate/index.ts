@@ -489,6 +489,21 @@ function falQueueUrlFallback(modelKey: string, requestId: string): string {
   return `https://queue.fal.run/${ns}/requests/${requestId}`;
 }
 
+// Tulis nilai ke jalur bertitik, membuat objek antara kalau belum ada.
+// Dipakai untuk voice id: ElevenLabs menaruhnya di "voice", MiniMax di
+// "voice_setting.voice_id". Jalurnya dari katalog (provider_models.voice_field),
+// bukan ditebak dari nama model.
+function setPath(target: Record<string, unknown>, path: string, value: unknown) {
+  const parts = String(path).split(".").filter(Boolean);
+  if (!parts.length) return;
+  let cur = target;
+  for (const key of parts.slice(0, -1)) {
+    if (typeof cur[key] !== "object" || cur[key] === null) cur[key] = {};
+    cur = cur[key] as Record<string, unknown>;
+  }
+  cur[parts[parts.length - 1]] = value;
+}
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: CORS });
   if (req.method !== "POST") return json({ error: "Method not allowed" }, 405);
@@ -831,6 +846,15 @@ Deno.serve(async (req) => {
         const patch: Record<string, unknown> = {};
         if (typeof body.hook === "string") patch.hook = body.hook;
         if (typeof body.script === "string") patch.script = body.script;
+        // Penulis AI sudah lama mengembalikan caption + hashtags; sampai kolomnya
+        // ada, keduanya dibuang di sini — lalu publish menempelkan `script`
+        // (naskah yang dibacakan) sebagai caption. Sekarang disimpan.
+        if (typeof body.caption === "string") patch.caption = body.caption.slice(0, 2000);
+        if (Array.isArray(body.hashtags)) {
+          patch.hashtags = body.hashtags
+            .map((h: unknown) => String(h).trim().replace(/^#+/, ""))
+            .filter(Boolean).slice(0, 30);
+        }
         if (!Object.keys(patch).length) throw new Error("Tidak ada yang disimpan.");
         const { error } = await admin.from("content_items").update(patch).eq("id", item.id);
         if (error) throw new Error(error.message);
@@ -876,11 +900,17 @@ Deno.serve(async (req) => {
         // semua fotonya. Tanpa itu, 3 dari batch yang sama dipilih acak dan
         // bisa berganti tiap generate — wajahnya jadi tidak konsisten.
         let refPhotos: string[] = [];
+        // Suara terkunci per influencer, disimpan per model_key karena voice id
+        // milik provider — lihat migration 0017.
+        let voiceId = "";
+        let influencerName = "";
         if (influencer_id) {
           const { data: inf } = await admin.from("influencers")
-            .select("identity_prompt, workspace_id").eq("id", influencer_id).maybeSingle();
+            .select("identity_prompt, workspace_id, voice, name").eq("id", influencer_id).maybeSingle();
           if (inf?.workspace_id === ws) {
             identity = inf.identity_prompt || "";
+            influencerName = inf.name || "";
+            voiceId = String((inf.voice as Record<string, unknown>)?.[model.model_key] || "");
             const { data: refs } = await admin.from("character_assets")
               .select("url").eq("influencer_id", influencer_id).eq("kind", "reference")
               .not("url", "is", null)
@@ -1070,7 +1100,27 @@ Deno.serve(async (req) => {
             }
             input[String(model.init_image_field)] = source_image_url;
           }
-        } else if (task === "tts") { input.text = String(text); }
+        } else if (task === "tts") {
+          input.text = String(text);
+          // Kunci suara. Kalau job ini atas nama seorang influencer, suaranya
+          // WAJIB sudah dipilih — bukan opsional. Tanpa ini setiap influencer
+          // memakai suara default provider, artinya 25 orang berbeda bersuara
+          // sama persis, dan tidak ada error apa pun yang memberi tahu: baru
+          // ketahuan saat dua videonya ditonton berurutan, sesudah dibayar.
+          if (influencer_id) {
+            if (!model.voice_field) {
+              await abort(`Model ${model.label} belum punya pemetaan suara di katalog, jadi suara ${influencerName || "influencer"} tidak bisa dikunci. Pilih model TTS lain.`);
+            }
+            if (!voiceId) {
+              await abort(
+                `${influencerName || "Influencer ini"} belum punya suara untuk model ${model.label}. ` +
+                `Buka halaman influencer → Suara, pilih dulu voice id-nya. ` +
+                `Suara tidak bisa dipindah antar provider, jadi tiap model TTS punya pilihannya sendiri.`,
+              );
+            }
+            setPath(input, String(model.voice_field), voiceId);
+          }
+        }
         else if (task === "lipsync") {
           if (String(model.model_key).includes("sadtalker")) {
             input.source_image_url = source_image_url; input.driven_audio_url = audio_url;

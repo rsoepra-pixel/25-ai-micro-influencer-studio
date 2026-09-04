@@ -154,10 +154,40 @@ async function handleCallback(url: URL): Promise<Response> {
 }
 
 // ---------- Live publish ----------
-async function igPublish(conn: Record<string, unknown>, item: Record<string, unknown>, mediaUrl: string): Promise<string> {
+// Teks yang menemani postingan. Dulu ini `hook + script` — dan `script` adalah
+// naskah 90-140 kata yang DIBACAKAN di video. Menempelkannya sebagai caption
+// sama saja memasang transkrip di bawah video sendiri: tidak ada orang yang
+// menulis caption begitu, dan itu salah satu penanda paling jelas bahwa akun
+// ini bukan dijalankan manusia.
+//
+// Urutan cadangannya sengaja tidak pernah jatuh ke `script`: kalau caption
+// belum ditulis, `hook` (satu kalimat pembuka) jauh lebih mendekati caption
+// daripada seluruh naskah, dan `title` lebih baik daripada kosong.
+//
+// TikTok memakai `title` sebagai caption postingan dengan batas 150 karakter,
+// dan disclosure AI-nya lewat flag `is_aigc` — bukan lewat teks — jadi
+// kalimat disclosure tidak ditempel di sana supaya tidak memakan jatah.
+function captionFor(platform: unknown, item: Record<string, unknown>, compliance: Record<string, unknown>): string {
+  if (platform === "tiktok") {
+    return String(compliance.title || item.caption || item.hook || item.title || "").slice(0, 150);
+  }
+  return buildCaption(item);
+}
+
+function buildCaption(item: Record<string, unknown>): string {
+  const body = String(item.caption || "").trim()
+    || String(item.hook || "").trim()
+    || String(item.title || "").trim();
+  const tags = Array.isArray(item.hashtags)
+    ? (item.hashtags as unknown[]).map((h) => `#${String(h).replace(/^#+/, "")}`).filter((h) => h.length > 1)
+    : [];
+  return [body, tags.join(" "), "Konten ini dibuat dengan bantuan AI. #AI"]
+    .filter(Boolean).join("\n\n").slice(0, 2000);
+}
+
+async function igPublish(conn: Record<string, unknown>, mediaUrl: string, caption: string): Promise<string> {
   const igUserId = conn.external_account_id;
   const token = String(conn.access_token);
-  const caption = [item.hook, item.script, "Konten ini dibuat dengan bantuan AI. #AI"].filter(Boolean).join("\n\n").slice(0, 2000);
   const isVideo = /\.(mp4|mov|webm)(\?|$)/i.test(mediaUrl);
   const params = new URLSearchParams({ access_token: token, caption });
   if (isVideo) { params.set("media_type", "REELS"); params.set("video_url", mediaUrl); }
@@ -178,13 +208,13 @@ async function igPublish(conn: Record<string, unknown>, item: Record<string, unk
   return String(pub.id);
 }
 
-async function ttPublish(conn: Record<string, unknown>, item: Record<string, unknown>, mediaUrl: string, compliance: Record<string, unknown>): Promise<string> {
+async function ttPublish(conn: Record<string, unknown>, mediaUrl: string, title: string, compliance: Record<string, unknown>): Promise<string> {
   const init = await (await fetch("https://open.tiktokapis.com/v2/post/publish/video/init/", {
     method: "POST",
     headers: { Authorization: `Bearer ${conn.access_token}`, "content-type": "application/json" },
     body: JSON.stringify({
       post_info: {
-        title: String(compliance.title || item.title).slice(0, 150),
+        title,
         privacy_level: compliance.privacy || "SELF_ONLY",
         disable_comment: compliance.allow_comment === false,
         disable_duet: compliance.allow_duet === false,
@@ -212,9 +242,16 @@ async function publishOne(
   explicitAssetId: string | null,
   compliance: Record<string, unknown>,
 ): Promise<Record<string, unknown>> {
+  // Dirakit SEBELUM cabang mock/live, dan disimpan di baris job-nya. Dua
+  // alasan: mode mock jadi gladi resik yang benar-benar memeriksa teksnya
+  // (dulu ia berhenti sebelum caption dirakit, jadi "mock berhasil" tidak
+  // membuktikan apa pun), dan setelah terbit masih ada catatan tentang apa
+  // yang keluar — tanpa itu caption yang salah tidak meninggalkan jejak.
+  const captionText = captionFor(conn.platform, item, compliance);
+
   const { data: pj, error: pjErr } = await admin.from("publish_jobs").insert({
     workspace_id: ws, content_item_id: item.id, connection_id: conn.id,
-    platform: conn.platform, status: "queued",
+    platform: conn.platform, status: "queued", caption: captionText,
   }).select("*").single();
   if (pjErr) throw new Error(pjErr.message);
 
@@ -230,7 +267,7 @@ async function publishOne(
     const postId = `mock_${pj.id.slice(0, 8)}`;
     await admin.from("publish_jobs").update({ status: "succeeded", external_post_id: postId }).eq("id", pj.id);
     await done();
-    return { ok: true, job_id: pj.id, status: "succeeded" };
+    return { ok: true, job_id: pj.id, status: "succeeded", caption: captionText };
   }
 
   // Media yang diposting: pilihan eksplisit, atau aset yang ditandai untuk
@@ -263,11 +300,11 @@ async function publishOne(
 
   try {
     const postId = conn.platform === "instagram"
-      ? await igPublish(conn, item, media.url)
-      : await ttPublish(conn, item, media.url, compliance);
+      ? await igPublish(conn, media.url, captionText)
+      : await ttPublish(conn, media.url, captionText, compliance);
     await admin.from("publish_jobs").update({ status: "succeeded", external_post_id: postId }).eq("id", pj.id);
     await done();
-    return { ok: true, job_id: pj.id, status: "succeeded" };
+    return { ok: true, job_id: pj.id, status: "succeeded", caption: captionText };
   } catch (e) {
     return await failWith((e as Error).message || String(e));
   }
@@ -383,8 +420,13 @@ Deno.serve(async (req) => {
             .eq("content_item_id", item.id).gte("created_at", since);
           if ((recent ?? 0) > 0) { results.push({ id: item.id, skipped: "baru saja dicoba" }); continue; }
 
+          // `title` sengaja TIDAK diisi di sini. Di TikTok, `compliance.title`
+          // menimpa caption — dan `item.title` itu judul ide internal ("Mitos
+          // vs Fakta: kopi susu"), bukan teks yang pantas tampil di postingan.
+          // Dibiarkan kosong supaya ttPublish jatuh ke caption seperti jalur
+          // publish manual.
           const r = await publishOne(ws, item, conn, null, {
-            title: item.title, privacy: "SELF_ONLY", ai_disclosure: true,
+            privacy: "SELF_ONLY", ai_disclosure: true,
           });
           results.push({ id: item.id, title: item.title, ...r });
         }

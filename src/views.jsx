@@ -696,6 +696,74 @@ export function Influencers({ ws, refresh, tick, mode }) {
 }
 
 // ---------- Influencer Detail ----------
+// Suara terkunci per influencer. Disimpan per model_key, bukan satu kolom,
+// karena voice id itu milik provider: "Wise_Woman" adalah suara MiniMax dan
+// tidak berarti apa-apa di ElevenLabs. Satu kolom akan tetap terisi saat model
+// diganti, lalu dikirim ke provider yang tidak mengenalnya.
+//
+// Daftar di bawah SARAN dari dokumentasi provider, bukan hasil verifikasi app
+// ini — kalau voice id-nya salah, yang memberi tahu adalah providernya saat
+// generate pertama. Karena itu kolomnya tetap teks bebas: voice hasil cloning
+// punya id sendiri yang tidak akan pernah ada di daftar mana pun.
+const VOICE_SUGGESTIONS = {
+  "fal-ai/minimax/speech-02-hd": [
+    "Wise_Woman", "Friendly_Person", "Calm_Woman", "Casual_Guy",
+    "Lively_Girl", "Deep_Voice_Man", "Patient_Man", "Sweet_Girl_2",
+  ],
+  "fal-ai/elevenlabs/tts/eleven-v3": ["Aria", "Rachel", "Bill", "Sarah", "Laura", "Charlie"],
+};
+
+function VoiceCard({ inf, models, onSaved }) {
+  const ttsModels = (models || []).filter((m) => m.task === "tts" && m.voice_field);
+  const [voice, setVoice] = useState(inf.voice || {});
+  const [msg, setMsg] = useState(null);
+  const [busy, setBusy] = useState(false);
+  if (!ttsModels.length) return null;
+
+  async function save() {
+    setBusy(true); setMsg(null);
+    const clean = {};
+    for (const [k, v] of Object.entries(voice)) if (String(v || "").trim()) clean[k] = String(v).trim();
+    const { error } = await supa.from("influencers").update({ voice: clean }).eq("id", inf.id);
+    setBusy(false);
+    if (error) { setMsg(error.message); return; }
+    setMsg("Suara tersimpan.");
+    onSaved?.();
+  }
+
+  const anySet = ttsModels.some((m) => String(voice[m.model_key] || "").trim());
+  return (
+    <div className="card p6 mb4">
+      <div className="row mb1" style={{ justifyContent: "space-between" }}>
+        <div className="bold">Suara</div>
+        <Badge tone={anySet ? "green" : "amber"}>{anySet ? "terkunci" : "belum dipilih"}</Badge>
+      </div>
+      <p className="tiny muted mb3">
+        Tanpa ini semua influencer memakai suara default provider — 25 orang berbeda dengan satu suara
+        yang sama, dan tidak ada error yang memberi tahu. Job TTS atas nama {inf.name} akan ditolak
+        sampai suaranya dipilih.
+      </p>
+      {ttsModels.map((m) => (
+        <div key={m.id} className="mb3">
+          <label className="label">{m.label}</label>
+          <input className="input" list={`voices-${m.id}`} placeholder="voice id dari provider…"
+            value={voice[m.model_key] || ""}
+            onChange={(e) => setVoice({ ...voice, [m.model_key]: e.target.value })} />
+          <datalist id={`voices-${m.id}`}>
+            {(VOICE_SUGGESTIONS[m.model_key] || []).map((v) => <option key={v} value={v} />)}
+          </datalist>
+        </div>
+      ))}
+      <p className="tiny muted mb3">
+        Daftar sarannya dari dokumentasi provider, belum diuji oleh app ini — kalau id-nya salah,
+        providernya yang akan menolak saat generate. Voice hasil cloning juga bisa ditempel di sini.
+      </p>
+      {msg && <div className={msg === "Suara tersimpan." ? "msg-ok mb2" : "msg-err mb2"}>{msg}</div>}
+      <button type="button" className="btn" disabled={busy} onClick={save}>Simpan suara</button>
+    </div>
+  );
+}
+
 export function InfluencerDetail({ id, ws, refresh, tick, mode }) {
   // Foto yang dipilih dari "Aset terbaru" untuk dipakai sebagai gambar awal.
   const [picked, setPicked] = useState(null);
@@ -850,6 +918,7 @@ export function InfluencerDetail({ id, ws, refresh, tick, mode }) {
               </div>
             ) : <div className="small muted">Belum ada foto referensi.</div>}
           </div>
+          <VoiceCard inf={inf} models={d.models} onSaved={() => { reload(); refresh(); }} />
           <div className="card p6 mb4" ref={genRef}>
             <div className="bold mb3">Generate untuk {inf.name}</div>
             <GenerateForm models={d.models} influencerId={id} refresh={() => { reload(); refresh(); }}
@@ -1512,7 +1581,6 @@ function AiDraftPanel({ item, onSaved, onClose }) {
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState(null);
   const [draft, setDraft] = useState(null);
-  const [copied, setCopied] = useState(false);
 
   useEffect(() => {
     let alive = true;
@@ -1527,15 +1595,18 @@ function AiDraftPanel({ item, onSaved, onClose }) {
   async function save() {
     setBusy(true); setErr(null);
     try {
-      await callGenerate({ action: "apply_draft", content_item_id: item.id, hook: draft.hook, script: draft.script });
+      await callGenerate({
+        action: "apply_draft", content_item_id: item.id,
+        hook: draft.hook, script: draft.script,
+        caption: draft.caption || "",
+        hashtags: draft.hashtags || [],
+      });
       onSaved?.();
     } catch (e) { setErr(e.message); }
     setBusy(false);
   }
 
-  const captionText = draft
-    ? draft.caption + (draft.hashtags?.length ? "\n" + draft.hashtags.map((h) => (h.startsWith("#") ? h : `#${h}`)).join(" ") : "")
-    : "";
+  const tagText = (draft?.hashtags || []).map((h) => (h.startsWith("#") ? h : `#${h}`)).join(" ");
 
   // Modal: kolom kanban terlalu sempit untuk mereview naskah dengan nyaman.
   return (
@@ -1561,24 +1632,22 @@ function AiDraftPanel({ item, onSaved, onClose }) {
             <label className="label">Script</label>
             <textarea className="input mb3" rows={8}
               value={draft.script} onChange={(e) => setDraft({ ...draft, script: e.target.value })} />
-            {draft.caption && (
-              <div className="card p4 mb3" style={{ background: "var(--subtle)" }}>
-                <div className="row mb1" style={{ justifyContent: "space-between" }}>
-                  <span className="label" style={{ margin: 0 }}>Caption + hashtag</span>
-                  <button type="button" className="tiny" style={{ background: "none", border: "none", color: "var(--brand)", fontWeight: 700, cursor: "pointer" }}
-                    onClick={() => navigator.clipboard?.writeText(captionText)
-                      .then(() => { setCopied(true); setTimeout(() => setCopied(false), 2000); }).catch(() => {})}>
-                    {copied ? "✓ Tersalin" : "📋 Salin"}
-                  </button>
-                </div>
-                <div className="small" style={{ whiteSpace: "pre-wrap" }}>{captionText}</div>
-                <div className="tiny muted mt2">Caption tidak ikut tersimpan otomatis — salin saat mau posting.</div>
-              </div>
-            )}
+            {/* Caption itu yang DIBACA orang di bawah video; script yang
+                DIDENGAR. Dua-duanya disimpan, dan publish memakai caption. */}
+            <label className="label">Caption <span className="tiny muted">— yang tampil di bawah video, bukan naskahnya</span></label>
+            <textarea className="input mb2" rows={3} maxLength={2000}
+              value={draft.caption || ""} onChange={(e) => setDraft({ ...draft, caption: e.target.value })} />
+            <label className="label">Hashtag</label>
+            <input className="input mb1" value={tagText}
+              onChange={(e) => setDraft({
+                ...draft,
+                hashtags: e.target.value.split(/[\s,]+/).map((h) => h.replace(/^#+/, "")).filter(Boolean),
+              })} />
+            <div className="tiny muted mb3">Dipisah spasi. Tanda # boleh ditulis atau tidak — disimpan tanpa tanda pagar.</div>
           </>
         )}
         <div className="row" style={{ gap: 8 }}>
-          {draft && <button type="button" className="btn" disabled={busy} onClick={save}>Simpan hook & script</button>}
+          {draft && <button type="button" className="btn" disabled={busy} onClick={save}>Simpan naskah & caption</button>}
           <button type="button" className="btn btn2" onClick={onClose}>Tutup</button>
         </div>
       </div>
@@ -2088,6 +2157,7 @@ export function Planner({ ws, refresh, tick }) {
       content_type: f.get("content_type"), platform: f.get("platform"),
       scheduled_date: scheduledDate,
       hook: f.get("hook"), script: f.get("script"),
+      caption: f.get("caption") || null,
     }).select("id").single();
     if (error) { setErr(error.message); return; }
     e.target.reset(); reload(); refresh();
@@ -2181,7 +2251,8 @@ export function Planner({ ws, refresh, tick }) {
               <option value="tiktok">TikTok</option><option value="instagram">Instagram</option><option value="youtube">YouTube Shorts</option></select></div>
           <div><label className="label">Tanggal</label><input name="scheduled_date" type="date" className="input" /></div>
           <div style={{ gridColumn: "span 2" }}><label className="label">Hook</label><input name="hook" className="input" placeholder="Kalimat pembuka 1-3 detik pertama" /></div>
-          <div style={{ gridColumn: "span 2" }}><label className="label">Script</label><textarea name="script" className="input" rows={2} /></div>
+          <div style={{ gridColumn: "span 2" }}><label className="label">Script <span className="tiny muted">— yang dibacakan di video</span></label><textarea name="script" className="input" rows={2} /></div>
+          <div style={{ gridColumn: "span 2" }}><label className="label">Caption <span className="tiny muted">— yang tampil di bawah video saat diposting</span></label><textarea name="caption" className="input" rows={2} /></div>
           <div style={{ alignSelf: "end" }}><button className="btn" style={{ width: "100%", justifyContent: "center" }}>Tambah</button></div>
         </form>
       </div>

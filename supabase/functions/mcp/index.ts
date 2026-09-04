@@ -82,6 +82,13 @@ const TOOLS = [
         language: { type: "string", enum: ["id", "en", "mix"] },
         bio: str("Bio / persona"),
         identity_prompt: str("Identity prompt (Inggris, ciri fisik tetap)"),
+        voice: {
+          type: "object",
+          description:
+            "Suara terkunci, dipetakan per model TTS: {\"<model_key>\": \"<voice id provider>\"}. " +
+            "Voice id milik provider dan tidak bisa dipindah antar provider. Pakai list_models untuk melihat model_key TTS-nya.",
+          additionalProperties: { type: "string" },
+        },
       },
       required: ["id"],
     },
@@ -119,7 +126,8 @@ const TOOLS = [
   {
     name: "update_content",
     description:
-      "Perbarui konten: pindahkan status di pipeline, ubah jadwal, atau simpan hook/script yang kamu tulis.",
+      "Perbarui konten: pindahkan status di pipeline, ubah jadwal, atau simpan hook/script/caption yang kamu tulis. " +
+      "`script` dibacakan di video, `caption` tampil di bawah postingan — jangan tukar keduanya.",
     inputSchema: {
       type: "object",
       properties: {
@@ -128,7 +136,9 @@ const TOOLS = [
         status: { type: "string", enum: STATUSES },
         scheduled_date: str("Tanggal jadwal YYYY-MM-DD"),
         hook: str("Kalimat pembuka"),
-        script: str("Naskah lengkap"),
+        script: str("Naskah lengkap — yang DIBACAKAN di video"),
+        caption: str("Caption postingan — yang DIBACA orang di bawah video. Bukan script."),
+        hashtags: { type: "array", items: { type: "string" }, description: "Hashtag tanpa tanda #" },
       },
       required: ["id"],
     },
@@ -328,6 +338,19 @@ async function runTool(name: string, args: Record<string, unknown>, ctx: Ctx) {
       const id = need("id");
       const patch = pick(["name", "handle", "niche", "status", "language", "identity_prompt"]);
       if (typeof args.bio === "string") patch.persona = { bio: args.bio };
+      // Peta model_key -> voice id. Digabung dengan yang sudah ada, bukan
+      // ditimpa: mengirim suara untuk satu model TTS tidak boleh menghapus
+      // suara yang sudah dipilih untuk model lain.
+      if (args.voice && typeof args.voice === "object" && !Array.isArray(args.voice)) {
+        const { data: cur } = await admin.from("influencers").select("voice")
+          .eq("id", id).eq("workspace_id", ws).maybeSingle();
+        const merged: Record<string, string> = { ...((cur?.voice as Record<string, string>) || {}) };
+        for (const [k, v] of Object.entries(args.voice as Record<string, unknown>)) {
+          const val = String(v ?? "").trim();
+          if (val) merged[k] = val; else delete merged[k];
+        }
+        patch.voice = merged;
+      }
       if (!Object.keys(patch).length) throw new Error("Tidak ada field yang diubah.");
       const { data, error } = await admin.from("influencers").update(patch)
         .eq("id", id).eq("workspace_id", ws).select("*").maybeSingle();
@@ -337,7 +360,7 @@ async function runTool(name: string, args: Record<string, unknown>, ctx: Ctx) {
     }
     case "list_content": {
       let q = admin.from("content_items")
-        .select("id,title,status,content_type,platform,scheduled_date,hook,script,influencer_id,pillar_id,created_at")
+        .select("id,title,status,content_type,platform,scheduled_date,hook,script,caption,hashtags,influencer_id,pillar_id,created_at")
         .eq("workspace_id", ws);
       if (typeof args.status === "string") q = q.eq("status", args.status);
       if (typeof args.from === "string") q = q.gte("scheduled_date", args.from);
@@ -359,7 +382,12 @@ async function runTool(name: string, args: Record<string, unknown>, ctx: Ctx) {
     }
     case "update_content": {
       const id = need("id");
-      const patch = pick(["title", "status", "scheduled_date", "hook", "script"]);
+      const patch = pick(["title", "status", "scheduled_date", "hook", "script", "caption"]);
+      // Disimpan tanpa tanda pagar; publish yang menambahkannya kembali.
+      if (Array.isArray(args.hashtags)) {
+        patch.hashtags = (args.hashtags as unknown[])
+          .map((h) => String(h).trim().replace(/^#+/, "")).filter(Boolean).slice(0, 30);
+      }
       if (!Object.keys(patch).length) throw new Error("Tidak ada field yang diubah.");
       const { data, error } = await admin.from("content_items").update(patch)
         .eq("id", id).eq("workspace_id", ws).select("*").maybeSingle();
@@ -433,7 +461,7 @@ async function runTool(name: string, args: Record<string, unknown>, ctx: Ctx) {
     }
     case "list_models": {
       let q = admin.from("provider_models")
-        .select("id,model_key,label,task,provider,est_price_usd,unit,description,keeps_identity,init_image_field,requires_key")
+        .select("id,model_key,label,task,provider,est_price_usd,unit,description,keeps_identity,init_image_field,voice_field,requires_key")
         .eq("active", true).order("task").order("est_price_usd");
       if (typeof args.task === "string") q = q.eq("task", args.task);
       const { data, error } = await q;
@@ -583,7 +611,14 @@ async function handleRpc(msg: Record<string, unknown>, ctx: Ctx): Promise<unknow
         "Karena itu: panggil list_models dulu, sebutkan perkiraan biayanya ke user, dan minta persetujuan " +
         "sebelum menjalankan keduanya. Untuk wajah yang konsisten pilih model dengan keeps_identity=true dan " +
         "sertakan influencer_id. Job fal selesai secara asinkron — pantau lewat list_jobs, jangan diulang " +
-        "kirim hanya karena statusnya masih 'running'.",
+        "kirim hanya karena statusnya masih 'running'.\n\n" +
+        "Dua hal yang paling sering tertukar, dan dua-duanya baru ketahuan setelah konten tayang:\n" +
+        "1) `script` DIBACAKAN di video; `caption` DIBACA di bawah postingan. Caption yang berisi naskah " +
+        "lengkap adalah penanda paling jelas bahwa akun ini bukan dijalankan manusia. Tulis caption pendek " +
+        "sendiri, jangan menyalin script.\n" +
+        "2) Suara TTS terkunci per influencer lewat update_influencer field `voice`, dipetakan per model_key " +
+        "(voice id milik provider, tidak bisa dipindah antar provider — lihat voice_field di list_models). " +
+        "Tanpa itu semua influencer bersuara sama, jadi generate_media task 'tts' atas nama influencer akan ditolak.",
     });
   }
   if (method === "notifications/initialized" || method?.startsWith("notifications/")) return null;
