@@ -47,6 +47,40 @@ function safeEqual(a: string, b: string): boolean {
   return diff === 0;
 }
 
+// Key yang boleh diubah dari halaman admin. Daftar tertutup: `set_platform_config`
+// menerima nama key hanya dari sini, jadi endpoint ini tidak pernah bisa dipakai
+// menulis `platform_admins` (mengangkat operator baru) atau kunci internal
+// (internal_billing_key & kawan-kawan) — dua hal yang kalau bisa diubah lewat
+// browser membuat seluruh pemisahan operator/pelanggan tidak ada artinya.
+const PLATFORM_SETTABLE: Record<string, "secret" | "plain"> = {
+  platform_fal_key: "secret",
+  platform_hf_token: "secret",
+  platform_dashscope_key: "secret",
+  platform_text_api_key: "secret",
+};
+
+// Operator platform, BUKAN owner workspace.
+//
+// Sejak setiap pendaftar dapat workspace sendiri, `role = 'owner'` cuma berarti
+// "punya akun". Kalau konfigurasi platform digerbangi role owner, setiap
+// pelanggan bisa mengganti API key yang membayar tagihan semua orang. Jadi
+// daftarnya tertutup dan tinggal di service_config, yang hanya bisa disentuh
+// service_role — tidak bisa ditambah dari dalam app.
+async function isPlatformAdmin(userId: string): Promise<boolean> {
+  const { data } = await admin.from("service_config").select("value")
+    .eq("key", "platform_admins").maybeSingle();
+  if (!data?.value) return false;
+  return String(data.value).split(/[\s,]+/).filter(Boolean).includes(userId);
+}
+
+async function requirePlatformAdmin(req: Request) {
+  const c = await requireUser(req);
+  if (!(await isPlatformAdmin(c.user.id))) {
+    throw new Error("Halaman ini hanya untuk operator platform.");
+  }
+  return c;
+}
+
 // `grant_credit` sengaja TIDAK punya jalur JWT sama sekali — bahkan untuk
 // owner. Owner adalah pelanggan; kalau owner bisa menambah saldonya sendiri,
 // yang kita bangun bukan gerbang kredit melainkan tombol "gratis". Satu-satunya
@@ -160,6 +194,60 @@ Deno.serve(async (req) => {
         if (error) throw new Error(error.message);
         if (!data) throw new Error("Koneksi tidak ditemukan, atau bukan milikmu.");
         return json({ ok: true });
+      }
+      if (body.action === "platform_config_status") {
+        // Nilainya TIDAK pernah dikembalikan — cuma "terpasang atau belum",
+        // panjangnya, dan siapa yang terakhir mengubah. Key ini membayar
+        // tagihan semua pelanggan; tidak ada alasan ia melintas ke browser,
+        // bahkan browser operatornya sendiri.
+        const c = await requireUser(req);
+        const isAdmin = await isPlatformAdmin(c.user.id);
+        if (!isAdmin) return json({ ok: true, is_platform_admin: false, keys: [] });
+        const names = Object.keys(PLATFORM_SETTABLE);
+        const { data: rows } = await admin.from("service_config")
+          .select("key, value, updated_at, updated_by").in("key", names);
+        const byKey = new Map((rows || []).map((r) => [r.key, r]));
+        const emails = new Map<string, string>();
+        for (const r of rows || []) {
+          if (r.updated_by && !emails.has(r.updated_by)) {
+            const { data: u } = await admin.auth.admin.getUserById(r.updated_by);
+            emails.set(r.updated_by, u?.user?.email || "?");
+          }
+        }
+        return json({
+          ok: true,
+          is_platform_admin: true,
+          keys: names.map((k) => {
+            const r = byKey.get(k);
+            const v = r?.value ? String(r.value) : "";
+            return {
+              key: k,
+              set: !!v,
+              length: v.length,
+              updated_at: r?.updated_at || null,
+              updated_by_email: r?.updated_by ? emails.get(r.updated_by) || null : null,
+            };
+          }),
+        });
+      }
+      if (body.action === "set_platform_config") {
+        const c = await requirePlatformAdmin(req);
+        const key = String(body.key || "");
+        if (!PLATFORM_SETTABLE[key]) throw new Error("Key ini tidak boleh diubah dari sini.");
+        const raw = String(body.value ?? "");
+        // Mengosongkan = menghapus barisnya, supaya "belum diisi" dan "diisi
+        // string kosong" tidak jadi dua keadaan berbeda yang berperilaku sama.
+        if (!raw.trim()) {
+          await admin.from("service_config").delete().eq("key", key);
+          return json({ ok: true, key, cleared: true });
+        }
+        const value = raw.trim();
+        if (value.length < 8) throw new Error("Nilainya terlalu pendek untuk sebuah API key.");
+        const { error } = await admin.from("service_config").upsert({
+          key, value, updated_at: new Date().toISOString(), updated_by: c.user.id,
+        });
+        if (error) throw new Error(error.message);
+        return json({ ok: true, key, set: true });
       }
       if (body.action === "billing_status") {
         // Dibaca Settings. Saldo hanya berarti kalau workspace memang memakai

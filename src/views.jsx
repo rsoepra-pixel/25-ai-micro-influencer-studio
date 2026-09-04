@@ -3081,6 +3081,81 @@ function McpSettings({ ws, tick }) {
 }
 
 // ---------- Settings ----------
+// Konfigurasi platform: API key yang membayar tagihan SEMUA pelanggan mode
+// kredit. Kartunya hanya muncul untuk operator platform — bukan untuk owner
+// workspace, karena sejak pendaftaran terbuka setiap pelanggan adalah owner di
+// workspace-nya sendiri.
+//
+// Nilainya tidak pernah dikirim balik ke browser; yang ditampilkan cuma
+// "terpasang", panjangnya, dan siapa yang terakhir mengubah. Jadi halaman ini
+// bisa MENGGANTI key, tidak bisa MEMBACANYA — dan setiap pergantian
+// meninggalkan jejak.
+const PLATFORM_KEY_LABELS = {
+  platform_fal_key: ["fal.ai", "Gambar, video, suara, lip sync. Ini yang paling banyak menagih."],
+  platform_hf_token: ["Hugging Face", "Gambar gratis sesuai kuota akun platform."],
+  platform_dashscope_key: ["DashScope (khusus)", "Kosongkan saja kalau memakai key Qwen yang sama dengan penulis AI."],
+  platform_text_api_key: ["Penulis AI (Qwen/Kimi)", "Dipakai menulis naskah, dan jadi cadangan key DashScope."],
+};
+
+function PlatformConfig({ tick }) {
+  const [st, reload] = useQuery(async () => callApp({ action: "platform_config_status" }), [tick]);
+  const [msg, setMsg] = useState(null);
+  const [busy, setBusy] = useState(false);
+  if (!st?.is_platform_admin) return null;
+
+  async function save(e, key) {
+    e.preventDefault();
+    const f = new FormData(e.target);
+    setBusy(true); setMsg(null);
+    try {
+      const r = await callApp({ action: "set_platform_config", key, value: f.get("value") });
+      setMsg(r.cleared ? `${PLATFORM_KEY_LABELS[key][0]} dihapus.` : `${PLATFORM_KEY_LABELS[key][0]} tersimpan.`);
+      e.target.reset();
+      reload();
+    } catch (e2) { setMsg(e2.message); }
+    setBusy(false);
+  }
+
+  return (
+    <div className="card p6 mb4" style={{ borderColor: "var(--warn)" }}>
+      <div className="row mb1" style={{ justifyContent: "space-between" }}>
+        <div className="bold">Konfigurasi Platform</div>
+        <Badge tone="amber">operator</Badge>
+      </div>
+      <p className="tiny muted mb3">
+        Key di sini membayar job SEMUA workspace yang memakai kredit — bukan cuma workspace-mu.
+        Workspace mode <b>byo_key</b> (termasuk punyamu sekarang) tidak menyentuhnya sama sekali.
+        Nilainya tidak pernah ditampilkan balik: yang bisa dilakukan halaman ini mengganti, bukan membaca.
+      </p>
+      {msg && <div className={msg.includes("tersimpan") || msg.includes("dihapus") ? "msg-ok mb3" : "msg-err mb3"}>{msg}</div>}
+      {(st.keys || []).map((k) => (
+        <div key={k.key} className="card p4 mb3" style={{ background: "var(--subtle)" }}>
+          <div className="row mb1" style={{ justifyContent: "space-between" }}>
+            <span className="bold small">{PLATFORM_KEY_LABELS[k.key]?.[0] || k.key}</span>
+            <Badge tone={k.set ? "green" : "zinc"}>{k.set ? `terpasang · ${k.length} karakter` : "kosong"}</Badge>
+          </div>
+          <p className="tiny muted mb2">{PLATFORM_KEY_LABELS[k.key]?.[1] || ""}</p>
+          <form onSubmit={(e) => save(e, k.key)} className="row">
+            <input name="value" className="input" type="password" style={{ fontSize: 12 }}
+              placeholder={k.set ? "isi untuk mengganti — kosongkan lalu Simpan untuk menghapus" : "tempel key…"} />
+            <button className="btn" style={{ fontSize: 12 }} disabled={busy}>Simpan</button>
+          </form>
+          {k.updated_at && (
+            <div className="tiny muted mt1">
+              Terakhir diubah {new Date(k.updated_at).toLocaleString("id-ID")}
+              {k.updated_by_email ? ` oleh ${k.updated_by_email}` : " langsung lewat SQL"}
+            </div>
+          )}
+        </div>
+      ))}
+      <p className="tiny muted">
+        Daftar operator sengaja tidak bisa diubah dari sini — hanya lewat SQL. Kalau bisa, satu sesi
+        yang dibajak cukup untuk mengunci kamu keluar dari platformmu sendiri.
+      </p>
+    </div>
+  );
+}
+
 // Kartu saldo. Hanya muncul kalau workspace ini memang memakai kredit —
 // di mode byo_key saldonya selalu nol dan menampilkannya cuma bikin user
 // mengira ada tagihan yang belum dibayar, padahal yang menagih adalah
@@ -3184,6 +3259,7 @@ export function Settings({ ws, refresh, tick, spend, spendError, query }) {
       <AccountAdmin ws={ws} tick={tick} />
       <AiWriterSettings keyState={keyState} onSaved={() => callGenerate({ action: "status" }).then(setKeyState).catch(() => {})} />
       <McpSettings ws={ws} tick={tick} />
+      <PlatformConfig tick={tick} />
       <BillingCard ws={ws} tick={tick} />
       {msg && <div className="msg-ok mb3">{msg}</div>}
       <div className="grid mb4" style={{ gridTemplateColumns: "repeat(auto-fit,minmax(340px,1fr))" }}>
