@@ -731,6 +731,19 @@ Deno.serve(async (req) => {
       }
       case "submit": {
         const { task, model_id, influencer_id, prompt = "", text = "", source_image_url, audio_url } = body;
+        // Untuk ide konten yang mana job ini dikerjakan. Opsional — character
+        // sheet, b-roll umum, dan uji prompt memang tidak punya konten induk.
+        // Tapi kalau diisi dan ternyata bukan milik workspace ini, jangan
+        // diam-diam dianggap kosong: hasilnya akan jadi aset tanpa tuan, dan
+        // publish kembali menebak file — persis kegagalan yang kolom ini
+        // dibuat untuk menutup.
+        let contentItemId: string | null = null;
+        if (body.content_item_id) {
+          const { data: ci } = await admin.from("content_items").select("id")
+            .eq("id", body.content_item_id).eq("workspace_id", ws).maybeSingle();
+          if (!ci) throw new Error("Konten tujuan tidak ditemukan di workspace ini.");
+          contentItemId = ci.id as string;
+        }
         // `label` opsional: nama yang terbaca manusia untuk asset hasilnya
         // (dipakai character sheet: "Ronny — front view", dst).
         const label = body.label ? String(body.label).slice(0, 120) : null;
@@ -784,7 +797,7 @@ Deno.serve(async (req) => {
         const { data: job, error: jobErr } = await admin.from("production_jobs").insert({
           workspace_id: ws, influencer_id: influencer_id || null, task,
           model_key: model.model_key, prompt: finalPrompt || String(text).slice(0, 500) || null,
-          status: "queued", cost_estimate_usd: est, label,
+          status: "queued", cost_estimate_usd: est, label, content_item_id: contentItemId,
         }).select("*").single();
         if (jobErr) throw new Error(jobErr.message);
 
@@ -792,6 +805,7 @@ Deno.serve(async (req) => {
           await admin.from("production_jobs").update({ status: "succeeded", output_url: url, cost_actual_usd: cost }).eq("id", job.id);
           await admin.from("assets").insert({
             workspace_id: ws, influencer_id: influencer_id || null,
+            content_item_id: contentItemId,
             kind: assetKind(task), url,
             name: `${label || `${task}-${job.id.slice(0, 8)}`}${mode === "mock" ? " (mock)" : model.provider === "hf" ? " (HF)" : ""}`,
           });
@@ -978,6 +992,7 @@ Deno.serve(async (req) => {
                 await admin.from("production_jobs").update({ status: "succeeded", output_url: url, cost_actual_usd: cost }).eq("id", jb.id);
                 await admin.from("assets").insert({
                   workspace_id: ws, influencer_id: jb.influencer_id,
+                  content_item_id: jb.content_item_id ?? null,
                   kind: assetKind(jb.task), url, name: jb.label || `${jb.task}-${jb.id.slice(0, 8)}`,
                 });
                 if (cost > 0) {
@@ -1024,6 +1039,7 @@ Deno.serve(async (req) => {
               if (url) {
                 await admin.from("assets").insert({
                   workspace_id: ws, influencer_id: jb.influencer_id,
+                  content_item_id: jb.content_item_id ?? null,
                   kind: assetKind(jb.task), url, name: jb.label || `${jb.task}-${jb.id.slice(0, 8)}`,
                 });
               }

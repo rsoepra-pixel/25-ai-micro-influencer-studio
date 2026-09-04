@@ -901,10 +901,27 @@ export function GenerateForm({ models, influencers, influencerId, refresh, mode,
   const [ttsText, setTtsText] = useState("");
   const [step, setStep] = useState(null);
   const [formInfId, setFormInfId] = useState("");
+  const [contentItemId, setContentItemId] = useState("");
 
   // Influencer yang sedang aktif: dari prop (halaman influencer) atau dari
   // dropdown (Production Studio). Menentukan foto Identity Kit mana yang relevan.
   const activeInfId = influencerId || formInfId || null;
+
+  // Ide konten yang belum terbit, untuk menandai hasil produksi ini milik siapa.
+  // Tanpa tanda itu, layar publish tidak punya cara tahu file mana yang harus
+  // diposting untuk sebuah konten.
+  const [openItems, setOpenItems] = useState([]);
+  useEffect(() => {
+    let alive = true;
+    supa.from("content_items").select("id,title,content_type,influencer_id,status")
+      .neq("status", "published").order("scheduled_date", { ascending: true })
+      .then(({ data }) => { if (alive) setOpenItems(data || []); });
+    return () => { alive = false; };
+  }, [activeInfId]);
+  // Konten milik influencer yang sedang dipilih; kalau belum ada influencer,
+  // tampilkan yang memang tidak terikat siapa pun saja.
+  const itemChoices = openItems.filter((it) =>
+    activeInfId ? it.influencer_id === activeInfId : !it.influencer_id);
   const [refCount, setRefCount] = useState(0);
   useEffect(() => {
     if (!activeInfId) { setRefCount(0); return; }
@@ -1017,6 +1034,7 @@ export function GenerateForm({ models, influencers, influencerId, refresh, mode,
         duration: Number(f.get("duration") || 5),
         source_image_url: f.get("source_image_url") || null,
         audio_url: audioUrl,
+        content_item_id: contentItemId || null,
       });
       setOk(true); setTtsText(""); refresh?.();
     } catch (e2) { setErr(e2.message); }
@@ -1043,6 +1061,21 @@ export function GenerateForm({ models, influencers, influencerId, refresh, mode,
               <option value="">— tanpa influencer —</option>
               {influencers.map((i) => <option key={i.id} value={i.id}>{i.name}</option>)}
             </select>
+          </div>
+        )}
+        {task !== "tts" && itemChoices.length > 0 && (
+          <div>
+            <label className="label">Untuk konten (opsional)</label>
+            <select className="input" value={contentItemId} onChange={(e) => setContentItemId(e.target.value)}>
+              <option value="">— tidak terikat konten —</option>
+              {itemChoices.map((it) => (
+                <option key={it.id} value={it.id}>{it.title}</option>
+              ))}
+            </select>
+            <p className="tiny muted" style={{ marginTop: 4 }}>
+              Ditandai untuk konten tertentu → layar publish tahu file mana yang harus diposting.
+              Dikosongkan untuk b-roll umum atau uji prompt.
+            </p>
           </div>
         )}
         {(task === "video" || task === "lipsync") && (
@@ -1942,18 +1975,23 @@ function PlanWizard({ ws, influencers, pillars, onClose, onSaved }) {
 
 export function Planner({ ws, refresh, tick }) {
   const [d, reload, loadError] = useQuery(async () => {
-    const [pillars, items, inf, connRes, jobs] = await Promise.all([
+    const [pillars, items, inf, connRes, jobs, assets] = await Promise.all([
       supa.from("content_pillars").select("*, influencers(name)").order("created_at"),
       supa.from("content_items").select("*, influencers(name)").order("scheduled_date", { ascending: true }),
       supa.from("influencers").select("id,name").order("name"),
       callSocial({ action: "list_connections" }).catch(() => ({ connections: [] })),
       supa.from("publish_jobs").select("*, content_items(title)").order("created_at", { ascending: false }).limit(20),
+      // Media kandidat untuk layar publish. Diambil di sini supaya form publish
+      // bisa menunjukkan file mana yang akan diposting — sebelumnya server yang
+      // menebak, dan tebakannya tidak pernah terlihat oleh siapa pun.
+      supa.from("assets").select("id,name,kind,influencer_id,content_item_id,created_at")
+        .in("kind", ["image", "video"]).order("created_at", { ascending: false }).limit(200),
     ]);
     const conns = connRes.connections || [];
     const connById = Object.fromEntries(conns.map((c) => [c.id, c]));
     const jobsRaw = unwrap(jobs) || [];
     return {
-      pillars: unwrap(pillars), items: unwrap(items), inf: unwrap(inf), conns,
+      pillars: unwrap(pillars), items: unwrap(items), inf: unwrap(inf), conns, assets: unwrap(assets),
       jobs: jobsRaw.map((j) => ({ ...j, _connAccountName: connById[j.connection_id]?.external_account_name || null })),
     };
   }, [ws.id, tick]);
@@ -1980,6 +2018,7 @@ export function Planner({ ws, refresh, tick }) {
         action: "publish",
         content_item_id: item.id,
         connection_id: connectionId,
+        asset_id: f.get("asset_id") || null,
         compliance: {
           title: f.get("title") || item.title,
           privacy: f.get("privacy") || "SELF_ONLY",
@@ -2154,6 +2193,35 @@ export function Planner({ ws, refresh, tick }) {
                           <option value="" disabled>Pilih akun tujuan…</option>
                           {d.conns.map((cn) => <option key={cn.id} value={cn.id}>{cn.platform === "instagram" ? "IG" : "TT"}: {cn.external_account_name}</option>)}
                         </select>
+                        {(() => {
+                          // Kandidat media: yang sudah ditandai untuk konten ini
+                          // lebih dulu, lalu milik influencer yang sama yang belum
+                          // terikat konten mana pun. Yang tidak pernah muncul di
+                          // sini: media milik konten LAIN — dulu justru itu yang
+                          // bisa terposting karena servernya mengambil yang terbaru.
+                          const perlu = c.content_type === "photo" || c.content_type === "carousel" ? "image" : "video";
+                          const cocok = d.assets.filter((a) => a.kind === perlu);
+                          const terikat = cocok.filter((a) => a.content_item_id === c.id);
+                          const bebas = cocok.filter((a) => !a.content_item_id && a.influencer_id === c.influencer_id);
+                          const pilihan = [...terikat, ...bebas];
+                          return pilihan.length ? (
+                            <select name="asset_id" className="input mb1" style={{ fontSize: 11, padding: "3px 6px" }}
+                              defaultValue={terikat[0]?.id || ""}>
+                              {!terikat.length && <option value="" disabled>Pilih {perlu} yang diposting…</option>}
+                              {terikat.length > 0 && <optgroup label="Ditandai untuk konten ini">
+                                {terikat.map((a) => <option key={a.id} value={a.id}>{a.name || a.id.slice(0, 8)}</option>)}
+                              </optgroup>}
+                              {bebas.length > 0 && <optgroup label="Belum terikat konten">
+                                {bebas.map((a) => <option key={a.id} value={a.id}>{a.name || a.id.slice(0, 8)}</option>)}
+                              </optgroup>}
+                            </select>
+                          ) : (
+                            <div className="msg-warn tiny mb1">
+                              Belum ada {perlu} untuk konten ini. Generate dulu di Production Studio,
+                              pilih konten ini di kolom “Untuk konten”.
+                            </div>
+                          );
+                        })()}
                         <input name="title" className="input mb1" style={{ fontSize: 11, padding: "3px 6px" }} placeholder="Judul (untuk TikTok)" defaultValue={c.title} />
                         <select name="privacy" className="input mb1" style={{ fontSize: 11, padding: "3px 6px" }} defaultValue="SELF_ONLY">
                           <option value="SELF_ONLY">Privat</option>

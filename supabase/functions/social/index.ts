@@ -247,15 +247,43 @@ Deno.serve(async (req) => {
           return json({ ok: true, job_id: pj.id, status: "succeeded" });
         }
 
-        // live: cari aset media terbaru milik influencer konten ini
+        // live: tentukan media yang akan diposting.
+        //
+        // Dulu blok ini mengambil aset TERBARU milik influencer konten ini.
+        // Itu benar hanya selama satu influencer punya satu file. Begitu ada
+        // banyak konten per influencer — yang justru jadi tujuan aplikasi ini —
+        // yang terposting adalah file terakhir yang kebetulan jadi, bukan file
+        // milik konten ini. Publish-nya "berhasil", isinya salah, dan tidak ada
+        // error yang muncul di mana pun.
+        //
+        // Sekarang dua sumber yang eksplisit saja, dan menebak bukan lagi salah
+        // satunya: memposting file yang salah lebih buruk daripada menolak.
         const kindNeeded = item.content_type === "photo" || item.content_type === "carousel" ? "image" : "video";
-        let q = admin.from("assets").select("*").eq("workspace_id", ws).eq("kind", kindNeeded)
-          .order("created_at", { ascending: false }).limit(1);
-        if (item.influencer_id) q = q.eq("influencer_id", item.influencer_id);
-        const { data: assetArr } = await q;
-        const media = assetArr?.[0];
+        let media: { id: string; url: string | null; kind: string } | null = null;
+
+        if (body.asset_id) {
+          // Pilihan manual dari layar publish. Dicek ke workspace supaya id dari
+          // luar tidak bisa dipakai memposting media milik workspace lain.
+          const { data: a } = await admin.from("assets").select("id, url, kind")
+            .eq("id", body.asset_id).eq("workspace_id", ws).maybeSingle();
+          if (!a) throw new Error("Media yang dipilih tidak ditemukan di workspace ini.");
+          media = a;
+        } else {
+          const { data: a } = await admin.from("assets").select("id, url, kind")
+            .eq("workspace_id", ws).eq("content_item_id", item.id).eq("kind", kindNeeded)
+            .order("created_at", { ascending: false }).limit(1).maybeSingle();
+          media = a;
+        }
+
         if (!media?.url) {
-          const err = `Tidak ada aset ${kindNeeded} untuk dipublish — generate dulu di Production Studio.`;
+          const err = `Belum ada ${kindNeeded} yang ditandai untuk konten ini. `
+            + `Generate di Production Studio sambil memilih konten ini di kolom "Untuk konten", `
+            + `atau pilih media yang mau diposting di form publish.`;
+          await admin.from("publish_jobs").update({ status: "failed", error: err }).eq("id", pj.id);
+          return json({ ok: false, error: err, job_id: pj.id });
+        }
+        if (media.kind !== kindNeeded) {
+          const err = `Konten ini butuh ${kindNeeded}, tapi media yang dipilih berjenis ${media.kind}.`;
           await admin.from("publish_jobs").update({ status: "failed", error: err }).eq("id", pj.id);
           return json({ ok: false, error: err, job_id: pj.id });
         }
