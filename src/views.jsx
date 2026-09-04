@@ -918,10 +918,27 @@ export function GenerateForm({ models, influencers, influencerId, refresh, mode,
       .then(({ data }) => { if (alive) setOpenItems(data || []); });
     return () => { alive = false; };
   }, [activeInfId]);
-  // Konten milik influencer yang sedang dipilih; kalau belum ada influencer,
-  // tampilkan yang memang tidak terikat siapa pun saja.
-  const itemChoices = openItems.filter((it) =>
-    activeInfId ? it.influencer_id === activeInfId : !it.influencer_id);
+  // Konten milik influencer yang sedang dipilih. Kalau belum ada influencer
+  // yang dipilih, tampilkan SEMUA — bukan hanya yang tidak terikat siapa pun.
+  // Versi pertama menyaring ke `!it.influencer_id`, dan karena hampir semua
+  // konten memang punya influencer, dropdownnya jadi tidak pernah muncul di
+  // Production Studio: fiturnya ada tapi tak terlihat justru di layar tempat
+  // orang generate.
+  const itemChoices = openItems.filter((it) => !activeInfId || it.influencer_id === activeInfId);
+  const infName = (id) => (influencers || []).find((i) => i.id === id)?.name || null;
+
+  // Memilih konten milik seorang influencer TANPA memilih influencernya adalah
+  // jebakan: hasilnya ditandai untuk konten Nadia, tapi identity prompt Nadia
+  // tidak ikut disuntikkan, jadi wajahnya orang lain — dan itu baru ketahuan
+  // setelah dibayar. Jadi memilih konten sekalian memilih pemiliknya.
+  function pickContentItem(id) {
+    setContentItemId(id);
+    const it = openItems.find((x) => x.id === id);
+    if (it?.influencer_id && !influencerId && it.influencer_id !== formInfId) {
+      setFormInfId(it.influencer_id);
+      setModelId("");
+    }
+  }
   const [refCount, setRefCount] = useState(0);
   useEffect(() => {
     if (!activeInfId) { setRefCount(0); return; }
@@ -1057,7 +1074,14 @@ export function GenerateForm({ models, influencers, influencerId, refresh, mode,
         {!influencerId && influencers && (
           <div><label className="label">Influencer</label>
             <select name="influencer_id" className="input" value={formInfId}
-              onChange={(e) => { setFormInfId(e.target.value); setModelId(""); }}>
+              onChange={(e) => {
+                const next = e.target.value;
+                setFormInfId(next); setModelId("");
+                // Konten yang terpilih bisa jadi milik influencer lain sekarang.
+                // Dibiarkan, tandanya akan menunjuk orang yang salah.
+                const it = openItems.find((x) => x.id === contentItemId);
+                if (it && next && it.influencer_id !== next) setContentItemId("");
+              }}>
               <option value="">— tanpa influencer —</option>
               {influencers.map((i) => <option key={i.id} value={i.id}>{i.name}</option>)}
             </select>
@@ -1066,15 +1090,18 @@ export function GenerateForm({ models, influencers, influencerId, refresh, mode,
         {task !== "tts" && itemChoices.length > 0 && (
           <div>
             <label className="label">Untuk konten (opsional)</label>
-            <select className="input" value={contentItemId} onChange={(e) => setContentItemId(e.target.value)}>
+            <select className="input" value={contentItemId} onChange={(e) => pickContentItem(e.target.value)}>
               <option value="">— tidak terikat konten —</option>
               {itemChoices.map((it) => (
-                <option key={it.id} value={it.id}>{it.title}</option>
+                <option key={it.id} value={it.id}>
+                  {it.title}{!activeInfId && infName(it.influencer_id) ? ` · ${infName(it.influencer_id)}` : ""}
+                </option>
               ))}
             </select>
             <p className="tiny muted" style={{ marginTop: 4 }}>
               Ditandai untuk konten tertentu → layar publish tahu file mana yang harus diposting.
               Dikosongkan untuk b-roll umum atau uji prompt.
+              {!influencerId && " Memilih konten sekalian memilih influencer pemiliknya."}
             </p>
           </div>
         )}
