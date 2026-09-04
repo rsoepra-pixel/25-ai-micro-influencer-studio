@@ -38,6 +38,33 @@ async function requireUser(req: Request) {
   return { user: data.user, ws: mem.workspace_id as string, role: mem.role as string };
 }
 
+// Perbandingan yang waktunya tidak bergantung pada isi — supaya penolakan
+// tidak membocorkan berapa karakter awal kunci yang sudah benar.
+function safeEqual(a: string, b: string): boolean {
+  if (a.length !== b.length) return false;
+  let diff = 0;
+  for (let i = 0; i < a.length; i++) diff |= a.charCodeAt(i) ^ b.charCodeAt(i);
+  return diff === 0;
+}
+
+// `grant_credit` sengaja TIDAK punya jalur JWT sama sekali — bahkan untuk
+// owner. Owner adalah pelanggan; kalau owner bisa menambah saldonya sendiri,
+// yang kita bangun bukan gerbang kredit melainkan tombol "gratis". Satu-satunya
+// yang boleh memanggilnya adalah server: nanti webhook payment gateway, sekarang
+// operator lewat kunci di `service_config`.
+//
+// Kuncinya dipisah dari internal_cron_key dan internal_mcp_key: kedua kunci itu
+// beredar di jalur yang jauh lebih ramai (cron job, server MCP). Kunci yang bisa
+// mencetak uang tidak ikut menumpang di sana.
+async function requireBillingKey(req: Request) {
+  const given = req.headers.get("x-internal-key") || "";
+  if (!given) throw new Error("Aksi ini hanya untuk pemanggilan internal.");
+  const { data } = await admin.from("service_config").select("value")
+    .eq("key", "internal_billing_key").maybeSingle();
+  if (!data?.value) throw new Error("Kunci internal billing belum disiapkan di service_config.");
+  if (!safeEqual(given, String(data.value))) throw new Error("Kunci internal tidak cocok.");
+}
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: CORS });
 
@@ -133,6 +160,85 @@ Deno.serve(async (req) => {
         if (error) throw new Error(error.message);
         if (!data) throw new Error("Koneksi tidak ditemukan, atau bukan milikmu.");
         return json({ ok: true });
+      }
+      if (body.action === "billing_status") {
+        // Dibaca Settings. Saldo hanya berarti kalau workspace memang memakai
+        // kredit — di mode byo_key nilainya selalu 0 dan menampilkannya cuma
+        // membuat user mengira ada tagihan yang belum dibayar.
+        const c = await requireUser(req);
+        const { data: w } = await admin.from("workspaces")
+          .select("billing_mode, credit_since").eq("id", c.ws).maybeSingle();
+        const mode = w?.billing_mode === "credit" ? "credit" : "byo_key";
+        let balance = 0;
+        let entries: unknown[] = [];
+        if (mode === "credit") {
+          const { data: bal, error: balErr } = await admin.rpc("credit_balance", { ws: c.ws });
+          if (balErr) throw new Error(balErr.message);
+          balance = Number(bal || 0);
+          const { data: rows } = await admin.from("credits_ledger")
+            .select("kind, delta_usd, note, created_at")
+            .eq("workspace_id", c.ws).gte("created_at", w!.credit_since)
+            .order("created_at", { ascending: false }).limit(20);
+          entries = rows || [];
+        }
+        return json({
+          ok: true,
+          billing_mode: mode,
+          credit_since: w?.credit_since || null,
+          balance,
+          entries,
+        });
+      }
+      if (body.action === "grant_credit") {
+        // Hanya kunci internal — lihat requireBillingKey.
+        await requireBillingKey(req);
+        const wsId = String(body.workspace_id || "");
+        if (!wsId) throw new Error("workspace_id wajib diisi.");
+        const amount = Number(body.amount_usd);
+        if (!Number.isFinite(amount) || amount <= 0) throw new Error("amount_usd harus angka positif.");
+        // Referensi dari sisi pembayar. Wajib: tanpa itu, webhook yang dikirim
+        // ulang (dan payment gateway SELALU mengirim ulang) menambah saldo dua
+        // kali untuk satu pembayaran.
+        const ref = String(body.external_ref || "").trim();
+        if (!ref) throw new Error("external_ref wajib diisi supaya satu pembayaran tidak dihitung dua kali.");
+
+        const { data: w } = await admin.from("workspaces")
+          .select("id, billing_mode, credit_since").eq("id", wsId).maybeSingle();
+        if (!w) throw new Error("Workspace tidak ditemukan.");
+
+        // Kredit pertama menyalakan modenya sekaligus menandai titik mulai.
+        // `credit_since` inilah yang membuat riwayat pemakaian era BYO-key tidak
+        // ikut terhitung sebagai utang saat saldo dijumlahkan.
+        if (!w.credit_since) {
+          const { error: upErr } = await admin.from("workspaces")
+            .update({ billing_mode: "credit", credit_since: new Date().toISOString() })
+            .eq("id", wsId);
+          if (upErr) throw new Error(upErr.message);
+        } else if (w.billing_mode !== "credit") {
+          const { error: upErr } = await admin.from("workspaces")
+            .update({ billing_mode: "credit" }).eq("id", wsId);
+          if (upErr) throw new Error(upErr.message);
+        }
+
+        const kind = body.kind === "refund" ? "refund" : body.kind === "adjustment" ? "adjustment" : "topup";
+        const { error: insErr } = await admin.from("credits_ledger").insert({
+          workspace_id: wsId, kind, delta_usd: amount,
+          note: body.note ? String(body.note).slice(0, 300) : null,
+          external_ref: ref,
+        });
+        if (insErr) {
+          // 23505 = unique violation di credits_ledger_external_ref_key: kiriman
+          // ulang untuk pembayaran yang sudah dicatat. Itu bukan kegagalan —
+          // webhook justru harus menerima 200, kalau tidak ia mengulang terus.
+          if ((insErr as { code?: string }).code === "23505") {
+            const { data: bal } = await admin.rpc("credit_balance", { ws: wsId });
+            return json({ ok: true, duplicate: true, balance: Number(bal || 0) });
+          }
+          throw new Error(insErr.message);
+        }
+        const { data: bal, error: balErr } = await admin.rpc("credit_balance", { ws: wsId });
+        if (balErr) throw new Error(balErr.message);
+        return json({ ok: true, granted_usd: amount, balance: Number(bal || 0) });
       }
       if (body.action === "signup") {
         const email = String(body.email || "").trim().toLowerCase();

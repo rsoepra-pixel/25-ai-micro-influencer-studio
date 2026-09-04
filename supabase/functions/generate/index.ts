@@ -81,6 +81,65 @@ async function setSecret(ws: string, key: string, value: string | null) {
   if (error) throw new Error(error.message);
 }
 
+// ---------- Mode penagihan ----------
+//
+// Dua cara membayar model, dan keduanya harus hidup berdampingan:
+//
+//   byo_key — user memasang API key-nya sendiri di Settings. Yang menagih
+//             adalah fal/HF/DashScope, langsung ke user. Pagarnya batas
+//             bulanan (`budget_settings`), murni sebagai rem sendiri.
+//   credit  — user membeli kredit di sini. Key-nya milik PLATFORM, disimpan
+//             sekali di `service_config`, tidak pernah per workspace. Pagarnya
+//             saldo: tanpa saldo, job tidak berangkat.
+//
+// Kenapa key platform tidak boleh mampir ke `app_secrets`: baris di sana
+// terikat satu workspace dan bisa dibaca lewat jalur workspace itu. Key
+// platform membayar tagihan SEMUA orang — satu kebocoran berarti orang lain
+// menghabiskan uang kita. `service_config` punya RLS tanpa policy sama sekali,
+// jadi hanya service_role yang bisa menyentuhnya.
+const PLATFORM_KEYS: Record<string, string> = {
+  fal_key: "platform_fal_key",
+  hf_token: "platform_hf_token",
+  dashscope_key: "platform_dashscope_key",
+  text_api_key: "platform_text_api_key",
+};
+
+// Satu request membaca mode ini berkali-kali (sekali per key provider).
+// Cache pendek supaya tidak memukul tabel workspaces enam kali untuk satu
+// jawaban yang sama; 5 detik cukup untuk satu request, dan terlalu singkat
+// untuk membuat perpindahan mode terasa tertahan.
+const billingCache = new Map<string, { mode: string; at: number }>();
+async function billingMode(ws: string): Promise<"byo_key" | "credit"> {
+  const hit = billingCache.get(ws);
+  if (hit && Date.now() - hit.at < 5000) return hit.mode as "byo_key" | "credit";
+  const { data } = await admin.from("workspaces").select("billing_mode").eq("id", ws).maybeSingle();
+  const mode = data?.billing_mode === "credit" ? "credit" : "byo_key";
+  billingCache.set(ws, { mode, at: Date.now() });
+  return mode;
+}
+
+async function platformSecret(name: string): Promise<string | null> {
+  const { data } = await admin.from("service_config").select("value").eq("key", name).maybeSingle();
+  const v = data?.value ? String(data.value).trim() : "";
+  return v || null;
+}
+
+// Semua pembacaan key provider lewat sini, bukan getSecret. Kalau workspace
+// memakai kredit, key-nya diambil dari platform; kalau tidak, dari miliknya
+// sendiri. Setting non-provider (mode, model teks, base URL) tetap getSecret.
+async function providerKey(ws: string, key: string): Promise<string | null> {
+  if (PLATFORM_KEYS[key] && (await billingMode(ws)) === "credit") {
+    return await platformSecret(PLATFORM_KEYS[key]);
+  }
+  return await getSecret(ws, key);
+}
+
+async function creditBalance(ws: string): Promise<number> {
+  const { data, error } = await admin.rpc("credit_balance", { ws });
+  if (error) throw new Error(`Gagal membaca saldo: ${error.message}`);
+  return Number(data || 0);
+}
+
 // Cari URL media pertama di respons fal.ai (bentuknya beda-beda per model).
 function findMediaUrl(o: unknown): string | null {
   const seen = new Set<object>();
@@ -131,7 +190,7 @@ async function textConfig(ws: string) {
   const preset = TEXT_PRESETS[provider];
   return {
     provider,
-    key: await getSecret(ws, "text_api_key"),
+    key: await providerKey(ws, "text_api_key"),
     base: (await getSecret(ws, "text_base_url")) || preset?.base || "",
     model: (await getSecret(ws, "text_model")) || preset?.model || "",
     vision: (await getSecret(ws, "text_vision_model")) || preset?.vision || "",
@@ -245,7 +304,7 @@ async function hfReadImage(res: Response): Promise<{ bytes: Uint8Array; ctype: s
 }
 
 async function hfImage(ws: string, modelKey: string, prompt: string, jobId: string): Promise<string> {
-  const token = await getSecret(ws, "hf_token");
+  const token = await providerKey(ws, "hf_token");
   if (!token) throw new Error("Hugging Face token belum dipasang — isi di Settings.");
   const { provider, providerId } = await hfResolveProvider(modelKey, token);
 
@@ -293,10 +352,10 @@ async function hfImage(ws: string, modelKey: string, prompt: string, jobId: stri
 // akun DashScope melayani teks, gambar (qwen-image/z-image), dan video (wan).
 const DS_BASE = "https://dashscope-intl.aliyuncs.com/api/v1";
 async function dashscopeKey(ws: string): Promise<string | null> {
-  const dedicated = await getSecret(ws, "dashscope_key");
+  const dedicated = await providerKey(ws, "dashscope_key");
   if (dedicated) return dedicated;
   const provider = (await getSecret(ws, "text_provider")) || "qwen";
-  return provider === "qwen" ? await getSecret(ws, "text_api_key") : null;
+  return provider === "qwen" ? await providerKey(ws, "text_api_key") : null;
 }
 
 // Unduh hasil dari URL provider dan simpan permanen di bucket media. Dipakai
@@ -442,11 +501,16 @@ Deno.serve(async (req) => {
     switch (body.action) {
       case "status": {
         const cfg = await textConfig(ws);
+        const bill = await billingMode(ws);
         return json({
-          fal_key: !!(await getSecret(ws, "fal_key")),
-          hf_token: !!(await getSecret(ws, "hf_token")),
+          fal_key: !!(await providerKey(ws, "fal_key")),
+          hf_token: !!(await providerKey(ws, "hf_token")),
           dashscope_key: !!(await dashscopeKey(ws)),
           mode,
+          // Di mode kredit, key-nya milik platform: Settings tidak perlu — dan
+          // tidak boleh — meminta user memasang key sendiri.
+          billing_mode: bill,
+          credit_balance: bill === "credit" ? await creditBalance(ws) : null,
           text: { provider: cfg.provider, model: cfg.model, vision_model: cfg.vision, base_url: cfg.base, configured: !!cfg.key },
           text_presets: TEXT_PRESETS,
         });
@@ -483,7 +547,7 @@ Deno.serve(async (req) => {
       }
       case "set_mode": {
         const m = body.mode === "live" ? "live" : "mock";
-        if (m === "live" && !(await getSecret(ws, "fal_key")) && !(await getSecret(ws, "hf_token"))) {
+        if (m === "live" && !(await providerKey(ws, "fal_key")) && !(await providerKey(ws, "hf_token"))) {
           throw new Error("Pasang FAL key atau Hugging Face token dulu sebelum mode live.");
         }
         await setSecret(ws, "generation_mode", m);
@@ -826,13 +890,35 @@ Deno.serve(async (req) => {
         }
         const finalPrompt = [identity, prompt].filter(Boolean).join(", ");
 
+        // Gerbang biaya. Dua mode, dua pagar yang berbeda sifatnya:
+        //
+        //   credit  — saldo. Ini pagar sebenarnya: uangnya uang platform, dan
+        //             kalau job berangkat tanpa saldo, kita yang membayar.
+        //             Karena itu di sini tidak ada opsi "hard_stop off".
+        //   byo_key — batas bulanan. Uangnya uang user sendiri, jadi ini rem
+        //             sukarela dan boleh dimatikan.
+        //
+        // Estimasi diperiksa SEBELUM job dibuat, bukan setelahnya: setelah job
+        // dikirim ke fal, biayanya sudah terjadi entah kita mencatatnya atau
+        // tidak. Estimasi juga bisa meleset di bawah biaya nyata (durasi video),
+        // jadi ini pagar, bukan akuntansi — pencatatan aslinya tetap di
+        // credits_ledger saat job selesai.
         if (mode === "live" && est > 0) {
-          const { data: bud } = await admin.from("budget_settings").select("*").eq("workspace_id", ws).maybeSingle();
-          const cap = Number(bud?.monthly_cap_usd ?? 200);
-          if ((bud?.hard_stop ?? true)) {
-            const spent = await monthSpent(ws);
-            if (spent + est > cap) {
-              throw new Error(`Budget guard: estimasi $${est.toFixed(2)} akan melewati batas bulanan $${cap.toFixed(2)} (terpakai $${spent.toFixed(2)}).`);
+          if ((await billingMode(ws)) === "credit") {
+            const balance = await creditBalance(ws);
+            if (balance < est) {
+              throw new Error(
+                `Kredit tidak cukup: job ini butuh sekitar $${est.toFixed(3)}, saldomu $${balance.toFixed(3)}. Isi kredit dulu di Settings.`,
+              );
+            }
+          } else {
+            const { data: bud } = await admin.from("budget_settings").select("*").eq("workspace_id", ws).maybeSingle();
+            const cap = Number(bud?.monthly_cap_usd ?? 200);
+            if ((bud?.hard_stop ?? true)) {
+              const spent = await monthSpent(ws);
+              if (spent + est > cap) {
+                throw new Error(`Budget guard: estimasi $${est.toFixed(2)} akan melewati batas bulanan $${cap.toFixed(2)} (terpakai $${spent.toFixed(2)}).`);
+              }
             }
           }
         }
@@ -959,7 +1045,7 @@ Deno.serve(async (req) => {
         }
 
         // fal.ai — submit ke antrean, hasil diambil lewat action `poll`
-        const falKey = await getSecret(ws, "fal_key");
+        const falKey = await providerKey(ws, "fal_key");
         if (!falKey) await abort("FAL key belum dipasang — isi di Settings.");
         const input: Record<string, unknown> = {};
         if (task === "image") { input.prompt = finalPrompt; input.image_size = "portrait_4_3"; input.num_images = 1; }
@@ -1014,7 +1100,7 @@ Deno.serve(async (req) => {
       case "poll": {
         const { data: running } = await admin.from("production_jobs").select("*")
           .eq("workspace_id", ws).eq("status", "running").not("external_id", "is", null).limit(10);
-        const falKey = await getSecret(ws, "fal_key");
+        const falKey = await providerKey(ws, "fal_key");
         const dsKey = await dashscopeKey(ws);
         let updated = 0;
         for (const jb of running || []) {

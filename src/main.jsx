@@ -62,7 +62,7 @@ function Login() {
       <div className="card p6" style={{ width: "100%", maxWidth: 420 }}>
         <div style={{ fontSize: 24, fontWeight: 800 }} className="gradient-title">AI Micro Influencer Studio</div>
         <p className="muted small mt1 mb4">
-          {mode === "signin" ? "Masuk ke workspace kamu." : "Daftar — akun pertama otomatis menjadi owner workspace."}
+          {mode === "signin" ? "Masuk ke workspace kamu." : "Daftar — kamu langsung dapat workspace sendiri sebagai owner."}
         </p>
         <form onSubmit={submit}>
           <label className="label">Email</label>
@@ -92,7 +92,7 @@ function App() {
   const route = useRoute();
   const [session, setSession] = useState(undefined);
   const [ws, setWs] = useState(null);
-  const [spend, setSpend] = useState({ spent: 0, cap: 200, mode: "mock" });
+  const [spend, setSpend] = useState({ spent: 0, cap: 200, mode: "mock", billing: "byo_key", balance: 0 });
   const [spendError, setSpendError] = useState(null);
   const [tick, setTick] = useState(0);
   const refresh = useCallback(() => setTick((t) => t + 1), []);
@@ -121,10 +121,23 @@ function App() {
           if (ledErr) throw new Error(ledErr.message);
           if (budErr) throw new Error(budErr.message);
           if (modeErr) throw new Error(modeErr.message);
+          // Di mode kredit yang membatasi adalah saldo, bukan batas bulanan.
+          // Menampilkan "terpakai $X dari batas $200" di sana akan menyebut
+          // angka yang tidak menentukan apa pun — user membacanya sebagai sisa
+          // jatah, padahal job ditolak/diterima berdasarkan saldo.
+          const credit = w.billing_mode === "credit";
+          let balance = 0;
+          if (credit) {
+            const { data: bal, error: balErr } = await supa.rpc("credit_balance", { ws: w.id });
+            if (balErr) throw new Error(balErr.message);
+            balance = Number(bal || 0);
+          }
           setSpend({
             spent: (led || []).reduce((s, r) => s + Math.abs(Number(r.delta_usd)), 0),
             cap: Number(bud?.monthly_cap_usd ?? 200),
             mode: cfgMode || "mock",
+            billing: credit ? "credit" : "byo_key",
+            balance,
           });
         }
       } catch (e) {
@@ -142,7 +155,7 @@ function App() {
       <div style={{ minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center" }}>
         <div className="card p6" style={{ maxWidth: 420, textAlign: "center" }}>
           <div className="bold">Workspace belum tersedia</div>
-          <p className="muted small mt2">Workspace dibuat otomatis untuk akun pertama. Muat ulang halaman ini, atau minta owner mengundang kamu.</p>
+          <p className="muted small mt2">Workspace dibuat otomatis saat kamu mendaftar. Kalau halaman ini muncul, pembuatannya belum selesai — muat ulang sebentar lagi.</p>
           <button className="btn mt3" onClick={() => window.location.reload()}>Muat ulang</button>
         </div>
       </div>
@@ -178,9 +191,17 @@ function App() {
         </nav>
         <div style={{ padding: 14, borderTop: "1px solid var(--border)" }}>
           <div className="card p4" style={{ background: "var(--subtle)" }}>
-            <span className="label">Biaya bulan ini</span>
+            <span className="label">{spend.billing === "credit" ? "Saldo kredit" : "Biaya bulan ini"}</span>
             {spendError ? (
               <div className="msg-err tiny mt1">Gagal memuat biaya: {spendError}</div>
+            ) : spend.billing === "credit" ? (
+              <>
+                <div style={{ fontSize: 20, fontWeight: 800, color: spend.balance < 1 ? "var(--warn)" : "var(--ok)" }}>{usd(spend.balance)}</div>
+                <div className="tiny muted">terpakai {usd(spend.spent)} bulan ini</div>
+                <span className={`badge mt2`} style={spend.mode === "live" ? { background: "var(--ok-line)", color: "var(--ok)" } : { background: "var(--border)", color: "var(--ink-3)" }}>
+                  mode: {spend.mode}
+                </span>
+              </>
             ) : (
               <>
                 <div style={{ fontSize: 20, fontWeight: 800, color: "var(--warn)" }}>{usd(spend.spent)}</div>

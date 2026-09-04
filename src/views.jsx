@@ -3010,6 +3010,46 @@ function McpSettings({ ws, tick }) {
 }
 
 // ---------- Settings ----------
+// Kartu saldo. Hanya muncul kalau workspace ini memang memakai kredit —
+// di mode byo_key saldonya selalu nol dan menampilkannya cuma bikin user
+// mengira ada tagihan yang belum dibayar, padahal yang menagih adalah
+// fal/DashScope langsung ke kartunya sendiri.
+function BillingCard({ ws, tick }) {
+  const [bill] = useQuery(async () => callApp({ action: "billing_status" }), [ws.id, tick]);
+  if (!bill || bill.billing_mode !== "credit") return null;
+  const low = Number(bill.balance) < 1;
+  return (
+    <div className="card p6 mb4">
+      <div className="row mb2" style={{ justifyContent: "space-between" }}>
+        <div className="bold">Saldo Kredit</div>
+        <Badge tone={low ? "amber" : "green"}>{priceLabel(bill.balance)}</Badge>
+      </div>
+      <p className="tiny muted mb3">
+        Setiap generate live dipotong dari saldo ini. Kalau saldonya kurang dari perkiraan biaya job,
+        job-nya ditolak sebelum dikirim ke provider — jadi tidak ada tagihan yang muncul belakangan.
+        {low ? " Saldomu menipis: isi ulang sebelum menjalankan job video." : ""}
+      </p>
+      {bill.entries?.length > 0 && (
+        <table>
+          <thead><tr><th>Waktu</th><th>Jenis</th><th>Jumlah</th><th>Catatan</th></tr></thead>
+          <tbody>
+            {bill.entries.map((e, i) => (
+              <tr key={i}>
+                <td className="muted tiny">{new Date(e.created_at).toLocaleString("id-ID")}</td>
+                <td className="muted">{e.kind}</td>
+                <td className={Number(e.delta_usd) < 0 ? "muted" : "bold"}>
+                  {Number(e.delta_usd) < 0 ? "−" : "+"}{priceLabel(Math.abs(Number(e.delta_usd)))}
+                </td>
+                <td className="muted tiny">{e.note || "—"}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      )}
+    </div>
+  );
+}
+
 export function Settings({ ws, refresh, tick, spend, spendError, query }) {
   const [models, reload, modelsError] = useQuery(async () =>
     unwrap(await supa.from("provider_models").select("*").order("task").order("est_price_usd")), [ws.id, tick]);
@@ -3017,6 +3057,9 @@ export function Settings({ ws, refresh, tick, spend, spendError, query }) {
     unwrap(await supa.from("budget_settings").select("*").eq("workspace_id", ws.id).maybeSingle(), null), [ws.id, tick]);
   const [keyState, setKeyState] = useState(null);
   const [msg, setMsg] = useState(null);
+  // Default byo_key selagi status masih dimuat: itu tampilan yang sudah ada
+  // sekarang, jadi tidak ada kedipan kartu yang muncul lalu hilang.
+  const creditMode = keyState?.billing_mode === "credit";
 
   useEffect(() => {
     callGenerate({ action: "status" }).then(setKeyState).catch(() => setKeyState({ fal_key: false, mode: "mock" }));
@@ -3070,6 +3113,7 @@ export function Settings({ ws, refresh, tick, spend, spendError, query }) {
       <AccountAdmin ws={ws} tick={tick} />
       <AiWriterSettings keyState={keyState} onSaved={() => callGenerate({ action: "status" }).then(setKeyState).catch(() => {})} />
       <McpSettings ws={ws} tick={tick} />
+      <BillingCard ws={ws} tick={tick} />
       {msg && <div className="msg-ok mb3">{msg}</div>}
       <div className="grid mb4" style={{ gridTemplateColumns: "repeat(auto-fit,minmax(340px,1fr))" }}>
         <div className="card p6">
@@ -3078,6 +3122,16 @@ export function Settings({ ws, refresh, tick, spend, spendError, query }) {
             <span className="tiny muted"> — mock memakai foto contoh, live memanggil provider asli.</span>
           </div>
 
+          {/* Di mode kredit, key-nya milik platform. Menampilkan kolom key di
+              sini bukan cuma mubazir — user yang mengisinya akan mengira job-nya
+              dibayar dari key itu, padahal saldo yang dipotong. */}
+          {creditMode ? (
+            <p className="small muted mb3">
+              Workspace ini memakai <b>kredit</b>: API key provider disediakan platform,
+              jadi kamu tidak perlu memasang key sendiri. Yang menentukan job bisa jalan
+              atau tidak adalah saldo di kartu Saldo Kredit di atas.
+            </p>
+          ) : (<>
           <div className="card p4 mb3" style={{ background: "var(--subtle)" }}>
             <div className="row mb2" style={{ justifyContent: "space-between" }}>
               <span className="bold small">Hugging Face — gratis</span>
@@ -3103,12 +3157,17 @@ export function Settings({ ws, refresh, tick, spend, spendError, query }) {
           </div>
 
           <p className="tiny muted mb2">Semua key disimpan di tabel terkunci server — tidak pernah dikirim balik ke browser.</p>
+          </>)}
           <div className="row">
             <button className="btn btn2" onClick={() => setMode("mock")} type="button">Mode Mock</button>
             <button className="btn" onClick={() => setMode("live")} type="button"
-              disabled={!keyState?.fal_key && !keyState?.hf_token}>Aktifkan Live</button>
+              disabled={!creditMode && !keyState?.fal_key && !keyState?.hf_token}>Aktifkan Live</button>
           </div>
         </div>
+        {/* Batas bulanan itu rem sukarela atas uang user sendiri. Di mode kredit
+            yang membatasi adalah saldo, dan saldo tidak boleh bisa dimatikan
+            lewat checkbox — jadi kartunya memang tidak ada di sana. */}
+        {!creditMode && (
         <div className="card p6">
           <div className="bold mb3">Budget Guard</div>
           <form onSubmit={saveBudget}>
@@ -3126,6 +3185,7 @@ export function Settings({ ws, refresh, tick, spend, spendError, query }) {
             <div className="tiny muted mt3">Terpakai bulan ini: <b>{usd(spend.spent)}</b> dari {usd(spend.cap)}</div>
           )}
         </div>
+        )}
       </div>
       <SocialConnections ws={ws} tick={tick} query={query} />
       <CalendarConnection ws={ws} tick={tick} query={query} />
