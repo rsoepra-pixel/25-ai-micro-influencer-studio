@@ -29,11 +29,20 @@ async function requireUser(req: Request) {
   if (!mem) throw new Error("Kamu belum tergabung di workspace.");
   return { user: data.user, ws: mem.workspace_id as string };
 }
-// Pemanggil internal: fungsi `mcp`, yang sudah lebih dulu mengautentikasi
-// pemanggilnya per workspace tapi tidak memegang JWT Supabase user mana pun.
-// Hanya kunci MCP yang berlaku di sini, dan hanya untuk `publish` — kunci cron
-// sengaja tidak diberi kewenangan ini.
+// Pemanggil internal: server ke server, tanpa JWT user.
 //
+// Dua kunci, kewenangan berbeda dan tidak tumpang tindih:
+//   internal_cron_key → `autopublish` saja. Cron TIDAK bisa memposting konten
+//     sembarangan; ia cuma menjalankan jadwal yang user sendiri sudah pasang,
+//     dan hanya kalau sakelar autopublish workspace-nya menyala.
+//   internal_mcp_key  → `publish` saja. Fungsi `mcp` sudah mengautentikasi
+//     pemanggilnya per workspace lebih dulu.
+// Tidak satu pun boleh mengubah konfigurasi atau memutus koneksi.
+const INTERNAL_KEYS: Record<string, string[]> = {
+  internal_cron_key: ["autopublish"],
+  internal_mcp_key: ["publish"],
+};
+
 // Perbandingannya waktu-tetap; dengan === selisih waktunya bisa dipakai
 // menebak kunci satu karakter demi satu karakter.
 function safeEqual(a: string, b: string): boolean {
@@ -46,11 +55,15 @@ function safeEqual(a: string, b: string): boolean {
 async function internalWorkspace(req: Request, body: Record<string, unknown>): Promise<string | null> {
   const given = req.headers.get("x-internal-key");
   if (!given) return null;
-  if (body.action !== "publish") throw new Error("Kunci internal di sini hanya berlaku untuk aksi publish.");
   const wsId = String(body.workspace_id || "");
   if (!wsId) throw new Error("workspace_id wajib diisi untuk pemanggilan internal.");
-  const { data } = await admin.from("service_config").select("value").eq("key", "internal_mcp_key").maybeSingle();
-  if (!data?.value || !safeEqual(given, String(data.value))) throw new Error("Kunci internal tidak cocok.");
+  const { data: rows } = await admin.from("service_config").select("key, value").in("key", Object.keys(INTERNAL_KEYS));
+  const match = (rows || []).find((r) => safeEqual(given, String(r.value)));
+  if (!match) throw new Error("Kunci internal tidak cocok.");
+  const action = String(body.action || "");
+  if (!(INTERNAL_KEYS[match.key] || []).includes(action)) {
+    throw new Error(`Kunci internal ini tidak berwenang untuk aksi ${action || "(kosong)"}.`);
+  }
   const { data: w } = await admin.from("workspaces").select("id").eq("id", wsId).maybeSingle();
   if (!w) throw new Error("Workspace tidak ditemukan.");
   return w.id as string;
@@ -188,6 +201,78 @@ async function ttPublish(conn: Record<string, unknown>, item: Record<string, unk
   return String(init?.data?.publish_id || "tiktok_pending");
 }
 
+// Satu jalur publish, dipakai dua pemanggil: tombol Publish di app (`publish`)
+// dan penjadwal (`autopublish`). Sengaja satu fungsi — aturan pemilihan media
+// dan penolakan saat medianya tidak jelas tidak boleh berbeda antara "ditekan
+// manusia" dan "dijalankan jadwal".
+async function publishOne(
+  ws: string,
+  item: Record<string, unknown>,
+  conn: Record<string, unknown>,
+  explicitAssetId: string | null,
+  compliance: Record<string, unknown>,
+): Promise<Record<string, unknown>> {
+  const { data: pj, error: pjErr } = await admin.from("publish_jobs").insert({
+    workspace_id: ws, content_item_id: item.id, connection_id: conn.id,
+    platform: conn.platform, status: "queued",
+  }).select("*").single();
+  if (pjErr) throw new Error(pjErr.message);
+
+  const done = async () => {
+    await admin.from("content_items").update({ status: "published", ai_disclosure: true }).eq("id", item.id);
+  };
+  const failWith = async (err: string) => {
+    await admin.from("publish_jobs").update({ status: "failed", error: err.slice(0, 500) }).eq("id", pj.id);
+    return { ok: false, error: err, job_id: pj.id };
+  };
+
+  if (conn.provider_mode === "mock") {
+    const postId = `mock_${pj.id.slice(0, 8)}`;
+    await admin.from("publish_jobs").update({ status: "succeeded", external_post_id: postId }).eq("id", pj.id);
+    await done();
+    return { ok: true, job_id: pj.id, status: "succeeded" };
+  }
+
+  // Media yang diposting: pilihan eksplisit, atau aset yang ditandai untuk
+  // konten ini. Menebak "aset terbaru milik influencer" — yang dulu dipakai —
+  // bukan lagi salah satu opsi: memposting file yang salah lebih buruk
+  // daripada menolak, dan yang salah itu tidak pernah berbunyi.
+  const kindNeeded = item.content_type === "photo" || item.content_type === "carousel" ? "image" : "video";
+  let media: { id: string; url: string | null; kind: string } | null = null;
+  if (explicitAssetId) {
+    const { data: a } = await admin.from("assets").select("id, url, kind")
+      .eq("id", explicitAssetId).eq("workspace_id", ws).maybeSingle();
+    if (!a) throw new Error("Media yang dipilih tidak ditemukan di workspace ini.");
+    media = a;
+  } else {
+    const { data: a } = await admin.from("assets").select("id, url, kind")
+      .eq("workspace_id", ws).eq("content_item_id", item.id).eq("kind", kindNeeded)
+      .order("created_at", { ascending: false }).limit(1).maybeSingle();
+    media = a;
+  }
+  if (!media?.url) {
+    return await failWith(
+      `Belum ada ${kindNeeded} yang ditandai untuk konten ini. `
+      + `Generate di Production Studio sambil memilih konten ini di kolom "Untuk konten", `
+      + `atau pilih media yang mau diposting di form publish.`,
+    );
+  }
+  if (media.kind !== kindNeeded) {
+    return await failWith(`Konten ini butuh ${kindNeeded}, tapi media yang dipilih berjenis ${media.kind}.`);
+  }
+
+  try {
+    const postId = conn.platform === "instagram"
+      ? await igPublish(conn, item, media.url)
+      : await ttPublish(conn, item, media.url, compliance);
+    await admin.from("publish_jobs").update({ status: "succeeded", external_post_id: postId }).eq("id", pj.id);
+    await done();
+    return { ok: true, job_id: pj.id, status: "succeeded" };
+  } catch (e) {
+    return await failWith((e as Error).message || String(e));
+  }
+}
+
 // ---------- Router ----------
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: CORS });
@@ -200,7 +285,10 @@ Deno.serve(async (req) => {
     const ws = (await internalWorkspace(req, body)) ?? (await requireUser(req)).ws;
     switch (body.action) {
       case "config_status": {
-        const out: Record<string, unknown> = { callback_url: CALLBACK };
+        const out: Record<string, unknown> = {
+          callback_url: CALLBACK,
+          autopublish: (await getSecret(ws, "autopublish")) === "on",
+        };
         for (const p of ["instagram", "tiktok"] as const) {
           out[p] = {
             configured: !!(await getSecret(ws, KEYS[p].id)) && !!(await getSecret(ws, KEYS[p].secret)),
@@ -254,6 +342,54 @@ Deno.serve(async (req) => {
         await admin.from("social_connections").delete().eq("id", body.connection_id).eq("workspace_id", ws);
         return json({ ok: true });
       }
+      case "set_autopublish": {
+        // Sakelar penjadwal. Default MATI dan harus dinyalakan sadar-sadar:
+        // publish ke koneksi live tidak bisa dibatalkan, dan tanggal di planner
+        // sering dipakai sebagai rencana, bukan sebagai perintah tayang.
+        const on = body.enabled === true ? "on" : "off";
+        await setSecret(ws, "autopublish", on);
+        return json({ ok: true, autopublish: on });
+      }
+      case "autopublish": {
+        // Dijalankan cron. Tiga syarat sebelum apa pun terbit, dan ketiganya
+        // berasal dari keputusan user — bukan dari penjadwalnya:
+        //   1) sakelar autopublish workspace ini menyala,
+        //   2) kontennya berstatus `scheduled` dengan tanggal yang sudah tiba,
+        //   3) medianya sudah ditandai untuk konten itu.
+        if ((await getSecret(ws, "autopublish")) !== "on") {
+          return json({ ok: true, published: 0, note: "autopublish mati untuk workspace ini" });
+        }
+        const today = new Date().toISOString().slice(0, 10);
+        const { data: due } = await admin.from("content_items")
+          .select("*").eq("workspace_id", ws).eq("status", "scheduled")
+          .not("scheduled_date", "is", null).lte("scheduled_date", today)
+          .order("scheduled_date", { ascending: true }).limit(5);
+
+        const { data: conns } = await admin.from("social_connections").select("*").eq("workspace_id", ws);
+        const results: Record<string, unknown>[] = [];
+        for (const item of due || []) {
+          // Koneksi yang cocok: platform sama, dan diikat ke influencer konten
+          // ini — atau koneksi workspace yang tidak diikat ke siapa pun.
+          const conn = (conns || []).find((c) => c.platform === item.platform && c.influencer_id === item.influencer_id)
+            || (conns || []).find((c) => c.platform === item.platform && !c.influencer_id);
+          if (!conn) { results.push({ id: item.id, skipped: `belum ada koneksi ${item.platform}` }); continue; }
+
+          // Jangan mencoba ulang tanpa henti. Konten yang barusan gagal
+          // dilewati dulu; tanpa jeda ini satu konten rusak akan memanggil
+          // provider tiap 15 menit selamanya.
+          const since = new Date(Date.now() - 6 * 3600e3).toISOString();
+          const { count: recent } = await admin.from("publish_jobs")
+            .select("id", { count: "exact", head: true })
+            .eq("content_item_id", item.id).gte("created_at", since);
+          if ((recent ?? 0) > 0) { results.push({ id: item.id, skipped: "baru saja dicoba" }); continue; }
+
+          const r = await publishOne(ws, item, conn, null, {
+            title: item.title, privacy: "SELF_ONLY", ai_disclosure: true,
+          });
+          results.push({ id: item.id, title: item.title, ...r });
+        }
+        return json({ ok: true, published: results.filter((r) => r.ok).length, results });
+      }
       case "publish": {
         const { content_item_id, connection_id, compliance = {} } = body;
         if (!compliance.ai_disclosure) throw new Error("AI-disclosure wajib dicentang.");
@@ -262,71 +398,7 @@ Deno.serve(async (req) => {
         const { data: conn } = await admin.from("social_connections").select("*")
           .eq("id", connection_id).eq("workspace_id", ws).maybeSingle();
         if (!item || !conn) throw new Error("Konten atau koneksi tidak ditemukan.");
-
-        const { data: pj, error: pjErr } = await admin.from("publish_jobs").insert({
-          workspace_id: ws, content_item_id, connection_id, platform: conn.platform, status: "queued",
-        }).select("*").single();
-        if (pjErr) throw new Error(pjErr.message);
-
-        if (conn.provider_mode === "mock") {
-          const postId = `mock_${pj.id.slice(0, 8)}`;
-          await admin.from("publish_jobs").update({ status: "succeeded", external_post_id: postId }).eq("id", pj.id);
-          await admin.from("content_items").update({ status: "published", ai_disclosure: true }).eq("id", item.id);
-          return json({ ok: true, job_id: pj.id, status: "succeeded" });
-        }
-
-        // live: tentukan media yang akan diposting.
-        //
-        // Dulu blok ini mengambil aset TERBARU milik influencer konten ini.
-        // Itu benar hanya selama satu influencer punya satu file. Begitu ada
-        // banyak konten per influencer — yang justru jadi tujuan aplikasi ini —
-        // yang terposting adalah file terakhir yang kebetulan jadi, bukan file
-        // milik konten ini. Publish-nya "berhasil", isinya salah, dan tidak ada
-        // error yang muncul di mana pun.
-        //
-        // Sekarang dua sumber yang eksplisit saja, dan menebak bukan lagi salah
-        // satunya: memposting file yang salah lebih buruk daripada menolak.
-        const kindNeeded = item.content_type === "photo" || item.content_type === "carousel" ? "image" : "video";
-        let media: { id: string; url: string | null; kind: string } | null = null;
-
-        if (body.asset_id) {
-          // Pilihan manual dari layar publish. Dicek ke workspace supaya id dari
-          // luar tidak bisa dipakai memposting media milik workspace lain.
-          const { data: a } = await admin.from("assets").select("id, url, kind")
-            .eq("id", body.asset_id).eq("workspace_id", ws).maybeSingle();
-          if (!a) throw new Error("Media yang dipilih tidak ditemukan di workspace ini.");
-          media = a;
-        } else {
-          const { data: a } = await admin.from("assets").select("id, url, kind")
-            .eq("workspace_id", ws).eq("content_item_id", item.id).eq("kind", kindNeeded)
-            .order("created_at", { ascending: false }).limit(1).maybeSingle();
-          media = a;
-        }
-
-        if (!media?.url) {
-          const err = `Belum ada ${kindNeeded} yang ditandai untuk konten ini. `
-            + `Generate di Production Studio sambil memilih konten ini di kolom "Untuk konten", `
-            + `atau pilih media yang mau diposting di form publish.`;
-          await admin.from("publish_jobs").update({ status: "failed", error: err }).eq("id", pj.id);
-          return json({ ok: false, error: err, job_id: pj.id });
-        }
-        if (media.kind !== kindNeeded) {
-          const err = `Konten ini butuh ${kindNeeded}, tapi media yang dipilih berjenis ${media.kind}.`;
-          await admin.from("publish_jobs").update({ status: "failed", error: err }).eq("id", pj.id);
-          return json({ ok: false, error: err, job_id: pj.id });
-        }
-        try {
-          const postId = conn.platform === "instagram"
-            ? await igPublish(conn, item, media.url)
-            : await ttPublish(conn, item, media.url, compliance);
-          await admin.from("publish_jobs").update({ status: "succeeded", external_post_id: postId }).eq("id", pj.id);
-          await admin.from("content_items").update({ status: "published", ai_disclosure: true }).eq("id", item.id);
-          return json({ ok: true, job_id: pj.id, status: "succeeded" });
-        } catch (e) {
-          const msg = ((e as Error).message || String(e)).slice(0, 500);
-          await admin.from("publish_jobs").update({ status: "failed", error: msg }).eq("id", pj.id);
-          return json({ ok: false, error: msg, job_id: pj.id });
-        }
+        return json(await publishOne(ws, item, conn, body.asset_id ? String(body.asset_id) : null, compliance));
       }
       default:
         throw new Error(`Action tidak dikenal: ${body.action}`);

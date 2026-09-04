@@ -2495,6 +2495,38 @@ function SocialConnections({ ws, tick, query }) {
       <div className="card p3 mb3" style={{ background: "var(--subtle-2)" }}>
         <code className="tiny" style={{ wordBreak: "break-all" }}>{status.callback_url}</code>
       </div>
+
+      {/* Penjadwal. Default mati, dan konsekuensinya ditulis di sini — tanggal
+          di planner sering dipakai sebagai rencana, bukan perintah tayang. */}
+      <div className="card p4 mb3" style={{
+        border: `1px solid ${status.autopublish ? "var(--warn-line)" : "var(--border)"}`,
+        background: status.autopublish ? "var(--warn-soft)" : "var(--subtle)",
+      }}>
+        <div className="row" style={{ justifyContent: "space-between", alignItems: "flex-start", gap: 12 }}>
+          <div>
+            <div className="bold small">Publish otomatis sesuai jadwal</div>
+            <p className="tiny muted mt1" style={{ maxWidth: "62ch" }}>
+              Tiap 15 menit, konten berstatus <b>Terjadwal</b> yang tanggalnya sudah tiba diposting
+              sendiri — asalkan medianya sudah ditandai untuk konten itu dan akunnya sudah terhubung.
+              Ke koneksi <b>mode live ini tidak bisa dibatalkan</b>. Konten tanpa media tidak dipaksa
+              terbit: ia dilewati, dan alasannya tercatat di Riwayat Publish.
+            </p>
+          </div>
+          <button type="button" className={status.autopublish ? "btn btn-orange" : "btn btn2"}
+            style={{ fontSize: 12, flexShrink: 0 }} disabled={busy}
+            onClick={async () => {
+              setBusy(true); setMsg(null);
+              try {
+                await callSocial({ action: "set_autopublish", enabled: !status.autopublish });
+                setMsg(status.autopublish ? "Publish otomatis dimatikan." : "Publish otomatis dinyalakan.");
+                statusReload();
+              } catch (e) { setMsg(e.message); }
+              setBusy(false);
+            }}>
+            {status.autopublish ? "Matikan" : "Nyalakan"}
+          </button>
+        </div>
+      </div>
       {msg && <div className="msg-ok mb3">{msg}</div>}
       <div className="mb3"><label className="label">Influencer untuk koneksi baru (opsional)</label>
         <select className="input" value={connectInfId} onChange={(e) => setConnectInfId(e.target.value)} style={{ maxWidth: 280 }}>
