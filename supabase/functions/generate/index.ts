@@ -29,6 +29,48 @@ async function requireUser(req: Request) {
   if (!mem) throw new Error("Kamu belum tergabung di workspace.");
   return { user: data.user, ws: mem.workspace_id as string };
 }
+// Pemanggil internal: server ke server, tanpa JWT user.
+//
+// Ada DUA kunci, dan kewenangannya sengaja tidak sama. Kunci cron tertulis di
+// perintah cron yang bisa dibaca siapa pun dengan akses DB, jadi ia tidak boleh
+// bisa mengantre job berbayar — ia cuma memajukan job yang sudah terlanjur
+// jalan. Kunci MCP dipakai fungsi `mcp`, yang sudah lebih dulu mengautentikasi
+// pemanggilnya per workspace, jadi kewenangan belanja di situ memang sudah
+// diberikan di lapisan atasnya.
+//
+// Daftar ini yang menegakkannya, bukan dokumentasi.
+const INTERNAL_KEYS: Record<string, string[]> = {
+  internal_cron_key: ["poll"],
+  internal_mcp_key: ["poll", "submit"],
+};
+
+// Perbandingannya waktu-tetap. Membandingkan dengan === akan berhenti di
+// karakter pertama yang beda, dan selisih waktunya bisa dipakai menebak kunci
+// satu karakter demi satu karakter.
+function safeEqual(a: string, b: string): boolean {
+  if (a.length !== b.length) return false;
+  let diff = 0;
+  for (let i = 0; i < a.length; i++) diff |= a.charCodeAt(i) ^ b.charCodeAt(i);
+  return diff === 0;
+}
+
+async function internalWorkspace(req: Request, body: Record<string, unknown>): Promise<string | null> {
+  const given = req.headers.get("x-internal-key");
+  if (!given) return null;
+  const wsId = String(body.workspace_id || "");
+  if (!wsId) throw new Error("workspace_id wajib diisi untuk pemanggilan internal.");
+  const { data: rows } = await admin.from("service_config").select("key, value").in("key", Object.keys(INTERNAL_KEYS));
+  const match = (rows || []).find((r) => safeEqual(given, String(r.value)));
+  if (!match) throw new Error("Kunci internal tidak cocok.");
+  const action = String(body.action || "");
+  if (!(INTERNAL_KEYS[match.key] || []).includes(action)) {
+    throw new Error(`Kunci internal ini tidak berwenang untuk aksi ${action || "(kosong)"}.`);
+  }
+  const { data: w } = await admin.from("workspaces").select("id").eq("id", wsId).maybeSingle();
+  if (!w) throw new Error("Workspace tidak ditemukan.");
+  return w.id as string;
+}
+
 async function getSecret(ws: string, key: string): Promise<string | null> {
   const { data } = await admin.from("app_secrets").select("value").eq("workspace_id", ws).eq("key", key).maybeSingle();
   return data?.value ?? null;
@@ -37,6 +79,65 @@ async function setSecret(ws: string, key: string, value: string | null) {
   const { error } = await admin.from("app_secrets")
     .upsert({ workspace_id: ws, key, value, updated_at: new Date().toISOString() });
   if (error) throw new Error(error.message);
+}
+
+// ---------- Mode penagihan ----------
+//
+// Dua cara membayar model, dan keduanya harus hidup berdampingan:
+//
+//   byo_key — user memasang API key-nya sendiri di Settings. Yang menagih
+//             adalah fal/HF/DashScope, langsung ke user. Pagarnya batas
+//             bulanan (`budget_settings`), murni sebagai rem sendiri.
+//   credit  — user membeli kredit di sini. Key-nya milik PLATFORM, disimpan
+//             sekali di `service_config`, tidak pernah per workspace. Pagarnya
+//             saldo: tanpa saldo, job tidak berangkat.
+//
+// Kenapa key platform tidak boleh mampir ke `app_secrets`: baris di sana
+// terikat satu workspace dan bisa dibaca lewat jalur workspace itu. Key
+// platform membayar tagihan SEMUA orang — satu kebocoran berarti orang lain
+// menghabiskan uang kita. `service_config` punya RLS tanpa policy sama sekali,
+// jadi hanya service_role yang bisa menyentuhnya.
+const PLATFORM_KEYS: Record<string, string> = {
+  fal_key: "platform_fal_key",
+  hf_token: "platform_hf_token",
+  dashscope_key: "platform_dashscope_key",
+  text_api_key: "platform_text_api_key",
+};
+
+// Satu request membaca mode ini berkali-kali (sekali per key provider).
+// Cache pendek supaya tidak memukul tabel workspaces enam kali untuk satu
+// jawaban yang sama; 5 detik cukup untuk satu request, dan terlalu singkat
+// untuk membuat perpindahan mode terasa tertahan.
+const billingCache = new Map<string, { mode: string; at: number }>();
+async function billingMode(ws: string): Promise<"byo_key" | "credit"> {
+  const hit = billingCache.get(ws);
+  if (hit && Date.now() - hit.at < 5000) return hit.mode as "byo_key" | "credit";
+  const { data } = await admin.from("workspaces").select("billing_mode").eq("id", ws).maybeSingle();
+  const mode = data?.billing_mode === "credit" ? "credit" : "byo_key";
+  billingCache.set(ws, { mode, at: Date.now() });
+  return mode;
+}
+
+async function platformSecret(name: string): Promise<string | null> {
+  const { data } = await admin.from("service_config").select("value").eq("key", name).maybeSingle();
+  const v = data?.value ? String(data.value).trim() : "";
+  return v || null;
+}
+
+// Semua pembacaan key provider lewat sini, bukan getSecret. Kalau workspace
+// memakai kredit, key-nya diambil dari platform; kalau tidak, dari miliknya
+// sendiri. Setting non-provider (mode, model teks, base URL) tetap getSecret.
+async function providerKey(ws: string, key: string): Promise<string | null> {
+  if (PLATFORM_KEYS[key] && (await billingMode(ws)) === "credit") {
+    return await platformSecret(PLATFORM_KEYS[key]);
+  }
+  return await getSecret(ws, key);
+}
+
+async function creditBalance(ws: string): Promise<number> {
+  const { data, error } = await admin.rpc("credit_balance", { ws });
+  if (error) throw new Error(`Gagal membaca saldo: ${error.message}`);
+  return Number(data || 0);
 }
 
 // Cari URL media pertama di respons fal.ai (bentuknya beda-beda per model).
@@ -65,6 +166,9 @@ const MOCK_OUTPUTS: Record<string, (seed: string) => string> = {
   lipsync: () => "https://storage.googleapis.com/gtv-videos-bucket/sample/ForBiggerJoyrides.mp4",
 };
 const assetKind = (task: string) => (task === "image" ? "image" : task === "tts" ? "audio" : "video");
+// Dipakai hanya kalau provider tidak mengirim Content-Type saat hasilnya diunduh.
+const defaultCtype = (task: string) =>
+  task === "image" ? "image/png" : task === "tts" ? "audio/mpeg" : "video/mp4";
 
 async function monthSpent(ws: string): Promise<number> {
   const start = new Date(); start.setDate(1); start.setHours(0, 0, 0, 0);
@@ -86,7 +190,7 @@ async function textConfig(ws: string) {
   const preset = TEXT_PRESETS[provider];
   return {
     provider,
-    key: await getSecret(ws, "text_api_key"),
+    key: await providerKey(ws, "text_api_key"),
     base: (await getSecret(ws, "text_base_url")) || preset?.base || "",
     model: (await getSecret(ws, "text_model")) || preset?.model || "",
     vision: (await getSecret(ws, "text_vision_model")) || preset?.vision || "",
@@ -200,7 +304,7 @@ async function hfReadImage(res: Response): Promise<{ bytes: Uint8Array; ctype: s
 }
 
 async function hfImage(ws: string, modelKey: string, prompt: string, jobId: string): Promise<string> {
-  const token = await getSecret(ws, "hf_token");
+  const token = await providerKey(ws, "hf_token");
   if (!token) throw new Error("Hugging Face token belum dipasang — isi di Settings.");
   const { provider, providerId } = await hfResolveProvider(modelKey, token);
 
@@ -248,21 +352,25 @@ async function hfImage(ws: string, modelKey: string, prompt: string, jobId: stri
 // akun DashScope melayani teks, gambar (qwen-image/z-image), dan video (wan).
 const DS_BASE = "https://dashscope-intl.aliyuncs.com/api/v1";
 async function dashscopeKey(ws: string): Promise<string | null> {
-  const dedicated = await getSecret(ws, "dashscope_key");
+  const dedicated = await providerKey(ws, "dashscope_key");
   if (dedicated) return dedicated;
   const provider = (await getSecret(ws, "text_provider")) || "qwen";
-  return provider === "qwen" ? await getSecret(ws, "text_api_key") : null;
+  return provider === "qwen" ? await providerKey(ws, "text_api_key") : null;
 }
 
-// Unduh hasil dari URL DashScope (kedaluwarsa 24 jam) dan simpan permanen di
-// bucket media. Dipakai untuk gambar maupun video.
+// Unduh hasil dari URL provider dan simpan permanen di bucket media. Dipakai
+// untuk gambar, video, maupun audio — dari DashScope (URL-nya kedaluwarsa 24
+// jam) dan dari fal.ai (URL-nya awet, tapi tetap milik server orang lain).
 async function storeRemote(ws: string, url: string, jobId: string, fallbackCtype: string): Promise<string> {
   const res = await fetch(url);
   if (!res.ok) throw new Error(`Gagal mengunduh hasil (HTTP ${res.status}).`);
   const ctype = res.headers.get("content-type") || fallbackCtype;
   const bytes = new Uint8Array(await res.arrayBuffer());
   if (bytes.byteLength < 100) throw new Error("Hasil yang diunduh kosong.");
+  // Urutannya penting: "video/mpeg" mengandung "mpeg" juga, jadi video dulu.
   const ext = ctype.includes("mp4") || ctype.includes("video") ? "mp4"
+    : ctype.includes("mpeg") || ctype.includes("mp3") ? "mp3"
+    : ctype.includes("wav") ? "wav"
     : ctype.includes("png") ? "png" : ctype.includes("webp") ? "webp" : "jpg";
   const path = `${ws}/${jobId}.${ext}`;
   const { error: upErr } = await admin.storage.from("media")
@@ -311,33 +419,89 @@ async function storePhotos(ws: string, photos: string[]): Promise<StoredPhotos> 
 // ditolak 401 oleh fal.ai. Keduanya panggilan read-only, tidak menjalankan
 // model apa pun, jadi tidak ada biaya.
 //
-// "unverified" = providernya sendiri tidak bisa dihubungi. Itu bukan alasan
-// menolak simpan — jaringan yang lagi bermasalah tidak membuat key-nya salah.
+// "unverified" = providernya tidak menjawab dengan jelas: tidak bisa dihubungi,
+// atau membalas status yang bukan penerimaan maupun penolakan. Itu bukan alasan
+// menolak simpan — jaringan yang lagi bermasalah tidak membuat key-nya salah —
+// tapi juga tidak boleh dilaporkan sebagai "sudah diuji".
 type KeyCheck = { state: "valid" | "rejected" | "unverified"; reason?: string };
+
+// HANYA 2xx yang berarti key-nya diterima. Status lain tidak membuktikan
+// apa-apa dan harus dilaporkan apa adanya sebagai "belum terverifikasi".
+//
+// Versi pertama fungsi ini cuma memeriksa 401/403 lalu menganggap SISANYA
+// valid. Itu keliru, dan bukan keliru secara teoretis: menguji dari jalur lain
+// menunjukkan seluruh domain huggingface.co dibalas 404 halaman HTML oleh
+// perantara jaringan — root-nya pun 404, sementara host lain dari jalur yang
+// sama menjawab 200. Kalau hal serupa mengenai edge function, token yang salah
+// akan lolos tersimpan dan dilaporkan "sudah diuji" — persis kegagalan yang
+// `verifyKey` dibuat untuk mencegah.
+function classifyKeyCheck(status: number, rejectedReason: string): KeyCheck {
+  if (status === 401 || status === 403) return { state: "rejected", reason: rejectedReason };
+  if (status >= 200 && status < 300) return { state: "valid" };
+  return {
+    state: "unverified",
+    reason: `Provider menjawab HTTP ${status} — bukan penerimaan, bukan juga penolakan. Key tetap disimpan, tapi belum terbukti benar.`,
+  };
+}
+
 async function verifyKey(provider: string, key: string): Promise<KeyCheck> {
   try {
     if (provider === "hf") {
       const r = await fetch("https://huggingface.co/api/whoami-v2", { headers: { Authorization: `Bearer ${key}` } });
-      if (r.status === 401 || r.status === 403) {
-        return { state: "rejected", reason: `Hugging Face menolak token ini (HTTP ${r.status}). Pastikan tokennya benar dan punya izin "Inference Providers".` };
-      }
-      return { state: "valid" };
+      return classifyKeyCheck(
+        r.status,
+        `Hugging Face menolak token ini (HTTP ${r.status}). Pastikan tokennya benar dan punya izin "Inference Providers".`,
+      );
     }
-    // fal.ai: tanya status request yang pasti tidak ada. Key benar → 404/422,
+    // fal.ai: tanya status request yang pasti tidak ada. Key benar → 200,
     // key salah → 401. Endpoint status tidak mengantre job, jadi gratis.
     const r = await fetch("https://queue.fal.run/fal-ai/flux/requests/00000000-0000-0000-0000-000000000000/status", {
       headers: { Authorization: `Key ${key}` },
     });
-    if (r.status === 401 || r.status === 403) {
-      return {
-        state: "rejected",
-        reason: "fal.ai menolak key ini (401 invalid key credentials). Dua sebab yang paling sering: (1) yang tersalin cuma Key ID — di dashboard fal.ai daftar key hanya menampilkan bagian itu, sedangkan yang dipakai adalah key lengkap berbentuk key_id:secret yang cuma muncul sekali saat key dibuat; atau (2) akun fal.ai-nya belum punya billing/credit, sehingga key-nya belum aktif untuk API. Cek Settings → Billing di fal.ai, lalu buat key baru.",
-      };
-    }
-    return { state: "valid" };
+    return classifyKeyCheck(
+      r.status,
+      "fal.ai menolak key ini (401 invalid key credentials). Dua sebab yang paling sering: (1) yang tersalin cuma Key ID — di dashboard fal.ai daftar key hanya menampilkan bagian itu, sedangkan yang dipakai adalah key lengkap berbentuk key_id:secret yang cuma muncul sekali saat key dibuat; atau (2) akun fal.ai-nya belum punya billing/credit, sehingga key-nya belum aktif untuk API. Cek Settings → Billing di fal.ai, lalu buat key baru.",
+    );
   } catch (_e) {
-    return { state: "unverified" };
+    return { state: "unverified", reason: "Providernya tidak bisa dihubungi dari server." };
   }
+}
+
+// URL antrean fal dipakai apa adanya dari respons submit — tapi jangan pernah
+// mengirim FAL key ke host yang bukan milik fal. Kalau bentuknya tidak sesuai,
+// kembalikan null dan biarkan pemanggil memakai jalur cadangan.
+function falQueueUrl(raw: unknown): string | null {
+  if (typeof raw !== "string" || !raw) return null;
+  try {
+    const u = new URL(raw);
+    return u.protocol === "https:" && u.hostname === "queue.fal.run" ? u.toString() : null;
+  } catch {
+    return null;
+  }
+}
+
+// Jalur cadangan untuk job lama yang dibuat sebelum `external_url` ada.
+// Dua segmen pertama model_key = namespace antrean fal; sisanya varian model,
+// yang kalau ikut dibawa membuat fal menjawab 405. Ini tetap menebak pola,
+// makanya hanya dipakai kalau provider tidak memberi URL-nya sendiri.
+function falQueueUrlFallback(modelKey: string, requestId: string): string {
+  const ns = String(modelKey).split("/").slice(0, 2).join("/");
+  return `https://queue.fal.run/${ns}/requests/${requestId}`;
+}
+
+// Tulis nilai ke jalur bertitik, membuat objek antara kalau belum ada.
+// Dipakai untuk voice id: ElevenLabs menaruhnya di "voice", MiniMax di
+// "voice_setting.voice_id". Jalurnya dari katalog (provider_models.voice_field),
+// bukan ditebak dari nama model.
+function setPath(target: Record<string, unknown>, path: string, value: unknown) {
+  const parts = String(path).split(".").filter(Boolean);
+  if (!parts.length) return;
+  let cur = target;
+  for (const key of parts.slice(0, -1)) {
+    if (typeof cur[key] !== "object" || cur[key] === null) cur[key] = {};
+    cur = cur[key] as Record<string, unknown>;
+  }
+  cur[parts[parts.length - 1]] = value;
 }
 
 Deno.serve(async (req) => {
@@ -345,17 +509,23 @@ Deno.serve(async (req) => {
   if (req.method !== "POST") return json({ error: "Method not allowed" }, 405);
   try {
     const body = await req.json();
-    const { ws } = await requireUser(req);
+    // Cron internal dulu; kalau tidak ada headernya, jalur normal lewat JWT user.
+    const ws = (await internalWorkspace(req, body)) ?? (await requireUser(req)).ws;
     const mode = (await getSecret(ws, "generation_mode")) || "mock";
 
     switch (body.action) {
       case "status": {
         const cfg = await textConfig(ws);
+        const bill = await billingMode(ws);
         return json({
-          fal_key: !!(await getSecret(ws, "fal_key")),
-          hf_token: !!(await getSecret(ws, "hf_token")),
+          fal_key: !!(await providerKey(ws, "fal_key")),
+          hf_token: !!(await providerKey(ws, "hf_token")),
           dashscope_key: !!(await dashscopeKey(ws)),
           mode,
+          // Di mode kredit, key-nya milik platform: Settings tidak perlu — dan
+          // tidak boleh — meminta user memasang key sendiri.
+          billing_mode: bill,
+          credit_balance: bill === "credit" ? await creditBalance(ws) : null,
           text: { provider: cfg.provider, model: cfg.model, vision_model: cfg.vision, base_url: cfg.base, configured: !!cfg.key },
           text_presets: TEXT_PRESETS,
         });
@@ -369,7 +539,11 @@ Deno.serve(async (req) => {
         const check = await verifyKey(provider, key);
         if (check.state === "rejected") throw new Error(check.reason || "Key ditolak provider.");
         await setSecret(ws, provider === "hf" ? "hf_token" : "fal_key", key);
-        return json({ ok: true, verified: check.state === "valid" });
+        return json({
+          ok: true,
+          verified: check.state === "valid",
+          verify_note: check.state === "valid" ? null : check.reason || null,
+        });
       }
       case "set_text_config": {
         const provider = String(body.provider || "qwen");
@@ -388,7 +562,7 @@ Deno.serve(async (req) => {
       }
       case "set_mode": {
         const m = body.mode === "live" ? "live" : "mock";
-        if (m === "live" && !(await getSecret(ws, "fal_key")) && !(await getSecret(ws, "hf_token"))) {
+        if (m === "live" && !(await providerKey(ws, "fal_key")) && !(await providerKey(ws, "hf_token"))) {
           throw new Error("Pasang FAL key atau Hugging Face token dulu sebelum mode live.");
         }
         await setSecret(ws, "generation_mode", m);
@@ -672,6 +846,15 @@ Deno.serve(async (req) => {
         const patch: Record<string, unknown> = {};
         if (typeof body.hook === "string") patch.hook = body.hook;
         if (typeof body.script === "string") patch.script = body.script;
+        // Penulis AI sudah lama mengembalikan caption + hashtags; sampai kolomnya
+        // ada, keduanya dibuang di sini — lalu publish menempelkan `script`
+        // (naskah yang dibacakan) sebagai caption. Sekarang disimpan.
+        if (typeof body.caption === "string") patch.caption = body.caption.slice(0, 2000);
+        if (Array.isArray(body.hashtags)) {
+          patch.hashtags = body.hashtags
+            .map((h: unknown) => String(h).trim().replace(/^#+/, ""))
+            .filter(Boolean).slice(0, 30);
+        }
         if (!Object.keys(patch).length) throw new Error("Tidak ada yang disimpan.");
         const { error } = await admin.from("content_items").update(patch).eq("id", item.id);
         if (error) throw new Error(error.message);
@@ -679,6 +862,19 @@ Deno.serve(async (req) => {
       }
       case "submit": {
         const { task, model_id, influencer_id, prompt = "", text = "", source_image_url, audio_url } = body;
+        // Untuk ide konten yang mana job ini dikerjakan. Opsional — character
+        // sheet, b-roll umum, dan uji prompt memang tidak punya konten induk.
+        // Tapi kalau diisi dan ternyata bukan milik workspace ini, jangan
+        // diam-diam dianggap kosong: hasilnya akan jadi aset tanpa tuan, dan
+        // publish kembali menebak file — persis kegagalan yang kolom ini
+        // dibuat untuk menutup.
+        let contentItemId: string | null = null;
+        if (body.content_item_id) {
+          const { data: ci } = await admin.from("content_items").select("id")
+            .eq("id", body.content_item_id).eq("workspace_id", ws).maybeSingle();
+          if (!ci) throw new Error("Konten tujuan tidak ditemukan di workspace ini.");
+          contentItemId = ci.id as string;
+        }
         // `label` opsional: nama yang terbaca manusia untuk asset hasilnya
         // (dipakai character sheet: "Ronny — front view", dst).
         const label = body.label ? String(body.label).slice(0, 120) : null;
@@ -704,11 +900,17 @@ Deno.serve(async (req) => {
         // semua fotonya. Tanpa itu, 3 dari batch yang sama dipilih acak dan
         // bisa berganti tiap generate — wajahnya jadi tidak konsisten.
         let refPhotos: string[] = [];
+        // Suara terkunci per influencer, disimpan per model_key karena voice id
+        // milik provider — lihat migration 0017.
+        let voiceId = "";
+        let influencerName = "";
         if (influencer_id) {
           const { data: inf } = await admin.from("influencers")
-            .select("identity_prompt, workspace_id").eq("id", influencer_id).maybeSingle();
+            .select("identity_prompt, workspace_id, voice, name").eq("id", influencer_id).maybeSingle();
           if (inf?.workspace_id === ws) {
             identity = inf.identity_prompt || "";
+            influencerName = inf.name || "";
+            voiceId = String((inf.voice as Record<string, unknown>)?.[model.model_key] || "");
             const { data: refs } = await admin.from("character_assets")
               .select("url").eq("influencer_id", influencer_id).eq("kind", "reference")
               .not("url", "is", null)
@@ -718,13 +920,35 @@ Deno.serve(async (req) => {
         }
         const finalPrompt = [identity, prompt].filter(Boolean).join(", ");
 
+        // Gerbang biaya. Dua mode, dua pagar yang berbeda sifatnya:
+        //
+        //   credit  — saldo. Ini pagar sebenarnya: uangnya uang platform, dan
+        //             kalau job berangkat tanpa saldo, kita yang membayar.
+        //             Karena itu di sini tidak ada opsi "hard_stop off".
+        //   byo_key — batas bulanan. Uangnya uang user sendiri, jadi ini rem
+        //             sukarela dan boleh dimatikan.
+        //
+        // Estimasi diperiksa SEBELUM job dibuat, bukan setelahnya: setelah job
+        // dikirim ke fal, biayanya sudah terjadi entah kita mencatatnya atau
+        // tidak. Estimasi juga bisa meleset di bawah biaya nyata (durasi video),
+        // jadi ini pagar, bukan akuntansi — pencatatan aslinya tetap di
+        // credits_ledger saat job selesai.
         if (mode === "live" && est > 0) {
-          const { data: bud } = await admin.from("budget_settings").select("*").eq("workspace_id", ws).maybeSingle();
-          const cap = Number(bud?.monthly_cap_usd ?? 200);
-          if ((bud?.hard_stop ?? true)) {
-            const spent = await monthSpent(ws);
-            if (spent + est > cap) {
-              throw new Error(`Budget guard: estimasi $${est.toFixed(2)} akan melewati batas bulanan $${cap.toFixed(2)} (terpakai $${spent.toFixed(2)}).`);
+          if ((await billingMode(ws)) === "credit") {
+            const balance = await creditBalance(ws);
+            if (balance < est) {
+              throw new Error(
+                `Kredit tidak cukup: job ini butuh sekitar $${est.toFixed(3)}, saldomu $${balance.toFixed(3)}. Isi kredit dulu di Settings.`,
+              );
+            }
+          } else {
+            const { data: bud } = await admin.from("budget_settings").select("*").eq("workspace_id", ws).maybeSingle();
+            const cap = Number(bud?.monthly_cap_usd ?? 200);
+            if ((bud?.hard_stop ?? true)) {
+              const spent = await monthSpent(ws);
+              if (spent + est > cap) {
+                throw new Error(`Budget guard: estimasi $${est.toFixed(2)} akan melewati batas bulanan $${cap.toFixed(2)} (terpakai $${spent.toFixed(2)}).`);
+              }
             }
           }
         }
@@ -732,7 +956,7 @@ Deno.serve(async (req) => {
         const { data: job, error: jobErr } = await admin.from("production_jobs").insert({
           workspace_id: ws, influencer_id: influencer_id || null, task,
           model_key: model.model_key, prompt: finalPrompt || String(text).slice(0, 500) || null,
-          status: "queued", cost_estimate_usd: est, label,
+          status: "queued", cost_estimate_usd: est, label, content_item_id: contentItemId,
         }).select("*").single();
         if (jobErr) throw new Error(jobErr.message);
 
@@ -740,6 +964,7 @@ Deno.serve(async (req) => {
           await admin.from("production_jobs").update({ status: "succeeded", output_url: url, cost_actual_usd: cost }).eq("id", job.id);
           await admin.from("assets").insert({
             workspace_id: ws, influencer_id: influencer_id || null,
+            content_item_id: contentItemId,
             kind: assetKind(task), url,
             name: `${label || `${task}-${job.id.slice(0, 8)}`}${mode === "mock" ? " (mock)" : model.provider === "hf" ? " (HF)" : ""}`,
           });
@@ -850,14 +1075,52 @@ Deno.serve(async (req) => {
         }
 
         // fal.ai — submit ke antrean, hasil diambil lewat action `poll`
-        const falKey = await getSecret(ws, "fal_key");
+        const falKey = await providerKey(ws, "fal_key");
         if (!falKey) await abort("FAL key belum dipasang — isi di Settings.");
         const input: Record<string, unknown> = {};
         if (task === "image") { input.prompt = finalPrompt; input.image_size = "portrait_4_3"; input.num_images = 1; }
         else if (task === "video") {
-          input.prompt = finalPrompt; input.duration = String(duration <= 5 ? 5 : 10);
-          if (source_image_url) input.image_url = source_image_url;
-        } else if (task === "tts") { input.text = String(text); }
+          input.prompt = finalPrompt;
+          input.duration = String(duration <= 5 ? 5 : 10);
+          // Nama field gambar awal dibaca dari katalog, bukan di-hardcode:
+          // sebagian besar model fal memakai `image_url`, tapi Kling 2.6 memakai
+          // `start_image_url`. Diuji langsung ke fal (POST body kosong -> 422
+          // menyebutkan field wajibnya).
+          //
+          // Dan di endpoint image-to-video foto itu WAJIB, bukan opsional —
+          // tanpa itu fal menjawab 422. Digagalkan di sini saja, dengan pesan
+          // yang bisa ditindaklanjuti, daripada menunggu error mentah provider.
+          if (model.init_image_field) {
+            if (!source_image_url) {
+              await abort(
+                "Model ini membuat video DARI sebuah foto, jadi fotonya wajib diisi. " +
+                "Buka halaman influencer, pilih foto yang wajahnya sudah benar, lalu tekan tombol B-roll — " +
+                "atau tempel URL-nya di kolom \"URL gambar awal\".",
+              );
+            }
+            input[String(model.init_image_field)] = source_image_url;
+          }
+        } else if (task === "tts") {
+          input.text = String(text);
+          // Kunci suara. Kalau job ini atas nama seorang influencer, suaranya
+          // WAJIB sudah dipilih — bukan opsional. Tanpa ini setiap influencer
+          // memakai suara default provider, artinya 25 orang berbeda bersuara
+          // sama persis, dan tidak ada error apa pun yang memberi tahu: baru
+          // ketahuan saat dua videonya ditonton berurutan, sesudah dibayar.
+          if (influencer_id) {
+            if (!model.voice_field) {
+              await abort(`Model ${model.label} belum punya pemetaan suara di katalog, jadi suara ${influencerName || "influencer"} tidak bisa dikunci. Pilih model TTS lain.`);
+            }
+            if (!voiceId) {
+              await abort(
+                `${influencerName || "Influencer ini"} belum punya suara untuk model ${model.label}. ` +
+                `Buka halaman influencer → Suara, pilih dulu voice id-nya. ` +
+                `Suara tidak bisa dipindah antar provider, jadi tiap model TTS punya pilihannya sendiri.`,
+              );
+            }
+            setPath(input, String(model.voice_field), voiceId);
+          }
+        }
         else if (task === "lipsync") {
           if (String(model.model_key).includes("sadtalker")) {
             input.source_image_url = source_image_url; input.driven_audio_url = audio_url;
@@ -875,13 +1138,19 @@ Deno.serve(async (req) => {
           await fail(errMsg);
           throw new Error(`Gagal submit ke fal.ai: ${errMsg}`);
         }
-        await admin.from("production_jobs").update({ status: "running", external_id: qr.request_id }).eq("id", job.id);
+        // Simpan URL antrean apa adanya dari fal. `status_url` fal persis sama
+        // dengan `response_url` + "/status", jadi satu kolom cukup untuk dua-duanya.
+        await admin.from("production_jobs").update({
+          status: "running",
+          external_id: qr.request_id,
+          external_url: falQueueUrl(qr.response_url),
+        }).eq("id", job.id);
         return json({ ok: true, job_id: job.id, status: "running", mode, provider: "fal" });
       }
       case "poll": {
         const { data: running } = await admin.from("production_jobs").select("*")
           .eq("workspace_id", ws).eq("status", "running").not("external_id", "is", null).limit(10);
-        const falKey = await getSecret(ws, "fal_key");
+        const falKey = await providerKey(ws, "fal_key");
         const dsKey = await dashscopeKey(ws);
         let updated = 0;
         for (const jb of running || []) {
@@ -902,6 +1171,7 @@ Deno.serve(async (req) => {
                 await admin.from("production_jobs").update({ status: "succeeded", output_url: url, cost_actual_usd: cost }).eq("id", jb.id);
                 await admin.from("assets").insert({
                   workspace_id: ws, influencer_id: jb.influencer_id,
+                  content_item_id: jb.content_item_id ?? null,
                   kind: assetKind(jb.task), url, name: jb.label || `${jb.task}-${jb.id.slice(0, 8)}`,
                 });
                 if (cost > 0) {
@@ -920,18 +1190,35 @@ Deno.serve(async (req) => {
           }
           if (!falKey) break;
           try {
-            const base = `https://queue.fal.run/${jb.model_key}/requests/${jb.external_id}`;
+            const base = falQueueUrl(jb.external_url)
+              || falQueueUrlFallback(jb.model_key, jb.external_id);
             const sres = await fetch(`${base}/status`, { headers: { Authorization: `Key ${falKey}` } });
             const st = await sres.json().catch(() => ({}));
             if (st.status === "COMPLETED") {
               const rres = await fetch(base, { headers: { Authorization: `Key ${falKey}` } });
               const result = await rres.json().catch(() => ({}));
-              const url = findMediaUrl(result);
+              const raw = findMediaUrl(result);
+              // Hasil HF dan DashScope sudah lama dipindahkan ke bucket `media`;
+              // fal satu-satunya yang tidak, jadi Drive menyimpan tautan ke CDN
+              // orang lain yang tidak kita kendalikan masa hidupnya. Pindahkan
+              // juga — tapi jangan pernah menggagalkan job kalau pemindahannya
+              // gagal: job ini sudah selesai dirender DAN sudah dibayar, jadi
+              // URL fal yang masih hidup selalu lebih baik daripada menandai
+              // pekerjaan berbayar sebagai gagal.
+              let url = raw;
+              if (raw) {
+                try {
+                  url = await storeRemote(ws, raw, jb.id, defaultCtype(jb.task));
+                } catch (_e) {
+                  url = raw;
+                }
+              }
               const cost = Number(jb.cost_estimate_usd) || 0;
               await admin.from("production_jobs").update({ status: "succeeded", output_url: url, cost_actual_usd: cost }).eq("id", jb.id);
               if (url) {
                 await admin.from("assets").insert({
                   workspace_id: ws, influencer_id: jb.influencer_id,
+                  content_item_id: jb.content_item_id ?? null,
                   kind: assetKind(jb.task), url, name: jb.label || `${jb.task}-${jb.id.slice(0, 8)}`,
                 });
               }

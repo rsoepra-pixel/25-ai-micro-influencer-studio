@@ -7,11 +7,11 @@ import { unwrap, useQuery } from "./views.jsx";
 // oranye = konteks kedua (biaya per jenis task) agar tidak tertukar dengan
 // chart biaya per influencer di sebelahnya.
 const CH = {
-  blue: "#2a78d6",
-  blueLight: "#86b6ef",
-  orange: "#eb6834",
-  grid: "#e7e7ec",
-  tick: "#3f3f46",
+  blue: "#2563eb",
+  blueLight: "#93c5fd",
+  orange: "#ea580c",
+  grid: "var(--border)",
+  tick: "var(--ink-2)",
 };
 
 const MONTHS_ID = ["Jan", "Feb", "Mar", "Apr", "Mei", "Jun", "Jul", "Agu", "Sep", "Okt", "Nov", "Des"];
@@ -123,7 +123,7 @@ function CadenceChart({ weeks }) {
         <span className="tiny row" style={{ gap: 5 }}><span style={{ width: 10, height: 10, borderRadius: 3, background: CH.blue }} /> Published</span>
         <span className="tiny row" style={{ gap: 5 }}><span style={{ width: 10, height: 10, borderRadius: 3, background: CH.blueLight }} /> Terjadwal (belum publish)</span>
       </div>
-      <div style={{ position: "relative", height: H, borderBottom: `1px solid #d4d4d8` }}>
+      <div style={{ position: "relative", height: H, borderBottom: `1px solid var(--border)` }}>
         {ticks.map((v) => (
           <div key={v} style={{ position: "absolute", left: 0, right: 0, bottom: h(v), borderTop: `1px solid ${CH.grid}` }}>
             <span className="tiny muted" style={{ position: "absolute", left: 0, top: -14 }}>{v}</span>
@@ -140,12 +140,12 @@ function CadenceChart({ weeks }) {
                 {hov === i && (
                   <div style={{
                     position: "absolute", bottom: "100%", marginBottom: 6, left: "50%", transform: "translateX(-50%)",
-                    background: "#17171c", color: "#fff", borderRadius: 8, padding: "6px 10px",
+                    background: "var(--text)", color: "#fff", borderRadius: 8, padding: "6px 10px",
                     fontSize: 11, whiteSpace: "nowrap", pointerEvents: "none", zIndex: 5,
                   }}>
                     <div style={{ fontWeight: 700 }}>Minggu {w.label}</div>
-                    <div><span style={{ color: "#5598e7" }}>●</span> Published: {w.published}</div>
-                    <div><span style={{ color: "#cde2fb" }}>●</span> Terjadwal: {w.planned}</div>
+                    <div><span style={{ color: "#60a5fa" }}>●</span> Published: {w.published}</div>
+                    <div><span style={{ color: "#bfdbfe" }}>●</span> Terjadwal: {w.planned}</div>
                   </div>
                 )}
               </div>
@@ -265,7 +265,7 @@ export function Reports({ ws, tick }) {
 
       {noData ? (
         <div className="card p6" style={{ textAlign: "center" }}>
-          <span className="small muted">Belum ada data. Mulai dari <a href="#/planner" style={{ color: "#7c3aed", fontWeight: 600 }}>Content Planner</a> atau <a href="#/studio" style={{ color: "#7c3aed", fontWeight: 600 }}>Production Studio</a>.</span>
+          <span className="small muted">Belum ada data. Mulai dari <a href="#/planner" style={{ color: "var(--blue-strong)", fontWeight: 600 }}>Content Planner</a> atau <a href="#/studio" style={{ color: "var(--blue-strong)", fontWeight: 600 }}>Production Studio</a>.</span>
         </div>
       ) : (
         <>

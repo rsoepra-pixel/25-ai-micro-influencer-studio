@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useCallback } from "react";
 import { createRoot } from "react-dom/client";
-import { supa, signupConfirmed, STATUS_LABELS, usd } from "./supa.js";
+import { supa, signupConfirmed, callApp, STATUS_LABELS, usd } from "./supa.js";
 import {
   Dashboard, Influencers, InfluencerDetail, Studio, Planner, Tasks, Drive, Settings,
 } from "./views.jsx";
@@ -62,7 +62,7 @@ function Login() {
       <div className="card p6" style={{ width: "100%", maxWidth: 420 }}>
         <div style={{ fontSize: 24, fontWeight: 800 }} className="gradient-title">AI Micro Influencer Studio</div>
         <p className="muted small mt1 mb4">
-          {mode === "signin" ? "Masuk ke workspace kamu." : "Daftar — akun pertama otomatis menjadi owner workspace."}
+          {mode === "signin" ? "Masuk ke workspace kamu." : "Daftar — kamu langsung dapat workspace sendiri sebagai owner."}
         </p>
         <form onSubmit={submit}>
           <label className="label">Email</label>
@@ -74,14 +74,14 @@ function Login() {
             {busy ? "Memproses…" : mode === "signin" ? "Masuk" : "Daftar"}
           </button>
         </form>
-        <button className="mt3" style={{ background: "none", border: "none", color: "#7c3aed", fontWeight: 600, cursor: "pointer" }}
+        <button className="mt3" style={{ background: "none", border: "none", color: "var(--brand)", fontWeight: 600, cursor: "pointer" }}
           onClick={() => setMode(mode === "signin" ? "signup" : "signin")}>
           {mode === "signin" ? "Belum punya akun? Daftar" : "Sudah punya akun? Masuk"}
         </button>
         <div className="tiny muted mt4" style={{ textAlign: "center" }}>
-          <a href={legalHref("privacy.html")} target="_blank" rel="noreferrer" style={{ color: "#a1a1aa" }}>Kebijakan Privasi</a>
+          <a href={legalHref("privacy.html")} target="_blank" rel="noreferrer" style={{ color: "var(--dim)" }}>Kebijakan Privasi</a>
           {" · "}
-          <a href={legalHref("terms.html")} target="_blank" rel="noreferrer" style={{ color: "#a1a1aa" }}>Syarat & Ketentuan</a>
+          <a href={legalHref("terms.html")} target="_blank" rel="noreferrer" style={{ color: "var(--dim)" }}>Syarat & Ketentuan</a>
         </div>
       </div>
     </div>
@@ -92,7 +92,7 @@ function App() {
   const route = useRoute();
   const [session, setSession] = useState(undefined);
   const [ws, setWs] = useState(null);
-  const [spend, setSpend] = useState({ spent: 0, cap: 200, mode: "mock" });
+  const [spend, setSpend] = useState({ spent: 0, cap: 200, mode: "mock", billing: "byo_key", balance: 0 });
   const [spendError, setSpendError] = useState(null);
   const [tick, setTick] = useState(0);
   const refresh = useCallback(() => setTick((t) => t + 1), []);
@@ -102,6 +102,16 @@ function App() {
     const { data: sub } = supa.auth.onAuthStateChange((_e, s) => setSession(s));
     return () => sub.subscription.unsubscribe();
   }, []);
+
+  // Catat kunjungan. Ini yang membuat penargetan "pelanggan baru login 3x"
+  // punya angka untuk dipakai — sebelumnya tidak ada satu pun tempat di app ini
+  // yang menghitung login. Sengaja best-effort: kalau gagal, jangan sampai
+  // menghalangi halaman terbuka. Server yang memutuskan apakah kunjungan ini
+  // sesi baru (jeda > 6 jam), bukan klien.
+  useEffect(() => {
+    if (!session) return;
+    callApp({ action: "touch" }).catch(() => {});
+  }, [session]);
 
   useEffect(() => {
     if (!session) return;
@@ -121,10 +131,23 @@ function App() {
           if (ledErr) throw new Error(ledErr.message);
           if (budErr) throw new Error(budErr.message);
           if (modeErr) throw new Error(modeErr.message);
+          // Di mode kredit yang membatasi adalah saldo, bukan batas bulanan.
+          // Menampilkan "terpakai $X dari batas $200" di sana akan menyebut
+          // angka yang tidak menentukan apa pun — user membacanya sebagai sisa
+          // jatah, padahal job ditolak/diterima berdasarkan saldo.
+          const credit = w.billing_mode === "credit";
+          let balance = 0;
+          if (credit) {
+            const { data: bal, error: balErr } = await supa.rpc("credit_balance", { ws: w.id });
+            if (balErr) throw new Error(balErr.message);
+            balance = Number(bal || 0);
+          }
           setSpend({
             spent: (led || []).reduce((s, r) => s + Math.abs(Number(r.delta_usd)), 0),
             cap: Number(bud?.monthly_cap_usd ?? 200),
             mode: cfgMode || "mock",
+            billing: credit ? "credit" : "byo_key",
+            balance,
           });
         }
       } catch (e) {
@@ -142,7 +165,7 @@ function App() {
       <div style={{ minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center" }}>
         <div className="card p6" style={{ maxWidth: 420, textAlign: "center" }}>
           <div className="bold">Workspace belum tersedia</div>
-          <p className="muted small mt2">Workspace dibuat otomatis untuk akun pertama. Muat ulang halaman ini, atau minta owner mengundang kamu.</p>
+          <p className="muted small mt2">Workspace dibuat otomatis saat kamu mendaftar. Kalau halaman ini muncul, pembuatannya belum selesai — muat ulang sebentar lagi.</p>
           <button className="btn mt3" onClick={() => window.location.reload()}>Muat ulang</button>
         </div>
       </div>
@@ -167,7 +190,7 @@ function App() {
         <div style={{ padding: 18, borderBottom: "1px solid var(--border)" }}>
           <div style={{ fontWeight: 800, fontSize: 17 }}>
             <span className="gradient-title">AI Influencer</span>{" "}
-            <span className="badge" style={{ background: "#fef3c7", color: "#b45309", fontSize: 10 }}>BETA</span>
+            <span className="badge" style={{ background: "var(--warn-soft)", color: "var(--warn)", fontSize: 10 }}>BETA</span>
           </div>
           <div className="tiny muted mt1">{ws.name}</div>
         </div>
@@ -177,15 +200,23 @@ function App() {
           ))}
         </nav>
         <div style={{ padding: 14, borderTop: "1px solid var(--border)" }}>
-          <div className="card p4" style={{ background: "#fafafa" }}>
-            <span className="label">Biaya bulan ini</span>
+          <div className="card p4" style={{ background: "var(--subtle)" }}>
+            <span className="label">{spend.billing === "credit" ? "Saldo kredit" : "Biaya bulan ini"}</span>
             {spendError ? (
               <div className="msg-err tiny mt1">Gagal memuat biaya: {spendError}</div>
+            ) : spend.billing === "credit" ? (
+              <>
+                <div style={{ fontSize: 20, fontWeight: 800, color: spend.balance < 1 ? "var(--warn)" : "var(--ok)" }}>{usd(spend.balance)}</div>
+                <div className="tiny muted">terpakai {usd(spend.spent)} bulan ini</div>
+                <span className={`badge mt2`} style={spend.mode === "live" ? { background: "var(--ok-line)", color: "var(--ok)" } : { background: "var(--border)", color: "var(--ink-3)" }}>
+                  mode: {spend.mode}
+                </span>
+              </>
             ) : (
               <>
-                <div style={{ fontSize: 20, fontWeight: 800, color: "#d97706" }}>{usd(spend.spent)}</div>
+                <div style={{ fontSize: 20, fontWeight: 800, color: "var(--warn)" }}>{usd(spend.spent)}</div>
                 <div className="tiny muted">dari batas {usd(spend.cap)}</div>
-                <span className={`badge mt2`} style={spend.mode === "live" ? { background: "#dcfce7", color: "#15803d" } : { background: "#e4e4e7", color: "#52525b" }}>
+                <span className={`badge mt2`} style={spend.mode === "live" ? { background: "var(--ok-line)", color: "var(--ok)" } : { background: "var(--border)", color: "var(--ink-3)" }}>
                   mode: {spend.mode}
                 </span>
               </>
@@ -193,7 +224,7 @@ function App() {
           </div>
           <div className="row mt3" style={{ justifyContent: "space-between" }}>
             <span className="tiny muted" style={{ overflow: "hidden", textOverflow: "ellipsis" }}>{session.user.email}</span>
-            <button title="Keluar" style={{ background: "none", border: "none", cursor: "pointer", color: "#a1a1aa" }}
+            <button title="Keluar" style={{ background: "none", border: "none", cursor: "pointer", color: "var(--dim)" }}
               onClick={async () => { await supa.auth.signOut(); }}>⏻</button>
           </div>
         </div>

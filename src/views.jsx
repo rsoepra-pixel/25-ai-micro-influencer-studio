@@ -26,9 +26,9 @@ const ErrBanner = ({ error }) => error ? <div className="msg-err mb3">Gagal memu
 
 function Badge({ children, tone = "zinc" }) {
   const tones = {
-    green: ["#dcfce7", "#15803d"], red: ["#fee2e2", "#b91c1c"],
-    amber: ["#fef3c7", "#b45309"], violet: ["#ede9fe", "#6d28d9"],
-    blue: ["#dbeafe", "#1d4ed8"], zinc: ["#f4f4f5", "#52525b"],
+    green: ["var(--ok-line)", "var(--ok)"], red: ["var(--err-line)", "var(--err-strong)"],
+    amber: ["var(--warn-soft)", "var(--warn)"], violet: ["var(--brand-soft)", "var(--brand-strong)"],
+    blue: ["var(--blue-line)", "var(--blue-strong)"], zinc: ["var(--subtle-2)", "var(--ink-3)"],
   };
   const [bg, fg] = tones[tone] || tones.zinc;
   return <span className="badge" style={{ background: bg, color: fg }}>{children}</span>;
@@ -122,7 +122,7 @@ export function Dashboard({ ws, tick }) {
 }
 
 const Empty = ({ text, cta, href }) => (
-  <div className="small muted">{text} <a href={`#${href}`} style={{ color: "#7c3aed", fontWeight: 600 }}>{cta} →</a></div>
+  <div className="small muted">{text} <a href={`#${href}`} style={{ color: "var(--blue-strong)", fontWeight: 600 }}>{cta} →</a></div>
 );
 
 // ---------- Influencers ----------
@@ -264,18 +264,15 @@ function PersonaWizard({ onApply, onClose, initialAnswers, refine, notice }) {
         </p>
 
         {notice && (
-          <div className="mb3" style={{
-            background: "#fffbeb", border: "1px solid #fde68a", color: "#92400e",
-            borderRadius: 10, padding: 10, fontSize: 13, lineHeight: 1.5,
-          }}>{notice}</div>
+          <div className="msg-warn mb3">{notice}</div>
         )}
 
         {!out && (
           <>
-            <div className="card p4 mb3" style={{ background: "#fafafa" }}>
+            <div className="card p4 mb3" style={{ background: "var(--subtle)" }}>
               <div className="row mb1" style={{ justifyContent: "space-between" }}>
                 <span className="label" style={{ margin: 0 }}>Foto referensi (opsional, maks. 4)</span>
-                <label className="tiny" style={{ color: "#7c3aed", fontWeight: 700, cursor: "pointer" }}>
+                <label className="tiny" style={{ color: "var(--brand)", fontWeight: 700, cursor: "pointer" }}>
                   + Pilih foto
                   <input type="file" accept="image/*" multiple onChange={addPhotos} style={{ display: "none" }} />
                 </label>
@@ -293,7 +290,7 @@ function PersonaWizard({ onApply, onClose, initialAnswers, refine, notice }) {
                       <button type="button" title="Hapus"
                         onClick={() => setPhotos(photos.filter((_, k) => k !== i))}
                         style={{ position: "absolute", top: -6, right: -6, width: 20, height: 20, borderRadius: 99,
-                          border: "none", background: "#17171c", color: "#fff", cursor: "pointer", fontSize: 12, lineHeight: "20px", padding: 0 }}>×</button>
+                          border: "none", background: "var(--text)", color: "#fff", cursor: "pointer", fontSize: 12, lineHeight: "20px", padding: 0 }}>×</button>
                     </div>
                   ))}
                 </div>
@@ -337,10 +334,7 @@ function PersonaWizard({ onApply, onClose, initialAnswers, refine, notice }) {
         {out && (
           <>
             {out._photosFailed?.length > 0 && (
-              <div className="mb3" style={{
-                background: "#fffbeb", border: "1px solid #fde68a", color: "#92400e",
-                borderRadius: 8, padding: "10px 12px", fontSize: 13, lineHeight: 1.5,
-              }}>
+              <div className="msg-warn mb3">
                 <b>{out._photosFailed.length} dari {out._photosFailed.length + out._photoUrls.length} foto gagal disimpan.</b>{" "}
                 Deskripsi di bawah tetap dibuat dari semua foto yang kamu unggah, tapi Identity Kit
                 hanya akan berisi {out._photoUrls.length} foto — dan itulah yang nanti dikirim sebagai
@@ -354,7 +348,7 @@ function PersonaWizard({ onApply, onClose, initialAnswers, refine, notice }) {
               </div>
             )}
             {(out.names?.length > 0 || out.handles?.length > 0) && (
-              <div className="card p4 mb3" style={{ background: "#fafafa" }}>
+              <div className="card p4 mb3" style={{ background: "var(--subtle)" }}>
                 {out.names?.length > 0 && <div className="small mb1"><b>Usulan nama:</b> {out.names.join(" · ")}</div>}
                 {out.handles?.length > 0 && <div className="small"><b>Usulan handle:</b> {out.handles.join(" · ")}</div>}
               </div>
@@ -371,7 +365,7 @@ function PersonaWizard({ onApply, onClose, initialAnswers, refine, notice }) {
               pose, atau baju. Latar tempat ditulis di prompt tiap gambar, bukan di sini.
             </p>
             {out.style_notes && (
-              <div className="card p4 mb3" style={{ background: "#fafafa" }}>
+              <div className="card p4 mb3" style={{ background: "var(--subtle)" }}>
                 <div className="label" style={{ margin: 0 }}>Saran gaya visual (untuk prompt per-gambar)</div>
                 <div className="small mt1">{out.style_notes}</div>
               </div>
@@ -422,7 +416,7 @@ function LookAlikePanel({ onFace, onAmbience }) {
 
   const text = out ? (aspect === "face" ? out.identity_prompt : out.style_notes) : "";
   return (
-    <div className="card p4 mb3" style={{ background: "#fafafa" }}>
+    <div className="card p4 mb3" style={{ background: "var(--subtle)" }}>
       <div className="bold small mb1">📸 Look-alike photo (opsional)</div>
       <p className="tiny muted mb3">
         Unggah 1 foto acuan, lalu pilih apa yang ditiru: karakter wajahnya, atau ambience-nya
@@ -454,10 +448,7 @@ function LookAlikePanel({ onFace, onAmbience }) {
       {out && (
         <div className="mt2">
           {out._failReason && (
-            <div className="mb2" style={{
-              background: "#fffbeb", border: "1px solid #fde68a", color: "#92400e",
-              borderRadius: 8, padding: "10px 12px", fontSize: 13, lineHeight: 1.5,
-            }}>
+            <div className="msg-warn mb2">
               <b>Foto acuannya gagal disimpan</b> — {out._failReason}{" "}
               Hasil bacaan di bawah tetap bisa dipakai, tapi fotonya sendiri tidak ikut
               masuk Identity Kit, jadi tidak akan jadi acuan wajah saat generate gambar.
@@ -486,9 +477,19 @@ function LookAlikePanel({ onFace, onAmbience }) {
   );
 }
 
-export function Influencers({ ws, refresh, tick }) {
+export function Influencers({ ws, refresh, tick, mode }) {
   const [list, reload, listError] = useQuery(async () =>
     unwrap(await supa.from("influencers").select("*").order("created_at")), [ws.id, tick]);
+  // Katalog model dibutuhkan karena pembuatan influencer berlanjut ke langkah
+  // character sheet di halaman ini juga — bukan cuma di Production Studio.
+  const [models] = useQuery(async () =>
+    unwrap(await supa.from("provider_models").select("*").eq("active", true).order("task")), [ws.id, tick]);
+  // Siapa yang sudah punya character sheet. Ditandai lewat nama asetnya, bukan
+  // kolom tersendiri: sheet dibuat sebagai job biasa, jadi tidak ada status yang
+  // bisa ikut basi kalau asetnya dihapus.
+  const [sheetRows, reloadSheets] = useQuery(async () =>
+    unwrap(await supa.from("assets").select("influencer_id").like("name", `${SHEET_LABEL_PREFIX}%`)), [ws.id, tick]);
+  const punyaSheet = new Set((sheetRows || []).map((r) => r.influencer_id).filter(Boolean));
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState(null);
   const [niche, setNiche] = useState("");
@@ -506,6 +507,10 @@ export function Influencers({ ws, refresh, tick }) {
   // URL foto dari wizard disimpan dulu — influencer-nya belum ada, jadi baru
   // dilampirkan sebagai Identity Kit setelah insert berhasil.
   const [pendingRefs, setPendingRefs] = useState([]);
+  // Influencer yang baru saja dibuat, untuk langkah character sheet. Disimpan
+  // utuh dari isian form (bukan menunggu hasil reload) supaya panelnya langsung
+  // punya identity_prompt & style_notes tanpa satu putaran render kosong.
+  const [baruDibuat, setBaruDibuat] = useState(null);
 
   function applyPersona(p) {
     setNiche(p.niche || "");
@@ -540,6 +545,15 @@ export function Influencers({ ws, refresh, tick }) {
       try { await callGenerate({ action: "attach_refs", influencer_id: inserted.id, urls: pendingRefs }); }
       catch (e2) { setErr(`Influencer dibuat, tapi foto referensi gagal dilampirkan: ${e2.message}`); }
     }
+    // Pembuatan influencer belum selesai di sini: tanpa character sheet, setiap
+    // produksi berikutnya berangkat dari nol dan wajahnya gampang bergeser.
+    // Jadi langkah keduanya langsung dimunculkan, terisi untuk influencer ini.
+    setBaruDibuat({
+      id: inserted.id,
+      name: String(f.get("name") || ""),
+      identity_prompt: String(f.get("identity_prompt") || ""),
+      persona: { bio: String(f.get("bio") || ""), style_notes: String(f.get("style_notes") || "") },
+    });
     setBusy(false);
     e.target.reset(); setNiche(""); setBioHint(""); setIdentityHint(""); setStyleNotes(""); setPendingRefs([]); setSelectedIdea(null);
     setFormOpen(false); reload(); refresh();
@@ -560,6 +574,34 @@ export function Influencers({ ws, refresh, tick }) {
           </button>
         )}
       </div>
+      {baruDibuat && (
+        <div className="card p6 mb6" style={{ border: "2px solid var(--brand-line)", background: "var(--brand-soft)" }}>
+          <div className="row mb1" style={{ justifyContent: "space-between", alignItems: "flex-start" }}>
+            <div className="bold">Langkah 2 — character sheet untuk {baruDibuat.name}</div>
+            <button type="button" className="btn btn2" style={{ fontSize: 12, padding: "6px 12px", flexShrink: 0 }}
+              onClick={() => { setBaruDibuat(null); reloadSheets(); }}>
+              Lewati dulu
+            </button>
+          </div>
+          <p className="tiny muted mb3">
+            {baruDibuat.name} sudah tersimpan, tapi belum punya foto acuan. Character sheet adalah
+            beberapa foto wajah dari sudut & ekspresi berbeda yang jadi patokan di semua produksi
+            berikutnya — tanpa itu tiap generate berangkat dari nol dan wajahnya gampang bergeser.
+            Kalau dilewati, influencer ini akan ditandai di daftar dan bisa dibuatkan kapan saja.
+          </p>
+          {models ? (
+            <CharacterSheetPanel
+              models={models}
+              influencers={[baruDibuat]}
+              lockInfluencerId={baruDibuat.id}
+              mode={mode}
+              refresh={() => { reloadSheets(); refresh(); }}
+            />
+          ) : (
+            <div className="muted small">Memuat katalog model…</div>
+          )}
+        </div>
+      )}
       <div className="grid mb6" style={{ gridTemplateColumns: "repeat(auto-fill,minmax(280px,1fr))" }}>
         {list.map((i) => (
           <a key={i.id} href={`#/influencers/${i.id}`} className="card p4">
@@ -572,6 +614,11 @@ export function Influencers({ ws, refresh, tick }) {
               <Badge tone={statusTone(i.status)}>{STATUS_LABELS[i.status]}</Badge>
             </div>
             <div className="tiny muted mt2">{i.persona?.bio || "Belum ada persona."}</div>
+            {/* Ditampilkan hanya kalau datanya sudah dimuat — daftar yang masih
+                null tidak boleh terbaca sebagai "semua belum punya sheet". */}
+            {sheetRows && !punyaSheet.has(i.id) && (
+              <div className="tiny mt2" style={{ color: "var(--warn)" }}>⚠️ Character sheet belum dibuat</div>
+            )}
           </a>
         ))}
       </div>
@@ -594,13 +641,13 @@ export function Influencers({ ws, refresh, tick }) {
               <button type="button" key={idea.id} onClick={() => pickIdea(idea)}
                 className="card p3" style={{
                   textAlign: "left", cursor: "pointer",
-                  border: selectedIdea === idea.id ? "2px solid #7c3aed" : "1px solid var(--border)",
+                  border: selectedIdea === idea.id ? "2px solid var(--brand)" : "1px solid var(--border)",
                 }}>
                 <div className="row" style={{ justifyContent: "space-between" }}>
                   <span className="bold small">{idea.label}</span>
-                  {selectedIdea === idea.id && <span className="tiny" style={{ color: "#7c3aed" }}>✓ Terpilih</span>}
+                  {selectedIdea === idea.id && <span className="tiny" style={{ color: "var(--brand)" }}>✓ Terpilih</span>}
                 </div>
-                {idea.warning && <div className="tiny mt1" style={{ color: "#b45309" }}>⚠️ {idea.warning}</div>}
+                {idea.warning && <div className="tiny mt1" style={{ color: "var(--warn)" }}>⚠️ {idea.warning}</div>}
               </button>
             ))}
           </div>
@@ -631,7 +678,7 @@ export function Influencers({ ws, refresh, tick }) {
             onAmbience={(txt) => setStyleNotes(txt)}
           />
           {pendingRefs.length > 0 && (
-            <div className="card p4 mb3" style={{ background: "#fafafa" }}>
+            <div className="card p4 mb3" style={{ background: "var(--subtle)" }}>
               <div className="label" style={{ margin: 0 }}>{pendingRefs.length} foto referensi siap dilampirkan</div>
               <div className="grid mt2" style={{ gridTemplateColumns: "repeat(4,1fr)", gap: 8 }}>
                 {pendingRefs.map((u) => <div key={u} className="thumb" style={{ aspectRatio: "1" }}><img src={u} alt="" /></div>)}
@@ -649,6 +696,74 @@ export function Influencers({ ws, refresh, tick }) {
 }
 
 // ---------- Influencer Detail ----------
+// Suara terkunci per influencer. Disimpan per model_key, bukan satu kolom,
+// karena voice id itu milik provider: "Wise_Woman" adalah suara MiniMax dan
+// tidak berarti apa-apa di ElevenLabs. Satu kolom akan tetap terisi saat model
+// diganti, lalu dikirim ke provider yang tidak mengenalnya.
+//
+// Daftar di bawah SARAN dari dokumentasi provider, bukan hasil verifikasi app
+// ini — kalau voice id-nya salah, yang memberi tahu adalah providernya saat
+// generate pertama. Karena itu kolomnya tetap teks bebas: voice hasil cloning
+// punya id sendiri yang tidak akan pernah ada di daftar mana pun.
+const VOICE_SUGGESTIONS = {
+  "fal-ai/minimax/speech-02-hd": [
+    "Wise_Woman", "Friendly_Person", "Calm_Woman", "Casual_Guy",
+    "Lively_Girl", "Deep_Voice_Man", "Patient_Man", "Sweet_Girl_2",
+  ],
+  "fal-ai/elevenlabs/tts/eleven-v3": ["Aria", "Rachel", "Bill", "Sarah", "Laura", "Charlie"],
+};
+
+function VoiceCard({ inf, models, onSaved }) {
+  const ttsModels = (models || []).filter((m) => m.task === "tts" && m.voice_field);
+  const [voice, setVoice] = useState(inf.voice || {});
+  const [msg, setMsg] = useState(null);
+  const [busy, setBusy] = useState(false);
+  if (!ttsModels.length) return null;
+
+  async function save() {
+    setBusy(true); setMsg(null);
+    const clean = {};
+    for (const [k, v] of Object.entries(voice)) if (String(v || "").trim()) clean[k] = String(v).trim();
+    const { error } = await supa.from("influencers").update({ voice: clean }).eq("id", inf.id);
+    setBusy(false);
+    if (error) { setMsg(error.message); return; }
+    setMsg("Suara tersimpan.");
+    onSaved?.();
+  }
+
+  const anySet = ttsModels.some((m) => String(voice[m.model_key] || "").trim());
+  return (
+    <div className="card p6 mb4">
+      <div className="row mb1" style={{ justifyContent: "space-between" }}>
+        <div className="bold">Suara</div>
+        <Badge tone={anySet ? "green" : "amber"}>{anySet ? "terkunci" : "belum dipilih"}</Badge>
+      </div>
+      <p className="tiny muted mb3">
+        Tanpa ini semua influencer memakai suara default provider — 25 orang berbeda dengan satu suara
+        yang sama, dan tidak ada error yang memberi tahu. Job TTS atas nama {inf.name} akan ditolak
+        sampai suaranya dipilih.
+      </p>
+      {ttsModels.map((m) => (
+        <div key={m.id} className="mb3">
+          <label className="label">{m.label}</label>
+          <input className="input" list={`voices-${m.id}`} placeholder="voice id dari provider…"
+            value={voice[m.model_key] || ""}
+            onChange={(e) => setVoice({ ...voice, [m.model_key]: e.target.value })} />
+          <datalist id={`voices-${m.id}`}>
+            {(VOICE_SUGGESTIONS[m.model_key] || []).map((v) => <option key={v} value={v} />)}
+          </datalist>
+        </div>
+      ))}
+      <p className="tiny muted mb3">
+        Daftar sarannya dari dokumentasi provider, belum diuji oleh app ini — kalau id-nya salah,
+        providernya yang akan menolak saat generate. Voice hasil cloning juga bisa ditempel di sini.
+      </p>
+      {msg && <div className={msg === "Suara tersimpan." ? "msg-ok mb2" : "msg-err mb2"}>{msg}</div>}
+      <button type="button" className="btn" disabled={busy} onClick={save}>Simpan suara</button>
+    </div>
+  );
+}
+
 export function InfluencerDetail({ id, ws, refresh, tick, mode }) {
   // Foto yang dipilih dari "Aset terbaru" untuk dipakai sebagai gambar awal.
   const [picked, setPicked] = useState(null);
@@ -677,7 +792,7 @@ export function InfluencerDetail({ id, ws, refresh, tick, mode }) {
   const [identityLocked, setIdentityLocked] = useState(null);
 
   if (!d) return loadError ? <div className="msg-err">Gagal memuat influencer: {loadError}</div> : <div className="muted">Memuat…</div>;
-  if (!d.inf) return <div className="muted">Influencer tidak ditemukan. <a href="#/influencers" style={{ color: "#7c3aed" }}>← Kembali</a></div>;
+  if (!d.inf) return <div className="muted">Influencer tidak ditemukan. <a href="#/influencers" style={{ color: "var(--blue-strong)" }}>← Kembali</a></div>;
   const inf = d.inf;
   const bioVal = bio ?? (inf.persona?.bio || "");
   const identityVal = identity ?? (inf.identity_prompt || "");
@@ -698,7 +813,7 @@ export function InfluencerDetail({ id, ws, refresh, tick, mode }) {
 
   return (
     <div>
-      <a href="#/influencers" className="small" style={{ color: "#7c3aed" }}>← Semua influencer</a>
+      <a href="#/influencers" className="small" style={{ color: "var(--blue-strong)" }}>← Semua influencer</a>
       <div className="row mt2 mb4">
         <span className="avatar" style={{ width: 60, height: 60, fontSize: 24 }}>{inf.avatar_url ? <img src={inf.avatar_url} alt="" /> : inf.name[0]}</span>
         <div>
@@ -739,7 +854,7 @@ export function InfluencerDetail({ id, ws, refresh, tick, mode }) {
             </button>
           </div>
           <textarea name="identity_prompt" className="input mb1" rows={5} value={identityVal}
-            readOnly={lockedVal} style={lockedVal ? { background: "#f6f6f9", color: "var(--muted)" } : undefined}
+            readOnly={lockedVal} style={lockedVal ? { background: "var(--subtle)", color: "var(--muted)" } : undefined}
             onChange={(e) => setIdentity(e.target.value)} />
           <p className="tiny muted mb3">
             Teks ini disuntikkan ke SETIAP generate. Isi hanya ciri fisik tetap (wajah, rambut, kulit) —
@@ -803,6 +918,7 @@ export function InfluencerDetail({ id, ws, refresh, tick, mode }) {
               </div>
             ) : <div className="small muted">Belum ada foto referensi.</div>}
           </div>
+          <VoiceCard inf={inf} models={d.models} onSaved={() => { reload(); refresh(); }} />
           <div className="card p6 mb4" ref={genRef}>
             <div className="bold mb3">Generate untuk {inf.name}</div>
             <GenerateForm models={d.models} influencerId={id} refresh={() => { reload(); refresh(); }}
@@ -854,10 +970,44 @@ export function GenerateForm({ models, influencers, influencerId, refresh, mode,
   const [ttsText, setTtsText] = useState("");
   const [step, setStep] = useState(null);
   const [formInfId, setFormInfId] = useState("");
+  const [contentItemId, setContentItemId] = useState("");
 
   // Influencer yang sedang aktif: dari prop (halaman influencer) atau dari
   // dropdown (Production Studio). Menentukan foto Identity Kit mana yang relevan.
   const activeInfId = influencerId || formInfId || null;
+
+  // Ide konten yang belum terbit, untuk menandai hasil produksi ini milik siapa.
+  // Tanpa tanda itu, layar publish tidak punya cara tahu file mana yang harus
+  // diposting untuk sebuah konten.
+  const [openItems, setOpenItems] = useState([]);
+  useEffect(() => {
+    let alive = true;
+    supa.from("content_items").select("id,title,content_type,influencer_id,status")
+      .neq("status", "published").order("scheduled_date", { ascending: true })
+      .then(({ data }) => { if (alive) setOpenItems(data || []); });
+    return () => { alive = false; };
+  }, [activeInfId]);
+  // Konten milik influencer yang sedang dipilih. Kalau belum ada influencer
+  // yang dipilih, tampilkan SEMUA — bukan hanya yang tidak terikat siapa pun.
+  // Versi pertama menyaring ke `!it.influencer_id`, dan karena hampir semua
+  // konten memang punya influencer, dropdownnya jadi tidak pernah muncul di
+  // Production Studio: fiturnya ada tapi tak terlihat justru di layar tempat
+  // orang generate.
+  const itemChoices = openItems.filter((it) => !activeInfId || it.influencer_id === activeInfId);
+  const infName = (id) => (influencers || []).find((i) => i.id === id)?.name || null;
+
+  // Memilih konten milik seorang influencer TANPA memilih influencernya adalah
+  // jebakan: hasilnya ditandai untuk konten Nadia, tapi identity prompt Nadia
+  // tidak ikut disuntikkan, jadi wajahnya orang lain — dan itu baru ketahuan
+  // setelah dibayar. Jadi memilih konten sekalian memilih pemiliknya.
+  function pickContentItem(id) {
+    setContentItemId(id);
+    const it = openItems.find((x) => x.id === id);
+    if (it?.influencer_id && !influencerId && it.influencer_id !== formInfId) {
+      setFormInfId(it.influencer_id);
+      setModelId("");
+    }
+  }
   const [refCount, setRefCount] = useState(0);
   useEffect(() => {
     if (!activeInfId) { setRefCount(0); return; }
@@ -878,7 +1028,11 @@ export function GenerateForm({ models, influencers, influencerId, refresh, mode,
     setSourceUrl(picked.url);
   }, [picked?.n]);
 
-  const taskModels = models.filter((m) => m.task === task);
+  // Disaring per task — model video tidak pernah muncul saat task-nya gambar,
+  // dst. Diurutkan termurah dulu supaya default-nya (elemen pertama) deterministik:
+  // query katalog hanya mengurutkan per task, jadi tanpa ini "model pertama"
+  // bergantung urutan baris yang dikembalikan Postgres.
+  const taskModels = models.filter((m) => m.task === task).sort(byPrice);
   // Hanya model image-edit yang benar-benar mengirim foto Identity Kit ke
   // provider; sisanya cuma menerima teks. Jadi kalau fotonya ada, model itu
   // yang dipilih duluan — user tetap bebas menggantinya.
@@ -966,6 +1120,7 @@ export function GenerateForm({ models, influencers, influencerId, refresh, mode,
         duration: Number(f.get("duration") || 5),
         source_image_url: f.get("source_image_url") || null,
         audio_url: audioUrl,
+        content_item_id: contentItemId || null,
       });
       setOk(true); setTtsText(""); refresh?.();
     } catch (e2) { setErr(e2.message); }
@@ -981,23 +1136,42 @@ export function GenerateForm({ models, influencers, influencerId, refresh, mode,
             <option value="tts">Suara (TTS)</option><option value="lipsync">Talking / Lip Sync</option>
           </select>
         </div>
-        <div><label className="label">Model</label>
-          <select className="input" value={selected?.id || ""} onChange={(e) => setModelId(e.target.value)}>
-            {taskModels.map((m) => (
-              <option key={m.id} value={m.id} disabled={!keyReady(m)}>
-                {m.label}{keyReady(m) ? "" : ` — butuh key ${m.requires_key}`}
-              </option>
-            ))}
-          </select>
+        <div>
+          <ModelPicker models={taskModels} value={selected?.id || ""} onChange={setModelId} keyReady={keyReady} />
           {selected?.description && <p className="tiny muted" style={{ marginTop: 4 }}>{selected.description}</p>}
         </div>
         {!influencerId && influencers && (
           <div><label className="label">Influencer</label>
             <select name="influencer_id" className="input" value={formInfId}
-              onChange={(e) => { setFormInfId(e.target.value); setModelId(""); }}>
+              onChange={(e) => {
+                const next = e.target.value;
+                setFormInfId(next); setModelId("");
+                // Konten yang terpilih bisa jadi milik influencer lain sekarang.
+                // Dibiarkan, tandanya akan menunjuk orang yang salah.
+                const it = openItems.find((x) => x.id === contentItemId);
+                if (it && next && it.influencer_id !== next) setContentItemId("");
+              }}>
               <option value="">— tanpa influencer —</option>
               {influencers.map((i) => <option key={i.id} value={i.id}>{i.name}</option>)}
             </select>
+          </div>
+        )}
+        {task !== "tts" && itemChoices.length > 0 && (
+          <div>
+            <label className="label">Untuk konten (opsional)</label>
+            <select className="input" value={contentItemId} onChange={(e) => pickContentItem(e.target.value)}>
+              <option value="">— tidak terikat konten —</option>
+              {itemChoices.map((it) => (
+                <option key={it.id} value={it.id}>
+                  {it.title}{!activeInfId && infName(it.influencer_id) ? ` · ${infName(it.influencer_id)}` : ""}
+                </option>
+              ))}
+            </select>
+            <p className="tiny muted" style={{ marginTop: 4 }}>
+              Ditandai untuk konten tertentu → layar publish tahu file mana yang harus diposting.
+              Dikosongkan untuk b-roll umum atau uji prompt.
+              {!influencerId && " Memilih konten sekalian memilih influencer pemiliknya."}
+            </p>
           </div>
         )}
         {(task === "video" || task === "lipsync") && (
@@ -1022,10 +1196,7 @@ export function GenerateForm({ models, influencers, influencerId, refresh, mode,
           Kasus paling mahal: foto Identity Kit sudah ada tapi modelnya tidak
           membacanya — hasilnya wajah asing, dan baru ketahuan setelah dibayar. */}
       {task === "image" && activeInfId && refCount > 0 && !modelKeepsFace && (
-        <div className="mb3" style={{
-          background: "#fffbeb", border: "1px solid #fde68a", color: "#92400e",
-          borderRadius: 10, padding: 10, fontSize: 13, lineHeight: 1.5,
-        }}>
+        <div className="msg-warn mb3">
           Model ini <b>tidak membaca foto Identity Kit</b> — ia hanya menerima teks, jadi wajahnya
           akan mengikuti deskripsi dan berbeda tiap generate.
           {editModel && (
@@ -1047,10 +1218,7 @@ export function GenerateForm({ models, influencers, influencerId, refresh, mode,
         </div>
       )}
       {task === "video" && sourceUrl && !selected?.accepts_init_image && (
-        <div className="mb3" style={{
-          background: "#fffbeb", border: "1px solid #fde68a", color: "#92400e",
-          borderRadius: 10, padding: 10, fontSize: 13, lineHeight: 1.5,
-        }}>
+        <div className="msg-warn mb3">
           Model ini <b>membuang gambar awal</b> — ia hanya mengirim teks ke provider, jadi wajah di
           videonya akan acak meski fotonya sudah kamu pilih.
           {initModel && (
@@ -1063,7 +1231,7 @@ export function GenerateForm({ models, influencers, influencerId, refresh, mode,
         </div>
       )}
       {task === "lipsync" && (
-        <div className="card p4 mb3" style={{ background: "#faf5ff", borderColor: "#ede9fe" }}>
+        <div className="card p4 mb3" style={{ background: "var(--brand-soft)", borderColor: "var(--brand-soft)" }}>
           <label className="label">Naskah yang diucapkan (opsional)</label>
           <textarea className="input" rows={3} value={ttsText} onChange={(e) => setTtsText(e.target.value)}
             placeholder="Tulis kalimat yang mau diucapkan — suaranya dibuat otomatis, lalu langsung jadi talking head." />
@@ -1095,7 +1263,7 @@ export function GenerateForm({ models, influencers, influencerId, refresh, mode,
       )}
       <div className="row mb2">
         <button className="btn" disabled={busy || !selected}>{busy ? (step || "Generating…") : "Generate"}</button>
-        <span className="tiny muted">Estimasi: <b style={{ color: "#d97706" }}>${est.toFixed(3)}</b>{mode === "mock" ? " (mock — gratis)" : " (indikatif)"}</span>
+        <span className="tiny muted">Estimasi: <b style={{ color: "var(--orange)" }}>${est.toFixed(3)}</b>{mode === "mock" ? " (mock — gratis)" : " (indikatif)"}</span>
       </div>
       {err && <div className="msg-err mb2">{err}</div>}
       {ok && <div className="msg-ok mb2">Job dikirim — hasil muncul di riwayat job / Drive.</div>}
@@ -1112,6 +1280,71 @@ export function GenerateForm({ models, influencers, influencerId, refresh, mode,
 // Satu klik = beberapa job gambar sekaligus, satu per sudut/ekspresi, semuanya
 // memakai identity prompt influencer yang sama. Prompt shot sengaja bahasa
 // Inggris karena model gambar dilatih dominan dengan caption Inggris.
+// ---------- Pemilih model ----------
+// Katalog model terentang dari gratis sampai $0.40 per detik. Dalam satu
+// dropdown, memilih "yang aman untuk coba-coba" berarti memindai seluruh
+// daftar dan membandingkan angka satu per satu. Dipisah dua, keputusan
+// biayanya diambil lebih dulu — sebelum melihat nama modelnya.
+const CHEAP_MAX_USD = 0.08;
+const isCheapModel = (m) => Number(m?.est_price_usd || 0) < CHEAP_MAX_USD;
+
+// Perbandingan harga di sini SELALU dalam satu task, dan satu task memakai satu
+// satuan (gambar per_image, video & lipsync per_second, TTS per_1k_chars), jadi
+// angkanya sejenis. Satuannya tetap ikut ditulis, karena "murah" per DETIK bukan
+// berarti murah per klip: $0.05/detik masuk kelompok murah, tapi klip 5 detik
+// tetap $0.25. Estimasi total yang sebenarnya tetap ditampilkan di dekat tombol.
+const UNIT_SUFFIX = { per_image: "/gambar", per_second: "/detik", per_1k_chars: "/1k karakter" };
+// usd() membulatkan ke 2 desimal, dan katalog memakai 3: $0.003 jadi "$0.00"
+// (seolah gratis), $0.025 jadi "$0.03", $0.125 jadi "$0.13". Angka di dropdown
+// harus sama persis dengan yang tertulis di katalog Settings, jadi tiga desimal
+// dulu lalu satu nol di ekor dibuang ($0.040 → $0.04, $0.125 tetap utuh).
+const priceLabel = (n) => {
+  const v = Number(n || 0);
+  if (v === 0) return "gratis";
+  return `$${v.toFixed(3).replace(/0$/, "")}`;
+};
+const byPrice = (a, b) => Number(a.est_price_usd) - Number(b.est_price_usd);
+
+// `models` yang masuk ke sini WAJIB sudah tersaring per task oleh pemanggilnya.
+function ModelPicker({ models, value, onChange, keyReady = () => true, label = "Model" }) {
+  const groups = [
+    { key: "murah", judul: `Gratis & murah — di bawah ${priceLabel(CHEAP_MAX_USD)}`, list: models.filter(isCheapModel).sort(byPrice) },
+    { key: "mahal", judul: `Premium — ${priceLabel(CHEAP_MAX_USD)} ke atas`, list: models.filter((m) => !isCheapModel(m)).sort(byPrice) },
+  ];
+  return (
+    <div>
+      <label className="label">{label}</label>
+      {groups.map((g, i) => (
+        <select
+          key={g.key}
+          className={`input${i === 0 ? " mb1" : ""}`}
+          // Satu model saja yang aktif. Dropdown yang tidak memuatnya kembali ke
+          // baris judulnya, supaya tidak terlihat seolah dua model terpilih.
+          value={g.list.some((m) => m.id === value) ? value : ""}
+          disabled={!g.list.length}
+          onChange={(e) => e.target.value && onChange(e.target.value)}
+        >
+          <option value="">
+            {g.list.length ? `${g.judul} (${g.list.length})` : `${g.judul} — tidak ada untuk task ini`}
+          </option>
+          {g.list.map((m) => (
+            <option key={m.id} value={m.id} disabled={!keyReady(m)}>
+              {m.label} · {priceLabel(m.est_price_usd)}{UNIT_SUFFIX[m.unit] || ""}
+              {keyReady(m) ? "" : ` — butuh key ${m.requires_key}`}
+            </option>
+          ))}
+        </select>
+      ))}
+      {/* Dua kotak, satu pilihan. Tanpa kalimat ini keduanya mudah terbaca
+          sebagai dua field yang dua-duanya harus diisi. */}
+      <p className="tiny muted" style={{ marginTop: 4 }}>
+        Pilih dari salah satu daftar — memilih di satu daftar mengosongkan yang lain.
+        {models.some((m) => m.unit === "per_second") && " Harga di sini per detik, jadi kalikan durasinya untuk biaya satu klip."}
+      </p>
+    </div>
+  );
+}
+
 const SHEET_SHOTS = [
   { id: "front", label: "Depan (netral)", prompt: "front view head and shoulders portrait, facing camera directly, neutral relaxed expression, eyes to camera" },
   { id: "threeq", label: "Serong 3/4", prompt: "three-quarter view head and shoulders portrait, head turned 45 degrees, neutral expression" },
@@ -1130,10 +1363,18 @@ const SHEET_BACKDROPS = [
   { id: "daylight", label: "Cahaya alami netral", prompt: "plain neutral beige background, soft natural daylight from the side" },
 ];
 const SHEET_BASE = "character reference sheet photo, photorealistic, sharp focus, high detail, consistent same person, single subject, no text, no watermark, no collage";
+// Prefix ini dipakai dua arah: untuk MENAMAI aset hasil character sheet, dan
+// untuk MENDETEKSI influencer mana yang sudah punya. Kalau teksnya diubah di
+// satu sisi saja, deteksinya diam-diam berhenti mengenali sheet lama — jadi
+// satu konstanta, dipakai keduanya.
+const SHEET_LABEL_PREFIX = "Character sheet — ";
 
-function CharacterSheetPanel({ models, influencers, refresh, mode }) {
-  const imgModels = models.filter((m) => m.task === "image");
-  const [infId, setInfId] = useState("");
+// `lockInfluencerId` dipakai saat panel ini muncul sebagai langkah lanjutan
+// pembuatan influencer: influencernya sudah pasti, jadi dropdownnya tidak
+// perlu ada — dan tidak boleh bisa diganti ke orang lain tanpa sengaja.
+function CharacterSheetPanel({ models, influencers, refresh, mode, lockInfluencerId }) {
+  const imgModels = models.filter((m) => m.task === "image").sort(byPrice);
+  const [infId, setInfId] = useState(lockInfluencerId || "");
   const [modelId, setModelId] = useState("");
   const [shots, setShots] = useState(DEFAULT_SHOTS);
   const [backdrop, setBackdrop] = useState("studio");
@@ -1182,7 +1423,7 @@ function CharacterSheetPanel({ models, influencers, refresh, mode }) {
         await callGenerate({
           action: "submit", task: "image", model_id: model.id, influencer_id: inf.id,
           prompt: [s.prompt, bd.prompt, SHEET_BASE, extra.trim()].filter(Boolean).join(", "),
-          label: `Character sheet — ${inf.name} — ${s.label}`,
+          label: `${SHEET_LABEL_PREFIX}${inf.name} — ${s.label}`,
         });
         ok++;
       } catch (e) { bad.push(`${s.label}: ${e.message}`); }
@@ -1197,17 +1438,17 @@ function CharacterSheetPanel({ models, influencers, refresh, mode }) {
         Satu klik menghasilkan beberapa gambar acuan karakter — sudut, ekspresi, dan full body —
         semuanya memakai identity prompt influencer yang sama. Hasilnya masuk ke Drive dengan nama yang terbaca.
       </p>
-      <div className="grid mb3" style={{ gridTemplateColumns: "1fr 1fr" }}>
-        <div><label className="label">Influencer *</label>
-          <select className="input" value={infId} onChange={(e) => setInfId(e.target.value)}>
-            <option value="">— pilih influencer —</option>
-            {influencers.map((i) => <option key={i.id} value={i.id}>{i.name}</option>)}
-          </select>
-        </div>
-        <div><label className="label">Model gambar</label>
-          <select className="input" value={model?.id || ""} onChange={(e) => setModelId(e.target.value)}>
-            {imgModels.map((m) => <option key={m.id} value={m.id}>{m.label}</option>)}
-          </select>
+      <div className="grid mb3" style={{ gridTemplateColumns: lockInfluencerId ? "1fr" : "1fr 1fr" }}>
+        {!lockInfluencerId && (
+          <div><label className="label">Influencer *</label>
+            <select className="input" value={infId} onChange={(e) => setInfId(e.target.value)}>
+              <option value="">— pilih influencer —</option>
+              {influencers.map((i) => <option key={i.id} value={i.id}>{i.name}</option>)}
+            </select>
+          </div>
+        )}
+        <div>
+          <ModelPicker models={imgModels} value={model?.id || ""} onChange={setModelId} label="Model gambar" />
           {model?.description && <p className="tiny muted" style={{ marginTop: 4 }}>{model.description}</p>}
         </div>
       </div>
@@ -1230,7 +1471,7 @@ function CharacterSheetPanel({ models, influencers, refresh, mode }) {
         {SHEET_SHOTS.map((s) => (
           <label key={s.id} className="card p3 row small" style={{
             gap: 8, padding: 10, cursor: "pointer",
-            border: shots.includes(s.id) ? "2px solid #7c3aed" : "1px solid var(--border)",
+            border: shots.includes(s.id) ? "2px solid var(--brand)" : "1px solid var(--border)",
           }}>
             <input type="checkbox" checked={shots.includes(s.id)} onChange={() => toggle(s.id)} />
             {s.label}
@@ -1255,7 +1496,7 @@ function CharacterSheetPanel({ models, influencers, refresh, mode }) {
           {busy ? `Mengirim ${(progress?.done ?? 0) + 1}/${progress?.total ?? shots.length}…` : `Buat character sheet (${shots.length} gambar)`}
         </button>
         <span className="tiny muted">
-          Estimasi: <b style={{ color: "#d97706" }}>${est.toFixed(3)}</b>
+          Estimasi: <b style={{ color: "var(--orange)" }}>${est.toFixed(3)}</b>
           {mode === "mock" ? " (mock — gratis)" : " (indikatif)"}
         </span>
       </div>
@@ -1320,10 +1561,10 @@ export function Studio({ ws, refresh, tick, mode }) {
                   <td className="tiny muted">{j.model_key}</td>
                   <td>
                     <Badge tone={statusTone(j.status)}>{STATUS_LABELS[j.status]}</Badge>
-                    {j.error && <div className="tiny" style={{ color: "#dc2626", maxWidth: 220 }} title={j.error}>{j.error.slice(0, 80)}</div>}
+                    {j.error && <div className="tiny" style={{ color: "var(--err)", maxWidth: 220 }} title={j.error}>{j.error.slice(0, 80)}</div>}
                   </td>
                   <td>{usd(j.cost_actual_usd ?? j.cost_estimate_usd)}</td>
-                  <td>{j.output_url ? <a href={j.output_url} target="_blank" rel="noreferrer" style={{ color: "#7c3aed", fontWeight: 600 }}>Buka →</a> : "—"}</td>
+                  <td>{j.output_url ? <a href={j.output_url} target="_blank" rel="noreferrer" style={{ color: "var(--blue-strong)", fontWeight: 600 }}>Buka →</a> : "—"}</td>
                 </tr>
               ))}
             </tbody>
@@ -1340,7 +1581,6 @@ function AiDraftPanel({ item, onSaved, onClose }) {
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState(null);
   const [draft, setDraft] = useState(null);
-  const [copied, setCopied] = useState(false);
 
   useEffect(() => {
     let alive = true;
@@ -1355,15 +1595,18 @@ function AiDraftPanel({ item, onSaved, onClose }) {
   async function save() {
     setBusy(true); setErr(null);
     try {
-      await callGenerate({ action: "apply_draft", content_item_id: item.id, hook: draft.hook, script: draft.script });
+      await callGenerate({
+        action: "apply_draft", content_item_id: item.id,
+        hook: draft.hook, script: draft.script,
+        caption: draft.caption || "",
+        hashtags: draft.hashtags || [],
+      });
       onSaved?.();
     } catch (e) { setErr(e.message); }
     setBusy(false);
   }
 
-  const captionText = draft
-    ? draft.caption + (draft.hashtags?.length ? "\n" + draft.hashtags.map((h) => (h.startsWith("#") ? h : `#${h}`)).join(" ") : "")
-    : "";
+  const tagText = (draft?.hashtags || []).map((h) => (h.startsWith("#") ? h : `#${h}`)).join(" ");
 
   // Modal: kolom kanban terlalu sempit untuk mereview naskah dengan nyaman.
   return (
@@ -1389,24 +1632,22 @@ function AiDraftPanel({ item, onSaved, onClose }) {
             <label className="label">Script</label>
             <textarea className="input mb3" rows={8}
               value={draft.script} onChange={(e) => setDraft({ ...draft, script: e.target.value })} />
-            {draft.caption && (
-              <div className="card p4 mb3" style={{ background: "#fafafa" }}>
-                <div className="row mb1" style={{ justifyContent: "space-between" }}>
-                  <span className="label" style={{ margin: 0 }}>Caption + hashtag</span>
-                  <button type="button" className="tiny" style={{ background: "none", border: "none", color: "#7c3aed", fontWeight: 700, cursor: "pointer" }}
-                    onClick={() => navigator.clipboard?.writeText(captionText)
-                      .then(() => { setCopied(true); setTimeout(() => setCopied(false), 2000); }).catch(() => {})}>
-                    {copied ? "✓ Tersalin" : "📋 Salin"}
-                  </button>
-                </div>
-                <div className="small" style={{ whiteSpace: "pre-wrap" }}>{captionText}</div>
-                <div className="tiny muted mt2">Caption tidak ikut tersimpan otomatis — salin saat mau posting.</div>
-              </div>
-            )}
+            {/* Caption itu yang DIBACA orang di bawah video; script yang
+                DIDENGAR. Dua-duanya disimpan, dan publish memakai caption. */}
+            <label className="label">Caption <span className="tiny muted">— yang tampil di bawah video, bukan naskahnya</span></label>
+            <textarea className="input mb2" rows={3} maxLength={2000}
+              value={draft.caption || ""} onChange={(e) => setDraft({ ...draft, caption: e.target.value })} />
+            <label className="label">Hashtag</label>
+            <input className="input mb1" value={tagText}
+              onChange={(e) => setDraft({
+                ...draft,
+                hashtags: e.target.value.split(/[\s,]+/).map((h) => h.replace(/^#+/, "")).filter(Boolean),
+              })} />
+            <div className="tiny muted mb3">Dipisah spasi. Tanda # boleh ditulis atau tidak — disimpan tanpa tanda pagar.</div>
           </>
         )}
         <div className="row" style={{ gap: 8 }}>
-          {draft && <button type="button" className="btn" disabled={busy} onClick={save}>Simpan hook & script</button>}
+          {draft && <button type="button" className="btn" disabled={busy} onClick={save}>Simpan naskah & caption</button>}
           <button type="button" className="btn btn2" onClick={onClose}>Tutup</button>
         </div>
       </div>
@@ -1422,7 +1663,7 @@ const MONTH_FULL_ID = ["Januari", "Februari", "Maret", "April", "Mei", "Juni", "
 const isoDay = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
 
 function PlannerCalendar({ items, pillars, month, setMonth }) {
-  const pillarColor = Object.fromEntries(pillars.map((p) => [p.id, p.color || "#7c3aed"]));
+  const pillarColor = Object.fromEntries(pillars.map((p) => [p.id, p.color || "var(--brand)"]));
   const byDay = {};
   for (const it of items) if (it.scheduled_date) (byDay[it.scheduled_date] ||= []).push(it);
   const unscheduled = items.filter((it) => !it.scheduled_date && it.status !== "published").length;
@@ -1468,23 +1709,23 @@ function PlannerCalendar({ items, pillars, month, setMonth }) {
             <div key={iso} style={{
               minHeight: 88, borderRadius: 8, padding: 4,
               border: "1px solid var(--border)",
-              background: inMonth ? "#fff" : "#fafafa",
+              background: inMonth ? "#fff" : "var(--subtle)",
               opacity: inMonth ? 1 : 0.55,
             }}>
               <div className="tiny" style={{
                 fontWeight: iso === todayIso ? 800 : 500,
-                color: iso === todayIso ? "#7c3aed" : "var(--muted)",
+                color: iso === todayIso ? "var(--brand)" : "var(--muted)",
                 marginBottom: 2,
               }}>{day.getDate()}{iso === todayIso ? " · hari ini" : ""}</div>
               {dayItems.map((it) => (
                 <div key={it.id} className="tiny row" title={`${it.title} — ${it.influencers?.name || "tanpa influencer"} · ${STATUS_LABELS[it.status]}${it.platform ? ` · ${it.platform}` : ""}`}
                   style={{
                     gap: 4, alignItems: "center", borderRadius: 6, padding: "2px 4px", marginBottom: 2,
-                    background: it.status === "published" ? "#f0fdf4" : "#f5f3ff",
+                    background: it.status === "published" ? "var(--ok-soft)" : "var(--brand-soft)",
                   }}>
-                  <span style={{ width: 7, height: 7, borderRadius: 99, flexShrink: 0, background: pillarColor[it.pillar_id] || "#a1a1aa" }} />
+                  <span style={{ width: 7, height: 7, borderRadius: 99, flexShrink: 0, background: pillarColor[it.pillar_id] || "var(--dim)" }} />
                   <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", textDecoration: it.status === "published" ? "line-through" : "none" }}>{it.title}</span>
-                  {it.status === "published" && <span style={{ color: "#15803d", flexShrink: 0 }}>✓</span>}
+                  {it.status === "published" && <span style={{ color: "var(--ok)", flexShrink: 0 }}>✓</span>}
                 </div>
               ))}
             </div>
@@ -1498,7 +1739,11 @@ function PlannerCalendar({ items, pillars, month, setMonth }) {
 // ---------- Wizard rencana konten ----------
 // Warna pillar otomatis: dipilih supaya tetap terbaca sebagai teks di badge
 // terang dan cukup beda satu sama lain (termasuk untuk mata CVD).
-const PLAN_COLORS = ["#7c3aed", "#2a78d6", "#eb6834", "#0f7b56", "#b0308f", "#8a6d1f"];
+// Warna pillar DISIMPAN ke database sebagai `pillar.color`, jadi ini data —
+// bukan style. Harus hex literal: `var(--…)` kehilangan artinya begitu
+// nilainya keluar dari konteks CSS app (ekspor, laporan, klien lain).
+// Enam hue yang saling terbedakan, diselaraskan dengan palet merek.
+const PLAN_COLORS = ["#7c3aed", "#2563eb", "#ea580c", "#0f7b56", "#b0308f", "#b45309"];
 
 // Slot hari per minggu untuk tiap frekuensi. Sengaja tidak beruntun agar ada
 // jeda produksi, dan menyisakan akhir pekan hanya saat frekuensinya memang tinggi.
@@ -1601,7 +1846,7 @@ function PlanWizard({ ws, influencers, pillars, onClose, onSaved }) {
       actual: chosen.length ? Math.round((n / chosen.length) * 100) : 0,
       target: target === null ? null : Number(target),
       color: plan.pillars.find((p) => p.name === name)?.color
-        || pillars.find((p) => p.name === name)?.color || "#71717a",
+        || pillars.find((p) => p.name === name)?.color || "var(--muted)",
     };
   }).filter((m) => m.n > 0 || m.target !== null);
 
@@ -1692,7 +1937,7 @@ function PlanWizard({ ws, influencers, pillars, onClose, onSaved }) {
                 Usulkan pillar baru (kalau tidak dicentang, AI memakai {pillars.length} pillar yang sudah ada)
               </label>
             )}
-            <div className="card p4 mb3" style={{ background: "#fafafa" }}>
+            <div className="card p4 mb3" style={{ background: "var(--subtle)" }}>
               <div className="tiny bold mb1">Yang akan dijaga AI</div>
               <ul className="tiny muted" style={{ margin: "0 0 0 16px" }}>
                 <li>Pillar jualan dibatasi maksimal 20% — sisanya edukasi/hiburan</li>
@@ -1720,10 +1965,10 @@ function PlanWizard({ ws, influencers, pillars, onClose, onSaved }) {
             </p>
 
             {plan.pillars.length > 0 && (
-              <div className="card p4 mb3" style={{ background: "#fafafa" }}>
+              <div className="card p4 mb3" style={{ background: "var(--subtle)" }}>
                 <div className="row mb2" style={{ justifyContent: "space-between" }}>
                   <span className="label" style={{ margin: 0 }}>Pillar baru yang akan dibuat</span>
-                  <span className="tiny" style={{ color: ratioSum === 100 ? "var(--muted)" : "#b45309", fontWeight: 700 }}>
+                  <span className="tiny" style={{ color: ratioSum === 100 ? "var(--muted)" : "var(--warn)", fontWeight: 700 }}>
                     Total {ratioSum}%{ratioSum === 100 ? "" : " — idealnya 100%"}
                   </span>
                 </div>
@@ -1742,7 +1987,7 @@ function PlanWizard({ ws, influencers, pillars, onClose, onSaved }) {
             )}
 
             {plan.series.length > 0 && (
-              <div className="card p4 mb3" style={{ background: "#fafafa" }}>
+              <div className="card p4 mb3" style={{ background: "var(--subtle)" }}>
                 <div className="label" style={{ margin: "0 0 6px" }}>Format berulang</div>
                 {plan.series.map((s, i) => (
                   <div key={i} className="tiny mb1"><b>{s.name}</b> <span className="muted">— {s.format}</span></div>
@@ -1751,16 +1996,16 @@ function PlanWizard({ ws, influencers, pillars, onClose, onSaved }) {
             )}
 
             {mix.length > 0 && (
-              <div className="card p4 mb3" style={{ background: "#fafafa" }}>
+              <div className="card p4 mb3" style={{ background: "var(--subtle)" }}>
                 <div className="label" style={{ margin: "0 0 6px" }}>Sebaran nyata vs target</div>
                 {mix.map((m) => (
                   <div key={m.name} className="row mb1" style={{ gap: 8 }}>
                     <span className="tiny" style={{ width: 130, flexShrink: 0 }}>{m.name}</span>
-                    <span style={{ flex: 1, height: 10, background: "#e7e7ec", borderRadius: 99, position: "relative" }}>
+                    <span style={{ flex: 1, height: 10, background: "var(--border)", borderRadius: 99, position: "relative" }}>
                       <span style={{ display: "block", width: `${m.actual}%`, height: "100%", background: m.color, borderRadius: 99 }} />
                       {m.target !== null && (
                         <span title={`Target ${m.target}%`} style={{
-                          position: "absolute", left: `${m.target}%`, top: -3, width: 2, height: 16, background: "#3f3f46",
+                          position: "absolute", left: `${m.target}%`, top: -3, width: 2, height: 16, background: "var(--ink-2)",
                         }} />
                       )}
                     </span>
@@ -1786,7 +2031,7 @@ function PlanWizard({ ws, influencers, pillars, onClose, onSaved }) {
                         <input className="input" style={{ fontSize: 12, padding: "4px 8px" }}
                           value={it.title} onChange={(e) => patchItem(i, { title: e.target.value })} />
                         <div className="tiny muted mt1">
-                          {it.series && <b style={{ color: "#7c3aed" }}>{it.series} · </b>}{it.hook}
+                          {it.series && <b style={{ color: "var(--brand)" }}>{it.series} · </b>}{it.hook}
                         </div>
                       </td>
                       <td>
@@ -1826,18 +2071,23 @@ function PlanWizard({ ws, influencers, pillars, onClose, onSaved }) {
 
 export function Planner({ ws, refresh, tick }) {
   const [d, reload, loadError] = useQuery(async () => {
-    const [pillars, items, inf, connRes, jobs] = await Promise.all([
+    const [pillars, items, inf, connRes, jobs, assets] = await Promise.all([
       supa.from("content_pillars").select("*, influencers(name)").order("created_at"),
       supa.from("content_items").select("*, influencers(name)").order("scheduled_date", { ascending: true }),
       supa.from("influencers").select("id,name").order("name"),
       callSocial({ action: "list_connections" }).catch(() => ({ connections: [] })),
       supa.from("publish_jobs").select("*, content_items(title)").order("created_at", { ascending: false }).limit(20),
+      // Media kandidat untuk layar publish. Diambil di sini supaya form publish
+      // bisa menunjukkan file mana yang akan diposting — sebelumnya server yang
+      // menebak, dan tebakannya tidak pernah terlihat oleh siapa pun.
+      supa.from("assets").select("id,name,kind,influencer_id,content_item_id,created_at")
+        .in("kind", ["image", "video"]).order("created_at", { ascending: false }).limit(200),
     ]);
     const conns = connRes.connections || [];
     const connById = Object.fromEntries(conns.map((c) => [c.id, c]));
     const jobsRaw = unwrap(jobs) || [];
     return {
-      pillars: unwrap(pillars), items: unwrap(items), inf: unwrap(inf), conns,
+      pillars: unwrap(pillars), items: unwrap(items), inf: unwrap(inf), conns, assets: unwrap(assets),
       jobs: jobsRaw.map((j) => ({ ...j, _connAccountName: connById[j.connection_id]?.external_account_name || null })),
     };
   }, [ws.id, tick]);
@@ -1864,6 +2114,7 @@ export function Planner({ ws, refresh, tick }) {
         action: "publish",
         content_item_id: item.id,
         connection_id: connectionId,
+        asset_id: f.get("asset_id") || null,
         compliance: {
           title: f.get("title") || item.title,
           privacy: f.get("privacy") || "SELF_ONLY",
@@ -1906,6 +2157,7 @@ export function Planner({ ws, refresh, tick }) {
       content_type: f.get("content_type"), platform: f.get("platform"),
       scheduled_date: scheduledDate,
       hook: f.get("hook"), script: f.get("script"),
+      caption: f.get("caption") || null,
     }).select("id").single();
     if (error) { setErr(error.message); return; }
     e.target.reset(); reload(); refresh();
@@ -1938,7 +2190,7 @@ export function Planner({ ws, refresh, tick }) {
       {err && <div className="msg-err mb3">{err}</div>}
       {planMsg && <div className="msg-ok mb3">{planMsg}</div>}
       {!d.items.length && (
-        <div className="card p6 mb4" style={{ background: "#faf7ff", borderColor: "#ddd0ff" }}>
+        <div className="card p6 mb4" style={{ background: "var(--brand-soft)", borderColor: "var(--brand-line)" }}>
           <div className="bold mb1">Papan masih kosong</div>
           <p className="small muted mb3">
             Mengisi sebulan konten lewat formulir di bawah berarti ratusan isian manual. Wizard AI menyusun
@@ -1975,7 +2227,7 @@ export function Planner({ ws, refresh, tick }) {
             <select name="influencer_id" className="input" defaultValue=""><option value="">Semua</option>
               {d.inf.map((i) => <option key={i.id} value={i.id}>{i.name}</option>)}</select></div>
           <div style={{ width: 90 }}><label className="label">Target %</label><input name="target_ratio" type="number" min={0} max={100} className="input" defaultValue={25} /></div>
-          <div><label className="label">Warna</label><input name="color" type="color" className="input" defaultValue="#8b5cf6" style={{ height: 38, width: 60 }} /></div>
+          <div><label className="label">Warna</label><input name="color" type="color" className="input" defaultValue="var(--brand)" style={{ height: 38, width: 60 }} /></div>
           <button className="btn">Tambah</button>
         </form>
       </div>
@@ -1999,7 +2251,8 @@ export function Planner({ ws, refresh, tick }) {
               <option value="tiktok">TikTok</option><option value="instagram">Instagram</option><option value="youtube">YouTube Shorts</option></select></div>
           <div><label className="label">Tanggal</label><input name="scheduled_date" type="date" className="input" /></div>
           <div style={{ gridColumn: "span 2" }}><label className="label">Hook</label><input name="hook" className="input" placeholder="Kalimat pembuka 1-3 detik pertama" /></div>
-          <div style={{ gridColumn: "span 2" }}><label className="label">Script</label><textarea name="script" className="input" rows={2} /></div>
+          <div style={{ gridColumn: "span 2" }}><label className="label">Script <span className="tiny muted">— yang dibacakan di video</span></label><textarea name="script" className="input" rows={2} /></div>
+          <div style={{ gridColumn: "span 2" }}><label className="label">Caption <span className="tiny muted">— yang tampil di bawah video saat diposting</span></label><textarea name="caption" className="input" rows={2} /></div>
           <div style={{ alignSelf: "end" }}><button className="btn" style={{ width: "100%", justifyContent: "center" }}>Tambah</button></div>
         </form>
       </div>
@@ -2015,7 +2268,7 @@ export function Planner({ ws, refresh, tick }) {
         {BOARD.map((status) => {
           const col = d.items.filter((c) => c.status === status);
           return (
-            <div key={status} className="card p4" style={{ background: "#fafafa" }}>
+            <div key={status} className="card p4" style={{ background: "var(--subtle)" }}>
               <div className="tiny bold muted mb2" style={{ textTransform: "uppercase" }}>{STATUS_LABELS[status]} ({col.length})</div>
               {col.map((c) => (
                 <div key={c.id} className="card p4 mb2">
@@ -2025,7 +2278,7 @@ export function Planner({ ws, refresh, tick }) {
                   <select className="input mt2" style={{ fontSize: 12, padding: "4px 8px" }} value={c.status} onChange={(e) => setStatus(c.id, e.target.value)}>
                     {BOARD.map((s) => <option key={s} value={s}>{STATUS_LABELS[s]}</option>)}
                   </select>
-                  <button type="button" className="tiny mt2" style={{ background: "none", border: "none", color: "#7c3aed", fontWeight: 700, cursor: "pointer", padding: 0, display: "block" }}
+                  <button type="button" className="tiny mt2" style={{ background: "none", border: "none", color: "var(--brand)", fontWeight: 700, cursor: "pointer", padding: 0, display: "block" }}
                     onClick={() => setAiDraftId(c.id)}>✨ Tulis dengan AI</button>
                   {aiDraftId === c.id && (
                     <AiDraftPanel item={c} onClose={() => setAiDraftId(null)}
@@ -2038,6 +2291,35 @@ export function Planner({ ws, refresh, tick }) {
                           <option value="" disabled>Pilih akun tujuan…</option>
                           {d.conns.map((cn) => <option key={cn.id} value={cn.id}>{cn.platform === "instagram" ? "IG" : "TT"}: {cn.external_account_name}</option>)}
                         </select>
+                        {(() => {
+                          // Kandidat media: yang sudah ditandai untuk konten ini
+                          // lebih dulu, lalu milik influencer yang sama yang belum
+                          // terikat konten mana pun. Yang tidak pernah muncul di
+                          // sini: media milik konten LAIN — dulu justru itu yang
+                          // bisa terposting karena servernya mengambil yang terbaru.
+                          const perlu = c.content_type === "photo" || c.content_type === "carousel" ? "image" : "video";
+                          const cocok = d.assets.filter((a) => a.kind === perlu);
+                          const terikat = cocok.filter((a) => a.content_item_id === c.id);
+                          const bebas = cocok.filter((a) => !a.content_item_id && a.influencer_id === c.influencer_id);
+                          const pilihan = [...terikat, ...bebas];
+                          return pilihan.length ? (
+                            <select name="asset_id" className="input mb1" style={{ fontSize: 11, padding: "3px 6px" }}
+                              defaultValue={terikat[0]?.id || ""}>
+                              {!terikat.length && <option value="" disabled>Pilih {perlu} yang diposting…</option>}
+                              {terikat.length > 0 && <optgroup label="Ditandai untuk konten ini">
+                                {terikat.map((a) => <option key={a.id} value={a.id}>{a.name || a.id.slice(0, 8)}</option>)}
+                              </optgroup>}
+                              {bebas.length > 0 && <optgroup label="Belum terikat konten">
+                                {bebas.map((a) => <option key={a.id} value={a.id}>{a.name || a.id.slice(0, 8)}</option>)}
+                              </optgroup>}
+                            </select>
+                          ) : (
+                            <div className="msg-warn tiny mb1">
+                              Belum ada {perlu} untuk konten ini. Generate dulu di Production Studio,
+                              pilih konten ini di kolom “Untuk konten”.
+                            </div>
+                          );
+                        })()}
                         <input name="title" className="input mb1" style={{ fontSize: 11, padding: "3px 6px" }} placeholder="Judul (untuk TikTok)" defaultValue={c.title} />
                         <select name="privacy" className="input mb1" style={{ fontSize: 11, padding: "3px 6px" }} defaultValue="SELF_ONLY">
                           <option value="SELF_ONLY">Privat</option>
@@ -2054,7 +2336,7 @@ export function Planner({ ws, refresh, tick }) {
                         </div>
                       </form>
                     ) : (
-                      <button type="button" className="tiny mt2" style={{ background: "none", border: "none", color: "#7c3aed", fontWeight: 700, cursor: "pointer", padding: 0, display: "block" }}
+                      <button type="button" className="tiny mt2" style={{ background: "none", border: "none", color: "var(--brand)", fontWeight: 700, cursor: "pointer", padding: 0, display: "block" }}
                         onClick={() => setPublishOpenId(c.id)}>📤 Publish ke sosial</button>
                     )
                   )}
@@ -2080,7 +2362,7 @@ export function Planner({ ws, refresh, tick }) {
                   <td className="tiny muted">{j._connAccountName || "—"}</td>
                   <td><Badge tone={statusTone(j.status === "succeeded" ? "succeeded" : j.status === "failed" ? "failed" : "queued")}>{j.status}</Badge></td>
                   <td className="tiny" style={{ maxWidth: 220 }} title={j.error || j.external_post_id || ""}>
-                    {j.error ? <span style={{ color: "#dc2626" }}>{j.error.slice(0, 60)}</span> : (j.external_post_id || "—")}
+                    {j.error ? <span style={{ color: "var(--err)" }}>{j.error.slice(0, 60)}</span> : (j.external_post_id || "—")}
                   </td>
                   <td className="tiny muted">{new Date(j.created_at).toLocaleString("id-ID")}</td>
                 </tr>
@@ -2130,7 +2412,7 @@ export function Tasks({ ws, refresh, tick }) {
         {TCOLS.map((status) => {
           const col = list.filter((t) => t.status === status);
           return (
-            <div key={status} className="card p4" style={{ background: "#fafafa" }}>
+            <div key={status} className="card p4" style={{ background: "var(--subtle)" }}>
               <div className="tiny bold muted mb2" style={{ textTransform: "uppercase" }}>{STATUS_LABELS[status]} ({col.length})</div>
               {col.map((t) => (
                 <div key={t.id} className="card p4 mb2">
@@ -2197,7 +2479,7 @@ export function Drive({ ws, refresh, tick }) {
                     {d.inf.map((i) => <option key={i.id} value={i.id}>{i.name}</option>)}
                   </select>
                 ) : (
-                  <button className="tiny" style={{ background: "none", border: "none", color: "#7c3aed", fontWeight: 700, cursor: "pointer", padding: 0 }}
+                  <button className="tiny" style={{ background: "none", border: "none", color: "var(--brand)", fontWeight: 700, cursor: "pointer", padding: 0 }}
                     onClick={() => setMarking(a.id)}>+ jadikan referensi</button>
                 ))}
               </div>
@@ -2279,7 +2561,7 @@ function SocialConnections({ ws, tick, query }) {
   const Platform = ({ id, label }) => {
     const s = status[id];
     return (
-      <div className="card p4" style={{ background: "#fafafa" }}>
+      <div className="card p4" style={{ background: "var(--subtle)" }}>
         <div className="row mb2" style={{ justifyContent: "space-between" }}>
           <div className="bold">{label}</div>
           <Badge tone={s.mode === "live" ? "green" : "zinc"}>mode: {s.mode}</Badge>
@@ -2308,8 +2590,40 @@ function SocialConnections({ ws, tick, query }) {
         Mode Mock (default) tidak pernah memanggil API asli — aman untuk uji coba alur connect → publish tanpa akun developer Meta/TikTok.
         Mode Live butuh App ID/Secret dari Meta/TikTok Developer App, dan redirect URI berikut harus didaftarkan di dashboard masing-masing:
       </p>
-      <div className="card p3 mb3" style={{ background: "#f4f4f5" }}>
+      <div className="card p3 mb3" style={{ background: "var(--subtle-2)" }}>
         <code className="tiny" style={{ wordBreak: "break-all" }}>{status.callback_url}</code>
+      </div>
+
+      {/* Penjadwal. Default mati, dan konsekuensinya ditulis di sini — tanggal
+          di planner sering dipakai sebagai rencana, bukan perintah tayang. */}
+      <div className="card p4 mb3" style={{
+        border: `1px solid ${status.autopublish ? "var(--warn-line)" : "var(--border)"}`,
+        background: status.autopublish ? "var(--warn-soft)" : "var(--subtle)",
+      }}>
+        <div className="row" style={{ justifyContent: "space-between", alignItems: "flex-start", gap: 12 }}>
+          <div>
+            <div className="bold small">Publish otomatis sesuai jadwal</div>
+            <p className="tiny muted mt1" style={{ maxWidth: "62ch" }}>
+              Tiap 15 menit, konten berstatus <b>Terjadwal</b> yang tanggalnya sudah tiba diposting
+              sendiri — asalkan medianya sudah ditandai untuk konten itu dan akunnya sudah terhubung.
+              Ke koneksi <b>mode live ini tidak bisa dibatalkan</b>. Konten tanpa media tidak dipaksa
+              terbit: ia dilewati, dan alasannya tercatat di Riwayat Publish.
+            </p>
+          </div>
+          <button type="button" className={status.autopublish ? "btn btn-orange" : "btn btn2"}
+            style={{ fontSize: 12, flexShrink: 0 }} disabled={busy}
+            onClick={async () => {
+              setBusy(true); setMsg(null);
+              try {
+                await callSocial({ action: "set_autopublish", enabled: !status.autopublish });
+                setMsg(status.autopublish ? "Publish otomatis dimatikan." : "Publish otomatis dinyalakan.");
+                statusReload();
+              } catch (e) { setMsg(e.message); }
+              setBusy(false);
+            }}>
+            {status.autopublish ? "Matikan" : "Nyalakan"}
+          </button>
+        </div>
       </div>
       {msg && <div className="msg-ok mb3">{msg}</div>}
       <div className="mb3"><label className="label">Influencer untuk koneksi baru (opsional)</label>
@@ -2333,7 +2647,7 @@ function SocialConnections({ ws, tick, query }) {
                 <td className="muted">{c.external_account_name || "—"}</td>
                 <td><Badge tone={c.provider_mode === "live" ? "green" : "zinc"}>{c.provider_mode}</Badge></td>
                 <td className="tiny muted">{new Date(c.connected_at).toLocaleDateString("id-ID")}</td>
-                <td><button type="button" className="tiny" style={{ background: "none", border: "none", color: "#dc2626", fontWeight: 700, cursor: "pointer" }} onClick={() => disconnect(c.id)}>Putuskan</button></td>
+                <td><button type="button" className="tiny" style={{ background: "none", border: "none", color: "var(--err)", fontWeight: 700, cursor: "pointer" }} onClick={() => disconnect(c.id)}>Putuskan</button></td>
               </tr>
             ))}
           </tbody>
@@ -2401,11 +2715,11 @@ function CalendarConnection({ ws, tick, query }) {
         publish manual. Butuh Google Cloud OAuth Client (Calendar API) — redirect URI berikut harus
         didaftarkan sebagai "Authorized redirect URI":
       </p>
-      <div className="card p3 mb3" style={{ background: "#f4f4f5" }}>
+      <div className="card p3 mb3" style={{ background: "var(--subtle-2)" }}>
         <code className="tiny" style={{ wordBreak: "break-all" }}>{status.callback_url}</code>
       </div>
       {msg && <div className={msg.startsWith("Gagal") ? "msg-err mb3" : "msg-ok mb3"}>{msg}</div>}
-      <div className="card p4 mb3" style={{ background: "#fafafa" }}>
+      <div className="card p4 mb3" style={{ background: "var(--subtle)" }}>
         <div className="row mb2" style={{ justifyContent: "space-between" }}>
           <div className="bold">Google Client ID/Secret</div>
           <Badge tone={status.configured ? "green" : "amber"}>{status.configured ? "terpasang" : "belum diisi"}</Badge>
@@ -2422,7 +2736,7 @@ function CalendarConnection({ ws, tick, query }) {
           {status.connected && status.google_email && <span className="tiny muted ml2">{status.google_email}</span>}
         </div>
         {status.connected ? (
-          <button type="button" className="tiny" style={{ background: "none", border: "none", color: "#dc2626", fontWeight: 700, cursor: "pointer" }} onClick={disconnect} disabled={busy}>Putuskan</button>
+          <button type="button" className="tiny" style={{ background: "none", border: "none", color: "var(--err)", fontWeight: 700, cursor: "pointer" }} onClick={disconnect} disabled={busy}>Putuskan</button>
         ) : (
           <button type="button" className="btn" disabled={busy || !status.configured} onClick={connect}>+ Hubungkan Google Calendar</button>
         )}
@@ -2595,7 +2909,7 @@ function AccountAdmin({ ws, tick }) {
                           onClick={() => { setResetId(null); setResetPw(""); }}>Batal</button>
                       </form>
                     ) : (
-                      <button type="button" className="tiny" style={{ background: "none", border: "none", color: "#7c3aed", fontWeight: 700, cursor: "pointer", padding: 0 }}
+                      <button type="button" className="tiny" style={{ background: "none", border: "none", color: "var(--brand)", fontWeight: 700, cursor: "pointer", padding: 0 }}
                         onClick={() => { setResetId(m.user_id); setResetPw(""); setMsg(null); }}>🔑 Reset…</button>
                     )}
                   </td>
@@ -2673,7 +2987,7 @@ function McpSettings({ ws, tick }) {
       {msg && <div className={msg.startsWith("Gagal") ? "msg-err mb3" : "msg-ok mb3"}>{msg}</div>}
 
       {/* ---- Jalur 1: claude.ai ---- */}
-      <div className="card p4 mb4" style={{ background: "#faf5ff", borderColor: "#ede9fe" }}>
+      <div className="card p4 mb4" style={{ background: "var(--brand-soft)", borderColor: "var(--brand-soft)" }}>
         <div className="bold small mb1">claude.ai — pasang sebagai connector</div>
         <p className="tiny muted mb3">
           Di claude.ai: <span className="bold">Settings → Connectors → Add custom connector</span>, tempel URL di bawah,
@@ -2688,7 +3002,7 @@ function McpSettings({ ws, tick }) {
       </div>
 
       {/* ---- Jalur 2: Claude Code ---- */}
-      <div className="card p4 mb4" style={{ background: "#fafafa" }}>
+      <div className="card p4 mb4" style={{ background: "var(--subtle)" }}>
         <div className="row mb1" style={{ gap: 8 }}>
           <div className="bold small">Claude Code (terminal)</div>
           <Badge tone={st?.exists ? "green" : "zinc"}>{st?.exists ? "token aktif" : "belum dibuat"}</Badge>
@@ -2702,7 +3016,7 @@ function McpSettings({ ws, tick }) {
         {token && (
           <>
             <div className="label" style={{ margin: 0 }}>Jalankan sekali di terminal (token hanya tampil sekali)</div>
-            <div className="card p3 mt2 mb2" style={{ background: "#f4f4f5" }}>
+            <div className="card p3 mt2 mb2" style={{ background: "var(--subtle-2)" }}>
               <code className="tiny" style={{ wordBreak: "break-all" }}>{cmd}</code>
             </div>
             <button type="button" className="btn mb3" style={{ fontSize: 12 }} onClick={() => copy("cmd", cmd)}>
@@ -2767,6 +3081,343 @@ function McpSettings({ ws, tick }) {
 }
 
 // ---------- Settings ----------
+// Konfigurasi platform: API key yang membayar tagihan SEMUA pelanggan mode
+// kredit. Kartunya hanya muncul untuk operator platform — bukan untuk owner
+// workspace, karena sejak pendaftaran terbuka setiap pelanggan adalah owner di
+// workspace-nya sendiri.
+//
+// Nilainya tidak pernah dikirim balik ke browser; yang ditampilkan cuma
+// "terpasang", panjangnya, dan siapa yang terakhir mengubah. Jadi halaman ini
+// bisa MENGGANTI key, tidak bisa MEMBACANYA — dan setiap pergantian
+// meninggalkan jejak.
+const PLATFORM_KEY_LABELS = {
+  platform_fal_key: ["fal.ai", "Gambar, video, suara, lip sync. Ini yang paling banyak menagih."],
+  platform_hf_token: ["Hugging Face", "Gambar gratis sesuai kuota akun platform."],
+  platform_dashscope_key: ["DashScope (khusus)", "Kosongkan saja kalau memakai key Qwen yang sama dengan penulis AI."],
+  platform_text_api_key: ["Penulis AI (Qwen/Kimi)", "Dipakai menulis naskah, dan jadi cadangan key DashScope."],
+};
+
+const rupiah = (n) => "Rp " + Math.round(Number(n) || 0).toLocaleString("id-ID");
+
+// Harga jual: dua angka yang sengaja tidak digabung.
+//
+// Kurs berubah karena dunia; margin berubah karena keputusan. Kalau yang
+// disimpan cuma hasil kalinya, tidak ada lagi yang bisa memberi tahu apakah
+// "22.857" itu margin 30% atau 25% — dan operator yang mau menaikkan margin
+// harus menghitung mundur dulu di kepala.
+function PricingCard({ keys, onSave, busy }) {
+  const val = (k) => keys.find((x) => x.key === k)?.value || "";
+  const forex = Number(val("forex_idr_per_usd"));
+  const margin = Number(val("margin_pct"));
+  const priced = forex > 0 && margin >= 0 && margin < 100;
+  const perUsd = priced ? forex / (1 - margin / 100) : 0;
+
+  return (
+    <div className="card p4 mb3" style={{ background: "var(--subtle)" }}>
+      <div className="row mb2" style={{ justifyContent: "space-between" }}>
+        <span className="bold small">Harga jual kredit</span>
+        <Badge tone={priced ? "green" : "amber"}>{priced ? `${rupiah(perUsd)} / $1` : "kurs belum diisi"}</Badge>
+      </div>
+      <div className="grid mb2" style={{ gridTemplateColumns: "1fr 1fr", gap: 10 }}>
+        <form onSubmit={(e) => onSave(e, "forex_idr_per_usd")}>
+          <label className="label">Kurs pasar (Rp per 1 USD)</label>
+          <div className="row">
+            <input name="value" className="input" defaultValue={val("forex_idr_per_usd")} placeholder="mis. 16000" />
+            <button className="btn" style={{ fontSize: 12 }} disabled={busy}>Simpan</button>
+          </div>
+        </form>
+        <form onSubmit={(e) => onSave(e, "margin_pct")}>
+          <label className="label">Margin kotor (%)</label>
+          <div className="row">
+            <input name="value" className="input" defaultValue={val("margin_pct")} placeholder="30" />
+            <button className="btn" style={{ fontSize: 12 }} disabled={busy}>Simpan</button>
+          </div>
+        </form>
+      </div>
+      {priced ? (
+        <div className="tiny muted">
+          {rupiah(forex)} ÷ (1 − {margin}%) = <b>{rupiah(perUsd)}</b> per $1 kredit.
+          Dari tiap {rupiah(perUsd)} yang masuk, {rupiah(perUsd - forex)} margin —
+          $10 kredit dijual {rupiah(perUsd * 10)}.
+        </div>
+      ) : (
+        <div className="tiny muted">
+          Selama kurs kosong, penawaran harga ditolak — lebih baik tidak menjual daripada
+          menjual dengan angka karangan. Margin kotor: dari tiap Rp 100 yang masuk, Rp {margin || 0} margin.
+        </div>
+      )}
+    </div>
+  );
+}
+
+// Mesin promo. Yang membuatnya berguna bukan diskonnya, melainkan syarat
+// audiensnya — dan syarat yang salah ketik tidak pernah berbunyi, ia cuma
+// diam-diam tidak menembak siapa pun. Karena itu ada tombol pratinjau yang
+// menghitung berapa workspace yang KENA sebelum promonya disimpan.
+const PREDICATE_HELP = {
+  balance_below_pct: ["Saldo tinggal ≤ X%", "dari total kredit yang pernah dibeli workspace itu"],
+  max_logins: ["Login ≤ X sesi", "pendatang baru; sesi dihitung terpisah kalau jeda > 6 jam"],
+  min_logins: ["Login ≥ X sesi", "pelanggan yang sudah terbiasa"],
+  never_topped_up: ["Belum pernah beli", "isi true"],
+  min_days_since_signup: ["Umur akun ≥ X hari", ""],
+  max_days_since_signup: ["Umur akun ≤ X hari", ""],
+  min_days_since_last_topup: ["Tidak beli ≥ X hari", "pelanggan yang menghilang"],
+  min_spend_usd: ["Sudah pakai ≥ $X", ""],
+};
+
+function PromotionsCard({ tick }) {
+  const [st, reload] = useQuery(async () => callApp({ action: "promotions_list" }), [tick]);
+  const [open, setOpen] = useState(false);
+  const [audience, setAudience] = useState({});
+  const [preview, setPreview] = useState(null);
+  const [msg, setMsg] = useState(null);
+  const [busy, setBusy] = useState(false);
+  if (!st?.ok) return null;
+
+  function setPred(k, v) {
+    const next = { ...audience };
+    if (v === "" || v === null) delete next[k];
+    else next[k] = k === "never_topped_up" ? true : Number(v);
+    setAudience(next);
+    setPreview(null);
+  }
+  async function doPreview() {
+    setBusy(true); setMsg(null);
+    try { setPreview(await callApp({ action: "promotion_preview", audience })); }
+    catch (e) { setMsg(e.message); }
+    setBusy(false);
+  }
+  async function save(e) {
+    e.preventDefault();
+    const f = new FormData(e.target);
+    setBusy(true); setMsg(null);
+    try {
+      await callApp({
+        action: "promotion_save",
+        code: f.get("code"), name: f.get("name"),
+        discount_pct: Number(f.get("discount_pct")),
+        audience,
+        ends_at: f.get("ends_at") || null,
+        max_redemptions: f.get("max_redemptions") || null,
+        per_workspace_limit: Number(f.get("per_workspace_limit") || 1),
+      });
+      setMsg("Promo tersimpan."); setOpen(false); setAudience({}); setPreview(null); reload();
+    } catch (e2) { setMsg(e2.message); }
+    setBusy(false);
+  }
+  async function toggle(p) {
+    setBusy(true);
+    try {
+      await callApp({
+        action: "promotion_save", id: p.id, code: p.code, name: p.name,
+        discount_pct: Number(p.discount_pct), audience: p.audience,
+        ends_at: p.ends_at, max_redemptions: p.max_redemptions,
+        per_workspace_limit: p.per_workspace_limit, active: !p.active,
+      });
+      reload();
+    } catch (e) { setMsg(e.message); }
+    setBusy(false);
+  }
+
+  return (
+    <div className="card p6 mb4">
+      <div className="row mb1" style={{ justifyContent: "space-between" }}>
+        <div className="bold">Promo</div>
+        <button type="button" className="btn" style={{ fontSize: 12 }} onClick={() => setOpen(!open)}>
+          {open ? "Batal" : "+ Promo baru"}
+        </button>
+      </div>
+      <p className="tiny muted mb3">
+        Diskon yang menargetkan segmen tertentu — mis. saldo tinggal 25%, atau pendatang baru
+        yang belum pernah beli. Pelanggan hanya melihat promo yang memang berlaku untuknya.
+      </p>
+      {msg && <div className={msg === "Promo tersimpan." ? "msg-ok mb3" : "msg-err mb3"}>{msg}</div>}
+
+      {open && (
+        <form onSubmit={save} className="card p4 mb3" style={{ background: "var(--subtle)" }}>
+          <div className="grid mb2" style={{ gridTemplateColumns: "1fr 2fr 1fr", gap: 8 }}>
+            <div><label className="label">Kode</label><input name="code" className="input" placeholder="SALDOTIPIS" required /></div>
+            <div><label className="label">Nama</label><input name="name" className="input" placeholder="Saldo menipis — isi ulang" required /></div>
+            <div><label className="label">Diskon %</label><input name="discount_pct" className="input" type="number" min="1" max="90" defaultValue="20" required /></div>
+          </div>
+          <label className="label">Syarat audiens — kosongkan yang tidak dipakai</label>
+          <div className="grid mb2" style={{ gridTemplateColumns: "1fr 1fr", gap: 8 }}>
+            {(st.predicates || []).map((k) => (
+              <div key={k}>
+                <div className="tiny bold">{PREDICATE_HELP[k]?.[0] || k}</div>
+                <input className="input" style={{ fontSize: 12 }}
+                  placeholder={k === "never_topped_up" ? "true" : "angka"}
+                  value={audience[k] === undefined ? "" : String(audience[k])}
+                  onChange={(e) => setPred(k, e.target.value)} />
+                {PREDICATE_HELP[k]?.[1] && <div className="tiny muted">{PREDICATE_HELP[k][1]}</div>}
+              </div>
+            ))}
+          </div>
+          <div className="grid mb2" style={{ gridTemplateColumns: "1fr 1fr 1fr", gap: 8 }}>
+            <div><label className="label">Berakhir</label><input name="ends_at" className="input" type="date" /></div>
+            <div><label className="label">Kuota total</label><input name="max_redemptions" className="input" type="number" min="1" placeholder="tanpa batas" /></div>
+            <div><label className="label">Per workspace</label><input name="per_workspace_limit" className="input" type="number" min="1" defaultValue="1" /></div>
+          </div>
+          <div className="row" style={{ gap: 8 }}>
+            <button type="button" className="btn btn2" disabled={busy} onClick={doPreview}>Pratinjau audiens</button>
+            <button className="btn" disabled={busy}>Simpan promo</button>
+          </div>
+          {preview && (
+            <div className={preview.matched === 0 ? "msg-err tiny mt2" : "msg-ok tiny mt2"}>
+              {preview.matched} dari {preview.total_workspaces} workspace kena syarat ini
+              {preview.matched === 0 ? " — syaratnya terlalu ketat, promo ini tidak akan menembak siapa pun." : ""}
+              {preview.sample?.length ? ` (mis. ${preview.sample.map((x) => x.name).join(", ")})` : ""}
+            </div>
+          )}
+        </form>
+      )}
+
+      {(st.promotions || []).length === 0 ? (
+        <div className="small muted">Belum ada promo.</div>
+      ) : (
+        <table>
+          <thead><tr><th>Kode</th><th>Diskon</th><th>Syarat</th><th>Dipakai</th><th>Omzet</th><th></th></tr></thead>
+          <tbody>
+            {st.promotions.map((p) => (
+              <tr key={p.id} style={p.active ? undefined : { opacity: 0.5 }}>
+                <td className="bold">{p.code}<div className="tiny muted">{p.name}</div></td>
+                <td>{Number(p.discount_pct)}%</td>
+                <td className="tiny muted">
+                  {Object.keys(p.audience || {}).length === 0 ? "semua orang"
+                    : Object.entries(p.audience).map(([k, v]) => `${PREDICATE_HELP[k]?.[0] || k}: ${v}`).join(" · ")}
+                </td>
+                <td>{p.redemptions}{p.max_redemptions ? ` / ${p.max_redemptions}` : ""}</td>
+                <td>{p.revenue_idr ? rupiah(p.revenue_idr) : "—"}</td>
+                <td>
+                  <button type="button" className="btn btn2" style={{ fontSize: 11, padding: "3px 8px" }}
+                    disabled={busy} onClick={() => toggle(p)}>{p.active ? "Matikan" : "Nyalakan"}</button>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      )}
+    </div>
+  );
+}
+
+function PlatformConfig({ st, reload }) {
+  const [msg, setMsg] = useState(null);
+  const [busy, setBusy] = useState(false);
+  if (!st?.is_platform_admin) return null;
+
+  async function save(e, key) {
+    e.preventDefault();
+    const f = new FormData(e.target);
+    setBusy(true); setMsg(null);
+    try {
+      const r = await callApp({ action: "set_platform_config", key, value: f.get("value") });
+      setMsg(r.cleared ? `${PLATFORM_KEY_LABELS[key][0]} dihapus.` : `${PLATFORM_KEY_LABELS[key][0]} tersimpan.`);
+      e.target.reset();
+      reload();
+    } catch (e2) { setMsg(e2.message); }
+    setBusy(false);
+  }
+
+  return (
+    <div className="card p6 mb4" style={{ borderColor: "var(--warn)" }}>
+      <div className="row mb1" style={{ justifyContent: "space-between" }}>
+        <div className="bold">Konfigurasi Platform</div>
+        <Badge tone="amber">operator</Badge>
+      </div>
+      <p className="tiny muted mb3">
+        Key di sini membayar job SEMUA workspace yang memakai kredit — bukan cuma workspace-mu.
+        Workspace mode <b>byo_key</b> (termasuk punyamu sekarang) tidak menyentuhnya sama sekali.
+        Nilainya tidak pernah ditampilkan balik: yang bisa dilakukan halaman ini mengganti, bukan membaca.
+      </p>
+      {msg && <div className={msg.includes("tersimpan") || msg.includes("dihapus") ? "msg-ok mb3" : "msg-err mb3"}>{msg}</div>}
+      <PricingCard keys={st.keys || []} onSave={save} busy={busy} />
+      {(st.keys || []).filter((k) => k.kind !== "plain").map((k) => (
+        <div key={k.key} className="card p4 mb3" style={{ background: "var(--subtle)" }}>
+          <div className="row mb1" style={{ justifyContent: "space-between" }}>
+            <span className="bold small">{PLATFORM_KEY_LABELS[k.key]?.[0] || k.key}</span>
+            <Badge tone={k.set ? "green" : "zinc"}>{k.set ? `terpasang · ${k.length} karakter` : "kosong"}</Badge>
+          </div>
+          <p className="tiny muted mb2">{PLATFORM_KEY_LABELS[k.key]?.[1] || ""}</p>
+          <form onSubmit={(e) => save(e, k.key)} className="row">
+            <input name="value" className="input" type="password" style={{ fontSize: 12 }}
+              placeholder={k.set ? "isi untuk mengganti — kosongkan lalu Simpan untuk menghapus" : "tempel key…"} />
+            <button className="btn" style={{ fontSize: 12 }} disabled={busy}>Simpan</button>
+          </form>
+          {k.updated_at && (
+            <div className="tiny muted mt1">
+              Terakhir diubah {new Date(k.updated_at).toLocaleString("id-ID")}
+              {k.updated_by_email ? ` oleh ${k.updated_by_email}` : " langsung lewat SQL"}
+            </div>
+          )}
+        </div>
+      ))}
+      <p className="tiny muted">
+        Daftar operator sengaja tidak bisa diubah dari sini — hanya lewat SQL. Kalau bisa, satu sesi
+        yang dibajak cukup untuk mengunci kamu keluar dari platformmu sendiri.
+      </p>
+    </div>
+  );
+}
+
+// Kartu saldo. Hanya muncul kalau workspace ini memang memakai kredit —
+// di mode byo_key saldonya selalu nol dan menampilkannya cuma bikin user
+// mengira ada tagihan yang belum dibayar, padahal yang menagih adalah
+// fal/DashScope langsung ke kartunya sendiri.
+function BillingCard({ ws, tick }) {
+  const [bill] = useQuery(async () => callApp({ action: "billing_status" }), [ws.id, tick]);
+  // Penawaran ditampilkan di sini, bukan lewat email: belum ada infrastruktur
+  // email di app ini, dan penawaran yang muncul tepat di sebelah saldo yang
+  // menipis justru lebih dekat ke momen keputusannya.
+  const [offers] = useQuery(async () => callApp({ action: "my_offers" }), [ws.id, tick]);
+  if (!bill || bill.billing_mode !== "credit") return null;
+  const low = Number(bill.balance) < 1;
+  const best = offers?.offers?.[0] || null;
+  return (
+    <div className="card p6 mb4">
+      <div className="row mb2" style={{ justifyContent: "space-between" }}>
+        <div className="bold">Saldo Kredit</div>
+        <Badge tone={low ? "amber" : "green"}>{priceLabel(bill.balance)}</Badge>
+      </div>
+      <p className="tiny muted mb3">
+        Setiap generate live dipotong dari saldo ini. Kalau saldonya kurang dari perkiraan biaya job,
+        job-nya ditolak sebelum dikirim ke provider — jadi tidak ada tagihan yang muncul belakangan.
+        {low ? " Saldomu menipis: isi ulang sebelum menjalankan job video." : ""}
+      </p>
+      {best && (
+        <div className="card p4 mb3" style={{ background: "var(--ok-line)" }}>
+          <div className="row" style={{ justifyContent: "space-between" }}>
+            <span className="bold small">🎁 {best.name}</span>
+            <Badge tone="green">−{best.discount_pct}%</Badge>
+          </div>
+          <div className="tiny muted mt1">
+            Kode <b>{best.code}</b> berlaku untuk isi ulang berikutnya
+            {best.ends_at ? ` sampai ${new Date(best.ends_at).toLocaleDateString("id-ID")}` : ""}.
+            {offers.offers.length > 1 ? ` (${offers.offers.length - 1} penawaran lain juga berlaku)` : ""}
+          </div>
+        </div>
+      )}
+      {bill.entries?.length > 0 && (
+        <table>
+          <thead><tr><th>Waktu</th><th>Jenis</th><th>Jumlah</th><th>Catatan</th></tr></thead>
+          <tbody>
+            {bill.entries.map((e, i) => (
+              <tr key={i}>
+                <td className="muted tiny">{new Date(e.created_at).toLocaleString("id-ID")}</td>
+                <td className="muted">{e.kind}</td>
+                <td className={Number(e.delta_usd) < 0 ? "muted" : "bold"}>
+                  {Number(e.delta_usd) < 0 ? "−" : "+"}{priceLabel(Math.abs(Number(e.delta_usd)))}
+                </td>
+                <td className="muted tiny">{e.note || "—"}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      )}
+    </div>
+  );
+}
+
 export function Settings({ ws, refresh, tick, spend, spendError, query }) {
   const [models, reload, modelsError] = useQuery(async () =>
     unwrap(await supa.from("provider_models").select("*").order("task").order("est_price_usd")), [ws.id, tick]);
@@ -2774,6 +3425,14 @@ export function Settings({ ws, refresh, tick, spend, spendError, query }) {
     unwrap(await supa.from("budget_settings").select("*").eq("workspace_id", ws.id).maybeSingle(), null), [ws.id, tick]);
   const [keyState, setKeyState] = useState(null);
   const [msg, setMsg] = useState(null);
+  // Diambil sekali di sini, bukan di dalam tiap kartu operator: kalau tiap
+  // kartu memanggil endpointnya sendiri, setiap pelanggan biasa akan memicu
+  // permintaan yang pasti ditolak hanya untuk memunculkan kartu yang memang
+  // tidak akan muncul.
+  const [platform, reloadPlatform] = useQuery(async () => callApp({ action: "platform_config_status" }), [tick]);
+  // Default byo_key selagi status masih dimuat: itu tampilan yang sudah ada
+  // sekarang, jadi tidak ada kedipan kartu yang muncul lalu hilang.
+  const creditMode = keyState?.billing_mode === "credit";
 
   useEffect(() => {
     callGenerate({ action: "status" }).then(setKeyState).catch(() => setKeyState({ fal_key: false, mode: "mock" }));
@@ -2799,7 +3458,7 @@ export function Settings({ ws, refresh, tick, spend, spendError, query }) {
       // `verified: false` = providernya tidak bisa dihubungi saat disimpan,
       // BUKAN key-nya ditolak — yang ditolak tidak akan sampai ke sini.
       setMsg(r.verified === false
-        ? `${nama} tersimpan, tapi belum sempat diuji ke providernya (tidak bisa dihubungi barusan). Kalau generate gagal dengan error kredensial, coba simpan ulang.`
+        ? `${nama} tersimpan, tapi BELUM terbukti benar. ${r.verify_note || "Providernya tidak menjawab dengan jelas."} Kalau generate nanti gagal dengan error kredensial, simpan ulang key-nya.`
         : `${nama} tersimpan aman di server, dan sudah diuji ke providernya.`);
       e.target.reset();
       setKeyState((s) => ({ ...s, [provider === "hf" ? "hf_token" : "fal_key"]: true }));
@@ -2827,6 +3486,9 @@ export function Settings({ ws, refresh, tick, spend, spendError, query }) {
       <AccountAdmin ws={ws} tick={tick} />
       <AiWriterSettings keyState={keyState} onSaved={() => callGenerate({ action: "status" }).then(setKeyState).catch(() => {})} />
       <McpSettings ws={ws} tick={tick} />
+      <PlatformConfig st={platform} reload={reloadPlatform} />
+      {platform?.is_platform_admin && <PromotionsCard tick={tick} />}
+      <BillingCard ws={ws} tick={tick} />
       {msg && <div className="msg-ok mb3">{msg}</div>}
       <div className="grid mb4" style={{ gridTemplateColumns: "repeat(auto-fit,minmax(340px,1fr))" }}>
         <div className="card p6">
@@ -2835,7 +3497,17 @@ export function Settings({ ws, refresh, tick, spend, spendError, query }) {
             <span className="tiny muted"> — mock memakai foto contoh, live memanggil provider asli.</span>
           </div>
 
-          <div className="card p4 mb3" style={{ background: "#fafafa" }}>
+          {/* Di mode kredit, key-nya milik platform. Menampilkan kolom key di
+              sini bukan cuma mubazir — user yang mengisinya akan mengira job-nya
+              dibayar dari key itu, padahal saldo yang dipotong. */}
+          {creditMode ? (
+            <p className="small muted mb3">
+              Workspace ini memakai <b>kredit</b>: API key provider disediakan platform,
+              jadi kamu tidak perlu memasang key sendiri. Yang menentukan job bisa jalan
+              atau tidak adalah saldo di kartu Saldo Kredit di atas.
+            </p>
+          ) : (<>
+          <div className="card p4 mb3" style={{ background: "var(--subtle)" }}>
             <div className="row mb2" style={{ justifyContent: "space-between" }}>
               <span className="bold small">Hugging Face — gratis</span>
               <Badge tone={keyState?.hf_token ? "green" : "amber"}>{keyState?.hf_token ? "terpasang" : "belum"}</Badge>
@@ -2847,7 +3519,7 @@ export function Settings({ ws, refresh, tick, spend, spendError, query }) {
             </form>
           </div>
 
-          <div className="card p4 mb3" style={{ background: "#fafafa" }}>
+          <div className="card p4 mb3" style={{ background: "var(--subtle)" }}>
             <div className="row mb2" style={{ justifyContent: "space-between" }}>
               <span className="bold small">fal.ai — berbayar</span>
               <Badge tone={keyState?.fal_key ? "green" : "amber"}>{keyState?.fal_key ? "terpasang" : "belum"}</Badge>
@@ -2860,12 +3532,17 @@ export function Settings({ ws, refresh, tick, spend, spendError, query }) {
           </div>
 
           <p className="tiny muted mb2">Semua key disimpan di tabel terkunci server — tidak pernah dikirim balik ke browser.</p>
+          </>)}
           <div className="row">
             <button className="btn btn2" onClick={() => setMode("mock")} type="button">Mode Mock</button>
             <button className="btn" onClick={() => setMode("live")} type="button"
-              disabled={!keyState?.fal_key && !keyState?.hf_token}>Aktifkan Live</button>
+              disabled={!creditMode && !keyState?.fal_key && !keyState?.hf_token}>Aktifkan Live</button>
           </div>
         </div>
+        {/* Batas bulanan itu rem sukarela atas uang user sendiri. Di mode kredit
+            yang membatasi adalah saldo, dan saldo tidak boleh bisa dimatikan
+            lewat checkbox — jadi kartunya memang tidak ada di sana. */}
+        {!creditMode && (
         <div className="card p6">
           <div className="bold mb3">Budget Guard</div>
           <form onSubmit={saveBudget}>
@@ -2883,6 +3560,7 @@ export function Settings({ ws, refresh, tick, spend, spendError, query }) {
             <div className="tiny muted mt3">Terpakai bulan ini: <b>{usd(spend.spent)}</b> dari {usd(spend.cap)}</div>
           )}
         </div>
+        )}
       </div>
       <SocialConnections ws={ws} tick={tick} query={query} />
       <CalendarConnection ws={ws} tick={tick} query={query} />
