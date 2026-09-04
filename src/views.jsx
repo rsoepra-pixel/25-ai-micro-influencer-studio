@@ -869,7 +869,11 @@ export function GenerateForm({ models, influencers, influencerId, refresh, mode,
     setSourceUrl(picked.url);
   }, [picked?.n]);
 
-  const taskModels = models.filter((m) => m.task === task);
+  // Disaring per task — model video tidak pernah muncul saat task-nya gambar,
+  // dst. Diurutkan termurah dulu supaya default-nya (elemen pertama) deterministik:
+  // query katalog hanya mengurutkan per task, jadi tanpa ini "model pertama"
+  // bergantung urutan baris yang dikembalikan Postgres.
+  const taskModels = models.filter((m) => m.task === task).sort(byPrice);
   // Hanya model image-edit yang benar-benar mengirim foto Identity Kit ke
   // provider; sisanya cuma menerima teks. Jadi kalau fotonya ada, model itu
   // yang dipilih duluan — user tetap bebas menggantinya.
@@ -972,14 +976,8 @@ export function GenerateForm({ models, influencers, influencerId, refresh, mode,
             <option value="tts">Suara (TTS)</option><option value="lipsync">Talking / Lip Sync</option>
           </select>
         </div>
-        <div><label className="label">Model</label>
-          <select className="input" value={selected?.id || ""} onChange={(e) => setModelId(e.target.value)}>
-            {taskModels.map((m) => (
-              <option key={m.id} value={m.id} disabled={!keyReady(m)}>
-                {m.label}{keyReady(m) ? "" : ` — butuh key ${m.requires_key}`}
-              </option>
-            ))}
-          </select>
+        <div>
+          <ModelPicker models={taskModels} value={selected?.id || ""} onChange={setModelId} keyReady={keyReady} />
           {selected?.description && <p className="tiny muted" style={{ marginTop: 4 }}>{selected.description}</p>}
         </div>
         {!influencerId && influencers && (
@@ -1097,6 +1095,71 @@ export function GenerateForm({ models, influencers, influencerId, refresh, mode,
 // Satu klik = beberapa job gambar sekaligus, satu per sudut/ekspresi, semuanya
 // memakai identity prompt influencer yang sama. Prompt shot sengaja bahasa
 // Inggris karena model gambar dilatih dominan dengan caption Inggris.
+// ---------- Pemilih model ----------
+// Katalog model terentang dari gratis sampai $0.40 per detik. Dalam satu
+// dropdown, memilih "yang aman untuk coba-coba" berarti memindai seluruh
+// daftar dan membandingkan angka satu per satu. Dipisah dua, keputusan
+// biayanya diambil lebih dulu — sebelum melihat nama modelnya.
+const CHEAP_MAX_USD = 0.08;
+const isCheapModel = (m) => Number(m?.est_price_usd || 0) < CHEAP_MAX_USD;
+
+// Perbandingan harga di sini SELALU dalam satu task, dan satu task memakai satu
+// satuan (gambar per_image, video & lipsync per_second, TTS per_1k_chars), jadi
+// angkanya sejenis. Satuannya tetap ikut ditulis, karena "murah" per DETIK bukan
+// berarti murah per klip: $0.05/detik masuk kelompok murah, tapi klip 5 detik
+// tetap $0.25. Estimasi total yang sebenarnya tetap ditampilkan di dekat tombol.
+const UNIT_SUFFIX = { per_image: "/gambar", per_second: "/detik", per_1k_chars: "/1k karakter" };
+// usd() membulatkan ke 2 desimal, dan katalog memakai 3: $0.003 jadi "$0.00"
+// (seolah gratis), $0.025 jadi "$0.03", $0.125 jadi "$0.13". Angka di dropdown
+// harus sama persis dengan yang tertulis di katalog Settings, jadi tiga desimal
+// dulu lalu satu nol di ekor dibuang ($0.040 → $0.04, $0.125 tetap utuh).
+const priceLabel = (n) => {
+  const v = Number(n || 0);
+  if (v === 0) return "gratis";
+  return `$${v.toFixed(3).replace(/0$/, "")}`;
+};
+const byPrice = (a, b) => Number(a.est_price_usd) - Number(b.est_price_usd);
+
+// `models` yang masuk ke sini WAJIB sudah tersaring per task oleh pemanggilnya.
+function ModelPicker({ models, value, onChange, keyReady = () => true, label = "Model" }) {
+  const groups = [
+    { key: "murah", judul: `Gratis & murah — di bawah ${priceLabel(CHEAP_MAX_USD)}`, list: models.filter(isCheapModel).sort(byPrice) },
+    { key: "mahal", judul: `Premium — ${priceLabel(CHEAP_MAX_USD)} ke atas`, list: models.filter((m) => !isCheapModel(m)).sort(byPrice) },
+  ];
+  return (
+    <div>
+      <label className="label">{label}</label>
+      {groups.map((g, i) => (
+        <select
+          key={g.key}
+          className={`input${i === 0 ? " mb1" : ""}`}
+          // Satu model saja yang aktif. Dropdown yang tidak memuatnya kembali ke
+          // baris judulnya, supaya tidak terlihat seolah dua model terpilih.
+          value={g.list.some((m) => m.id === value) ? value : ""}
+          disabled={!g.list.length}
+          onChange={(e) => e.target.value && onChange(e.target.value)}
+        >
+          <option value="">
+            {g.list.length ? `${g.judul} (${g.list.length})` : `${g.judul} — tidak ada untuk task ini`}
+          </option>
+          {g.list.map((m) => (
+            <option key={m.id} value={m.id} disabled={!keyReady(m)}>
+              {m.label} · {priceLabel(m.est_price_usd)}{UNIT_SUFFIX[m.unit] || ""}
+              {keyReady(m) ? "" : ` — butuh key ${m.requires_key}`}
+            </option>
+          ))}
+        </select>
+      ))}
+      {/* Dua kotak, satu pilihan. Tanpa kalimat ini keduanya mudah terbaca
+          sebagai dua field yang dua-duanya harus diisi. */}
+      <p className="tiny muted" style={{ marginTop: 4 }}>
+        Pilih dari salah satu daftar — memilih di satu daftar mengosongkan yang lain.
+        {models.some((m) => m.unit === "per_second") && " Harga di sini per detik, jadi kalikan durasinya untuk biaya satu klip."}
+      </p>
+    </div>
+  );
+}
+
 const SHEET_SHOTS = [
   { id: "front", label: "Depan (netral)", prompt: "front view head and shoulders portrait, facing camera directly, neutral relaxed expression, eyes to camera" },
   { id: "threeq", label: "Serong 3/4", prompt: "three-quarter view head and shoulders portrait, head turned 45 degrees, neutral expression" },
@@ -1117,7 +1180,7 @@ const SHEET_BACKDROPS = [
 const SHEET_BASE = "character reference sheet photo, photorealistic, sharp focus, high detail, consistent same person, single subject, no text, no watermark, no collage";
 
 function CharacterSheetPanel({ models, influencers, refresh, mode }) {
-  const imgModels = models.filter((m) => m.task === "image");
+  const imgModels = models.filter((m) => m.task === "image").sort(byPrice);
   const [infId, setInfId] = useState("");
   const [modelId, setModelId] = useState("");
   const [shots, setShots] = useState(DEFAULT_SHOTS);
@@ -1189,10 +1252,8 @@ function CharacterSheetPanel({ models, influencers, refresh, mode }) {
             {influencers.map((i) => <option key={i.id} value={i.id}>{i.name}</option>)}
           </select>
         </div>
-        <div><label className="label">Model gambar</label>
-          <select className="input" value={model?.id || ""} onChange={(e) => setModelId(e.target.value)}>
-            {imgModels.map((m) => <option key={m.id} value={m.id}>{m.label}</option>)}
-          </select>
+        <div>
+          <ModelPicker models={imgModels} value={model?.id || ""} onChange={setModelId} label="Model gambar" />
           {model?.description && <p className="tiny muted" style={{ marginTop: 4 }}>{model.description}</p>}
         </div>
       </div>
