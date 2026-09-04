@@ -29,6 +29,33 @@ async function requireUser(req: Request) {
   if (!mem) throw new Error("Kamu belum tergabung di workspace.");
   return { user: data.user, ws: mem.workspace_id as string };
 }
+// Pemanggil internal: fungsi `mcp`, yang sudah lebih dulu mengautentikasi
+// pemanggilnya per workspace tapi tidak memegang JWT Supabase user mana pun.
+// Hanya kunci MCP yang berlaku di sini, dan hanya untuk `publish` — kunci cron
+// sengaja tidak diberi kewenangan ini.
+//
+// Perbandingannya waktu-tetap; dengan === selisih waktunya bisa dipakai
+// menebak kunci satu karakter demi satu karakter.
+function safeEqual(a: string, b: string): boolean {
+  if (a.length !== b.length) return false;
+  let diff = 0;
+  for (let i = 0; i < a.length; i++) diff |= a.charCodeAt(i) ^ b.charCodeAt(i);
+  return diff === 0;
+}
+
+async function internalWorkspace(req: Request, body: Record<string, unknown>): Promise<string | null> {
+  const given = req.headers.get("x-internal-key");
+  if (!given) return null;
+  if (body.action !== "publish") throw new Error("Kunci internal di sini hanya berlaku untuk aksi publish.");
+  const wsId = String(body.workspace_id || "");
+  if (!wsId) throw new Error("workspace_id wajib diisi untuk pemanggilan internal.");
+  const { data } = await admin.from("service_config").select("value").eq("key", "internal_mcp_key").maybeSingle();
+  if (!data?.value || !safeEqual(given, String(data.value))) throw new Error("Kunci internal tidak cocok.");
+  const { data: w } = await admin.from("workspaces").select("id").eq("id", wsId).maybeSingle();
+  if (!w) throw new Error("Workspace tidak ditemukan.");
+  return w.id as string;
+}
+
 async function getSecret(ws: string, key: string): Promise<string | null> {
   const { data } = await admin.from("app_secrets").select("value").eq("workspace_id", ws).eq("key", key).maybeSingle();
   return data?.value ?? null;
@@ -169,7 +196,8 @@ Deno.serve(async (req) => {
   if (req.method !== "POST") return json({ error: "Method not allowed" }, 405);
   try {
     const body = await req.json();
-    const { ws } = await requireUser(req);
+    // Pemanggil internal (mcp) dulu; kalau tidak ada headernya, jalur JWT user.
+    const ws = (await internalWorkspace(req, body)) ?? (await requireUser(req)).ws;
     switch (body.action) {
       case "config_status": {
         const out: Record<string, unknown> = { callback_url: CALLBACK };

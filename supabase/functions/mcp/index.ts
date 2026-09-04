@@ -170,7 +170,104 @@ const TOOLS = [
     description: "Daftar aset hasil produksi di Drive (gambar/video/audio) beserta URL-nya.",
     inputSchema: { type: "object", properties: { limit: { type: "number", description: "Maks. baris (default 20)" } } },
   },
+  {
+    name: "list_models",
+    description:
+      "Katalog model produksi yang aktif beserta harga per satuan. Panggil ini dulu sebelum generate_media " +
+      "untuk memilih model: yang keeps_identity=true memakai foto Identity Kit sebagai acuan wajah, " +
+      "yang init_image_field terisi membuat video DARI sebuah foto (foto awalnya wajib).",
+    inputSchema: {
+      type: "object",
+      properties: { task: { type: "string", enum: ["image", "video", "tts", "lipsync"], description: "Saring per jenis" } },
+    },
+  },
+  {
+    name: "generate_media",
+    description:
+      "Jalankan job produksi sungguhan — gambar, video, suara, atau lip sync. INI MENGELUARKAN BIAYA: " +
+      "cek est_price_usd di list_models dulu, dan sebutkan perkiraannya ke user sebelum memanggil. " +
+      "Gambar dan video sinkron dari DashScope langsung selesai; job fal berstatus 'running' dan " +
+      "diselesaikan otomatis oleh cron — pantau lewat list_jobs. Isi content_item_id bila hasilnya " +
+      "untuk sebuah ide konten, supaya publish tahu file mana yang harus diposting.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        task: { type: "string", enum: ["image", "video", "tts", "lipsync"], description: "Jenis produksi" },
+        model_id: str("ID model dari list_models"),
+        influencer_id: str("Influencer pemilik wajah (opsional, tapi tanpa ini identity prompt tidak disuntikkan)"),
+        prompt: str("Prompt gambar/video"),
+        text: str("Naskah yang diucapkan, untuk task tts"),
+        duration: { type: "number", description: "Durasi detik untuk video/lipsync (default 5)" },
+        source_image_url: str("URL foto awal — WAJIB untuk model video yang init_image_field-nya terisi"),
+        audio_url: str("URL audio, untuk task lipsync"),
+        content_item_id: str("Ide konten yang hasilnya ini (opsional)"),
+        label: str("Nama terbaca untuk aset hasilnya (opsional)"),
+      },
+      required: ["task", "model_id"],
+    },
+  },
+  {
+    name: "list_jobs",
+    description:
+      "Status job produksi terbaru: queued, running, succeeded, atau failed — beserta biaya dan URL hasilnya. " +
+      "Dipakai untuk memantau job yang dikirim lewat generate_media.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        status: { type: "string", enum: ["queued", "running", "succeeded", "failed"], description: "Saring per status" },
+        limit: { type: "number", description: "Maks. baris (default 20)" },
+      },
+    },
+  },
+  {
+    name: "list_connections",
+    description: "Akun sosial yang terhubung (Instagram/TikTok) beserta mode-nya: mock atau live.",
+    inputSchema: { type: "object", properties: {} },
+  },
+  {
+    name: "publish_content",
+    description:
+      "Posting sebuah konten ke akun sosial yang terhubung. Koneksi ber-mode 'mock' tidak menyentuh dunia luar; " +
+      "mode 'live' benar-benar memposting dan TIDAK bisa dibatalkan — minta konfirmasi user dulu untuk yang live. " +
+      "Medianya diambil dari aset yang ditandai untuk konten ini; kalau belum ada, sebutkan asset_id secara eksplisit. " +
+      "AI-disclosure selalu dikirim true karena kontennya memang buatan AI.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        content_item_id: str("ID konten yang diposting"),
+        connection_id: str("ID koneksi dari list_connections"),
+        asset_id: str("Media tertentu yang diposting (opsional bila sudah ditandai untuk konten ini)"),
+        title: str("Judul untuk TikTok (opsional)"),
+        privacy: { type: "string", enum: ["SELF_ONLY", "PUBLIC_TO_EVERYONE"], description: "Privasi TikTok (default SELF_ONLY)" },
+      },
+      required: ["content_item_id", "connection_id"],
+    },
+  },
 ];
+
+// Panggil edge function lain sebagai pemanggil internal.
+//
+// `mcp` sudah mengautentikasi kliennya per workspace, tapi tidak memegang JWT
+// Supabase user mana pun — jadi ia tidak bisa memanggil `generate`/`social`
+// lewat jalur biasa. Kunci internal MCP-lah yang menjembatani; kewenangannya
+// dibatasi di sisi sana (submit & publish, bukan segalanya).
+//
+// Logikanya SENGAJA tidak disalin ke sini. Budget guard, validasi katalog,
+// pemilihan foto Identity Kit, dan pemilihan media saat publish semuanya
+// tinggal di satu tempat; menyalinnya berarti dua salinan yang pelan-pelan
+// berbeda.
+async function callInternal(fn: "generate" | "social", ws: string, body: Record<string, unknown>) {
+  const { data } = await admin.from("service_config").select("value").eq("key", "internal_mcp_key").maybeSingle();
+  if (!data?.value) throw new Error("Kunci internal MCP belum disiapkan di service_config.");
+  const res = await fetch(`${SB_URL}/functions/v1/${fn}`, {
+    method: "POST",
+    headers: { "content-type": "application/json", "x-internal-key": String(data.value) },
+    body: JSON.stringify({ ...body, workspace_id: ws }),
+  });
+  const out = await res.json().catch(() => ({}));
+  if (!res.ok || out?.error) throw new Error(String(out?.error || `${fn} menjawab HTTP ${res.status}`));
+  return out;
+}
 
 // ---------- Implementasi tool ----------
 const ok = (o: unknown) => ({ content: [{ type: "text", text: JSON.stringify(o, null, 1) }] });
@@ -334,6 +431,62 @@ async function runTool(name: string, args: Record<string, unknown>, ctx: Ctx) {
       if (error) throw new Error(error.message);
       return ok(data || []);
     }
+    case "list_models": {
+      let q = admin.from("provider_models")
+        .select("id,model_key,label,task,provider,est_price_usd,unit,description,keeps_identity,init_image_field,requires_key")
+        .eq("active", true).order("task").order("est_price_usd");
+      if (typeof args.task === "string") q = q.eq("task", args.task);
+      const { data, error } = await q;
+      if (error) throw new Error(error.message);
+      return ok(data || []);
+    }
+    case "generate_media": {
+      // Biaya keluar di sini, jadi jangan menebak apa pun: task dan model
+      // wajib disebut, sisanya diteruskan apa adanya ke `generate` yang punya
+      // budget guard dan validasi katalognya.
+      const out = await callInternal("generate", ws, {
+        action: "submit",
+        task: need("task"),
+        model_id: need("model_id"),
+        ...pick(["influencer_id", "prompt", "text", "duration", "source_image_url", "audio_url", "content_item_id", "label"]),
+      });
+      return ok(out);
+    }
+    case "list_jobs": {
+      let q = admin.from("production_jobs")
+        .select("id,task,model_key,status,label,cost_estimate_usd,cost_actual_usd,output_url,error,content_item_id,created_at")
+        .eq("workspace_id", ws).order("created_at", { ascending: false })
+        .limit(Math.min(Number(args.limit) || 20, 100));
+      if (typeof args.status === "string") q = q.eq("status", args.status);
+      const { data, error } = await q;
+      if (error) throw new Error(error.message);
+      return ok(data || []);
+    }
+    case "list_connections": {
+      // access_token & refresh_token TIDAK ikut dipilih — tidak ada alasan
+      // kredensial akun sosial melintas ke klien MCP.
+      const { data, error } = await admin.from("social_connections")
+        .select("id,platform,influencer_id,external_account_name,provider_mode,connected_at")
+        .eq("workspace_id", ws).order("connected_at", { ascending: false });
+      if (error) throw new Error(error.message);
+      return ok(data || []);
+    }
+    case "publish_content": {
+      const out = await callInternal("social", ws, {
+        action: "publish",
+        content_item_id: need("content_item_id"),
+        connection_id: need("connection_id"),
+        ...pick(["asset_id"]),
+        compliance: {
+          ...pick(["title", "privacy"]),
+          // Kontennya memang buatan AI. Nilai ini bukan pilihan pemanggil:
+          // `social` menolak publish tanpa ai_disclosure, dan itu memang harus
+          // begitu — bukan sesuatu yang boleh dimatikan lewat argumen tool.
+          ai_disclosure: true,
+        },
+      });
+      return ok(out);
+    }
     default:
       throw new Error(`Tool tidak dikenal: ${name}`);
   }
@@ -423,7 +576,14 @@ async function handleRpc(msg: Record<string, unknown>, ctx: Ctx): Promise<unknow
         "Workspace AI Micro Influencer Studio. Kamu bisa membaca dan mengubah influencer, konten planner, " +
         "pillar, task, dan laporan. Saat diminta menulis hook/script/caption, TULIS SENDIRI naskahnya lalu " +
         "simpan lewat update_content — jangan menyuruh user membuka aplikasi. Untuk identity_prompt, selalu " +
-        "tulis bahasa Inggris dan hanya ciri fisik tetap (tanpa latar, pose, atau pakaian).",
+        "tulis bahasa Inggris dan hanya ciri fisik tetap (tanpa latar, pose, atau pakaian).\n\n" +
+        "Kamu juga bisa MENJALANKAN produksi, bukan cuma merencanakannya: generate_media membuat gambar/video/" +
+        "suara sungguhan, publish_content memposting ke akun sosial. Dua-duanya punya konsekuensi nyata — " +
+        "generate_media mengeluarkan biaya, dan publish ke koneksi mode 'live' tidak bisa dibatalkan. " +
+        "Karena itu: panggil list_models dulu, sebutkan perkiraan biayanya ke user, dan minta persetujuan " +
+        "sebelum menjalankan keduanya. Untuk wajah yang konsisten pilih model dengan keeps_identity=true dan " +
+        "sertakan influencer_id. Job fal selesai secara asinkron — pantau lewat list_jobs, jangan diulang " +
+        "kirim hanya karena statusnya masih 'running'.",
     });
   }
   if (method === "notifications/initialized" || method?.startsWith("notifications/")) return null;

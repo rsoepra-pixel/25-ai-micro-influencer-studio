@@ -29,13 +29,21 @@ async function requireUser(req: Request) {
   if (!mem) throw new Error("Kamu belum tergabung di workspace.");
   return { user: data.user, ws: mem.workspace_id as string };
 }
-// Pemanggil internal: cron di database, yang tidak punya JWT user.
+// Pemanggil internal: server ke server, tanpa JWT user.
 //
-// Dipakai HANYA untuk `poll`. Aksi lain tetap wajib sesi user — kalau tidak,
-// kunci ini berubah jadi kunci untuk membelanjakan uang orang: `submit`
-// mengantre job berbayar. Jadi pembatasan aksinya ada di pemanggil resolver
-// ini, bukan sekadar di dokumentasi.
+// Ada DUA kunci, dan kewenangannya sengaja tidak sama. Kunci cron tertulis di
+// perintah cron yang bisa dibaca siapa pun dengan akses DB, jadi ia tidak boleh
+// bisa mengantre job berbayar — ia cuma memajukan job yang sudah terlanjur
+// jalan. Kunci MCP dipakai fungsi `mcp`, yang sudah lebih dulu mengautentikasi
+// pemanggilnya per workspace, jadi kewenangan belanja di situ memang sudah
+// diberikan di lapisan atasnya.
 //
+// Daftar ini yang menegakkannya, bukan dokumentasi.
+const INTERNAL_KEYS: Record<string, string[]> = {
+  internal_cron_key: ["poll"],
+  internal_mcp_key: ["poll", "submit"],
+};
+
 // Perbandingannya waktu-tetap. Membandingkan dengan === akan berhenti di
 // karakter pertama yang beda, dan selisih waktunya bisa dipakai menebak kunci
 // satu karakter demi satu karakter.
@@ -49,12 +57,15 @@ function safeEqual(a: string, b: string): boolean {
 async function internalWorkspace(req: Request, body: Record<string, unknown>): Promise<string | null> {
   const given = req.headers.get("x-internal-key");
   if (!given) return null;
-  if (body.action !== "poll") throw new Error("Kunci internal hanya berlaku untuk aksi poll.");
   const wsId = String(body.workspace_id || "");
   if (!wsId) throw new Error("workspace_id wajib diisi untuk pemanggilan internal.");
-  const { data } = await admin.from("service_config").select("value").eq("key", "internal_cron_key").maybeSingle();
-  const expected = data?.value;
-  if (!expected || !safeEqual(given, String(expected))) throw new Error("Kunci internal tidak cocok.");
+  const { data: rows } = await admin.from("service_config").select("key, value").in("key", Object.keys(INTERNAL_KEYS));
+  const match = (rows || []).find((r) => safeEqual(given, String(r.value)));
+  if (!match) throw new Error("Kunci internal tidak cocok.");
+  const action = String(body.action || "");
+  if (!(INTERNAL_KEYS[match.key] || []).includes(action)) {
+    throw new Error(`Kunci internal ini tidak berwenang untuk aksi ${action || "(kosong)"}.`);
+  }
   const { data: w } = await admin.from("workspaces").select("id").eq("id", wsId).maybeSingle();
   if (!w) throw new Error("Workspace tidak ditemukan.");
   return w.id as string;
