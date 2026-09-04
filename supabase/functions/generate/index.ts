@@ -29,6 +29,37 @@ async function requireUser(req: Request) {
   if (!mem) throw new Error("Kamu belum tergabung di workspace.");
   return { user: data.user, ws: mem.workspace_id as string };
 }
+// Pemanggil internal: cron di database, yang tidak punya JWT user.
+//
+// Dipakai HANYA untuk `poll`. Aksi lain tetap wajib sesi user — kalau tidak,
+// kunci ini berubah jadi kunci untuk membelanjakan uang orang: `submit`
+// mengantre job berbayar. Jadi pembatasan aksinya ada di pemanggil resolver
+// ini, bukan sekadar di dokumentasi.
+//
+// Perbandingannya waktu-tetap. Membandingkan dengan === akan berhenti di
+// karakter pertama yang beda, dan selisih waktunya bisa dipakai menebak kunci
+// satu karakter demi satu karakter.
+function safeEqual(a: string, b: string): boolean {
+  if (a.length !== b.length) return false;
+  let diff = 0;
+  for (let i = 0; i < a.length; i++) diff |= a.charCodeAt(i) ^ b.charCodeAt(i);
+  return diff === 0;
+}
+
+async function internalWorkspace(req: Request, body: Record<string, unknown>): Promise<string | null> {
+  const given = req.headers.get("x-internal-key");
+  if (!given) return null;
+  if (body.action !== "poll") throw new Error("Kunci internal hanya berlaku untuk aksi poll.");
+  const wsId = String(body.workspace_id || "");
+  if (!wsId) throw new Error("workspace_id wajib diisi untuk pemanggilan internal.");
+  const { data } = await admin.from("service_config").select("value").eq("key", "internal_cron_key").maybeSingle();
+  const expected = data?.value;
+  if (!expected || !safeEqual(given, String(expected))) throw new Error("Kunci internal tidak cocok.");
+  const { data: w } = await admin.from("workspaces").select("id").eq("id", wsId).maybeSingle();
+  if (!w) throw new Error("Workspace tidak ditemukan.");
+  return w.id as string;
+}
+
 async function getSecret(ws: string, key: string): Promise<string | null> {
   const { data } = await admin.from("app_secrets").select("value").eq("workspace_id", ws).eq("key", key).maybeSingle();
   return data?.value ?? null;
@@ -393,7 +424,8 @@ Deno.serve(async (req) => {
   if (req.method !== "POST") return json({ error: "Method not allowed" }, 405);
   try {
     const body = await req.json();
-    const { ws } = await requireUser(req);
+    // Cron internal dulu; kalau tidak ada headernya, jalur normal lewat JWT user.
+    const ws = (await internalWorkspace(req, body)) ?? (await requireUser(req)).ws;
     const mode = (await getSecret(ws, "generation_mode")) || "mock";
 
     switch (body.action) {
