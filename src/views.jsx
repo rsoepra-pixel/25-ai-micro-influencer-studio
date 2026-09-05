@@ -871,6 +871,93 @@ function VoiceCard({ inf, models, onSaved }) {
   );
 }
 
+// Baca durasi file audio/video di browser, sebelum apa pun dikirim.
+//
+// Kling menolak sampel di luar 5-30 detik, dan menemukan itu SETELAH file 20 MB
+// terunggah dan satu panggilan API terpakai adalah cara paling lambat untuk
+// mengetahui hal yang bisa diketahui dalam sekejap di sini.
+function mediaDuration(file) {
+  return new Promise((resolve) => {
+    const url = URL.createObjectURL(file);
+    const el = document.createElement(file.type.startsWith("video") ? "video" : "audio");
+    const done = (v) => { URL.revokeObjectURL(url); resolve(v); };
+    el.preload = "metadata";
+    el.onloadedmetadata = () => done(Number(el.duration) || 0);
+    // Durasi yang tidak terbaca bukan alasan menolak — biar fal yang memutuskan.
+    el.onerror = () => done(0);
+    el.src = url;
+  });
+}
+
+const fileToDataUri = (file) => new Promise((resolve, reject) => {
+  const r = new FileReader();
+  r.onload = () => resolve(String(r.result));
+  r.onerror = () => reject(new Error("File tidak bisa dibaca."));
+  r.readAsDataURL(file);
+});
+
+// Klon suara untuk video multi-shot Kling.
+//
+// Beda dari VoiceCard di atas, dan bedanya penting: yang itu menempelkan voice
+// id BUATAN PROVIDER LAIN untuk TTS. Yang ini membuat suara baru dari rekaman
+// sungguhan, lalu mengikatnya ke karakter di dalam video — jadi suaranya keluar
+// dari mulut orangnya, bukan ditempel belakangan.
+function KlingVoiceCard({ inf, models, onSaved }) {
+  const multishot = (models || []).find((m) => m.multishot_field);
+  const [busy, setBusy] = useState(false);
+  const [msg, setMsg] = useState(null);
+  const [err, setErr] = useState(null);
+  const voiceId = String(inf.voice?.kling_voice_id || "");
+  if (!multishot) return null;
+
+  async function upload(e) {
+    const file = e.target.files?.[0];
+    e.target.value = "";
+    if (!file) return;
+    setErr(null); setMsg(null);
+    if (file.size > 25 * 1024 * 1024) { setErr("Filenya lebih dari 25 MB. Potong dulu jadi 5-30 detik."); return; }
+    const dur = await mediaDuration(file);
+    if (dur && (dur < 5 || dur > 30)) {
+      setErr(`Rekamannya ${dur.toFixed(1)} detik. Kling hanya menerima 5-30 detik — potong dulu.`);
+      return;
+    }
+    setBusy(true);
+    try {
+      const dataUri = await fileToDataUri(file);
+      const r = await callGenerate({ action: "clone_voice", influencer_id: inf.id, sample_data_uri: dataUri });
+      setMsg(`Suara ${r.influencer} tersimpan.`);
+      onSaved?.();
+    } catch (e2) { setErr(e2.message); }
+    setBusy(false);
+  }
+
+  return (
+    <div className="card p6 mb4">
+      <div className="row mb1" style={{ justifyContent: "space-between" }}>
+        <div className="bold">Suara di dalam video (Kling)</div>
+        <Badge tone={voiceId ? "green" : "amber"}>{voiceId ? "sudah diklon" : "belum ada"}</Badge>
+      </div>
+      <p className="tiny muted mb3">
+        Unggah satu rekaman <b>5-30 detik</b> berisi <b>satu suara saja</b>, tanpa musik atau suara latar.
+        Rekaman itu dikloning jadi suara tetap milik {inf.name} — dipakai di video multi-shot, dan tetap
+        sama di video berikutnya. Tanpa ini videonya tetap jadi, hanya saja suaranya dipilih model dan
+        bisa berganti-ganti.
+      </p>
+      {err && <div className="msg-err mb2">{err}</div>}
+      {msg && <div className="msg-ok mb2">{msg}</div>}
+      {voiceId && (
+        <p className="tiny muted mb2">
+          Voice id: <code>{voiceId}</code> — unggah rekaman baru untuk menggantinya.
+        </p>
+      )}
+      <label className="btn" style={{ cursor: busy ? "not-allowed" : "pointer" }}>
+        {busy ? "Mengkloning…" : voiceId ? "Ganti rekaman" : "Unggah rekaman suara"}
+        <input type="file" accept="audio/*,video/mp4,video/quicktime" hidden disabled={busy} onChange={upload} />
+      </label>
+    </div>
+  );
+}
+
 export function InfluencerDetail({ id, ws, refresh, tick, mode }) {
   // Foto yang dipilih dari "Aset terbaru" untuk dipakai sebagai gambar awal.
   const [picked, setPicked] = useState(null);
@@ -1032,6 +1119,7 @@ export function InfluencerDetail({ id, ws, refresh, tick, mode }) {
             ) : <div className="small muted">Belum ada foto referensi.</div>}
           </div>
           <VoiceCard inf={inf} models={d.models} onSaved={() => { reload(); refresh(); }} />
+          <KlingVoiceCard inf={inf} models={d.models} onSaved={() => { reload(); refresh(); }} />
           <div className="card p6 mb4" ref={genRef}>
             <div className="bold mb3">Generate untuk {inf.name}</div>
             <GenerateForm models={d.models} influencerId={id} refresh={() => { reload(); refresh(); }}

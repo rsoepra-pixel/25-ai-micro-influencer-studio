@@ -53,6 +53,143 @@ function batchCost(model, shots) {
   return unit * shots.length;
 }
 
+// ---------------------------------------------------------------------------
+// Lembar storyboard: semua panel jadi SATU gambar.
+//
+// KENAPA DISUSUN DARI GAMBAR KUNCI, BUKAN DIGAMBAR AI SEBAGAI SATU LEMBAR
+//
+// Meminta model gambar membuat "satu lembar berisi 6 panel" terdengar lebih
+// langsung, dan hasilnya selalu lebih buruk pada tiga hal sekaligus: tulisannya
+// belepotan (model gambar payah menulis teks), wajahnya bergeser antar panel
+// karena tiap panel digambar ulang, dan tidak ada satu pun panel yang bisa
+// dipakai lagi sebagai file terpisah untuk diumpankan ke model video.
+//
+// Disusun dari gambar kunci yang sudah jadi, ketiganya selesai: teks digambar
+// sebagai teks jadi tajam, wajahnya persis sama karena memang gambar yang sama,
+// dan tiap panel tetap ada sebagai filenya sendiri.
+//
+// SATU HAL YANG PERLU DILURUSKAN: lembar ini untuk MANUSIA — untuk ditinjau,
+// disetujui, dan dikirim ke orang lain. Ia BUKAN untuk diumpankan ke model
+// video. Model image-to-video memperlakukan gambar masukan sebagai frame
+// pertama, jadi menyuapkan lembar 6 panel menghasilkan lembar storyboard yang
+// bergerak — bukan cerita 6 adegan.
+const SHEET = { pad: 28, gap: 20, cell: 420, img: 560, text: 190, header: 132 };
+
+function wrapText(ctx, text, maxWidth) {
+  const words = String(text || "").split(/\s+/).filter(Boolean);
+  const lines = [];
+  let line = "";
+  for (const w of words) {
+    const next = line ? `${line} ${w}` : w;
+    if (ctx.measureText(next).width > maxWidth && line) { lines.push(line); line = w; }
+    else line = next;
+  }
+  if (line) lines.push(line);
+  return lines;
+}
+
+function loadImage(url) {
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    // Tanpa ini canvas jadi "tainted" dan toBlob dilarang browser, jadi
+    // lembarnya tidak akan pernah bisa diunduh.
+    img.crossOrigin = "anonymous";
+    img.onload = () => resolve(img);
+    img.onerror = () => reject(new Error(`Gambar tidak bisa dimuat: ${url}`));
+    img.src = url;
+  });
+}
+
+export async function buildSheet(board, shots) {
+  const withImg = shots.filter((s) => s.image_url);
+  if (!withImg.length) throw new Error("Belum ada satu pun gambar kunci untuk disusun.");
+  const cols = Math.min(3, withImg.length);
+  const rows = Math.ceil(withImg.length / cols);
+  const cellH = SHEET.img + SHEET.text;
+  const W = SHEET.pad * 2 + cols * SHEET.cell + (cols - 1) * SHEET.gap;
+  const H = SHEET.pad * 2 + SHEET.header + rows * cellH + (rows - 1) * SHEET.gap;
+
+  const canvas = document.createElement("canvas");
+  canvas.width = W; canvas.height = H;
+  const ctx = canvas.getContext("2d");
+  ctx.fillStyle = "#ffffff"; ctx.fillRect(0, 0, W, H);
+
+  // Kepala lembar
+  ctx.fillStyle = "#111827";
+  ctx.font = "700 34px system-ui, -apple-system, sans-serif";
+  ctx.fillText(String(board.title || "Storyboard").slice(0, 60), SHEET.pad, SHEET.pad + 34);
+  ctx.fillStyle = "#4b5563";
+  ctx.font = "400 18px system-ui, -apple-system, sans-serif";
+  if (board.logline) ctx.fillText(String(board.logline).slice(0, 110), SHEET.pad, SHEET.pad + 64);
+  ctx.fillStyle = "#6b7280";
+  ctx.font = "400 14px system-ui, -apple-system, sans-serif";
+  for (const [i, ln] of wrapText(ctx, `Kontinuitas: ${board.continuity || "—"}`, W - SHEET.pad * 2).slice(0, 2).entries()) {
+    ctx.fillText(ln, SHEET.pad, SHEET.pad + 92 + i * 19);
+  }
+
+  const images = await Promise.all(withImg.map((s) => loadImage(s.image_url)));
+
+  for (const [i, s] of withImg.entries()) {
+    const cx = SHEET.pad + (i % cols) * (SHEET.cell + SHEET.gap);
+    const cy = SHEET.pad + SHEET.header + Math.floor(i / cols) * (cellH + SHEET.gap);
+
+    // Gambar, dipotong tengah supaya seluruh sel terisi tanpa gepeng.
+    const img = images[i];
+    const scale = Math.max(SHEET.cell / img.width, SHEET.img / img.height);
+    const dw = img.width * scale, dh = img.height * scale;
+    ctx.save();
+    ctx.beginPath(); ctx.rect(cx, cy, SHEET.cell, SHEET.img); ctx.clip();
+    ctx.drawImage(img, cx + (SHEET.cell - dw) / 2, cy + (SHEET.img - dh) / 2, dw, dh);
+    ctx.restore();
+
+    // Pita nomor shot di atas gambar
+    ctx.fillStyle = "rgba(17,24,39,0.82)";
+    ctx.fillRect(cx, cy, SHEET.cell, 40);
+    ctx.fillStyle = "#ffffff";
+    ctx.font = "700 18px system-ui, -apple-system, sans-serif";
+    ctx.fillText(`${s.position}. ${String(s.beat || "").slice(0, 26)}`, cx + 12, cy + 27);
+    ctx.font = "400 14px system-ui, -apple-system, sans-serif";
+    const meta = `${s.camera || "medium"} · ${s.seconds}s`;
+    ctx.fillText(meta, cx + SHEET.cell - 12 - ctx.measureText(meta).width, cy + 26);
+
+    // Blok teks di bawah gambar
+    const ty = cy + SHEET.img;
+    ctx.fillStyle = "#f9fafb"; ctx.fillRect(cx, ty, SHEET.cell, SHEET.text);
+    ctx.strokeStyle = "#e5e7eb"; ctx.lineWidth = 1;
+    ctx.strokeRect(cx + 0.5, cy + 0.5, SHEET.cell - 1, cellH - 1);
+
+    const narration = String(s.narration || "").trim();
+    let y = ty + 26;
+    if (narration) {
+      // Penanda bicara. Inilah yang membedakan shot yang butuh suara keluar
+      // dari mulut karakter dari shot yang cuma gambar bergerak — dan itu
+      // keputusan produksi, bukan hiasan.
+      ctx.fillStyle = "#7c3aed";
+      ctx.font = "700 13px system-ui, -apple-system, sans-serif";
+      ctx.fillText("BICARA", cx + 12, y);
+      y += 20;
+      ctx.fillStyle = "#111827";
+      ctx.font = "400 15px system-ui, -apple-system, sans-serif";
+      for (const ln of wrapText(ctx, `"${narration}"`, SHEET.cell - 24).slice(0, 4)) {
+        ctx.fillText(ln, cx + 12, y); y += 20;
+      }
+      y += 6;
+    } else {
+      ctx.fillStyle = "#9ca3af";
+      ctx.font = "italic 400 14px system-ui, -apple-system, sans-serif";
+      ctx.fillText("tanpa dialog", cx + 12, y); y += 24;
+    }
+    ctx.fillStyle = "#6b7280";
+    ctx.font = "400 12px system-ui, -apple-system, sans-serif";
+    for (const ln of wrapText(ctx, s.visual_prompt, SHEET.cell - 24).slice(0, 3)) {
+      ctx.fillText(ln, cx + 12, y); y += 16;
+    }
+  }
+
+  return await new Promise((resolve, reject) =>
+    canvas.toBlob((b) => (b ? resolve(b) : reject(new Error("Gagal membuat gambar lembar."))), "image/png"));
+}
+
 export function Storyboard({ ws, refresh, tick, mode }) {
   const [openId, setOpenId] = useState(null);
   const [localTick, setLocalTick] = useState(0);
@@ -569,11 +706,162 @@ function BoardDetail({ id, models, influencers, mode, onBack, refresh }) {
         )}
       </div>
 
+      {/* ---- Lembar storyboard ---- */}
+      <SheetCard board={board} shots={shots} />
+
+      {/* ---- Satu video multi-shot ---- */}
+      <MultiShotCard
+        board={board}
+        shots={shots}
+        models={models}
+        refCount={refCount}
+        inf={inf}
+        mode={mode}
+        onQueued={async () => { await load(); refresh?.(); }}
+      />
+
       {/* ---- Daftar shot ---- */}
       <h2 className="mb2">Shot</h2>
       {shots.map((s) => (
         <ShotRow key={s.id} shot={s} board={board} onPatch={(p) => patchShot(s.id, p)} />
       ))}
+    </div>
+  );
+}
+
+function SheetCard({ board, shots }) {
+  const [busy, setBusy] = useState(false);
+  const [err, setErr] = useState(null);
+  const ready = shots.filter((s) => s.image_url).length;
+
+  async function download() {
+    setErr(null); setBusy(true);
+    try {
+      const blob = await buildSheet(board, shots);
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `storyboard-${String(board.title || "tanpa-judul").replace(/[^\w-]+/g, "-").toLowerCase()}.png`;
+      document.body.appendChild(a); a.click(); a.remove();
+      // Ditunda sebentar: mencabut URL-nya terlalu cepat membatalkan unduhan
+      // di sebagian browser.
+      setTimeout(() => URL.revokeObjectURL(url), 10000);
+    } catch (e) { setErr(e.message); }
+    setBusy(false);
+  }
+
+  return (
+    <div className="card p4 mb4">
+      <div className="bold mb2">Lembar storyboard</div>
+      <p className="tiny muted mb3">
+        Semua panel jadi satu gambar PNG, lengkap dengan narasi dan penanda <b>BICARA</b> di shot yang
+        karakternya bersuara. Untuk ditinjau dan dikirim ke orang lain — bukan untuk diumpankan ke model
+        video. Model video membaca gambar masukan sebagai frame pertama, jadi lembar 6 panel akan
+        menghasilkan lembar yang bergerak, bukan cerita 6 adegan.
+      </p>
+      {err && <div className="msg-err mb3">{err}</div>}
+      {ready < shots.length && (
+        <p className="tiny muted mb2">
+          {shots.length - ready} shot belum punya gambar kunci — yang belum ada tidak ikut di lembar.
+        </p>
+      )}
+      <button className="btn btn2" disabled={busy || !ready} onClick={download}>
+        {busy ? "Menyusun…" : `Unduh lembar (${ready} panel)`}
+      </button>
+    </div>
+  );
+}
+
+function MultiShotCard({ board, shots, models, refCount, inf, mode, onQueued }) {
+  const multiModels = useMemo(
+    () => (models || []).filter((m) => m.multishot_field).sort(byPrice), [models],
+  );
+  const [modelId, setModelId] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [err, setErr] = useState(null);
+  const [note, setNote] = useState(null);
+  const model = multiModels.find((m) => m.id === modelId) || multiModels[0];
+  if (!multiModels.length) return null;
+
+  // Durasi dipaskan persis seperti di server, supaya angka yang dilihat user
+  // sebelum menekan tombol adalah angka yang benar-benar akan ditagih.
+  const wanted = shots.map((s) => Number(s.seconds) || 5);
+  const raw = wanted.reduce((a, b) => a + b, 0);
+  const total = Math.min(Math.max(raw, 3), 15);
+  const cost = model?.unit === "per_second"
+    ? (Number(model.est_price_usd) || 0) * total
+    : Number(model?.est_price_usd) || 0;
+
+  const firstReady = !!shots[0]?.image_url;
+  const voiceReady = !!inf?.voice?.kling_voice_id;
+
+  async function run() {
+    setErr(null); setNote(null); setBusy(true);
+    try {
+      const r = await callGenerate({
+        action: "submit_multishot",
+        storyboard_id: board.id,
+        model_id: model.id,
+        max_seconds: 15,
+      });
+      setNote(
+        `Diantre — ${r.seconds} detik, ${shots.length} shot (${(r.shot_seconds || []).join("+")} detik), ` +
+        `suara: ${r.voice}. Hasilnya muncul di Drive dan di Riwayat job.`,
+      );
+      onQueued?.();
+    } catch (e) { setErr(e.message); }
+    setBusy(false);
+  }
+
+  return (
+    <div className="card p4 mb4">
+      <div className="bold mb2">3. Satu video utuh, beberapa shot di dalamnya</div>
+      <p className="tiny muted mb3">
+        Alternatif dari membuat klip per shot lalu menjahitnya. Model membagi sendiri videonya jadi
+        beberapa shot berurutan, wajah dikunci dari Identity Kit, dan suaranya keluar dari mulut
+        karakternya. Satu file, tanpa penyuntingan.
+      </p>
+      <div className="grid mb3" style={{ gridTemplateColumns: "1fr 1fr" }}>
+        <div>
+          <ModelPicker models={multiModels} value={model?.id || ""} onChange={setModelId} label="Model multi-shot" />
+          {model?.description && <p className="tiny muted" style={{ marginTop: 4 }}>{model.description}</p>}
+        </div>
+        <div>
+          <div className="label">Yang akan dibuat</div>
+          <div className="bold">{total} detik · {shots.length} shot</div>
+          <div className="tiny muted mt1">Perkiraan biaya: <b>{priceLabel(cost)}</b></div>
+          {raw > 15 && (
+            <div className="tiny muted mt1">
+              Diminta {raw} detik, dipangkas ke 15 — batas model. Durasi tiap shot diperkecil proporsional.
+            </div>
+          )}
+        </div>
+      </div>
+
+      {!firstReady && (
+        <div className="msg-err mb3">
+          Shot 1 belum punya gambar kunci. Gambar itu yang jadi frame pertama videonya, jadi harus ada dulu.
+        </div>
+      )}
+      {refCount < 2 && (
+        <div className="msg-err mb3">
+          Wajah dikunci lewat satu foto utama ditambah minimal satu foto sudut lain, jadi
+          {inf ? ` ${inf.name}` : " influencer ini"} butuh minimal 2 foto bertanda referensi di Identity Kit
+          (sekarang {refCount}).
+        </div>
+      )}
+      {firstReady && refCount >= 2 && !voiceReady && (
+        <div className="msg-warn mb3">
+          {inf?.name || "Influencer ini"} belum punya suara hasil klon, jadi suaranya akan dipilih model dan
+          bisa berbeda di video berikutnya. Unggah satu rekaman 5-30 detik di halaman influencer untuk menguncinya.
+        </div>
+      )}
+      {mode === "mock" && <p className="tiny muted mb2">Mode mock — hasilnya contoh, tidak ditagih.</p>}
+      {err && <div className="msg-err mb3" style={{ whiteSpace: "pre-wrap" }}>{err}</div>}
+      {note && <div className="msg-ok mb3">{note}</div>}
+      <button className="btn" disabled={busy || !firstReady || refCount < 2} onClick={run}>
+        {busy ? "Mengantre…" : `Buat video ${total} detik — ${priceLabel(cost)}`}
+      </button>
     </div>
   );
 }
