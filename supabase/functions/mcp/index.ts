@@ -119,6 +119,7 @@ const TOOLS = [
         scheduled_date: str("Tanggal jadwal YYYY-MM-DD (opsional)"),
         hook: str("Kalimat pembuka 1-3 detik"),
         script: str("Naskah lengkap"),
+        research_note_id: str("Temuan riset yang melahirkan ide ini, dari save_research/list_research (opsional)"),
       },
       required: ["title"],
     },
@@ -289,6 +290,48 @@ const TOOLS = [
       "seolah nol. Data ditarik cron tiap 6 jam; post yang baru terbit beberapa menit lalu belum ada di sini.",
     inputSchema: { type: "object", properties: {} },
   },
+  {
+    name: "save_research",
+    description:
+      "Simpan temuan riset relevansi supaya tidak hilang saat percakapan ditutup. Kamu yang meriset lewat web; " +
+      "app ini yang mengingat. WAJIB sertakan `sources` berisi tautan yang bisa dibuka orang — klaim tren tanpa " +
+      "sumber tidak bisa dibedakan dari karangan yang terdengar meyakinkan. Isi `evidence` dengan jujur: " +
+      "'own_data' (dari komentar/metrik akun ini sendiri) jauh lebih kuat daripada 'external_report' " +
+      "(artikel tren yang ditulis untuk SEO). Untuk kind='trend', `expires_at` otomatis 30 hari kalau tidak diisi.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        title: str("Judul temuan, satu baris"),
+        summary: str("Apa yang ditemukan"),
+        why_now: str("Kenapa relevan SEKARANG — bagian yang paling cepat basi"),
+        kind: { type: "string", enum: ["trend", "audience", "competitor", "format", "other"] },
+        evidence: { type: "string", enum: ["own_data", "platform_signal", "external_report", "anecdote"] },
+        confidence: { type: "string", enum: ["low", "medium", "high"] },
+        sources: {
+          type: "array",
+          description: "Tautan pendukung: [{\"url\":\"https://…\",\"note\":\"apa isinya\"}]",
+          items: { type: "object", properties: { url: str("URL"), note: str("Catatan singkat") } },
+        },
+        expires_at: str("Tanggal kedaluwarsa YYYY-MM-DD (opsional)"),
+        influencer_id: str("Kalau temuannya khusus satu influencer (opsional)"),
+      },
+      required: ["title", "summary"],
+    },
+  },
+  {
+    name: "list_research",
+    description:
+      "Temuan riset yang masih berlaku. Yang sudah kedaluwarsa disembunyikan secara default — riset lama yang " +
+      "disajikan seolah masih berlaku lebih berbahaya daripada tidak ada riset sama sekali. `age_days` " +
+      "menunjukkan umurnya; makin tua makin perlu diverifikasi ulang sebelum dipakai.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        kind: { type: "string", enum: ["trend", "audience", "competitor", "format", "other"] },
+        include_expired: { type: "boolean", description: "Ikut tampilkan yang kedaluwarsa (default false)" },
+      },
+    },
+  },
 ];
 
 // Panggil edge function lain sebagai pemanggil internal.
@@ -396,7 +439,7 @@ async function runTool(name: string, args: Record<string, unknown>, ctx: Ctx) {
     }
     case "list_content": {
       let q = admin.from("content_items")
-        .select("id,title,status,content_type,platform,scheduled_date,hook,script,caption,hashtags,influencer_id,pillar_id,created_at")
+        .select("id,title,status,content_type,platform,scheduled_date,hook,script,caption,hashtags,influencer_id,pillar_id,research_note_id,created_at")
         .eq("workspace_id", ws);
       if (typeof args.status === "string") q = q.eq("status", args.status);
       if (typeof args.from === "string") q = q.gte("scheduled_date", args.from);
@@ -410,7 +453,10 @@ async function runTool(name: string, args: Record<string, unknown>, ctx: Ctx) {
       const row: Record<string, unknown> = {
         workspace_id: ws,
         title: need("title"),
-        ...pick(["influencer_id", "content_type", "platform", "scheduled_date", "hook", "script"]),
+        // research_note_id ikut: inilah jejak dari temuan riset ke konten yang
+        // lahir darinya. Tanpa itu, riset selamanya jadi kegiatan yang terasa
+        // produktif tanpa pernah ada yang tahu apakah ia berguna.
+        ...pick(["influencer_id", "content_type", "platform", "scheduled_date", "hook", "script", "research_note_id"]),
       };
       const { data, error } = await admin.from("content_items").insert(row).select("*").single();
       if (error) throw new Error(error.message);
@@ -570,6 +616,52 @@ async function runTool(name: string, args: Record<string, unknown>, ctx: Ctx) {
       const out = await callInternal("metrics", ws, { action: "list" });
       return ok(out);
     }
+    case "save_research": {
+      const kind = typeof args.kind === "string" ? args.kind : "trend";
+      // Sumber disaring, bukan dipercaya apa adanya: hanya http/https, dan
+      // hanya entri yang benar-benar punya URL. Catatan riset yang "sumbernya"
+      // kalimat tanpa tautan persis seperti catatan tanpa sumber sama sekali —
+      // hanya terlihat lebih meyakinkan.
+      const sources = Array.isArray(args.sources)
+        ? (args.sources as Record<string, unknown>[])
+            .map((s) => ({ url: String(s?.url || "").trim(), note: String(s?.note || "").trim() }))
+            .filter((s) => /^https?:\/\//i.test(s.url))
+            .slice(0, 20)
+        : [];
+      // Tren meluruh paling cepat, jadi kalau tidak disebut kedaluwarsanya,
+      // dipasang 30 hari. Jenis lain (audiens, format) bertahan lebih lama dan
+      // tidak diberi tanggal karangan.
+      let expires = typeof args.expires_at === "string" ? args.expires_at : null;
+      if (!expires && kind === "trend") {
+        expires = new Date(Date.now() + 30 * 86400000).toISOString().slice(0, 10);
+      }
+      const { data, error } = await admin.from("research_notes").insert({
+        workspace_id: ws,
+        kind,
+        title: need("title"),
+        summary: need("summary"),
+        ...pick(["why_now", "evidence", "confidence", "influencer_id"]),
+        sources,
+        expires_at: expires,
+      }).select("*").single();
+      if (error) throw new Error(error.message);
+      return ok({ created: true, research: data, sources_kept: sources.length });
+    }
+    case "list_research": {
+      let q = admin.from("research_notes").select("*").eq("workspace_id", ws);
+      if (typeof args.kind === "string") q = q.eq("kind", args.kind);
+      if (args.include_expired !== true) {
+        const today = new Date().toISOString().slice(0, 10);
+        q = q.or(`expires_at.is.null,expires_at.gte.${today}`);
+      }
+      const { data, error } = await q.order("observed_at", { ascending: false }).limit(50);
+      if (error) throw new Error(error.message);
+      const now = Date.now();
+      return ok((data || []).map((r) => ({
+        ...r,
+        age_days: Math.floor((now - new Date(r.observed_at).getTime()) / 86400000),
+      })));
+    }
     default:
       throw new Error(`Tool tidak dikenal: ${name}`);
   }
@@ -682,7 +774,14 @@ async function handleRpc(msg: Record<string, unknown>, ctx: Ctx): Promise<unknow
         "Sebelum mengusulkan ide konten baru, panggil get_post_metrics dulu dan pakai yang sudah terbukti. " +
         "Urutkan berdasarkan `follows`, bukan `views`: post yang ditonton banyak orang tapi tidak menambah " +
         "follower berarti menarik ditonton dan tidak cukup alasan untuk diikuti — dua hal yang berbeda, dan " +
-        "yang kedua itu yang menumbuhkan akun. Perlakukan null sebagai \"tidak terukur\", jangan sebagai nol.",
+        "yang kedua itu yang menumbuhkan akun. Perlakukan null sebagai \"tidak terukur\", jangan sebagai nol.\n\n" +
+        "Untuk mencari apa yang sedang relevan, RISET SENDIRI lewat web lalu simpan temuannya dengan " +
+        "save_research — app ini tidak punya scraper tren dan memang sengaja tidak dibuatkan. Selalu " +
+        "sertakan tautan sumber: klaim tren tanpa sumber tidak bisa dibedakan dari karangan yang " +
+        "terdengar meyakinkan, dan yang bertaruh atasnya akun sungguhan. Panggil list_research dulu " +
+        "sebelum meriset ulang — mungkin pertanyaannya sudah dijawab bulan lalu. Saat sebuah temuan " +
+        "melahirkan ide konten, sebutkan research_note_id-nya di create_content, supaya nanti bisa " +
+        "diperiksa apakah konten hasil riset benar-benar berkinerja lebih baik daripada hasil tebakan.",
     });
   }
   if (method === "notifications/initialized" || method?.startsWith("notifications/")) return null;
