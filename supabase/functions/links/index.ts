@@ -7,9 +7,12 @@
 // punya pintu sendiri.
 //
 // Pengalihan dan pencatatan kliknya ada di function `r`, yang verify_jwt-nya
-// mati karena diakses orang asing. Yang ini kebalikannya: semua action wajib
-// JWT user, diperiksa manual di requireUser() — verify_jwt platform dimatikan
-// hanya supaya pesan errornya bahasa kita, bukan 401 telanjang dari gateway.
+// mati karena diakses orang asing. Yang ini kebalikannya: tidak ada satu pun
+// action yang terbuka. Dua jalur masuk, keduanya diperiksa manual — JWT user
+// dari browser, atau x-internal-key dari `mcp` dengan kewenangan yang lebih
+// sempit. verify_jwt platform dimatikan supaya jalur kedua bisa lewat sama
+// sekali, dan supaya pesan errornya bahasa kita, bukan 401 telanjang dari
+// gateway.
 import { createClient } from "npm:@supabase/supabase-js@2";
 
 const SB_URL = Deno.env.get("SUPABASE_URL")!;
@@ -32,7 +35,43 @@ async function requireUser(req: Request) {
   const { data: mem } = await admin.from("workspace_members")
     .select("workspace_id").eq("user_id", data.user.id).limit(1).maybeSingle();
   if (!mem) throw new Error("Kamu belum tergabung di workspace.");
-  return { user: data.user, ws: mem.workspace_id as string };
+  return { userId: data.user.id as string, ws: mem.workspace_id as string };
+}
+
+// Pemanggil internal: server ke server, tanpa JWT user. Dipakai `mcp`, yang
+// sudah mengautentikasi kliennya per workspace lebih dulu.
+//
+// `toggle` SENGAJA tidak diberikan. Membuat dan membaca link boleh diwakilkan
+// ke agen; mematikan link yang sudah tersebar di bio orang adalah keputusan
+// yang harus datang dari manusia yang menekan tombolnya.
+const INTERNAL_KEYS: Record<string, string[]> = {
+  internal_mcp_key: ["create", "list"],
+};
+
+// Perbandingannya waktu-tetap; dengan === selisih waktunya bisa dipakai
+// menebak kunci satu karakter demi satu karakter.
+function safeEqual(a: string, b: string): boolean {
+  if (a.length !== b.length) return false;
+  let diff = 0;
+  for (let i = 0; i < a.length; i++) diff |= a.charCodeAt(i) ^ b.charCodeAt(i);
+  return diff === 0;
+}
+
+async function internalWorkspace(req: Request, body: Record<string, unknown>): Promise<string | null> {
+  const given = req.headers.get("x-internal-key");
+  if (!given) return null;
+  const wsId = String(body.workspace_id || "");
+  if (!wsId) throw new Error("workspace_id wajib diisi untuk pemanggilan internal.");
+  const { data: rows } = await admin.from("service_config").select("key, value").in("key", Object.keys(INTERNAL_KEYS));
+  const match = (rows || []).find((r) => safeEqual(given, String(r.value)));
+  if (!match) throw new Error("Kunci internal tidak cocok.");
+  const action = String(body.action || "");
+  if (!(INTERNAL_KEYS[match.key] || []).includes(action)) {
+    throw new Error(`Kunci internal ini tidak berwenang untuk aksi ${action || "(kosong)"}.`);
+  }
+  const { data: w } = await admin.from("workspaces").select("id").eq("id", wsId).maybeSingle();
+  if (!w) throw new Error("Workspace tidak ditemukan.");
+  return w.id as string;
 }
 
 // Tanpa 0/O/1/l/I. Link ini akan dibaca ulang orang dari layar HP dan diketik
@@ -65,9 +104,15 @@ Deno.serve(async (req) => {
   if (req.method !== "POST") return json({ error: "Gunakan POST." }, 405);
 
   try {
-    const { user, ws } = await requireUser(req);
     const body = await req.json().catch(() => ({}));
     const action = String(body.action || "");
+    // Jalur internal diperiksa lebih dulu; kalau tidak ada header-nya, jatuh ke
+    // JWT user seperti biasa. Bukan sebaliknya — pemanggilan internal tidak
+    // membawa Authorization sama sekali dan akan tertolak duluan.
+    const internalWs = await internalWorkspace(req, body);
+    const { userId, ws } = internalWs
+      ? { userId: null as string | null, ws: internalWs }
+      : await requireUser(req);
 
     switch (action) {
       case "create": {
@@ -87,7 +132,7 @@ Deno.serve(async (req) => {
             content_item_id: body.content_item_id || null,
             influencer_id: body.influencer_id || null,
             platform: body.platform ? String(body.platform).slice(0, 30) : null,
-            created_by: user.id,
+            created_by: userId,
           }).select("id, code, target_url, label").maybeSingle();
           if (data) row = data; else lastErr = error?.message || "gagal";
         }

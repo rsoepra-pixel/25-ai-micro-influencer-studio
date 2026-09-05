@@ -253,6 +253,32 @@ const TOOLS = [
       required: ["content_item_id", "connection_id"],
     },
   },
+  {
+    name: "create_short_link",
+    description:
+      "Buat link pendek yang bisa dilacak, untuk ditaruh di bio atau caption. Instagram dan TikTok tidak pernah " +
+      "memberi tahu link mana yang diklik dari post mana — link inilah yang menjawabnya. Isi content_item_id " +
+      "kalau linknya dipakai untuk konten tertentu, supaya kliknya bisa diatribusikan ke konten itu. " +
+      "Target hanya boleh http/https.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        target_url: str("URL tujuan, lengkap dengan https://"),
+        label: str("Nama pengingat, mis. 'bio Ramadan' (opsional)"),
+        content_item_id: str("Konten yang memakai link ini (opsional)"),
+        influencer_id: str("Influencer yang memakai link ini (opsional)"),
+        platform: str("Platform tempat link ditempel, mis. instagram (opsional)"),
+      },
+      required: ["target_url"],
+    },
+  },
+  {
+    name: "list_short_links",
+    description:
+      "Semua link pendek workspace beserta jumlah kliknya. `clicks` sudah dibersihkan dari crawler pratinjau " +
+      "(WhatsApp, Telegram, dsb) yang terhitung di `bot_clicks`. `visitors` adalah perkiraan pengunjung berbeda per hari.",
+    inputSchema: { type: "object", properties: {} },
+  },
 ];
 
 // Panggil edge function lain sebagai pemanggil internal.
@@ -266,7 +292,7 @@ const TOOLS = [
 // pemilihan foto Identity Kit, dan pemilihan media saat publish semuanya
 // tinggal di satu tempat; menyalinnya berarti dua salinan yang pelan-pelan
 // berbeda.
-async function callInternal(fn: "generate" | "social", ws: string, body: Record<string, unknown>) {
+async function callInternal(fn: "generate" | "social" | "links", ws: string, body: Record<string, unknown>) {
   const { data } = await admin.from("service_config").select("value").eq("key", "internal_mcp_key").maybeSingle();
   if (!data?.value) throw new Error("Kunci internal MCP belum disiapkan di service_config.");
   const res = await fetch(`${SB_URL}/functions/v1/${fn}`, {
@@ -515,6 +541,21 @@ async function runTool(name: string, args: Record<string, unknown>, ctx: Ctx) {
       });
       return ok(out);
     }
+    // Dua tool berikut menumpang function `links`, bukan menulis ke tabelnya
+    // sendiri. Penyaring skema URL di sana adalah penjagaan keamanan; kalau
+    // disalin ke sini, suatu saat salah satunya diperbaiki dan yang lain tidak.
+    case "create_short_link": {
+      const out = await callInternal("links", ws, {
+        action: "create",
+        target_url: need("target_url"),
+        ...pick(["label", "content_item_id", "influencer_id", "platform"]),
+      });
+      return ok(out);
+    }
+    case "list_short_links": {
+      const out = await callInternal("links", ws, { action: "list" });
+      return ok(out);
+    }
     default:
       throw new Error(`Tool tidak dikenal: ${name}`);
   }
@@ -618,7 +659,12 @@ async function handleRpc(msg: Record<string, unknown>, ctx: Ctx): Promise<unknow
         "sendiri, jangan menyalin script.\n" +
         "2) Suara TTS terkunci per influencer lewat update_influencer field `voice`, dipetakan per model_key " +
         "(voice id milik provider, tidak bisa dipindah antar provider — lihat voice_field di list_models). " +
-        "Tanpa itu semua influencer bersuara sama, jadi generate_media task 'tts' atas nama influencer akan ditolak.",
+        "Tanpa itu semua influencer bersuara sama, jadi generate_media task 'tts' atas nama influencer akan ditolak.\n\n" +
+        "Kalau sebuah konten mengajak orang mengunjungi sesuatu, buatkan create_short_link dengan " +
+        "content_item_id-nya dan pakai URL itu di caption — bukan URL aslinya. Instagram dan TikTok tidak " +
+        "pernah memberi tahu link mana yang diklik dari post mana; tanpa link ini pertanyaan \"konten mana " +
+        "yang menghasilkan klik\" tidak akan pernah bisa dijawab, dan yang tersisa cuma \"konten mana yang ramai\" " +
+        "— sering bukan konten yang sama.",
     });
   }
   if (method === "notifications/initialized" || method?.startsWith("notifications/")) return null;
