@@ -1597,6 +1597,29 @@ function CharacterSheetPanel({ models, influencers, refresh, mode, lockInfluence
           Model ini butuh minimal 1 foto referensi di Identity Kit {inf?.name} — tambahkan dulu lewat wizard ✨, atau pilih model gambar lain.
         </div>
       )}
+      {/* Peringatan ini SEBELUMNYA HANYA ADA di form Generate biasa, tidak di
+          sini — padahal di sinilah taruhannya paling besar.
+
+          Character sheet ada justru untuk menghasilkan satu wajah yang konsisten
+          di banyak sudut. Model yang tidak membaca Identity Kit menghasilkan
+          enam orang yang berbeda-beda, dibayar enam kali, dan itu baru ketahuan
+          setelah semuanya jadi. */}
+      {infId && !modelIsEdit && (
+        <div className="msg-warn mb3">
+          Model ini <b>tidak membaca foto Identity Kit</b> — wajahnya ditebak dari teks, jadi
+          {shots.length > 1 ? ` ${shots.length} gambar ini akan menampilkan orang yang berbeda-beda` : " wajahnya akan berbeda"},
+          bukan {inf?.name || "influencer ini"}. Untuk character sheet itu hampir selalu bukan yang kamu mau.
+          {editModel && (
+            <>
+              {" "}
+              <button type="button" className="btn" style={{ fontSize: 11, padding: "3px 10px", marginTop: 6 }}
+                onClick={() => setModelId(editModel.id)}>
+                Pakai {editModel.label.split(" —")[0]} ({priceLabel(editModel.est_price_usd)}/gambar)
+              </button>
+            </>
+          )}
+        </div>
+      )}
       {infId && !inf?.identity_prompt && (
         <div className="msg-err mb3">
           {inf?.name} belum punya identity prompt — hasilnya tidak akan konsisten antar gambar.
