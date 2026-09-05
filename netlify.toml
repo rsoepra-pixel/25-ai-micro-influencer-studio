@@ -65,6 +65,17 @@
   status = 200
   force = true
 
+# ---------- Link pendek ----------
+# Proxy (200), bukan redirect (301/302), supaya function-nya yang menjawab dan
+# bisa mencatat kliknya. Kalau ini dibuat 301, Netlify sendiri yang mengalihkan
+# dan function-nya tidak pernah dipanggil — link tetap jalan, tapi angka
+# kliknya nol selamanya tanpa ada yang sadar.
+[[redirects]]
+  from = "/r/*"
+  to = "https://kheibvzbvnmhdeokokrw.supabase.co/functions/v1/r/:splat"
+  status = 200
+  force = true
+
 # ---------- Endpoint MCP ----------
 [[redirects]]
   from = "/mcp"

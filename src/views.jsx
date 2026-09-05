@@ -1,5 +1,104 @@
 import React, { useEffect, useState, useCallback } from "react";
-import { supa, callGenerate, callSocial, callCalendar, callApp, STATUS_LABELS, TYPE_LABELS, usd } from "./supa.js";
+import { supa, callGenerate, callSocial, callCalendar, callApp, callLinks, callMedia, STATUS_LABELS, TYPE_LABELS, usd } from "./supa.js";
+
+const linkBtn = { background: "none", border: "none", padding: 0, cursor: "pointer", fontWeight: 700, fontSize: 11 };
+
+// ---------- Hapus media ----------
+//
+// Menghapus media itu permanen: filenya ikut dibuang dari storage, bukan cuma
+// barisnya. Jadi konfirmasinya tidak boleh sekadar "yakin?" — kalimat seperti
+// itu ditekan orang secara refleks dan tidak menambah informasi apa pun.
+//
+// Sebelum bertanya, komponen ini menanyakan dulu ke server APA yang akan
+// hilang: konten yang memakainya, apakah sudah pernah terbit, dan untuk foto
+// Identity Kit — berapa foto acuan yang tersisa setelahnya. Yang membuat orang
+// benar-benar berhenti sejenak adalah kalimat yang menyebut hal spesifik.
+function DeleteMedia({ kind, id, onDeleted, compact }) {
+  const [state, setState] = useState("idle"); // idle | checking | confirm | busy
+  const [usage, setUsage] = useState(null);
+  const [err, setErr] = useState(null);
+
+  async function ask() {
+    setErr(null);
+    setState("checking");
+    try {
+      setUsage(await callMedia({ action: "usage", kind, id }));
+      setState("confirm");
+    } catch (e) {
+      setErr(e.message);
+      setState("idle");
+    }
+  }
+
+  async function confirm() {
+    setState("busy");
+    try {
+      await callMedia({ action: "delete", kind, id });
+      onDeleted?.();
+    } catch (e) {
+      setErr(e.message);
+      setState("confirm");
+    }
+  }
+
+  if (err && state === "idle") {
+    return <div className="msg-err tiny mt1">{err} <button type="button" className="tiny" style={linkBtn} onClick={ask}>coba lagi</button></div>;
+  }
+
+  if (state === "confirm") {
+    const pub = usage?.published?.length || 0;
+    return (
+      <div className="card p3 mt1" style={{ background: "var(--stop-soft, #fadfdf)", border: "1px solid var(--warn, #a02a2a)" }}>
+        <div className="tiny bold">{kind === "job" ? "Hapus baris riwayat ini?" : "Hapus permanen?"}</div>
+        <div className="tiny muted mt1">
+          {kind === "job" ? (
+            <>
+              Yang dibuang hanya catatan pekerjaannya.{" "}
+              {usage?.asset
+                ? <><b>Medianya tetap ada di Drive</b> — hapus dari sana kalau memang mau dibuang. </>
+                : <>Job ini tidak menghasilkan media. </>}
+              Catatan pengeluaran juga tidak hilang: biaya tercatat terpisah di riwayat kredit.
+            </>
+          ) : (
+            <>
+          {usage?.content && <>Terpakai di konten <b>{usage.content.title}</b>. </>}
+          {pub > 0 && (
+            <>Konten itu <b>sudah terbit</b> — menghapus di sini tidak menurunkannya dari platform,
+            tapi catatan media yang tayang akan hilang. </>
+          )}
+          {kind === "character_asset" && (
+            <>Foto acuan {usage?.influencer_name ? <b>{usage.influencer_name}</b> : "influencer ini"} akan
+            tersisa <b>{usage?.photos_left_after ?? 0}</b>
+            {usage?.photos_left_after === 0 ? " — wajahnya tidak lagi punya acuan saat generate. " : ". "}</>
+          )}
+          Filenya ikut dihapus dan tidak bisa dikembalikan.
+            </>
+          )}
+        </div>
+        {err && <div className="msg-err tiny mt1">{err}</div>}
+        <div className="row mt2" style={{ gap: 6 }}>
+          <button type="button" className="btn" style={{ fontSize: 11, padding: "3px 8px" }}
+            disabled={state === "busy"} onClick={confirm}>
+            {state === "busy" ? "Menghapus…" : "Ya, hapus"}
+          </button>
+          <button type="button" className="btn btn2" style={{ fontSize: 11, padding: "3px 8px" }}
+            disabled={state === "busy"} onClick={() => { setState("idle"); setErr(null); }}>Batal</button>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <button type="button" title="Hapus media ini beserta filenya"
+      onClick={ask} disabled={state === "checking"}
+      style={compact
+        ? { position: "absolute", top: 4, right: 4, border: "none", borderRadius: 6, cursor: "pointer",
+            background: "rgba(0,0,0,.55)", color: "#fff", fontSize: 11, lineHeight: 1, padding: "3px 6px" }
+        : { ...linkBtn, color: "var(--warn, #a02a2a)" }}>
+      {state === "checking" ? "…" : compact ? "\u00d7" : "Hapus"}
+    </button>
+  );
+}
 
 // ---------- Hooks ----------
 // Throws if a Supabase result carries an error, so useQuery's catch can
@@ -42,7 +141,7 @@ const statusTone = (s) =>
 
 // ---------- Dashboard ----------
 export function Dashboard({ ws, tick }) {
-  const [d, , error] = useQuery(async () => {
+  const [d, reload, error] = useQuery(async () => {
     const [inf, jobs, items, assets, tasks] = await Promise.all([
       supa.from("influencers").select("id,name,status,avatar_url").order("created_at").limit(25),
       supa.from("production_jobs").select("*").order("created_at", { ascending: false }).limit(5),
@@ -109,8 +208,16 @@ export function Dashboard({ ws, tick }) {
           {d.assets.length ? (
             <div className="grid" style={{ gridTemplateColumns: "repeat(4,1fr)", gap: 8 }}>
               {d.assets.map((a) => (
-                <div key={a.id} className="thumb" style={{ aspectRatio: "1" }}>
-                  {a.kind === "image" && a.url ? <img src={a.url} alt="" /> : a.kind === "video" ? "🎬" : a.kind === "audio" ? "🎧" : "📄"}
+                <div key={a.id} style={{ position: "relative" }}>
+                  {/* Thumbnail jadi tautan: sebelumnya gambar di kartu ini tidak
+                      bisa diapa-apakan sama sekali — terlihat seperti tombol
+                      tapi tidak menanggapi klik. */}
+                  <a href={a.url || "#"} target="_blank" rel="noreferrer"
+                    className="thumb" style={{ aspectRatio: "1", display: "block" }}
+                    title={a.name || "Buka media"}>
+                    {a.kind === "image" && a.url ? <img src={a.url} alt="" /> : a.kind === "video" ? "🎬" : a.kind === "audio" ? "🎧" : "📄"}
+                  </a>
+                  <DeleteMedia kind="asset" id={a.id} compact onDeleted={reload} />
                 </div>
               ))}
             </div>
@@ -914,7 +1021,13 @@ export function InfluencerDetail({ id, ws, refresh, tick, mode }) {
             <p className="tiny muted mb3">Foto referensi multi-angle — dipakai sebagai reference saat generate agar wajah konsisten. Tandai foto dari Drive sebagai referensi.</p>
             {d.refs.length ? (
               <div className="grid" style={{ gridTemplateColumns: "repeat(4,1fr)", gap: 8 }}>
-                {d.refs.map((r) => <div key={r.id} className="thumb">{r.url && <img src={r.url} alt="" />}</div>)}
+                {d.refs.map((r) => (
+                  <div key={r.id} style={{ position: "relative" }}>
+                    <div className="thumb">{r.url && <img src={r.url} alt="" />}</div>
+                    <DeleteMedia kind="character_asset" id={r.id} compact
+                      onDeleted={() => { reload(); refresh(); }} />
+                  </div>
+                ))}
               </div>
             ) : <div className="small muted">Belum ada foto referensi.</div>}
           </div>
@@ -932,7 +1045,8 @@ export function InfluencerDetail({ id, ws, refresh, tick, mode }) {
               </p>
               <div className="grid" style={{ gridTemplateColumns: "repeat(3,1fr)", gap: 10 }}>
                 {d.assets.map((a) => (
-                  <div key={a.id}>
+                  <div key={a.id} style={{ position: "relative" }}>
+                    <DeleteMedia kind="asset" id={a.id} compact onDeleted={() => { reload(); refresh(); }} />
                     <a href={a.url || "#"} target="_blank" rel="noreferrer" className="thumb" style={{ aspectRatio: "1" }}>
                       {a.kind === "image" && a.url ? <img src={a.url} alt="" /> : a.kind === "video" ? "🎬" : a.kind === "audio" ? "🎧" : "📄"}
                     </a>
@@ -1308,37 +1422,60 @@ const byPrice = (a, b) => Number(a.est_price_usd) - Number(b.est_price_usd);
 // `models` yang masuk ke sini WAJIB sudah tersaring per task oleh pemanggilnya.
 function ModelPicker({ models, value, onChange, keyReady = () => true, label = "Model" }) {
   const groups = [
-    { key: "murah", judul: `Gratis & murah — di bawah ${priceLabel(CHEAP_MAX_USD)}`, list: models.filter(isCheapModel).sort(byPrice) },
-    { key: "mahal", judul: `Premium — ${priceLabel(CHEAP_MAX_USD)} ke atas`, list: models.filter((m) => !isCheapModel(m)).sort(byPrice) },
+    { key: "murah", pendek: `yang murah (di bawah ${priceLabel(CHEAP_MAX_USD)})`, list: models.filter(isCheapModel).sort(byPrice) },
+    { key: "mahal", pendek: `yang premium (${priceLabel(CHEAP_MAX_USD)} ke atas)`, list: models.filter((m) => !isCheapModel(m)).sort(byPrice) },
   ];
+  const chosen = models.find((m) => m.id === value) || null;
   return (
     <div>
       <label className="label">{label}</label>
-      {groups.map((g, i) => (
-        <select
-          key={g.key}
-          className={`input${i === 0 ? " mb1" : ""}`}
-          // Satu model saja yang aktif. Dropdown yang tidak memuatnya kembali ke
-          // baris judulnya, supaya tidak terlihat seolah dua model terpilih.
-          value={g.list.some((m) => m.id === value) ? value : ""}
-          disabled={!g.list.length}
-          onChange={(e) => e.target.value && onChange(e.target.value)}
-        >
-          <option value="">
-            {g.list.length ? `${g.judul} (${g.list.length})` : `${g.judul} — tidak ada untuk task ini`}
-          </option>
-          {g.list.map((m) => (
-            <option key={m.id} value={m.id} disabled={!keyReady(m)}>
-              {m.label} · {priceLabel(m.est_price_usd)}{UNIT_SUFFIX[m.unit] || ""}
-              {keyReady(m) ? "" : ` — butuh key ${m.requires_key}`}
+      {groups.map((g, i) => {
+        const holdsValue = g.list.some((m) => m.id === value);
+        return (
+          <select
+            key={g.key}
+            className={`input${i === 0 ? " mb1" : ""}`}
+            // Satu model saja yang aktif. Dropdown yang tidak memuatnya kembali
+            // ke baris pertamanya.
+            value={holdsValue ? value : ""}
+            disabled={!g.list.length}
+            onChange={(e) => e.target.value && onChange(e.target.value)}
+            // Yang memegang pilihan diberi garis tegas; yang kosong dibuat
+            // redup. Tanpa beda ini keduanya terlihat sama-sama "terisi", dan
+            // itu yang bikin orang mengira dua model terpilih sekaligus.
+            style={holdsValue
+              ? { borderColor: "var(--brand)", borderWidth: 2, fontWeight: 600 }
+              : { color: "var(--dim)" }}
+          >
+            {/* Baris pertama ditulis sebagai PERINTAH, bukan sebagai nilai.
+                Sebelumnya isinya judul kelompok ("Gratis & murah — di bawah
+                $0.08"), yang terbaca persis seperti sebuah pilihan — jadi
+                dropdown yang sebenarnya kosong tampak seolah ada isinya. */}
+            <option value="">
+              {g.list.length
+                ? `— pilih ${g.pendek} (${g.list.length} model) —`
+                : `— tidak ada model ${g.pendek} untuk task ini —`}
             </option>
-          ))}
-        </select>
-      ))}
-      {/* Dua kotak, satu pilihan. Tanpa kalimat ini keduanya mudah terbaca
-          sebagai dua field yang dua-duanya harus diisi. */}
-      <p className="tiny muted" style={{ marginTop: 4 }}>
-        Pilih dari salah satu daftar — memilih di satu daftar mengosongkan yang lain.
+            {g.list.map((m) => (
+              <option key={m.id} value={m.id} disabled={!keyReady(m)}>
+                {m.label} · {priceLabel(m.est_price_usd)}{UNIT_SUFFIX[m.unit] || ""}
+                {keyReady(m) ? "" : ` — butuh key ${m.requires_key}`}
+              </option>
+            ))}
+          </select>
+        );
+      })}
+      {/* Satu kalimat yang menyebut model yang BENAR-BENAR akan dijalankan.
+          Dua dropdown selalu bisa disalahbaca; satu baris pernyataan tidak. */}
+      {chosen ? (
+        <p className="tiny" style={{ marginTop: 4, color: "var(--brand)", fontWeight: 600 }}>
+          Terpilih: {chosen.label} · {priceLabel(chosen.est_price_usd)}{UNIT_SUFFIX[chosen.unit] || ""}
+        </p>
+      ) : (
+        <p className="tiny muted" style={{ marginTop: 4 }}>Belum ada model terpilih.</p>
+      )}
+      <p className="tiny muted" style={{ marginTop: 2 }}>
+        Dua daftar, satu pilihan — memilih di satu daftar mengosongkan yang lain.
         {models.some((m) => m.unit === "per_second") && " Harga di sini per detik, jadi kalikan durasinya untuk biaya satu klip."}
       </p>
     </div>
@@ -1460,6 +1597,29 @@ function CharacterSheetPanel({ models, influencers, refresh, mode, lockInfluence
           Model ini butuh minimal 1 foto referensi di Identity Kit {inf?.name} — tambahkan dulu lewat wizard ✨, atau pilih model gambar lain.
         </div>
       )}
+      {/* Peringatan ini SEBELUMNYA HANYA ADA di form Generate biasa, tidak di
+          sini — padahal di sinilah taruhannya paling besar.
+
+          Character sheet ada justru untuk menghasilkan satu wajah yang konsisten
+          di banyak sudut. Model yang tidak membaca Identity Kit menghasilkan
+          enam orang yang berbeda-beda, dibayar enam kali, dan itu baru ketahuan
+          setelah semuanya jadi. */}
+      {infId && !modelIsEdit && (
+        <div className="msg-warn mb3">
+          Model ini <b>tidak membaca foto Identity Kit</b> — wajahnya ditebak dari teks, jadi
+          {shots.length > 1 ? ` ${shots.length} gambar ini akan menampilkan orang yang berbeda-beda` : " wajahnya akan berbeda"},
+          bukan {inf?.name || "influencer ini"}. Untuk character sheet itu hampir selalu bukan yang kamu mau.
+          {editModel && (
+            <>
+              {" "}
+              <button type="button" className="btn" style={{ fontSize: 11, padding: "3px 10px", marginTop: 6 }}
+                onClick={() => setModelId(editModel.id)}>
+                Pakai {editModel.label.split(" —")[0]} ({priceLabel(editModel.est_price_usd)}/gambar)
+              </button>
+            </>
+          )}
+        </div>
+      )}
       {infId && !inf?.identity_prompt && (
         <div className="msg-err mb3">
           {inf?.name} belum punya identity prompt — hasilnya tidak akan konsisten antar gambar.
@@ -1552,10 +1712,25 @@ export function Studio({ ws, refresh, tick, mode }) {
         <div className="bold mb3">Riwayat job</div>
         {d.jobs.length ? (
           <table>
-            <thead><tr><th>Task</th><th>Influencer</th><th>Model</th><th>Status</th><th>Biaya</th><th>Hasil</th></tr></thead>
+            <thead><tr><th></th><th>Task</th><th>Influencer</th><th>Model</th><th>Status</th><th>Biaya</th><th>Hasil</th><th></th></tr></thead>
             <tbody>
               {d.jobs.map((j) => (
                 <tr key={j.id}>
+                  {/* Pratinjau media. Tanpa ini satu-satunya cara tahu apa yang
+                      dihasilkan sebuah job adalah membuka tautannya satu per
+                      satu — dan job yang salah hasilnya baru ketahuan setelah
+                      dibuka. */}
+                  <td style={{ width: 52 }}>
+                    {j.output_url ? (
+                      <a href={j.output_url} target="_blank" rel="noreferrer"
+                        className="thumb" style={{ width: 44, height: 44, display: "block" }}
+                        title="Buka hasil">
+                        {j.task === "image" ? <img src={j.output_url} alt="" />
+                          : j.task === "video" || j.task === "lipsync" ? "🎬"
+                          : j.task === "tts" ? "🎧" : "📄"}
+                      </a>
+                    ) : <span className="muted tiny">—</span>}
+                  </td>
                   <td>{TYPE_LABELS[j.task]}</td>
                   <td className="muted">{j.influencers?.name || "—"}</td>
                   <td className="tiny muted">{j.model_key}</td>
@@ -1565,6 +1740,7 @@ export function Studio({ ws, refresh, tick, mode }) {
                   </td>
                   <td>{usd(j.cost_actual_usd ?? j.cost_estimate_usd)}</td>
                   <td>{j.output_url ? <a href={j.output_url} target="_blank" rel="noreferrer" style={{ color: "var(--blue-strong)", fontWeight: 600 }}>Buka →</a> : "—"}</td>
+                  <td><DeleteMedia kind="job" id={j.id} onDeleted={reload} /></td>
                 </tr>
               ))}
             </tbody>
@@ -2482,6 +2658,9 @@ export function Drive({ ws, refresh, tick }) {
                   <button className="tiny" style={{ background: "none", border: "none", color: "var(--brand)", fontWeight: 700, cursor: "pointer", padding: 0 }}
                     onClick={() => setMarking(a.id)}>+ jadikan referensi</button>
                 ))}
+                <div className="mt1">
+                  <DeleteMedia kind="asset" id={a.id} onDeleted={() => { reload(); refresh(); }} />
+                </div>
               </div>
             </div>
           ))}
@@ -3418,6 +3597,108 @@ function BillingCard({ ws, tick }) {
   );
 }
 
+// Link pendek terlacak.
+//
+// Instagram dan TikTok cuma memberi angka klik agregat di level akun — tidak
+// bisa diatribusikan ke satu post. Kartu ini tempat link itu dibuat dan
+// kliknya dibaca; pengalihannya sendiri di edge function `r`.
+function LinksCard({ ws, tick }) {
+  const [data, reload, err] = useQuery(async () => callLinks({ action: "list" }), [ws.id, tick]);
+  const [target, setTarget] = useState("");
+  const [label, setLabel] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [msg, setMsg] = useState(null);
+  const [copied, setCopied] = useState(null);
+
+  async function create(e) {
+    e.preventDefault();
+    setBusy(true); setMsg(null);
+    try {
+      const out = await callLinks({ action: "create", target_url: target.trim(), label: label.trim() || undefined });
+      setTarget(""); setLabel("");
+      setMsg({ ok: true, text: `Link dibuat: ${out.url}` });
+      reload();
+    } catch (e2) {
+      setMsg({ ok: false, text: e2.message });
+    }
+    setBusy(false);
+  }
+
+  async function copy(url) {
+    try {
+      await navigator.clipboard.writeText(url);
+      setCopied(url);
+      setTimeout(() => setCopied(null), 1500);
+    } catch {
+      // Clipboard ditolak (izin, atau bukan konteks aman). Jangan diam —
+      // user perlu tahu kenapa tombolnya seperti tidak melakukan apa-apa.
+      setMsg({ ok: false, text: "Browser menolak menyalin. Salin manual dari kolom link." });
+    }
+  }
+
+  const links = data?.links || [];
+  return (
+    <div className="card p6 mb4">
+      <div className="bold mb2">Link Terlacak</div>
+      <p className="tiny muted mb3">
+        Pakai link ini di bio dan caption, bukan URL aslinya. Instagram dan TikTok tidak pernah
+        memberi tahu link mana yang diklik dari post mana — ini satu-satunya cara tahu konten mana
+        yang benar-benar menghasilkan klik, bukan cuma yang ramai.
+      </p>
+
+      <form onSubmit={create} className="mb3">
+        <label className="label">URL tujuan</label>
+        <input className="input mb2" type="url" required placeholder="https://tokoku.id/promo"
+          value={target} onChange={(e) => setTarget(e.target.value)} />
+        <label className="label">Nama pengingat (opsional)</label>
+        <input className="input mb2" placeholder="bio Ramadan"
+          value={label} onChange={(e) => setLabel(e.target.value)} />
+        <button className="btn" disabled={busy}>{busy ? "Membuat…" : "Buat link"}</button>
+      </form>
+
+      {msg && <div className={msg.ok ? "msg-ok mb3" : "msg-err mb3"}>{msg.text}</div>}
+      {err && <div className="msg-err mb3">Gagal memuat link: {err}</div>}
+
+      {links.length === 0 ? (
+        <p className="tiny muted">Belum ada link. Yang pertama sebaiknya link bio — itu yang paling sering diklik.</p>
+      ) : (
+        <table>
+          <thead>
+            <tr><th>Link</th><th>Tujuan</th><th>Klik</th><th>Pengunjung</th><th>Bot</th><th>Terakhir</th></tr>
+          </thead>
+          <tbody>
+            {links.map((l) => (
+              <tr key={l.id}>
+                <td>
+                  <button type="button" onClick={() => copy(l.url)}
+                    style={{ background: "none", border: "none", padding: 0, cursor: "pointer", color: "var(--brand)", fontWeight: 600 }}
+                    title="Klik untuk menyalin">
+                    /r/{l.code}
+                  </button>
+                  {copied === l.url && <span className="tiny muted"> tersalin</span>}
+                  {l.label && <div className="tiny muted">{l.label}</div>}
+                </td>
+                <td className="tiny muted" style={{ maxWidth: 200, overflow: "hidden", textOverflow: "ellipsis" }}>
+                  {l.target_url}
+                </td>
+                <td className="bold">{l.clicks}</td>
+                <td>{l.visitors}</td>
+                {/* Bot ditampilkan, bukan disembunyikan: kalau angkanya jauh lebih
+                    besar dari klik manusia, itu pertanda linknya banyak ditempel
+                    di grup chat — informasi yang berguna, bukan sampah. */}
+                <td className="muted tiny">{l.bot_clicks}</td>
+                <td className="muted tiny">
+                  {l.last_click_at ? new Date(l.last_click_at).toLocaleString("id-ID") : "—"}
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      )}
+    </div>
+  );
+}
+
 export function Settings({ ws, refresh, tick, spend, spendError, query }) {
   const [models, reload, modelsError] = useQuery(async () =>
     unwrap(await supa.from("provider_models").select("*").order("task").order("est_price_usd")), [ws.id, tick]);
@@ -3489,6 +3770,7 @@ export function Settings({ ws, refresh, tick, spend, spendError, query }) {
       <PlatformConfig st={platform} reload={reloadPlatform} />
       {platform?.is_platform_admin && <PromotionsCard tick={tick} />}
       <BillingCard ws={ws} tick={tick} />
+      <LinksCard ws={ws} tick={tick} />
       {msg && <div className="msg-ok mb3">{msg}</div>}
       <div className="grid mb4" style={{ gridTemplateColumns: "repeat(auto-fit,minmax(340px,1fr))" }}>
         <div className="card p6">

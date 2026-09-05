@@ -12,6 +12,42 @@ const admin = createClient(SB_URL, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!, {
 const APP_URL = "https://25-ai-microinfluencer.netlify.app/";
 const CALLBACK = `${SB_URL}/functions/v1/social/callback`;
 
+// Izin yang diminta saat menyambungkan akun.
+//
+// MENAMBAH IZIN DI SINI MEMAKSA SEMUA USER MENYAMBUNG ULANG AKUNNYA. Token yang
+// sudah ada tidak ikut naik kelas; ia tetap membawa izin yang berlaku saat
+// diterbitkan. Jadi daftar ini murah diperlebar sekarang, saat belum ada satu
+// pun koneksi, dan mahal setelah ada pelanggan — sebagian dari mereka tidak
+// akan pernah menyambung ulang, dan akunnya diam-diam jadi yang datanya tidak
+// bisa dibaca.
+//
+// Sebelumnya daftar ini hanya berisi izin MENERBITKAN. Akibatnya app bisa
+// memposting tapi buta total setelahnya: tidak ada jumlah tayangan, tidak ada
+// berapa orang follow gara-gara sebuah post, tidak ada komentar. Semua rencana
+// soal kualitas konten berdiri di atas angka-angka itu, jadi tanpa izin baca
+// app ini cuma bisa memproduksi lebih banyak — tidak pernah lebih baik.
+const IG_SCOPES = [
+  "pages_show_list",
+  "business_management",
+  "instagram_basic",
+  "instagram_content_publish",
+  // Tayangan, jangkauan, dan — yang paling menentukan untuk pertumbuhan —
+  // berapa orang menekan follow gara-gara sebuah post.
+  "instagram_manage_insights",
+  // Untuk akun kecil, komentar mengalahkan metrik: dua puluh komentar berisi
+  // kata-kata asli lebih memberi tahu daripada dua ribu impresi.
+  "instagram_manage_comments",
+].join(",");
+
+const TT_SCOPES = [
+  "user.info.basic",
+  "video.publish",
+  // Tanpa ini app tidak bisa membaca statistik videonya sendiri di TikTok.
+  // TikTok tidak membuka API komentar untuk app biasa, jadi sisi TikTok memang
+  // hanya bisa sampai angka — bukan kata-kata.
+  "video.list",
+].join(",");
+
 const CORS = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, apikey, content-type",
@@ -365,8 +401,8 @@ Deno.serve(async (req) => {
         const state = crypto.randomUUID();
         await admin.from("oauth_states").insert({ state, workspace_id: ws, platform: p, influencer_id: body.influencer_id || null });
         const authorize_url = p === "instagram"
-          ? `https://www.facebook.com/v21.0/dialog/oauth?client_id=${await getSecret(ws, KEYS.instagram.id)}&redirect_uri=${encodeURIComponent(CALLBACK)}&state=${state}&scope=${encodeURIComponent("pages_show_list,business_management,instagram_basic,instagram_content_publish")}`
-          : `https://www.tiktok.com/v2/auth/authorize/?client_key=${await getSecret(ws, KEYS.tiktok.id)}&response_type=code&scope=${encodeURIComponent("user.info.basic,video.publish")}&redirect_uri=${encodeURIComponent(CALLBACK)}&state=${state}`;
+          ? `https://www.facebook.com/v21.0/dialog/oauth?client_id=${await getSecret(ws, KEYS.instagram.id)}&redirect_uri=${encodeURIComponent(CALLBACK)}&state=${state}&scope=${encodeURIComponent(IG_SCOPES)}`
+          : `https://www.tiktok.com/v2/auth/authorize/?client_key=${await getSecret(ws, KEYS.tiktok.id)}&response_type=code&scope=${encodeURIComponent(TT_SCOPES)}&redirect_uri=${encodeURIComponent(CALLBACK)}&state=${state}`;
         return json({ authorize_url });
       }
       case "list_connections": {
