@@ -279,6 +279,16 @@ const TOOLS = [
       "(WhatsApp, Telegram, dsb) yang terhitung di `bot_clicks`. `visitors` adalah perkiraan pengunjung berbeda per hari.",
     inputSchema: { type: "object", properties: {} },
   },
+  {
+    name: "get_post_metrics",
+    description:
+      "Performa post yang sudah terbit: views, reach, likes, comments, shares, saves, dan `follows` — " +
+      "berapa orang menekan follow gara-gara post itu. Angka `follows` yang paling menjawab pertanyaan " +
+      "'konten mana yang menumbuhkan akun', dan sering TIDAK sejalan dengan jumlah tayangan. " +
+      "Nilai null berarti platform tidak memberikan angkanya, BUKAN berarti nol — jangan dirata-rata " +
+      "seolah nol. Data ditarik cron tiap 6 jam; post yang baru terbit beberapa menit lalu belum ada di sini.",
+    inputSchema: { type: "object", properties: {} },
+  },
 ];
 
 // Panggil edge function lain sebagai pemanggil internal.
@@ -292,7 +302,7 @@ const TOOLS = [
 // pemilihan foto Identity Kit, dan pemilihan media saat publish semuanya
 // tinggal di satu tempat; menyalinnya berarti dua salinan yang pelan-pelan
 // berbeda.
-async function callInternal(fn: "generate" | "social" | "links", ws: string, body: Record<string, unknown>) {
+async function callInternal(fn: "generate" | "social" | "links" | "metrics", ws: string, body: Record<string, unknown>) {
   const { data } = await admin.from("service_config").select("value").eq("key", "internal_mcp_key").maybeSingle();
   if (!data?.value) throw new Error("Kunci internal MCP belum disiapkan di service_config.");
   const res = await fetch(`${SB_URL}/functions/v1/${fn}`, {
@@ -556,6 +566,10 @@ async function runTool(name: string, args: Record<string, unknown>, ctx: Ctx) {
       const out = await callInternal("links", ws, { action: "list" });
       return ok(out);
     }
+    case "get_post_metrics": {
+      const out = await callInternal("metrics", ws, { action: "list" });
+      return ok(out);
+    }
     default:
       throw new Error(`Tool tidak dikenal: ${name}`);
   }
@@ -664,7 +678,11 @@ async function handleRpc(msg: Record<string, unknown>, ctx: Ctx): Promise<unknow
         "content_item_id-nya dan pakai URL itu di caption — bukan URL aslinya. Instagram dan TikTok tidak " +
         "pernah memberi tahu link mana yang diklik dari post mana; tanpa link ini pertanyaan \"konten mana " +
         "yang menghasilkan klik\" tidak akan pernah bisa dijawab, dan yang tersisa cuma \"konten mana yang ramai\" " +
-        "— sering bukan konten yang sama.",
+        "— sering bukan konten yang sama.\n\n" +
+        "Sebelum mengusulkan ide konten baru, panggil get_post_metrics dulu dan pakai yang sudah terbukti. " +
+        "Urutkan berdasarkan `follows`, bukan `views`: post yang ditonton banyak orang tapi tidak menambah " +
+        "follower berarti menarik ditonton dan tidak cukup alasan untuk diikuti — dua hal yang berbeda, dan " +
+        "yang kedua itu yang menumbuhkan akun. Perlakukan null sebagai \"tidak terukur\", jangan sebagai nol.",
     });
   }
   if (method === "notifications/initialized" || method?.startsWith("notifications/")) return null;
