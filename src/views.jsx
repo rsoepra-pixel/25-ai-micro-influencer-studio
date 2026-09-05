@@ -1422,37 +1422,60 @@ const byPrice = (a, b) => Number(a.est_price_usd) - Number(b.est_price_usd);
 // `models` yang masuk ke sini WAJIB sudah tersaring per task oleh pemanggilnya.
 function ModelPicker({ models, value, onChange, keyReady = () => true, label = "Model" }) {
   const groups = [
-    { key: "murah", judul: `Gratis & murah — di bawah ${priceLabel(CHEAP_MAX_USD)}`, list: models.filter(isCheapModel).sort(byPrice) },
-    { key: "mahal", judul: `Premium — ${priceLabel(CHEAP_MAX_USD)} ke atas`, list: models.filter((m) => !isCheapModel(m)).sort(byPrice) },
+    { key: "murah", pendek: `yang murah (di bawah ${priceLabel(CHEAP_MAX_USD)})`, list: models.filter(isCheapModel).sort(byPrice) },
+    { key: "mahal", pendek: `yang premium (${priceLabel(CHEAP_MAX_USD)} ke atas)`, list: models.filter((m) => !isCheapModel(m)).sort(byPrice) },
   ];
+  const chosen = models.find((m) => m.id === value) || null;
   return (
     <div>
       <label className="label">{label}</label>
-      {groups.map((g, i) => (
-        <select
-          key={g.key}
-          className={`input${i === 0 ? " mb1" : ""}`}
-          // Satu model saja yang aktif. Dropdown yang tidak memuatnya kembali ke
-          // baris judulnya, supaya tidak terlihat seolah dua model terpilih.
-          value={g.list.some((m) => m.id === value) ? value : ""}
-          disabled={!g.list.length}
-          onChange={(e) => e.target.value && onChange(e.target.value)}
-        >
-          <option value="">
-            {g.list.length ? `${g.judul} (${g.list.length})` : `${g.judul} — tidak ada untuk task ini`}
-          </option>
-          {g.list.map((m) => (
-            <option key={m.id} value={m.id} disabled={!keyReady(m)}>
-              {m.label} · {priceLabel(m.est_price_usd)}{UNIT_SUFFIX[m.unit] || ""}
-              {keyReady(m) ? "" : ` — butuh key ${m.requires_key}`}
+      {groups.map((g, i) => {
+        const holdsValue = g.list.some((m) => m.id === value);
+        return (
+          <select
+            key={g.key}
+            className={`input${i === 0 ? " mb1" : ""}`}
+            // Satu model saja yang aktif. Dropdown yang tidak memuatnya kembali
+            // ke baris pertamanya.
+            value={holdsValue ? value : ""}
+            disabled={!g.list.length}
+            onChange={(e) => e.target.value && onChange(e.target.value)}
+            // Yang memegang pilihan diberi garis tegas; yang kosong dibuat
+            // redup. Tanpa beda ini keduanya terlihat sama-sama "terisi", dan
+            // itu yang bikin orang mengira dua model terpilih sekaligus.
+            style={holdsValue
+              ? { borderColor: "var(--brand)", borderWidth: 2, fontWeight: 600 }
+              : { color: "var(--dim)" }}
+          >
+            {/* Baris pertama ditulis sebagai PERINTAH, bukan sebagai nilai.
+                Sebelumnya isinya judul kelompok ("Gratis & murah — di bawah
+                $0.08"), yang terbaca persis seperti sebuah pilihan — jadi
+                dropdown yang sebenarnya kosong tampak seolah ada isinya. */}
+            <option value="">
+              {g.list.length
+                ? `— pilih ${g.pendek} (${g.list.length} model) —`
+                : `— tidak ada model ${g.pendek} untuk task ini —`}
             </option>
-          ))}
-        </select>
-      ))}
-      {/* Dua kotak, satu pilihan. Tanpa kalimat ini keduanya mudah terbaca
-          sebagai dua field yang dua-duanya harus diisi. */}
-      <p className="tiny muted" style={{ marginTop: 4 }}>
-        Pilih dari salah satu daftar — memilih di satu daftar mengosongkan yang lain.
+            {g.list.map((m) => (
+              <option key={m.id} value={m.id} disabled={!keyReady(m)}>
+                {m.label} · {priceLabel(m.est_price_usd)}{UNIT_SUFFIX[m.unit] || ""}
+                {keyReady(m) ? "" : ` — butuh key ${m.requires_key}`}
+              </option>
+            ))}
+          </select>
+        );
+      })}
+      {/* Satu kalimat yang menyebut model yang BENAR-BENAR akan dijalankan.
+          Dua dropdown selalu bisa disalahbaca; satu baris pernyataan tidak. */}
+      {chosen ? (
+        <p className="tiny" style={{ marginTop: 4, color: "var(--brand)", fontWeight: 600 }}>
+          Terpilih: {chosen.label} · {priceLabel(chosen.est_price_usd)}{UNIT_SUFFIX[chosen.unit] || ""}
+        </p>
+      ) : (
+        <p className="tiny muted" style={{ marginTop: 4 }}>Belum ada model terpilih.</p>
+      )}
+      <p className="tiny muted" style={{ marginTop: 2 }}>
+        Dua daftar, satu pilihan — memilih di satu daftar mengosongkan yang lain.
         {models.some((m) => m.unit === "per_second") && " Harga di sini per detik, jadi kalikan durasinya untuk biaya satu klip."}
       </p>
     </div>
