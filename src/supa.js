@@ -69,6 +69,24 @@ export async function callCalendar(body) {
   return json;
 }
 
+/** Panggil edge function `links` (link pendek terlacak: create, list, toggle). */
+export async function callLinks(body) {
+  const { data: sess } = await supa.auth.getSession();
+  const token = sess?.session?.access_token;
+  const res = await fetch(`${SUPABASE_URL}/functions/v1/links`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${token}`,
+      apikey: ANON_KEY,
+    },
+    body: JSON.stringify(body),
+  });
+  const json = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error(json.error || `Error ${res.status}`);
+  return json;
+}
+
 /** Daftar akun via edge function `app` (auto-confirm email, tanpa perlu klik
  *  link konfirmasi), lalu caller tinggal signInWithPassword. */
 export async function signupConfirmed(email, password) {

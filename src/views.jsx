@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useCallback } from "react";
-import { supa, callGenerate, callSocial, callCalendar, callApp, STATUS_LABELS, TYPE_LABELS, usd } from "./supa.js";
+import { supa, callGenerate, callSocial, callCalendar, callApp, callLinks, STATUS_LABELS, TYPE_LABELS, usd } from "./supa.js";
 
 // ---------- Hooks ----------
 // Throws if a Supabase result carries an error, so useQuery's catch can
@@ -3418,6 +3418,108 @@ function BillingCard({ ws, tick }) {
   );
 }
 
+// Link pendek terlacak.
+//
+// Instagram dan TikTok cuma memberi angka klik agregat di level akun — tidak
+// bisa diatribusikan ke satu post. Kartu ini tempat link itu dibuat dan
+// kliknya dibaca; pengalihannya sendiri di edge function `r`.
+function LinksCard({ ws, tick }) {
+  const [data, reload, err] = useQuery(async () => callLinks({ action: "list" }), [ws.id, tick]);
+  const [target, setTarget] = useState("");
+  const [label, setLabel] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [msg, setMsg] = useState(null);
+  const [copied, setCopied] = useState(null);
+
+  async function create(e) {
+    e.preventDefault();
+    setBusy(true); setMsg(null);
+    try {
+      const out = await callLinks({ action: "create", target_url: target.trim(), label: label.trim() || undefined });
+      setTarget(""); setLabel("");
+      setMsg({ ok: true, text: `Link dibuat: ${out.url}` });
+      reload();
+    } catch (e2) {
+      setMsg({ ok: false, text: e2.message });
+    }
+    setBusy(false);
+  }
+
+  async function copy(url) {
+    try {
+      await navigator.clipboard.writeText(url);
+      setCopied(url);
+      setTimeout(() => setCopied(null), 1500);
+    } catch {
+      // Clipboard ditolak (izin, atau bukan konteks aman). Jangan diam —
+      // user perlu tahu kenapa tombolnya seperti tidak melakukan apa-apa.
+      setMsg({ ok: false, text: "Browser menolak menyalin. Salin manual dari kolom link." });
+    }
+  }
+
+  const links = data?.links || [];
+  return (
+    <div className="card p6 mb4">
+      <div className="bold mb2">Link Terlacak</div>
+      <p className="tiny muted mb3">
+        Pakai link ini di bio dan caption, bukan URL aslinya. Instagram dan TikTok tidak pernah
+        memberi tahu link mana yang diklik dari post mana — ini satu-satunya cara tahu konten mana
+        yang benar-benar menghasilkan klik, bukan cuma yang ramai.
+      </p>
+
+      <form onSubmit={create} className="mb3">
+        <label className="label">URL tujuan</label>
+        <input className="input mb2" type="url" required placeholder="https://tokoku.id/promo"
+          value={target} onChange={(e) => setTarget(e.target.value)} />
+        <label className="label">Nama pengingat (opsional)</label>
+        <input className="input mb2" placeholder="bio Ramadan"
+          value={label} onChange={(e) => setLabel(e.target.value)} />
+        <button className="btn" disabled={busy}>{busy ? "Membuat…" : "Buat link"}</button>
+      </form>
+
+      {msg && <div className={msg.ok ? "msg-ok mb3" : "msg-err mb3"}>{msg.text}</div>}
+      {err && <div className="msg-err mb3">Gagal memuat link: {err}</div>}
+
+      {links.length === 0 ? (
+        <p className="tiny muted">Belum ada link. Yang pertama sebaiknya link bio — itu yang paling sering diklik.</p>
+      ) : (
+        <table>
+          <thead>
+            <tr><th>Link</th><th>Tujuan</th><th>Klik</th><th>Pengunjung</th><th>Bot</th><th>Terakhir</th></tr>
+          </thead>
+          <tbody>
+            {links.map((l) => (
+              <tr key={l.id}>
+                <td>
+                  <button type="button" onClick={() => copy(l.url)}
+                    style={{ background: "none", border: "none", padding: 0, cursor: "pointer", color: "var(--brand)", fontWeight: 600 }}
+                    title="Klik untuk menyalin">
+                    /r/{l.code}
+                  </button>
+                  {copied === l.url && <span className="tiny muted"> tersalin</span>}
+                  {l.label && <div className="tiny muted">{l.label}</div>}
+                </td>
+                <td className="tiny muted" style={{ maxWidth: 200, overflow: "hidden", textOverflow: "ellipsis" }}>
+                  {l.target_url}
+                </td>
+                <td className="bold">{l.clicks}</td>
+                <td>{l.visitors}</td>
+                {/* Bot ditampilkan, bukan disembunyikan: kalau angkanya jauh lebih
+                    besar dari klik manusia, itu pertanda linknya banyak ditempel
+                    di grup chat — informasi yang berguna, bukan sampah. */}
+                <td className="muted tiny">{l.bot_clicks}</td>
+                <td className="muted tiny">
+                  {l.last_click_at ? new Date(l.last_click_at).toLocaleString("id-ID") : "—"}
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      )}
+    </div>
+  );
+}
+
 export function Settings({ ws, refresh, tick, spend, spendError, query }) {
   const [models, reload, modelsError] = useQuery(async () =>
     unwrap(await supa.from("provider_models").select("*").order("task").order("est_price_usd")), [ws.id, tick]);
@@ -3489,6 +3591,7 @@ export function Settings({ ws, refresh, tick, spend, spendError, query }) {
       <PlatformConfig st={platform} reload={reloadPlatform} />
       {platform?.is_platform_admin && <PromotionsCard tick={tick} />}
       <BillingCard ws={ws} tick={tick} />
+      <LinksCard ws={ws} tick={tick} />
       {msg && <div className="msg-ok mb3">{msg}</div>}
       <div className="grid mb4" style={{ gridTemplateColumns: "repeat(auto-fit,minmax(340px,1fr))" }}>
         <div className="card p6">
