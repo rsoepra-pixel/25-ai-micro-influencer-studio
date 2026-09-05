@@ -5,6 +5,7 @@ import {
   Dashboard, Influencers, InfluencerDetail, Studio, Planner, Tasks, Drive, Settings,
 } from "./views.jsx";
 import { Reports } from "./reports.jsx";
+import { Storyboard } from "./storyboard.jsx";
 
 // ---------- Hash router sederhana ----------
 function useRoute() {
@@ -28,6 +29,7 @@ const NAV = [
   ["/", "🏠 Dashboard"],
   ["/influencers", "👥 Influencers"],
   ["/studio", "🎬 Production Studio"],
+  ["/storyboard", "🎞️ Storyboard"],
   ["/planner", "🗓️ Content Planner"],
   ["/reports", "📊 Laporan"],
   ["/tasks", "✅ Tasks"],
@@ -177,6 +179,7 @@ function App() {
   else if (routePath === "/influencers") view = <Influencers {...props} />;
   else if (routePath.startsWith("/influencers/")) view = <InfluencerDetail {...props} key={routePath.split("/")[2]} id={routePath.split("/")[2]} />;
   else if (routePath === "/studio") view = <Studio {...props} />;
+  else if (routePath === "/storyboard") view = <Storyboard {...props} />;
   else if (routePath === "/planner") view = <Planner {...props} />;
   else if (routePath === "/reports") view = <Reports {...props} />;
   else if (routePath === "/tasks") view = <Tasks {...props} />;

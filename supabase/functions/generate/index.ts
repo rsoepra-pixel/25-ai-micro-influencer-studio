@@ -489,6 +489,52 @@ function falQueueUrlFallback(modelKey: string, requestId: string): string {
   return `https://queue.fal.run/${ns}/requests/${requestId}`;
 }
 
+// Pilih nilai durasi yang BENAR-BENAR diterima model ini.
+//
+// Sebelum ini kode mengirim String(duration <= 5 ? 5 : 10) ke semua model
+// video. Itu cocok untuk Kling dan Seedance, dan salah untuk semua yang lain:
+// Veo hanya menerima "4s"/"6s"/"8s", Sora hanya menerima ANGKA 4/8/12/16/20,
+// Hailuo tidak punya field durasi sama sekali. Akibatnya Veo 3 tidak pernah
+// sekali pun berhasil dijalankan dari app ini — setiap submit dibalas 422 dan
+// yang terlihat user cuma job berstatus failed tanpa sebab yang bisa dibaca.
+//
+// Daftar nilainya ada di katalog (provider_models.duration_values), dalam tipe
+// JSON asli milik model itu. Yang dikembalikan dua hal, dan keduanya perlu:
+//
+//   value   — apa yang dikirim ke fal, dengan tipe aslinya dipertahankan.
+//   seconds — berapa detik nilai itu sebenarnya, untuk menghitung biaya.
+//
+// Keduanya dipisah karena "8s" adalah delapan detik tapi bukan angka 8. Kalau
+// biaya dihitung dari nilai mentah, model per_second yang memakai sufiks huruf
+// akan menghasilkan NaN, dan pagar biaya berhenti menjaga apa pun.
+function pickDuration(
+  values: unknown,
+  wantedSeconds: number,
+): { value: unknown; seconds: number } | null {
+  if (!Array.isArray(values) || !values.length) return null;
+  // parseFloat, bukan Number: Number("8s") = NaN, parseFloat("8s") = 8.
+  const opts = values
+    .map((v) => ({ value: v, seconds: parseFloat(String(v)) }))
+    .filter((o) => Number.isFinite(o.seconds))
+    .sort((a, b) => a.seconds - b.seconds);
+  if (!opts.length) return null;
+  // Nilai terbesar yang tidak melebihi permintaan. Kalau semuanya kebesaran
+  // (minta 3 detik, model paling pendek 4), ambil yang terpendek — melebihi
+  // permintaan sedikit jauh lebih baik daripada job yang ditolak mentah.
+  const fit = opts.filter((o) => o.seconds <= wantedSeconds).pop();
+  return fit || opts[0];
+}
+
+// Gabungkan knob tetap milik model (resolusi, rasio aspek, audio) ke body.
+//
+// Ditulis TERAKHIR dan menimpa: kalau katalog menyebut satu field secara
+// eksplisit, itu keputusan yang sudah dipikirkan per model, sedangkan nilai
+// yang dipasang kode di atasnya cuma default umum. Yang spesifik menang.
+function mergeExtra(input: Record<string, unknown>, extra: unknown) {
+  if (!extra || typeof extra !== "object" || Array.isArray(extra)) return;
+  for (const [k, v] of Object.entries(extra as Record<string, unknown>)) input[k] = v;
+}
+
 // Tulis nilai ke jalur bertitik, membuat objek antara kalau belum ada.
 // Dipakai untuk voice id: ElevenLabs menaruhnya di "voice", MiniMax di
 // "voice_setting.voice_id". Jalurnya dari katalog (provider_models.voice_field),
@@ -569,8 +615,115 @@ Deno.serve(async (req) => {
         return json({ ok: true, mode: m });
       }
       case "write": {
-        // Penulis AI: kind = script | ideas | persona | lookalike | plan.
-        const kind = ["ideas", "persona", "lookalike", "plan"].includes(body.kind) ? body.kind : "script";
+        // Penulis AI: kind = script | ideas | persona | lookalike | plan | storyboard.
+        const kind = ["ideas", "persona", "lookalike", "plan", "storyboard"].includes(body.kind) ? body.kind : "script";
+
+        // storyboard: satu ide → daftar shot yang siap diproduksi.
+        //
+        // KENAPA STORYBOARD, BUKAN LANGSUNG SATU PROMPT VIDEO PANJANG
+        //
+        // Model video terbaik pun hanya menghasilkan 4-10 detik sekali jalan.
+        // Video 30 detik karena itu selalu berupa beberapa klip yang disambung,
+        // dan yang menentukan hasilnya terlihat seperti satu video atau seperti
+        // tempelan acak adalah KONTINUITAS: baju yang sama, lokasi yang sama,
+        // waktu yang sama, palet warna yang sama di semua klip.
+        //
+        // Model bahasa tidak menjaga itu sendiri kalau diminta per shot. Jadi
+        // kontinuitas diminta SEKALI di tingkat storyboard, lalu ditempelkan ke
+        // setiap prompt shot oleh klien. Satu sumber kebenaran, bukan lima
+        // deskripsi baju yang mirip-mirip tapi tidak sama.
+        if (kind === "storyboard") {
+          const shotCount = Math.min(Math.max(Number(body.shots) || 5, 2), 10);
+          const perShot = Math.min(Math.max(Number(body.seconds_per_shot) || 5, 3), 15);
+
+          let iname = "kreator", iniche = "", ibio = "", ilang = "Indonesia";
+          if (body.influencer_id) {
+            const { data: inf } = await admin.from("influencers")
+              .select("name,niche,persona,language,workspace_id").eq("id", body.influencer_id).maybeSingle();
+            if (inf?.workspace_id === ws) {
+              iname = inf.name; iniche = inf.niche || "";
+              ibio = (inf.persona as { bio?: string })?.bio || "";
+              ilang = inf.language === "en" ? "English" : inf.language === "mix" ? "campuran Indonesia-Inggris" : "Indonesia";
+            }
+          }
+
+          // Ide bisa datang dari konten yang sudah ada di planner, atau diketik
+          // langsung. Kalau id-nya diberi tapi bukan milik workspace ini,
+          // JANGAN diam-diam jatuh ke teks bebas — itu cara storyboard nyasar
+          // ke ide orang lain tanpa ada yang sadar.
+          let idea = String(body.idea || "").slice(0, 500);
+          let existingScript = "";
+          if (body.content_item_id) {
+            const { data: ci } = await admin.from("content_items")
+              .select("title, hook, script").eq("id", body.content_item_id).eq("workspace_id", ws).maybeSingle();
+            if (!ci) throw new Error("Konten tujuan tidak ditemukan di workspace ini.");
+            idea = String(ci.title || idea);
+            existingScript = [ci.hook, ci.script].filter(Boolean).join("\n");
+          }
+          if (!idea) throw new Error("Isi dulu ide videonya, atau pilih satu konten dari planner.");
+
+          const platform = ["tiktok", "instagram", "youtube"].includes(body.platform) ? body.platform : "tiktok";
+          const platformLabel = platform === "instagram" ? "Instagram Reels" : platform === "youtube" ? "YouTube Shorts" : "TikTok";
+
+          const system =
+            `Kamu sutradara video short-form untuk ${platformLabel}, pasar Indonesia. ` +
+            `Kamu memecah satu ide menjadi shot list yang langsung bisa diproduksi model AI. ` +
+            `Talent-nya ${iname}${iniche ? `, niche ${iniche}` : ""}. ` +
+            (ibio ? `Persona: ${ibio} ` : "") +
+            `Jawab HANYA dengan JSON valid, tanpa penjelasan lain.`;
+
+          const user =
+            `Ide video: "${idea}"\n` +
+            (existingScript ? `Naskah yang sudah ada (pakai ini, jangan bikin cerita baru):\n${existingScript}\n` : "") +
+            `\nPecah jadi TEPAT ${shotCount} shot, masing-masing sekitar ${perShot} detik. Format vertikal 9:16.\n` +
+            `\nAturan yang harus dipatuhi:\n` +
+            `1. "continuity": satu deskripsi yang berlaku untuk SEMUA shot — pakaian, lokasi, waktu, ` +
+            `pencahayaan, dan palet warna. Bahasa Inggris, 20-40 kata. Ini yang membuat potongan-potongan ` +
+            `terasa satu video, jadi harus konkret ("white linen shirt, rolled sleeves"), bukan kabur ("casual outfit").\n` +
+            `2. "visual_prompt" tiap shot: bahasa Inggris, 25-50 kata, HANYA yang terlihat di frame itu — ` +
+            `aksi, ekspresi, jarak kamera, gerak kamera, komposisi. ` +
+            `DILARANG KERAS mendeskripsikan wajah, usia, warna kulit, atau bentuk rambut talent. ` +
+            `Wajahnya sudah dikunci lewat foto referensi; kalau kamu ikut mendeskripsikannya, ` +
+            `deskripsimu akan berkelahi dengan fotonya dan yang keluar orang lain.\n` +
+            `3. Jangan ulang isi "continuity" di dalam "visual_prompt" — itu ditempelkan otomatis.\n` +
+            `4. "narration" tiap shot: bahasa ${ilang}, kalimat yang benar-benar diucapkan, ` +
+            `panjangnya wajar untuk ${perShot} detik (kira-kira ${Math.round(perShot * 2.5)} kata). ` +
+            `Boleh string kosong untuk shot tanpa suara.\n` +
+            `5. Shot 1 adalah HOOK: harus menahan orang di 1-3 detik pertama. Jangan basa-basi, ` +
+            `jangan "halo guys", langsung ke hal yang bikin penasaran.\n` +
+            `6. Shot terakhir punya satu ajakan yang jelas dan spesifik.\n` +
+            `7. Variasikan jarak kamera antar shot (close-up, medium, wide) — ` +
+            `${shotCount} shot dengan framing identik terlihat seperti satu klip yang dipotong-potong.\n` +
+            `8. Hindari klaim medis, kesehatan, atau finansial yang spesifik.\n` +
+            `\nFormat JSON: {"title": "judul video", "logline": "1 kalimat bahasa Indonesia isi videonya", ` +
+            `"continuity": "...", "shots": [{"beat": "nama beat singkat bahasa Indonesia", ` +
+            `"visual_prompt": "...", "narration": "...", "camera": "close-up | medium | wide", ` +
+            `"seconds": ${perShot}}]}`;
+
+          const parsed = parseJsonLoose(await chat(ws, system, user, undefined, 3000)) as Record<string, unknown>;
+          const rawShots = Array.isArray(parsed.shots) ? parsed.shots : [];
+          if (!rawShots.length) throw new Error("Penulis AI tidak mengembalikan satu shot pun. Coba lagi.");
+          const CAMERAS = ["close-up", "medium", "wide"];
+          return json({
+            ok: true,
+            storyboard: {
+              title: String(parsed.title || idea).slice(0, 200),
+              logline: String(parsed.logline || "").slice(0, 300),
+              continuity: String(parsed.continuity || "").slice(0, 500),
+              shots: rawShots.slice(0, shotCount).map((s: Record<string, unknown>, i: number) => ({
+                position: i + 1,
+                beat: String(s?.beat || `Shot ${i + 1}`).slice(0, 120),
+                visual_prompt: String(s?.visual_prompt || "").slice(0, 800),
+                narration: String(s?.narration || "").slice(0, 600),
+                camera: CAMERAS.includes(String(s?.camera)) ? String(s?.camera) : "medium",
+                // Durasi dari model tidak dipercaya mentah-mentah: ia sering
+                // menulis angka yang tidak ada di daftar model video mana pun.
+                // Yang mengikat tetap pilihan user; ini cuma usulan.
+                seconds: Math.min(Math.max(Number(s?.seconds) || perShot, 3), 15),
+              })).filter((s) => s.visual_prompt),
+            },
+          });
+        }
 
         // plan: rencana konten satu periode sekaligus — pillar + daftar ide.
         // TANGGAL sengaja TIDAK diminta ke model: model bahasa buruk soal kalender
@@ -884,8 +1037,15 @@ Deno.serve(async (req) => {
         if (!model) throw new Error("Model tidak ditemukan / tidak aktif.");
         if (model.provider === "hf" && task !== "image") throw new Error("Model Hugging Face di katalog ini hanya untuk gambar.");
 
+        // Durasi diputuskan SEBELUM biaya dihitung, karena model jarang memberi
+        // persis yang diminta: minta 5 detik ke Veo, yang keluar 6 detik, dan
+        // 6 detik itulah yang ditagih. Menghitung biaya dari angka yang diminta
+        // membuat pagar budget menjaga job yang tidak pernah ada.
+        const picked = pickDuration(model.duration_values, duration);
+        const billedSeconds = picked ? picked.seconds : duration;
+
         let est = Number(model.est_price_usd);
-        if (model.unit === "per_second") est *= duration;
+        if (model.unit === "per_second") est *= billedSeconds;
         if (model.unit === "per_1k_chars") est = (est * (String(text).length || 500)) / 1000;
 
         let identity = "";
@@ -1078,10 +1238,55 @@ Deno.serve(async (req) => {
         const falKey = await providerKey(ws, "fal_key");
         if (!falKey) await abort("FAL key belum dipasang — isi di Settings.");
         const input: Record<string, unknown> = {};
-        if (task === "image") { input.prompt = finalPrompt; input.image_size = "portrait_4_3"; input.num_images = 1; }
+        if (task === "image") {
+          input.prompt = finalPrompt;
+          // `num_images` sengaja TIDAK dikirim dari sini.
+          //
+          // Dulu selalu diisi 1, yang kebetulan sama dengan default semua model
+          // waktu itu — jadi tidak pernah mengubah apa pun, tapi menyimpan
+          // ranjau: fal-ai/flux-2-pro tidak punya field ini sama sekali, dan
+          // field asing dijawab 422. Satu model baru cukup untuk mematahkannya.
+          // Model lama yang memang menerimanya menyebutkannya di extra_input.
+
+          // Model gambar fal yang menjaga wajah (FLUX.1 Kontext, Nano Banana
+          // Edit, Seedream 4 Edit).
+          //
+          // Sampai sekarang cabang ini TIDAK PERNAH membaca keeps_identity —
+          // kolom itu hanya dipakai di cabang DashScope. Jadi model fal penjaga
+          // wajah mustahil dipasang: ditandai keeps_identity pun, yang dikirim
+          // tetap prompt teks saja, foto Identity Kit diabaikan diam-diam, dan
+          // yang muncul adalah orang asing. Tanpa error, tanpa peringatan,
+          // hanya tagihan dan wajah yang salah.
+          //
+          // Nama field dan bentuknya dari katalog: fal memakai `image_url`
+          // (string tunggal) di Kontext dan `image_urls` (array) di dua model
+          // lain, untuk hal yang persis sama.
+          if (model.keeps_identity && model.ref_image_field) {
+            if (!refPhotos.length) {
+              await abort(
+                `${model.label} bekerja dengan meniru wajah dari foto, jadi foto referensinya wajib ada. ` +
+                `Buka halaman influencer → Identity Kit, tandai minimal satu foto sebagai referensi. ` +
+                `Kalau memang ingin wajah bebas, pilih model gambar yang bukan penjaga identitas.`,
+              );
+            }
+            input[String(model.ref_image_field)] = model.ref_image_multi
+              ? refPhotos
+              : refPhotos[0];
+            // Identity Kit sudah memberi wajahnya; instruksi ini yang mencegah
+            // model memperlakukan foto itu sekadar sebagai inspirasi gaya.
+            input.prompt =
+              `Keep the person's face, hairstyle, and identity from the reference image exactly the same. ` +
+              `${finalPrompt || "portrait photo"}`;
+          }
+        }
         else if (task === "video") {
           input.prompt = finalPrompt;
-          input.duration = String(duration <= 5 ? 5 : 10);
+          // Durasi hanya dikirim kalau model memang punya knobnya. Hailuo dan
+          // Wan tidak punya, dan mengirim field asing ke fal berakhir 422 —
+          // sama matinya dengan mengirim nilai yang salah.
+          if (model.duration_field && picked) {
+            input[String(model.duration_field)] = picked.value;
+          }
           // Nama field gambar awal dibaca dari katalog, bukan di-hardcode:
           // sebagian besar model fal memakai `image_url`, tapi Kling 2.6 memakai
           // `start_image_url`. Diuji langsung ke fal (POST body kosong -> 422
@@ -1126,6 +1331,14 @@ Deno.serve(async (req) => {
             input.source_image_url = source_image_url; input.driven_audio_url = audio_url;
           } else { input.video_url = source_image_url; input.audio_url = audio_url; }
         }
+
+        // Knob tetap per model, paling akhir supaya bisa menimpa default di atas.
+        //
+        // Di sinilah `image_size` sekarang tinggal — dulu di-hardcode
+        // "portrait_4_3" untuk SEMUA model gambar. 4:3 tegak bukan rasio Reels
+        // maupun TikTok, jadi setiap gambar harus dipotong sebelum tayang, dan
+        // yang paling sering terpotong adalah bagian atas kepala.
+        mergeExtra(input, model.extra_input);
 
         const res = await fetch(`https://queue.fal.run/${model.model_key}`, {
           method: "POST",

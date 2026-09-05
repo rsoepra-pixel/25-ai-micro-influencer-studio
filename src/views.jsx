@@ -123,7 +123,7 @@ export function useQuery(fn, deps) {
 
 const ErrBanner = ({ error }) => error ? <div className="msg-err mb3">Gagal memuat data: {error}</div> : null;
 
-function Badge({ children, tone = "zinc" }) {
+export function Badge({ children, tone = "zinc" }) {
   const tones = {
     green: ["var(--ok-line)", "var(--ok)"], red: ["var(--err-line)", "var(--err-strong)"],
     amber: ["var(--warn-soft)", "var(--warn)"], violet: ["var(--brand-soft)", "var(--brand-strong)"],
@@ -1407,20 +1407,20 @@ const isCheapModel = (m) => Number(m?.est_price_usd || 0) < CHEAP_MAX_USD;
 // angkanya sejenis. Satuannya tetap ikut ditulis, karena "murah" per DETIK bukan
 // berarti murah per klip: $0.05/detik masuk kelompok murah, tapi klip 5 detik
 // tetap $0.25. Estimasi total yang sebenarnya tetap ditampilkan di dekat tombol.
-const UNIT_SUFFIX = { per_image: "/gambar", per_second: "/detik", per_1k_chars: "/1k karakter" };
+export const UNIT_SUFFIX = { per_image: "/gambar", per_second: "/detik", per_1k_chars: "/1k karakter" };
 // usd() membulatkan ke 2 desimal, dan katalog memakai 3: $0.003 jadi "$0.00"
 // (seolah gratis), $0.025 jadi "$0.03", $0.125 jadi "$0.13". Angka di dropdown
 // harus sama persis dengan yang tertulis di katalog Settings, jadi tiga desimal
 // dulu lalu satu nol di ekor dibuang ($0.040 → $0.04, $0.125 tetap utuh).
-const priceLabel = (n) => {
+export const priceLabel = (n) => {
   const v = Number(n || 0);
   if (v === 0) return "gratis";
   return `$${v.toFixed(3).replace(/0$/, "")}`;
 };
-const byPrice = (a, b) => Number(a.est_price_usd) - Number(b.est_price_usd);
+export const byPrice = (a, b) => Number(a.est_price_usd) - Number(b.est_price_usd);
 
 // `models` yang masuk ke sini WAJIB sudah tersaring per task oleh pemanggilnya.
-function ModelPicker({ models, value, onChange, keyReady = () => true, label = "Model" }) {
+export function ModelPicker({ models, value, onChange, keyReady = () => true, label = "Model" }) {
   const groups = [
     { key: "murah", pendek: `yang murah (di bawah ${priceLabel(CHEAP_MAX_USD)})`, list: models.filter(isCheapModel).sort(byPrice) },
     { key: "mahal", pendek: `yang premium (${priceLabel(CHEAP_MAX_USD)} ke atas)`, list: models.filter((m) => !isCheapModel(m)).sort(byPrice) },
