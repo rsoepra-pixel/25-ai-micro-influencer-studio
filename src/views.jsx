@@ -49,8 +49,18 @@ function DeleteMedia({ kind, id, onDeleted, compact }) {
     const pub = usage?.published?.length || 0;
     return (
       <div className="card p3 mt1" style={{ background: "var(--stop-soft, #fadfdf)", border: "1px solid var(--warn, #a02a2a)" }}>
-        <div className="tiny bold">Hapus permanen?</div>
+        <div className="tiny bold">{kind === "job" ? "Hapus baris riwayat ini?" : "Hapus permanen?"}</div>
         <div className="tiny muted mt1">
+          {kind === "job" ? (
+            <>
+              Yang dibuang hanya catatan pekerjaannya.{" "}
+              {usage?.asset
+                ? <><b>Medianya tetap ada di Drive</b> — hapus dari sana kalau memang mau dibuang. </>
+                : <>Job ini tidak menghasilkan media. </>}
+              Catatan pengeluaran juga tidak hilang: biaya tercatat terpisah di riwayat kredit.
+            </>
+          ) : (
+            <>
           {usage?.content && <>Terpakai di konten <b>{usage.content.title}</b>. </>}
           {pub > 0 && (
             <>Konten itu <b>sudah terbit</b> — menghapus di sini tidak menurunkannya dari platform,
@@ -62,6 +72,8 @@ function DeleteMedia({ kind, id, onDeleted, compact }) {
             {usage?.photos_left_after === 0 ? " — wajahnya tidak lagi punya acuan saat generate. " : ". "}</>
           )}
           Filenya ikut dihapus dan tidak bisa dikembalikan.
+            </>
+          )}
         </div>
         {err && <div className="msg-err tiny mt1">{err}</div>}
         <div className="row mt2" style={{ gap: 6 }}>
@@ -129,7 +141,7 @@ const statusTone = (s) =>
 
 // ---------- Dashboard ----------
 export function Dashboard({ ws, tick }) {
-  const [d, , error] = useQuery(async () => {
+  const [d, reload, error] = useQuery(async () => {
     const [inf, jobs, items, assets, tasks] = await Promise.all([
       supa.from("influencers").select("id,name,status,avatar_url").order("created_at").limit(25),
       supa.from("production_jobs").select("*").order("created_at", { ascending: false }).limit(5),
@@ -196,8 +208,16 @@ export function Dashboard({ ws, tick }) {
           {d.assets.length ? (
             <div className="grid" style={{ gridTemplateColumns: "repeat(4,1fr)", gap: 8 }}>
               {d.assets.map((a) => (
-                <div key={a.id} className="thumb" style={{ aspectRatio: "1" }}>
-                  {a.kind === "image" && a.url ? <img src={a.url} alt="" /> : a.kind === "video" ? "🎬" : a.kind === "audio" ? "🎧" : "📄"}
+                <div key={a.id} style={{ position: "relative" }}>
+                  {/* Thumbnail jadi tautan: sebelumnya gambar di kartu ini tidak
+                      bisa diapa-apakan sama sekali — terlihat seperti tombol
+                      tapi tidak menanggapi klik. */}
+                  <a href={a.url || "#"} target="_blank" rel="noreferrer"
+                    className="thumb" style={{ aspectRatio: "1", display: "block" }}
+                    title={a.name || "Buka media"}>
+                    {a.kind === "image" && a.url ? <img src={a.url} alt="" /> : a.kind === "video" ? "🎬" : a.kind === "audio" ? "🎧" : "📄"}
+                  </a>
+                  <DeleteMedia kind="asset" id={a.id} compact onDeleted={reload} />
                 </div>
               ))}
             </div>
@@ -1646,10 +1666,25 @@ export function Studio({ ws, refresh, tick, mode }) {
         <div className="bold mb3">Riwayat job</div>
         {d.jobs.length ? (
           <table>
-            <thead><tr><th>Task</th><th>Influencer</th><th>Model</th><th>Status</th><th>Biaya</th><th>Hasil</th></tr></thead>
+            <thead><tr><th></th><th>Task</th><th>Influencer</th><th>Model</th><th>Status</th><th>Biaya</th><th>Hasil</th><th></th></tr></thead>
             <tbody>
               {d.jobs.map((j) => (
                 <tr key={j.id}>
+                  {/* Pratinjau media. Tanpa ini satu-satunya cara tahu apa yang
+                      dihasilkan sebuah job adalah membuka tautannya satu per
+                      satu — dan job yang salah hasilnya baru ketahuan setelah
+                      dibuka. */}
+                  <td style={{ width: 52 }}>
+                    {j.output_url ? (
+                      <a href={j.output_url} target="_blank" rel="noreferrer"
+                        className="thumb" style={{ width: 44, height: 44, display: "block" }}
+                        title="Buka hasil">
+                        {j.task === "image" ? <img src={j.output_url} alt="" />
+                          : j.task === "video" || j.task === "lipsync" ? "🎬"
+                          : j.task === "tts" ? "🎧" : "📄"}
+                      </a>
+                    ) : <span className="muted tiny">—</span>}
+                  </td>
                   <td>{TYPE_LABELS[j.task]}</td>
                   <td className="muted">{j.influencers?.name || "—"}</td>
                   <td className="tiny muted">{j.model_key}</td>
@@ -1659,6 +1694,7 @@ export function Studio({ ws, refresh, tick, mode }) {
                   </td>
                   <td>{usd(j.cost_actual_usd ?? j.cost_estimate_usd)}</td>
                   <td>{j.output_url ? <a href={j.output_url} target="_blank" rel="noreferrer" style={{ color: "var(--blue-strong)", fontWeight: 600 }}>Buka →</a> : "—"}</td>
+                  <td><DeleteMedia kind="job" id={j.id} onDeleted={reload} /></td>
                 </tr>
               ))}
             </tbody>

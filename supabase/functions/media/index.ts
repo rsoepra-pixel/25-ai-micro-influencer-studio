@@ -1,6 +1,7 @@
 // Edge function `media` — menghapus media, berikut filenya.
 //
 // POST actions: usage | delete
+// kind: asset | character_asset | job
 //
 // KENAPA INI TIDAK BISA DILAKUKAN DARI BROWSER
 //
@@ -68,6 +69,12 @@ async function loadOwned(kind: string, id: string, ws: string) {
       .eq("id", id).eq("workspace_id", ws).maybeSingle();
     return data;
   }
+  if (kind === "job") {
+    const { data } = await admin.from("production_jobs")
+      .select("id, task, model_key, status, output_url, cost_actual_usd, cost_estimate_usd")
+      .eq("id", id).eq("workspace_id", ws).maybeSingle();
+    return data;
+  }
   if (kind === "character_asset") {
     const { data } = await admin.from("character_assets")
       .select("id, url, influencer_id, influencers!inner(workspace_id, name)")
@@ -112,6 +119,19 @@ Deno.serve(async (req) => {
           .eq("content_item_id", row.content_item_id).eq("status", "succeeded").limit(5);
         out.published = pub || [];
       }
+      if (kind === "job") {
+        out.task = row.task;
+        out.status = row.status;
+        out.cost = row.cost_actual_usd ?? row.cost_estimate_usd ?? 0;
+        // Media hasil job dicari lewat URL-nya, karena `assets` memang tidak
+        // punya kolom penghubung ke production_jobs. Ditampilkan supaya user
+        // tahu bahwa menghapus baris riwayat TIDAK membuang filenya.
+        if (row.output_url) {
+          const { data: a } = await admin.from("assets")
+            .select("id, name").eq("workspace_id", ws).eq("url", row.output_url).maybeSingle();
+          out.asset = a || null;
+        }
+      }
       if (kind === "character_asset") {
         const inf = (row as Record<string, unknown>).influencers as { name?: string } | null;
         out.influencer_name = inf?.name || null;
@@ -123,6 +143,22 @@ Deno.serve(async (req) => {
     }
 
     if (action !== "delete") return json({ error: `Action tidak dikenal: ${action}` }, 400);
+
+    // Baris riwayat job: yang dibuang cuma catatan pekerjaannya.
+    //
+    // Medianya TIDAK ikut. File hasil produksi jauh lebih berharga daripada
+    // baris log, dan satu klik yang membuang keduanya membuat orang yang cuma
+    // ingin merapikan daftar job gagal kehilangan gambar yang masih dipakai.
+    // Kalau memang mau dibuang, hapus dari Drive.
+    //
+    // Biayanya juga tidak hilang: pengeluaran dicatat terpisah di
+    // credits_ledger saat job selesai, bukan dibaca dari baris ini.
+    if (kind === "job") {
+      const { error } = await admin.from("production_jobs")
+        .delete().eq("id", id).eq("workspace_id", ws);
+      if (error) throw new Error(`Gagal menghapus baris job: ${error.message}`);
+      return json({ ok: true, deleted: id, file_removed: false, kept_media: true });
+    }
 
     // ---- File dulu ----
     const path = storagePath(row.url);
