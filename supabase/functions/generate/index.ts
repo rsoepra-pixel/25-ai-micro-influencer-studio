@@ -797,7 +797,7 @@ Deno.serve(async (req) => {
         // deskripsi baju yang mirip-mirip tapi tidak sama.
         if (kind === "storyboard") {
           const shotCount = Math.min(Math.max(Number(body.shots) || 5, 2), 10);
-          const perShot = Math.min(Math.max(Number(body.seconds_per_shot) || 5, 3), 15);
+          const perShot = Math.min(Math.max(Number(body.seconds_per_shot) || 5, 2), 15);
 
           let iname = "kreator", iniche = "", ibio = "", ilang = "Indonesia";
           if (body.influencer_id) {
@@ -882,7 +882,7 @@ Deno.serve(async (req) => {
                 // Durasi dari model tidak dipercaya mentah-mentah: ia sering
                 // menulis angka yang tidak ada di daftar model video mana pun.
                 // Yang mengikat tetap pilihan user; ini cuma usulan.
-                seconds: Math.min(Math.max(Number(s?.seconds) || perShot, 3), 15),
+                seconds: Math.min(Math.max(Number(s?.seconds) || perShot, 2), 15),
               })).filter((s) => s.visual_prompt),
             },
           });
@@ -1221,6 +1221,143 @@ Deno.serve(async (req) => {
         const { error: upErr } = await admin.from("influencers").update({ voice }).eq("id", inf.id);
         if (upErr) throw new Error(upErr.message);
         return json({ ok: true, voice_id: voiceId, sample_url: sampleUrl, influencer: inf.name });
+      }
+      case "submit_sheet": {
+        // SATU gambar berisi semua panel storyboard.
+        //
+        // KENAPA SATU GENERATE, BUKAN ENAM
+        //
+        // Rancangan pertama membuat satu gambar per shot. Dipakai sungguhan,
+        // dua hal muncul yang tidak terlihat saat merancang: Drive penuh
+        // potongan yang tidak pernah ditinjau satu-satu, dan enam generate
+        // terpisah berarti enam kesempatan wajahnya bergeser.
+        //
+        // Enam panel dalam SATU generate justru lebih konsisten — keenamnya
+        // lahir dari satu proses yang sama, bukan enam proses yang kebetulan
+        // diberi acuan yang sama. Dan harganya $0.04, bukan $0.24. Jarang ada
+        // perubahan yang menurunkan biaya sekaligus menaikkan kualitas.
+        //
+        // TEKS SENGAJA TIDAK DIMINTA KE MODEL
+        //
+        // Prompt di bawah melarang teks, angka, dan caption. Model gambar
+        // menulis huruf dengan buruk, dan narasi yang setengah terbaca lebih
+        // buruk daripada tidak ada — orang jadi mengira itu salah ketik, bukan
+        // keterbatasan mesin. Narasinya ditempelkan sebagai teks sungguhan di
+        // browser, di bawah lembarnya.
+        const { data: board } = await admin.from("storyboards").select("*")
+          .eq("id", body.storyboard_id).eq("workspace_id", ws).maybeSingle();
+        if (!board) throw new Error("Storyboard tidak ditemukan di workspace ini.");
+        const { data: shots } = await admin.from("storyboard_shots").select("*")
+          .eq("storyboard_id", board.id).order("position");
+        if (!shots?.length) throw new Error("Storyboard ini belum punya shot.");
+
+        const { data: model } = await admin.from("provider_models").select("*")
+          .eq("id", body.model_id).eq("active", true).maybeSingle();
+        if (!model) throw new Error("Model tidak ditemukan / tidak aktif.");
+        if (model.task !== "image") throw new Error("Lembar storyboard butuh model gambar.");
+
+        let refPhotos: string[] = [];
+        let identity = "";
+        if (board.influencer_id) {
+          const { data: inf } = await admin.from("influencers")
+            .select("identity_prompt").eq("id", board.influencer_id).maybeSingle();
+          identity = inf?.identity_prompt || "";
+          const { data: refs } = await admin.from("character_assets")
+            .select("url").eq("influencer_id", board.influencer_id).eq("kind", "reference")
+            .not("url", "is", null)
+            .order("created_at", { ascending: false }).order("id", { ascending: false }).limit(3);
+          refPhotos = (refs || []).map((r) => String(r.url)).filter(Boolean);
+        }
+        if (model.keeps_identity && model.ref_image_field && !refPhotos.length) {
+          throw new Error(
+            `${model.label} mengambil wajah dari foto, jadi butuh minimal satu foto bertanda referensi di Identity Kit.`,
+          );
+        }
+
+        // Grid dipilih dari jumlah shot, bukan dipatok 3x2: 4 shot dalam grid
+        // enam kotak menyisakan dua kotak kosong yang akan diisi model dengan
+        // karangan.
+        const n = shots.length;
+        const cols = n <= 2 ? n : n <= 4 ? 2 : 3;
+        const rows = Math.ceil(n / cols);
+        const panels = shots
+          .map((s, i) => `Panel ${i + 1}: ${String(s.visual_prompt || "").trim()}`)
+          .join(" ");
+
+        const sheetPrompt =
+          `A ${cols}x${rows} storyboard contact sheet containing exactly ${n} separate cinematic frames ` +
+          `of the same person, arranged in a clean grid with thin white gutters between panels. ` +
+          `Absolutely no text, no numbers, no captions, no watermarks, no lettering anywhere in the image. ` +
+          `${panels} ` +
+          `Every panel shares the same wardrobe, location, lighting and colour palette: ` +
+          `${String(board.continuity || "").trim()}`;
+
+        const input: Record<string, unknown> = { prompt: sheetPrompt };
+        if (model.keeps_identity && model.ref_image_field) {
+          input[String(model.ref_image_field)] = model.ref_image_multi ? refPhotos : refPhotos[0];
+          input.prompt =
+            `Keep the person's face, hairstyle, and identity from the reference image exactly the same in every panel. ` +
+            `${sheetPrompt}`;
+        } else if (identity) {
+          input.prompt = `${identity}. ${sheetPrompt}`;
+        }
+        mergeExtra(input, model.extra_input);
+
+        // Bentuk lembarnya dipaksa mendatar SETELAH extra_input, karena katalog
+        // menyetel 9:16 untuk semua model gambar — benar untuk Reels, salah
+        // total untuk lembar bergrid. Field mana yang dipakai dibaca dari
+        // extra_input model itu sendiri, jadi tidak perlu menebak nama field.
+        const extra = (model.extra_input || {}) as Record<string, unknown>;
+        if ("aspect_ratio" in extra) input.aspect_ratio = rows >= cols ? "1:1" : "3:2";
+        if ("image_size" in extra) {
+          input.image_size = rows >= cols ? { width: 1536, height: 1536 } : { width: 2048, height: 1408 };
+        }
+
+        const est = Number(model.est_price_usd) || 0;
+        if (mode === "live" && est > 0 && (await billingMode(ws)) === "credit") {
+          const balance = await creditBalance(ws);
+          if (balance < est) throw new Error(`Kredit tidak cukup: butuh sekitar $${est.toFixed(2)}, saldomu $${balance.toFixed(2)}.`);
+        }
+
+        const { data: job, error: jobErr } = await admin.from("production_jobs").insert({
+          workspace_id: ws, influencer_id: board.influencer_id, task: "image",
+          model_key: model.model_key, prompt: sheetPrompt.slice(0, 500),
+          status: "queued", cost_estimate_usd: est,
+          label: `Lembar storyboard — ${board.title}`,
+          content_item_id: board.content_item_id ?? null,
+        }).select("*").single();
+        if (jobErr) throw new Error(jobErr.message);
+
+        if (mode === "mock") {
+          const url = MOCK_OUTPUTS.image(job.id.slice(0, 8));
+          await admin.from("production_jobs")
+            .update({ status: "succeeded", output_url: url, cost_actual_usd: 0 }).eq("id", job.id);
+          await admin.from("storyboards").update({ sheet_url: url }).eq("id", board.id);
+          return json({ ok: true, job_id: job.id, status: "succeeded", mode, sheet_url: url });
+        }
+
+        const falKey = await providerKey(ws, "fal_key");
+        if (!falKey) {
+          await admin.from("production_jobs").update({ status: "failed", error: "FAL key belum dipasang." }).eq("id", job.id);
+          throw new Error("FAL key belum dipasang — isi di Settings.");
+        }
+        const res = await fetch(`https://queue.fal.run/${model.model_key}`, {
+          method: "POST",
+          headers: { Authorization: `Key ${falKey}`, "content-type": "application/json" },
+          body: JSON.stringify(input),
+        });
+        const qr = await res.json().catch(() => ({}));
+        if (!res.ok || !qr.request_id) {
+          const errMsg = (qr?.detail ? JSON.stringify(qr.detail) : `fal.ai error ${res.status}`).slice(0, 500);
+          await admin.from("production_jobs").update({ status: "failed", error: errMsg }).eq("id", job.id);
+          throw new Error(`Gagal submit ke fal.ai: ${errMsg}`);
+        }
+        await admin.from("production_jobs").update({
+          status: "running", external_id: qr.request_id, external_url: falQueueUrl(qr.response_url),
+        }).eq("id", job.id);
+        // Job id dikembalikan supaya klien bisa memasang `sheet_url` begitu
+        // hasilnya ada. Tidak bisa dipasang sekarang: rendernya belum selesai.
+        return json({ ok: true, job_id: job.id, status: "running", mode, panels: n, grid: `${cols}x${rows}` });
       }
       case "submit_multishot": {
         // Satu video, beberapa shot DI DALAMNYA — bukan beberapa klip yang dijahit.
