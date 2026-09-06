@@ -71,11 +71,48 @@ const PLATFORM_SETTABLE: Record<string, "secret" | "plain"> = {
 // pelanggan bisa mengganti API key yang membayar tagihan semua orang. Jadi
 // daftarnya tertutup dan tinggal di service_config, yang hanya bisa disentuh
 // service_role — tidak bisa ditambah dari dalam app.
+
+// Baca service_config dengan satu kali percobaan ulang, dan LEMPAR kalau
+// pembacaannya gagal.
+//
+// KENAPA MELEMPAR, BUKAN MENGEMBALIKAN KOSONG
+//
+// Keempat pembacaan di file ini dulu membuang `error` lalu memakai
+// `data || []`. Akibatnya pembacaan yang GAGAL tidak bisa dibedakan dari
+// pembacaan yang berhasil tapi kosong — dan tiap tempat menerjemahkan "kosong"
+// jadi kalimat yang menunjuk ke arah yang salah:
+//
+//   isPlatformAdmin  -> "Halaman ini hanya untuk operator platform."
+//   pricing          -> "Kurs jual belum diisi operator."
+//   requireBillingKey-> "Kunci internal billing belum disiapkan."
+//   daftar setelan   -> semua setelan tampil kosong, seolah belum pernah diisi
+//
+// Keempatnya membuat orang pergi memperbaiki sesuatu yang sudah benar. Yang
+// paling mahal yang terakhir: operator yang melihat kursnya kosong akan
+// mengisinya ulang, dan kalau ia salah ketik, kesalahan itu jadi nyata.
+//
+// Pola yang sama sudah dipakai di `generate` setelah satu dari lima submit
+// video ditolak dengan pesan "kunci tidak cocok" — kuncinya identik dengan
+// empat lainnya yang lolos pada detik yang sama.
+async function readConfig(keys: string[]): Promise<Map<string, string>> {
+  let lastErr = "";
+  for (let attempt = 0; attempt < 2; attempt++) {
+    const { data, error } = await admin.from("service_config").select("key, value").in("key", keys);
+    if (!error && data) return new Map(data.map((r) => [String(r.key), String(r.value)]));
+    lastErr = error?.message || "query tidak mengembalikan apa pun";
+    // Jeda pendek sebelum mencoba lagi; kegagalan seperti ini biasanya sekejap.
+    if (attempt === 0) await new Promise((r) => setTimeout(r, 150));
+  }
+  throw new Error(
+    `Konfigurasi server tidak bisa dibaca setelah dua percobaan: ${lastErr}. ` +
+    `Ini kegagalan sementara, BUKAN konfigurasi yang belum diisi — coba lagi.`,
+  );
+}
+
 async function isPlatformAdmin(userId: string): Promise<boolean> {
-  const { data } = await admin.from("service_config").select("value")
-    .eq("key", "platform_admins").maybeSingle();
-  if (!data?.value) return false;
-  return String(data.value).split(/[\s,]+/).filter(Boolean).includes(userId);
+  const value = (await readConfig(["platform_admins"])).get("platform_admins");
+  if (!value) return false;
+  return value.split(/[\s,]+/).filter(Boolean).includes(userId);
 }
 
 async function requirePlatformAdmin(req: Request) {
@@ -97,11 +134,9 @@ async function requirePlatformAdmin(req: Request) {
 // margin 23%). Dua-duanya lazim disebut "30%", jadi rumusnya ditulis sekali di
 // sini dan tidak diulang di tempat lain.
 async function pricing(): Promise<{ forex: number; marginPct: number; idrPerUsd: number } | null> {
-  const { data } = await admin.from("service_config").select("key, value")
-    .in("key", ["forex_idr_per_usd", "margin_pct"]);
-  const map = new Map((data || []).map((r) => [r.key, Number(r.value)]));
-  const forex = map.get("forex_idr_per_usd");
-  const marginPct = map.get("margin_pct");
+  const raw = await readConfig(["forex_idr_per_usd", "margin_pct"]);
+  const forex = raw.has("forex_idr_per_usd") ? Number(raw.get("forex_idr_per_usd")) : undefined;
+  const marginPct = raw.has("margin_pct") ? Number(raw.get("margin_pct")) : undefined;
   if (!forex || !Number.isFinite(forex) || forex <= 0) return null;
   const m = Number.isFinite(marginPct) ? Number(marginPct) : 0;
   if (m < 0 || m >= 100) return null;
@@ -225,10 +260,9 @@ async function eligiblePromotions(ws: string) {
 async function requireBillingKey(req: Request) {
   const given = req.headers.get("x-internal-key") || "";
   if (!given) throw new Error("Aksi ini hanya untuk pemanggilan internal.");
-  const { data } = await admin.from("service_config").select("value")
-    .eq("key", "internal_billing_key").maybeSingle();
-  if (!data?.value) throw new Error("Kunci internal billing belum disiapkan di service_config.");
-  if (!safeEqual(given, String(data.value))) throw new Error("Kunci internal tidak cocok.");
+  const value = (await readConfig(["internal_billing_key"])).get("internal_billing_key");
+  if (!value) throw new Error("Kunci internal billing belum disiapkan di service_config.");
+  if (!safeEqual(given, value)) throw new Error("Kunci internal tidak cocok.");
 }
 
 Deno.serve(async (req) => {
@@ -338,8 +372,17 @@ Deno.serve(async (req) => {
         const isAdmin = await isPlatformAdmin(c.user.id);
         if (!isAdmin) return json({ ok: true, is_platform_admin: false, keys: [] });
         const names = Object.keys(PLATFORM_SETTABLE);
-        const { data: rows } = await admin.from("service_config")
+        // Sengaja TIDAK memakai `rows || []`: daftar kosong karena gagal baca
+        // terlihat persis seperti daftar kosong karena belum pernah diisi, dan
+        // yang kedua mengundang operator mengetik ulang nilai yang sudah benar.
+        const { data: rows, error: rowsErr } = await admin.from("service_config")
           .select("key, value, updated_at, updated_by").in("key", names);
+        if (rowsErr) {
+          throw new Error(
+            `Setelan platform tidak bisa dibaca: ${rowsErr.message}. ` +
+            `Ini kegagalan sementara, BUKAN setelan yang kosong — coba lagi.`,
+          );
+        }
         const byKey = new Map((rows || []).map((r) => [r.key, r]));
         const emails = new Map<string, string>();
         for (const r of rows || []) {
