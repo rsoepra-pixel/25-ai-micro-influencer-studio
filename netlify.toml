@@ -1,3 +1,39 @@
+# ---------- Kapan Netlify BOLEH tidak membangun ----------
+#
+# Netlify menagih per build yang DIBULATKAN KE ATAS ke menit terdekat. Build
+# repo ini cuma ~5 detik plus install lima dependency — tetap ditagih satu
+# menit penuh. Jadi yang menghabiskan jatah bukan lamanya build, melainkan
+# BANYAKNYA.
+#
+# Dan sebagian besarnya tidak menghasilkan apa-apa: dari 40 commit terakhir di
+# main, 12 hanya menyentuh supabase/ — edge function dan migration, yang tidak
+# satu byte pun dilayani Netlify. Ke-12 build itu menghasilkan dist yang sama
+# persis dengan build sebelumnya. Netlify sendiri yang mengatakannya di ringkasan
+# deploy: "All files already uploaded by a previous deploy with the same commits".
+#
+# Perintah di bawah ini menjawab satu pertanyaan: adakah perubahan di luar
+# supabase/ dan file .md? Konvensi exit code Netlify untuk `ignore` terbalik dari
+# kebiasaan — 0 berarti LEWATI build, bukan nol berarti BANGUN. Itu persis
+# konvensi `git diff --quiet`, jadi keduanya dipasangkan langsung tanpa
+# pembungkus yang bisa salah tafsir.
+#
+# GAGALNYA KE ARAH YANG AMAN. Kalau CACHED_COMMIT_REF kosong (build pertama,
+# cache dibersihkan, riwayat di-rewrite), git keluar dengan kode 128 — bukan 0,
+# jadi Netlify tetap membangun. Diuji ketiganya: commit khusus supabase melewati
+# build, commit frontend membangun, dan ref kosong membangun.
+#
+# HANYA `ignore` yang diisi di sini, bukan `command` atau `publish`. Kunci yang
+# tidak disebut di netlify.toml tetap jatuh ke setelan UI Netlify, dan setelan
+# itu tidak bisa dibaca dari sini — menuliskannya ulang berarti menebak, dan
+# tebakan yang meleset membuat situs terbit kosong. Perubahan terkecil yang
+# menyelesaikan masalahnya sudah cukup.
+#
+# netlify.toml sendiri TIDAK dikecualikan. Berkas ini berisi aturan redirect
+# yang menentukan endpoint MCP, OAuth, dan link pendek — mengubahnya tanpa
+# deploy berarti aturan barunya tidak pernah berlaku.
+[build]
+  ignore = "git diff --quiet $CACHED_COMMIT_REF $COMMIT_REF -- . ':!supabase' ':!*.md'"
+
 # Routing Netlify untuk endpoint MCP + OAuth.
 #
 # Kenapa lewat sini dan bukan langsung ke supabase.co: klien MCP (termasuk
