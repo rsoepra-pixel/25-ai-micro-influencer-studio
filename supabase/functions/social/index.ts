@@ -88,13 +88,55 @@ function safeEqual(a: string, b: string): boolean {
   return diff === 0;
 }
 
+// Baca daftar kunci internal — dengan satu kali percobaan ulang, dan dengan
+// kegagalan baca DIBEDAKAN dari kunci yang tidak cocok.
+//
+// Versi sebelumnya membuang `error` dari hasil query lalu memakai `rows || []`.
+// Akibatnya pembacaan yang GAGAL tidak bisa dibedakan dari pembacaan yang
+// berhasil tapi tidak cocok: keduanya berakhir di daftar kosong, dan keduanya
+// dijawab "Kunci internal tidak cocok." Pesannya menunjuk ke arah yang salah —
+// orang pergi memeriksa kuncinya, yang sebenarnya benar, alih-alih mengulang
+// panggilannya, yang akan langsung berhasil.
+//
+// Bukan kemungkinan teoretis: di function `generate` satu dari lima submit
+// dalam satu batch ditolak begini, dengan kunci yang identik dengan empat
+// lainnya yang lolos pada detik yang sama.
+//
+// Tiga keadaan, tiga jawaban yang berbeda:
+//   baca gagal      -> sementara, layak diulang
+//   tabelnya kosong -> salah konfigurasi, mengulang tidak akan menolong
+//   tidak cocok     -> kuncinya memang salah
+async function readInternalKeys(): Promise<{ key: string; value: string }[]> {
+  const names = Object.keys(INTERNAL_KEYS);
+  let lastErr = "";
+  for (let attempt = 0; attempt < 2; attempt++) {
+    const { data, error } = await admin.from("service_config").select("key, value").in("key", names);
+    if (!error && data) {
+      if (!data.length) {
+        throw new Error(
+          "Belum ada satu pun kunci internal terpasang di service_config. " +
+          "Ini salah konfigurasi server, bukan kunci yang salah — mengulang panggilan tidak akan menolong.",
+        );
+      }
+      return data as { key: string; value: string }[];
+    }
+    lastErr = error?.message || "query tidak mengembalikan apa pun";
+    // Jeda pendek sebelum mencoba lagi; kegagalan seperti ini biasanya sekejap.
+    if (attempt === 0) await new Promise((r) => setTimeout(r, 150));
+  }
+  throw new Error(
+    `Konfigurasi kunci internal tidak bisa dibaca setelah dua percobaan: ${lastErr}. ` +
+    `Ini kegagalan sementara di server, BUKAN kunci yang salah — coba lagi.`,
+  );
+}
+
 async function internalWorkspace(req: Request, body: Record<string, unknown>): Promise<string | null> {
   const given = req.headers.get("x-internal-key");
   if (!given) return null;
   const wsId = String(body.workspace_id || "");
   if (!wsId) throw new Error("workspace_id wajib diisi untuk pemanggilan internal.");
-  const { data: rows } = await admin.from("service_config").select("key, value").in("key", Object.keys(INTERNAL_KEYS));
-  const match = (rows || []).find((r) => safeEqual(given, String(r.value)));
+  const rows = await readInternalKeys();
+  const match = rows.find((r) => safeEqual(given, String(r.value)));
   if (!match) throw new Error("Kunci internal tidak cocok.");
   const action = String(body.action || "");
   if (!(INTERNAL_KEYS[match.key] || []).includes(action)) {
