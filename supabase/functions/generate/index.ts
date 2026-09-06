@@ -1313,10 +1313,25 @@ Deno.serve(async (req) => {
           input.image_size = rows >= cols ? { width: 1536, height: 1536 } : { width: 2048, height: 1408 };
         }
 
+        // Pagar biaya, DUA-DUANYA — bukan cuma saldo kredit.
+        //
+        // Versi pertama blok ini hanya memeriksa mode `credit`, dengan alasan
+        // "lembarnya cuma $0.04". Itu keliru sebagai pola: pagar yang bolong di
+        // satu jalur akan tetap bolong saat harganya naik, dan tidak ada yang
+        // akan ingat memeriksanya lagi. Batas bulanan berlaku untuk semua
+        // pengeluaran, tanpa kecuali berdasarkan besarnya.
         const est = Number(model.est_price_usd) || 0;
-        if (mode === "live" && est > 0 && (await billingMode(ws)) === "credit") {
-          const balance = await creditBalance(ws);
-          if (balance < est) throw new Error(`Kredit tidak cukup: butuh sekitar $${est.toFixed(2)}, saldomu $${balance.toFixed(2)}.`);
+        if (mode === "live" && est > 0) {
+          if ((await billingMode(ws)) === "credit") {
+            const balance = await creditBalance(ws);
+            if (balance < est) throw new Error(`Kredit tidak cukup: butuh sekitar $${est.toFixed(2)}, saldomu $${balance.toFixed(2)}.`);
+          } else {
+            const { data: bud } = await admin.from("budget_settings").select("*").eq("workspace_id", ws).maybeSingle();
+            const cap = Number(bud?.monthly_cap_usd ?? 200);
+            if ((bud?.hard_stop ?? true) && (await monthSpent(ws)) + est > cap) {
+              throw new Error(`Budget guard: estimasi $${est.toFixed(2)} akan melewati batas bulanan $${cap.toFixed(2)}.`);
+            }
+          }
         }
 
         const { data: job, error: jobErr } = await admin.from("production_jobs").insert({
