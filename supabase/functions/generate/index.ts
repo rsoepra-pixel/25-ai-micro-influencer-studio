@@ -1,5 +1,6 @@
 // Edge function `generate` — job produksi AI + penulis teks AI.
 // Actions: status | set_key | set_text_config | set_mode | submit | poll | write
+//          | clone_voice | submit_sheet | submit_multishot
 //
 // Provider gambar/video ditentukan oleh kolom `provider` di provider_models:
 //   fal → fal.ai (berbayar, image/video/tts/lipsync)
