@@ -843,7 +843,12 @@ function VoiceCard({ inf, models, onSaved }) {
     <div className="card p6 mb4">
       <div className="row mb1" style={{ justifyContent: "space-between" }}>
         <div className="bold">Suara</div>
-        <Badge tone={anySet ? "green" : "amber"}>{anySet ? "terkunci" : "belum dipilih"}</Badge>
+        {/* "terkunci" dulu dipakai di sini, dan itu keliru: yang dimaksud
+            adalah "sudah ditetapkan", tapi yang terbaca adalah gembok yang
+            harus dibuka. Satu orang benar-benar berhenti di situ dan mencari
+            cara meng-unlock-nya. Label status tidak boleh terdengar seperti
+            penghalang. */}
+        <Badge tone={anySet ? "green" : "amber"}>{anySet ? "sudah dipilih" : "belum dipilih"}</Badge>
       </div>
       <p className="tiny muted mb3">
         Tanpa ini semua influencer memakai suara default provider — 25 orang berbeda dengan satu suara
