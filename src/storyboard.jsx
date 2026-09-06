@@ -578,6 +578,22 @@ function BoardDetail({ id, models, influencers, mode, onBack, refresh }) {
   }, [board?.influencer_id]);
 
   const imgModels = useMemo(() => (models || []).filter((m) => m.task === "image").sort(byPrice), [models]);
+  // Model gambar yang BENAR-BENAR dipakai untuk frame pembuka.
+  //
+  // Sempat hilang: variabel ini ikut terhapus waktu kartu "Video per shot"
+  // dibuang, sementara enam rujukannya tertinggal — dua di antaranya jalan saat
+  // render, jadi BoardDetail melempar ReferenceError dan React membongkar
+  // seluruh pohonnya. Yang terlihat user bukan pesan error melainkan halaman
+  // kosong yang menggantung, dan `npm run build` tetap hijau karena bundler
+  // tidak memeriksa nama yang tidak dideklarasikan.
+  //
+  // Urutan pilihannya sama dengan SheetCard supaya keduanya tidak diam-diam
+  // memakai model berbeda: pilihan user dulu, lalu model penjaga wajah kalau
+  // memang ada foto referensi, baru yang termurah.
+  const identityImgModel = imgModels.find((m) => m.keeps_identity);
+  const imgModel = imgModels.find((m) => m.id === imgModelId)
+    || (refCount > 0 && identityImgModel)
+    || imgModels[0];
   // Model video di sini HARUS yang berangkat dari foto. Model text-to-video
   // sengaja tidak ditawarkan: ia mengarang wajah baru tiap dijalankan, jadi
   // memakainya di sini akan membatalkan seluruh gunanya langkah gambar kunci
