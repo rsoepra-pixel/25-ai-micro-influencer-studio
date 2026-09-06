@@ -2,21 +2,25 @@
 //
 // ALUR YANG DIPAKSAKAN DI SINI, DAN KENAPA
 //
-//   ide → shot list → GAMBAR KUNCI tiap shot → video dari gambar itu
+//   ide → shot list → LEMBAR (1 gambar) → FRAME PEMBUKA (1 gambar) → video
 //
-// Godaannya adalah melompati langkah gambar dan langsung membuat video dari
-// teks. Itu yang selama ini bikin hasilnya jelek, dan sebabnya bukan selera:
-// model text-to-video mengarang wajah baru setiap kali dijalankan. Lima shot
-// text-to-video = lima orang berbeda dalam satu video, dan ketahuannya baru
-// setelah kelimanya dibayar.
+// Rancangan pertama membuat satu gambar kunci PER SHOT. Dipakai sungguhan, dua
+// hal muncul yang tidak terlihat saat merancang: Drive penuh potongan yang
+// tidak pernah ditinjau satu-satu, dan enam generate terpisah berarti enam
+// kesempatan wajahnya bergeser. Enam panel dalam SATU generate justru lebih
+// konsisten — keenamnya lahir dari satu proses yang sama — dan harganya $0.04,
+// bukan $0.24.
 //
-// Gambar kunci memutus itu. Gambar murah ($0.03-0.08) dan bisa diulang sampai
-// wajahnya benar; video mahal ($0.07-0.50 per DETIK) dan berangkat dari gambar
-// yang wajahnya sudah disetujui. Urutan ini menukar percobaan yang mahal
-// dengan percobaan yang murah.
+// Frame pembuka tetap ada karena Kling MEWAJIBKAN start_image_url, dan itu jadi
+// frame pertama videonya. Lembar bergrid tidak bisa mengisi peran itu: yang
+// akan bergerak adalah lembarnya, bukan ceritanya. Jadi dua gambar, bukan enam.
+//
+// Videonya sendiri satu job: Kling 3 Pro membagi satu video jadi beberapa shot
+// lewat multi_prompt, mengunci wajah lewat elements (foto Identity Kit), dan
+// mengikat suara ke karakternya lewat voice_id. Tidak ada penjahitan klip.
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { supa, callGenerate } from "./supa.js";
-import { ModelPicker, byPrice, priceLabel, UNIT_SUFFIX, Badge, useQuery, unwrap } from "./views.jsx";
+import { ModelPicker, byPrice, priceLabel, Badge, useQuery, unwrap } from "./views.jsx";
 
 const PLATFORMS = [
   ["tiktok", "TikTok"],
@@ -54,25 +58,14 @@ function batchCost(model, shots) {
 }
 
 // ---------------------------------------------------------------------------
-// Lembar storyboard: semua panel jadi SATU gambar.
-//
-// KENAPA DISUSUN DARI GAMBAR KUNCI, BUKAN DIGAMBAR AI SEBAGAI SATU LEMBAR
-//
-// Meminta model gambar membuat "satu lembar berisi 6 panel" terdengar lebih
-// langsung, dan hasilnya selalu lebih buruk pada tiga hal sekaligus: tulisannya
-// belepotan (model gambar payah menulis teks), wajahnya bergeser antar panel
-// karena tiap panel digambar ulang, dan tidak ada satu pun panel yang bisa
-// dipakai lagi sebagai file terpisah untuk diumpankan ke model video.
-//
-// Disusun dari gambar kunci yang sudah jadi, ketiganya selesai: teks digambar
-// sebagai teks jadi tajam, wajahnya persis sama karena memang gambar yang sama,
-// dan tiap panel tetap ada sebagai filenya sendiri.
+// Penyusunan lembar untuk diunduh.
 //
 // SATU HAL YANG PERLU DILURUSKAN: lembar ini untuk MANUSIA — untuk ditinjau,
 // disetujui, dan dikirim ke orang lain. Ia BUKAN untuk diumpankan ke model
 // video. Model image-to-video memperlakukan gambar masukan sebagai frame
-// pertama, jadi menyuapkan lembar 6 panel menghasilkan lembar storyboard yang
-// bergerak — bukan cerita 6 adegan.
+// pertama, jadi menyuapkan lembar bergrid menghasilkan lembar storyboard yang
+// bergerak — bukan cerita beberapa adegan. Itulah kenapa frame pembuka dibuat
+// terpisah.
 const SHEET = { pad: 28, gap: 20, cell: 420, img: 560, text: 190, header: 132 };
 
 function wrapText(ctx, text, maxWidth) {
@@ -100,6 +93,92 @@ function loadImage(url) {
   });
 }
 
+// Lembar dari SATU gambar hasil generate, dengan narasi sebagai teks sungguhan
+// di bawahnya.
+//
+// Kenapa narasinya tidak diminta ke model gambar: model gambar menulis huruf
+// dengan buruk, dan narasi yang setengah terbaca lebih buruk daripada tidak
+// ada — orang mengira itu salah ketik, bukan keterbatasan mesin. Prompt di
+// server justru MELARANG teks di dalam gambar, lalu teksnya digambar di sini.
+export async function buildSheetFromImage(board, shots) {
+  const img = await loadImage(board.sheet_url);
+  const pad = 28;
+  const W = Math.max(900, Math.min(img.width, 2048));
+  const imgH = Math.round((img.height / img.width) * W);
+  const lineH = 22;
+
+  // Tinggi blok narasi diukur dulu, bukan ditebak: satu shot dengan narasi
+  // panjang cukup untuk membuat teks terpotong di bawah kanvas.
+  const probe = document.createElement("canvas").getContext("2d");
+  probe.font = "400 15px system-ui, -apple-system, sans-serif";
+  const blocks = shots.map((s) => {
+    const narration = String(s.narration || "").trim();
+    return {
+      s,
+      lines: narration ? wrapText(probe, `"${narration}"`, W - pad * 2 - 120) : [],
+    };
+  });
+  const listH = blocks.reduce((h, b) => h + Math.max(lineH, b.lines.length * lineH) + 14, 0);
+  const H = pad * 2 + 118 + imgH + 24 + 30 + listH;
+
+  const canvas = document.createElement("canvas");
+  canvas.width = W + pad * 2; canvas.height = H;
+  const ctx = canvas.getContext("2d");
+  ctx.fillStyle = "#ffffff"; ctx.fillRect(0, 0, canvas.width, H);
+
+  ctx.fillStyle = "#111827";
+  ctx.font = "700 34px system-ui, -apple-system, sans-serif";
+  ctx.fillText(String(board.title || "Storyboard").slice(0, 60), pad, pad + 34);
+  ctx.fillStyle = "#4b5563";
+  ctx.font = "400 18px system-ui, -apple-system, sans-serif";
+  if (board.logline) ctx.fillText(String(board.logline).slice(0, 110), pad, pad + 64);
+  ctx.fillStyle = "#6b7280";
+  ctx.font = "400 14px system-ui, -apple-system, sans-serif";
+  for (const [i, ln] of wrapText(ctx, `Kontinuitas: ${board.continuity || "—"}`, W - pad).slice(0, 2).entries()) {
+    ctx.fillText(ln, pad, pad + 92 + i * 19);
+  }
+
+  ctx.drawImage(img, pad, pad + 118, W, imgH);
+
+  let y = pad + 118 + imgH + 46;
+  ctx.fillStyle = "#111827";
+  ctx.font = "700 16px system-ui, -apple-system, sans-serif";
+  ctx.fillText("Narasi per shot", pad, y);
+  y += 26;
+
+  for (const { s, lines } of blocks) {
+    ctx.fillStyle = "#111827";
+    ctx.font = "700 15px system-ui, -apple-system, sans-serif";
+    ctx.fillText(`${s.position}.`, pad, y);
+    ctx.fillStyle = "#6b7280";
+    ctx.font = "400 13px system-ui, -apple-system, sans-serif";
+    ctx.fillText(`${s.camera || "medium"} · ${s.seconds}s`, pad + 26, y);
+    if (lines.length) {
+      // Penanda bicara: yang membedakan shot yang butuh suara keluar dari mulut
+      // karakter dari shot yang cuma gambar bergerak. Itu keputusan produksi.
+      ctx.fillStyle = "#7c3aed";
+      ctx.font = "700 12px system-ui, -apple-system, sans-serif";
+      ctx.fillText("BICARA", pad + 132, y);
+      ctx.fillStyle = "#111827";
+      ctx.font = "400 15px system-ui, -apple-system, sans-serif";
+      for (const [i, ln] of lines.entries()) ctx.fillText(ln, pad + 190, y + i * lineH);
+      y += Math.max(lineH, lines.length * lineH) + 14;
+    } else {
+      ctx.fillStyle = "#9ca3af";
+      ctx.font = "italic 400 14px system-ui, -apple-system, sans-serif";
+      ctx.fillText("tanpa dialog", pad + 132, y);
+      y += lineH + 14;
+    }
+  }
+
+  return await new Promise((resolve, reject) =>
+    canvas.toBlob((b) => (b ? resolve(b) : reject(new Error("Gagal membuat gambar lembar."))), "image/png"));
+}
+
+// Jalur lama: menyusun lembar dari gambar per-shot. Dipertahankan supaya
+// storyboard yang dibuat SEBELUM perubahan ini tetap bisa diunduh — datanya
+// masih ada, dan membuang jalurnya berarti membuang akses ke pekerjaan yang
+// sudah dibayar.
 export async function buildSheet(board, shots) {
   const withImg = shots.filter((s) => s.image_url);
   if (!withImg.length) throw new Error("Belum ada satu pun gambar kunci untuk disusun.");
@@ -426,8 +505,8 @@ function NewBoard({ ws, influencers, onCreated }) {
         </div>
         <div>
           <label className="label">Durasi per shot (detik)</label>
-          <input className="input" type="number" min={3} max={15} value={perShot}
-            onChange={(e) => setPerShot(Math.min(Math.max(Number(e.target.value) || 5, 3), 15))} />
+          <input className="input" type="number" min={2} max={15} value={perShot}
+            onChange={(e) => setPerShot(Math.min(Math.max(Number(e.target.value) || 5, 2), 15))} />
           <p className="tiny muted" style={{ marginTop: 4 }}>
             Ini usulan. Tiap model video hanya menerima durasi tertentu, dan yang dipakai nanti adalah nilai terdekat yang diterimanya.
           </p>
@@ -477,7 +556,6 @@ function BoardDetail({ id, models, influencers, mode, onBack, refresh }) {
   const [err, setErr] = useState(null);
   const [busy, setBusy] = useState(null);
   const [imgModelId, setImgModelId] = useState("");
-  const [vidModelId, setVidModelId] = useState("");
   const [refCount, setRefCount] = useState(0);
 
   const load = useCallback(async () => {
@@ -504,18 +582,12 @@ function BoardDetail({ id, models, influencers, mode, onBack, refresh }) {
   // sengaja tidak ditawarkan: ia mengarang wajah baru tiap dijalankan, jadi
   // memakainya di sini akan membatalkan seluruh gunanya langkah gambar kunci
   // yang barusan dibayar.
-  const vidModels = useMemo(
-    () => (models || []).filter((m) => m.task === "video" && m.init_image_field).sort(byPrice),
-    [models],
-  );
-  const identityModel = imgModels.find((m) => m.keeps_identity);
-  const imgModel = imgModels.find((m) => m.id === imgModelId)
-    || (refCount > 0 && identityModel)
-    || imgModels[0];
-  const vidModel = vidModels.find((m) => m.id === vidModelId) || vidModels[0];
 
-  const needImage = shots.filter((s) => !s.image_url);
-  const readyForVideo = shots.filter((s) => s.image_url && !s.video_url);
+  // Gambar per-shot tidak lagi diproduksi semuanya — lihat migration 0029.
+  // Yang tersisa cuma SATU: frame pembuka, karena Kling mewajibkan
+  // start_image_url dan itu jadi frame pertama videonya. Lembar storyboard
+  // dibuat terpisah sebagai satu gambar utuh.
+  const needImage = shots.slice(0, 1).filter((s) => !s.image_url);
 
   // Job yang masih jalan — dipakai untuk memutuskan apakah perlu poll.
   const pendingJobIds = shots.flatMap((s) => [
@@ -575,8 +647,8 @@ function BoardDetail({ id, models, influencers, mode, onBack, refresh }) {
   }
 
   async function runBatch(kind) {
-    const model = kind === "image" ? imgModel : vidModel;
-    const list = kind === "image" ? needImage : readyForVideo;
+    const model = imgModel;
+    const list = needImage;
     if (!model || !list.length) return;
     setErr(null);
     const bad = [];
@@ -615,7 +687,6 @@ function BoardDetail({ id, models, influencers, mode, onBack, refresh }) {
   const inf = (influencers || []).find((i) => i.id === board.influencer_id);
   const identityBlocked = !!imgModel?.keeps_identity && refCount === 0;
   const imgCost = batchCost(imgModel, needImage);
-  const vidCost = batchCost(vidModel, readyForVideo);
 
   return (
     <div>
@@ -641,12 +712,16 @@ function BoardDetail({ id, models, influencers, mode, onBack, refresh }) {
         </p>
       </div>
 
-      {/* ---- Gambar kunci ---- */}
+      {/* ---- Lembar storyboard ---- */}
+      <SheetCard board={board} shots={shots} models={models} refCount={refCount} inf={inf}
+        mode={mode} onDone={async () => { await load(); refresh?.(); }} />
+
+      {/* ---- Frame pembuka ---- */}
       <div className="card p4 mb4">
-        <div className="bold mb2">1. Gambar kunci</div>
+        <div className="bold mb2">2. Frame pembuka</div>
         <p className="tiny muted mb3">
-          Wajah harus benar di sini dulu. Gambar jauh lebih murah daripada video, jadi di langkah inilah
-          percobaan dilakukan — bukan di langkah berikutnya.
+          Satu gambar saja: adegan shot 1. Kling mewajibkan sebuah foto sebagai frame pertama video,
+          dan inilah fotonya. Sisa shot tidak perlu gambar sendiri — model yang menyusunnya di dalam video.
         </p>
         <div className="grid mb3" style={{ gridTemplateColumns: "1fr 1fr" }}>
           <div>
@@ -654,15 +729,15 @@ function BoardDetail({ id, models, influencers, mode, onBack, refresh }) {
             {imgModel?.description && <p className="tiny muted" style={{ marginTop: 4 }}>{imgModel.description}</p>}
           </div>
           <div>
-            <div className="label">Sisa dikerjakan</div>
-            <div className="bold">{needImage.length} dari {shots.length} shot</div>
+            <div className="label">Frame pembuka</div>
+            <div className="bold">{needImage.length ? "belum ada" : "sudah ada"}</div>
             {needImage.length > 0 && (
               <div className="tiny muted mt1">Perkiraan biaya: {priceLabel(imgCost)}</div>
             )}
           </div>
         </div>
         {imgModel?.keeps_identity && refCount > 0 && (
-          <p className="tiny muted mb3">✓ {Math.min(refCount, 3)} foto Identity Kit {inf?.name} dipakai sebagai acuan wajah di setiap shot.</p>
+          <p className="tiny muted mb3">✓ {Math.min(refCount, 3)} foto Identity Kit {inf?.name} dipakai sebagai acuan wajah.</p>
         )}
         {identityBlocked && (
           <div className="msg-err mb3">
@@ -677,49 +752,9 @@ function BoardDetail({ id, models, influencers, mode, onBack, refresh }) {
           </div>
         )}
         <button className="btn" disabled={!!busy || !needImage.length || identityBlocked} onClick={() => runBatch("image")}>
-          {busy?.kind === "image" ? `Mengantre ${busy.done + 1}/${busy.total}…` : `Buat ${needImage.length} gambar kunci`}
+          {busy?.kind === "image" ? "Mengantre…" : needImage.length ? "Buat frame pembuka" : "Frame pembuka sudah ada"}
         </button>
       </div>
-
-      {/* ---- Video ---- */}
-      <div className="card p4 mb4">
-        <div className="bold mb2">2. Video per shot</div>
-        <p className="tiny muted mb3">
-          Tiap video berangkat dari gambar kunci shot itu, jadi wajahnya ikut dari sana.
-          Hanya model yang menerima foto awal yang ditawarkan di sini.
-        </p>
-        {!vidModels.length ? (
-          <div className="msg-err">Belum ada model video yang menerima foto awal di katalog.</div>
-        ) : (
-          <>
-            <div className="grid mb3" style={{ gridTemplateColumns: "1fr 1fr" }}>
-              <div>
-                <ModelPicker models={vidModels} value={vidModel?.id || ""} onChange={setVidModelId} label="Model video" />
-                {vidModel?.description && <p className="tiny muted" style={{ marginTop: 4 }}>{vidModel.description}</p>}
-              </div>
-              <div>
-                <div className="label">Siap dibuat videonya</div>
-                <div className="bold">{readyForVideo.length} shot</div>
-                {readyForVideo.length > 0 && (
-                  <div className="tiny muted mt1">
-                    Perkiraan biaya: <b>{priceLabel(vidCost)}</b>
-                    {vidModel?.unit === "per_second" && ` (${priceLabel(vidModel.est_price_usd)}${UNIT_SUFFIX.per_second})`}
-                  </div>
-                )}
-                {shots.some((s) => !s.image_url) && (
-                  <div className="tiny muted mt1">{shots.filter((s) => !s.image_url).length} shot belum punya gambar kunci.</div>
-                )}
-              </div>
-            </div>
-            <button className="btn" disabled={!!busy || !readyForVideo.length} onClick={() => runBatch("video")}>
-              {busy?.kind === "video" ? `Mengantre ${busy.done + 1}/${busy.total}…` : `Buat ${readyForVideo.length} video`}
-            </button>
-          </>
-        )}
-      </div>
-
-      {/* ---- Lembar storyboard ---- */}
-      <SheetCard board={board} shots={shots} />
 
       {/* ---- Satu video multi-shot ---- */}
       <MultiShotCard
@@ -741,45 +776,121 @@ function BoardDetail({ id, models, influencers, mode, onBack, refresh }) {
   );
 }
 
-function SheetCard({ board, shots }) {
-  const [busy, setBusy] = useState(false);
+function SheetCard({ board, shots, models, refCount, inf, mode, onDone }) {
+  const imgModels = useMemo(
+    () => (models || []).filter((m) => m.task === "image").sort(byPrice), [models],
+  );
+  const identityModel = imgModels.find((m) => m.keeps_identity);
+  const [modelId, setModelId] = useState("");
+  const model = imgModels.find((m) => m.id === modelId)
+    || (refCount > 0 && identityModel)
+    || imgModels[0];
+
+  const [busy, setBusy] = useState(null);
   const [err, setErr] = useState(null);
-  const ready = shots.filter((s) => s.image_url).length;
+  const blocked = !!model?.keeps_identity && refCount === 0;
+  const cost = Number(model?.est_price_usd) || 0;
+
+  // Satu job, satu gambar. Klien menunggu sampai selesai lalu memasang
+  // sheet_url — server tidak bisa melakukannya karena rendernya belum ada saat
+  // job dikirim.
+  async function generate() {
+    if (!model) return;
+    setErr(null); setBusy("generate");
+    try {
+      const r = await callGenerate({ action: "submit_sheet", storyboard_id: board.id, model_id: model.id });
+      if (r.status !== "succeeded") {
+        const deadline = Date.now() + 240000;
+        for (;;) {
+          await new Promise((res) => setTimeout(res, 4000));
+          await callGenerate({ action: "poll" }).catch(() => {});
+          const { data: job } = await supa.from("production_jobs")
+            .select("status, output_url, error").eq("id", r.job_id).maybeSingle();
+          if (job?.status === "succeeded" && job.output_url) {
+            await supa.from("storyboards").update({ sheet_url: job.output_url }).eq("id", board.id);
+            break;
+          }
+          if (job?.status === "failed") throw new Error(job.error || "Pembuatan lembar gagal.");
+          if (Date.now() > deadline) {
+            throw new Error("Lembarnya belum selesai setelah 4 menit. Gambarnya tetap tersimpan di Drive — muat ulang halaman ini sebentar lagi.");
+          }
+        }
+      }
+      await onDone?.();
+    } catch (e) { setErr(e.message); }
+    setBusy(null);
+  }
 
   async function download() {
-    setErr(null); setBusy(true);
+    setErr(null); setBusy("download");
     try {
-      const blob = await buildSheet(board, shots);
+      // Lembar hasil generate kalau ada; kalau tidak, disusun dari gambar
+      // per-shot lama supaya storyboard yang dibuat sebelum perubahan ini
+      // tetap bisa diunduh.
+      const blob = board.sheet_url
+        ? await buildSheetFromImage(board, shots)
+        : await buildSheet(board, shots);
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
       a.href = url;
       a.download = `storyboard-${String(board.title || "tanpa-judul").replace(/[^\w-]+/g, "-").toLowerCase()}.png`;
       document.body.appendChild(a); a.click(); a.remove();
-      // Ditunda sebentar: mencabut URL-nya terlalu cepat membatalkan unduhan
-      // di sebagian browser.
+      // Ditunda: mencabut URL-nya terlalu cepat membatalkan unduhan di sebagian browser.
       setTimeout(() => URL.revokeObjectURL(url), 10000);
     } catch (e) { setErr(e.message); }
-    setBusy(false);
+    setBusy(null);
   }
+
+  const punyaGambarLama = shots.some((s) => s.image_url);
 
   return (
     <div className="card p4 mb4">
-      <div className="bold mb2">Lembar storyboard</div>
+      <div className="bold mb2">1. Lembar storyboard</div>
       <p className="tiny muted mb3">
-        Semua panel jadi satu gambar PNG, lengkap dengan narasi dan penanda <b>BICARA</b> di shot yang
-        karakternya bersuara. Untuk ditinjau dan dikirim ke orang lain — bukan untuk diumpankan ke model
-        video. Model video membaca gambar masukan sebagai frame pertama, jadi lembar 6 panel akan
-        menghasilkan lembar yang bergerak, bukan cerita 6 adegan.
+        Semua panel dalam <b>satu</b> gambar, sekali generate. Lebih murah daripada satu gambar per shot,
+        dan wajahnya lebih konsisten — keenam panel lahir dari satu proses yang sama, bukan enam proses
+        yang kebetulan diberi acuan sama. Narasinya ditempel sebagai teks sungguhan saat diunduh, bukan
+        diminta ke model: model gambar menulis huruf dengan buruk.
       </p>
-      {err && <div className="msg-err mb3">{err}</div>}
-      {ready < shots.length && (
-        <p className="tiny muted mb2">
-          {shots.length - ready} shot belum punya gambar kunci — yang belum ada tidak ikut di lembar.
-        </p>
+
+      {board.sheet_url && (
+        <div className="mb3">
+          <img src={board.sheet_url} alt="Lembar storyboard" style={{ width: "100%", borderRadius: 10, border: "1px solid var(--border)" }} />
+        </div>
       )}
-      <button className="btn btn2" disabled={busy || !ready} onClick={download}>
-        {busy ? "Menyusun…" : `Unduh lembar (${ready} panel)`}
-      </button>
+
+      <div className="grid mb3" style={{ gridTemplateColumns: "1fr 1fr" }}>
+        <div>
+          <ModelPicker models={imgModels} value={model?.id || ""} onChange={setModelId} label="Model gambar" />
+          {model?.description && <p className="tiny muted" style={{ marginTop: 4 }}>{model.description}</p>}
+        </div>
+        <div>
+          <div className="label">Lembar</div>
+          <div className="bold">{board.sheet_url ? "sudah ada" : "belum ada"}</div>
+          <div className="tiny muted mt1">{shots.length} panel · perkiraan biaya {priceLabel(cost)}</div>
+        </div>
+      </div>
+
+      {model?.keeps_identity && refCount > 0 && (
+        <p className="tiny muted mb3">✓ {Math.min(refCount, 3)} foto Identity Kit {inf?.name} dipakai sebagai acuan wajah di semua panel.</p>
+      )}
+      {blocked && (
+        <div className="msg-err mb3">
+          {model.label} mengambil wajah dari foto, tapi {inf?.name || "influencer ini"} belum punya foto
+          bertanda referensi di Identity Kit. Tambahkan dulu, atau pilih model gambar yang bukan penjaga identitas.
+        </div>
+      )}
+      {mode === "mock" && <p className="tiny muted mb2">Mode mock — hasilnya contoh, tidak ditagih.</p>}
+      {err && <div className="msg-err mb3" style={{ whiteSpace: "pre-wrap" }}>{err}</div>}
+
+      <div className="row">
+        <button className="btn" disabled={!!busy || blocked} onClick={generate}>
+          {busy === "generate" ? "Membuat lembar…" : board.sheet_url ? `Buat ulang — ${priceLabel(cost)}` : `Buat lembar — ${priceLabel(cost)}`}
+        </button>
+        <button className="btn btn2" disabled={!!busy || (!board.sheet_url && !punyaGambarLama)} onClick={download}>
+          {busy === "download" ? "Menyusun…" : "Unduh lembar + narasi"}
+        </button>
+      </div>
     </div>
   );
 }
@@ -852,7 +963,8 @@ function MultiShotCard({ board, shots, models, refCount, inf, mode, onQueued }) 
 
       {!firstReady && (
         <div className="msg-err mb3">
-          Shot 1 belum punya gambar kunci. Gambar itu yang jadi frame pertama videonya, jadi harus ada dulu.
+          Frame pembuka belum dibuat. Kling mewajibkan sebuah foto sebagai frame pertama video —
+          buat dulu di langkah 2 di atas.
         </div>
       )}
       {refCount < 2 && (
@@ -930,8 +1042,8 @@ function ShotRow({ shot, board, onPatch }) {
             </div>
             <div>
               <label className="label">Durasi (detik)</label>
-              <input className="input" type="number" min={3} max={15} value={shot.seconds}
-                onChange={(e) => onPatch({ seconds: Math.min(Math.max(Number(e.target.value) || 5, 3), 15) })} />
+              <input className="input" type="number" min={2} max={15} value={shot.seconds}
+                onChange={(e) => onPatch({ seconds: Math.min(Math.max(Number(e.target.value) || 5, 2), 15) })} />
             </div>
           </div>
           {/* Yang benar-benar dikirim ke model, bukan yang tersimpan di kolom.
