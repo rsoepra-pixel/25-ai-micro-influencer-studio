@@ -195,11 +195,23 @@ export function Storyboard({ ws, refresh, tick, mode }) {
   const [localTick, setLocalTick] = useState(0);
   const bump = useCallback(() => setLocalTick((t) => t + 1), []);
 
-  const { data: models } = useQuery(async () =>
+  // `useQuery` mengembalikan ARRAY [data, reload, error], bukan objek.
+  //
+  // Versi pertama file ini menulis `const { data: models } = useQuery(...)`.
+  // Array tidak punya properti `.data`, jadi ketiga daftarnya selalu undefined
+  // — dan karena `error` juga ikut undefined, tidak ada satu pun banner error
+  // yang muncul. Yang terlihat user: dropdown influencer kosong padahal ada
+  // empat, daftar storyboard kosong padahal ada isinya, dan kartu video
+  // multi-shot hilang sama sekali karena katalog modelnya kosong.
+  //
+  // Tiga gejala yang kelihatannya tidak berhubungan, satu sebab. Kegagalan
+  // yang menyamar jadi "memang belum ada datanya" adalah yang paling mahal
+  // dicari, jadi ini dicatat di sini supaya tidak terulang.
+  const [models] = useQuery(async () =>
     unwrap(await supa.from("provider_models").select("*").eq("active", true).order("task")), [ws.id, tick]);
-  const { data: influencers } = useQuery(async () =>
+  const [influencers] = useQuery(async () =>
     unwrap(await supa.from("influencers").select("id,name,language").order("name")), [ws.id, tick]);
-  const { data: boards, error } = useQuery(async () =>
+  const [boards, , error] = useQuery(async () =>
     unwrap(await supa.from("storyboards").select("*").order("created_at", { ascending: false })),
     [ws.id, tick, localTick]);
 
