@@ -1405,10 +1405,28 @@ Deno.serve(async (req) => {
           throw new Error(`${model.label} tidak mendukung multi-shot. Pilih model yang bertanda multi-shot di katalog.`);
         }
 
-        // Frame pertama wajib ada. Shot 1-lah yang menentukan tampilan awal,
-        // dan tanpa gambar kuncinya Kling menolak permintaannya.
+        // DUA CARA MODEL MEMBAGI SHOT, dan katalog yang menentukan mana yang dipakai:
+        //
+        //   multishot_field = "multi_prompt"  -> Kling: array shot, tiap shot punya
+        //                                        prompt & durasi sendiri; wajah lewat
+        //                                        `elements`; WAJIB start_image_url.
+        //   multishot_field = "prompt"        -> Seedance 2.x reference-to-video:
+        //                                        satu prompt naratif berisi semua shot;
+        //                                        wajah lewat image_urls (Identity Kit);
+        //                                        TIDAK butuh frame pembuka — foto
+        //                                        referensi itulah identitasnya.
+        //
+        // Yang kedua ditandai "prompt" karena memang tidak ada field terpisah:
+        // Seedance membaca "Shot 1: ... Shot 2: ..." dari teks. Menamainya sesuai
+        // field yang benar-benar dikirim menjaga aturan lama tetap berlaku —
+        // nama field dari katalog, bukan dari nama model.
+        const promptMultishot = String(model.multishot_field) === "prompt";
+
+        // Frame pertama wajib untuk Kling: shot 1-lah yang menentukan tampilan
+        // awal, dan tanpa gambar kuncinya Kling menolak permintaannya. Seedance
+        // reference-to-video tidak memakainya sama sekali.
         const first = shots[0];
-        if (!first.image_url) {
+        if (!promptMultishot && !first.image_url) {
           throw new Error("Shot 1 belum punya gambar kunci. Buat dulu gambar kuncinya — itu yang jadi frame pertama video.");
         }
 
@@ -1490,16 +1508,41 @@ Deno.serve(async (req) => {
         // ada dua bentuk berbeda untuk dibandingkan — dan kolom katalog yang
         // dibuat sebelum kebutuhannya nyata biasanya menebak salah. Kalau model
         // kedua muncul dengan nama lain, saat itulah kolomnya dibuat.
-        const input: Record<string, unknown> = {
-          [String(model.init_image_field || "start_image_url")]: first.image_url,
-          // Kontinuitas dikirim UTUH di sini, karena di tiap shot ia yang
-          // pertama dipangkas. Batasnya konservatif: skema fal tidak selalu
-          // menyebut maxLength, dan melampauinya berbiaya 422.
-          prompt: [board.title, continuity].filter(Boolean).join(". ").slice(0, 500),
-          [String(model.duration_field || "duration")]: String(fitted.total),
-          [String(model.multishot_field)]: multi,
-          elements: [element],
-        };
+        let input: Record<string, unknown>;
+        if (promptMultishot) {
+          // Satu prompt naratif. Kontinuitas ditulis SEKALI di depan, lalu tiap
+          // shot dengan durasinya — Seedance membaca urutan dan waktunya dari
+          // teks ini. Narasi ditulis sebagai kalimat yang diucapkan supaya audio
+          // native-nya mengikuti. Tidak ada batas 512 per shot di sini, tapi
+          // seluruh prompt tetap dijaga wajar.
+          const lines = shots.map((s, i) => {
+            const spoken = String(s.narration || "").trim();
+            return `Shot ${i + 1} (${fitted.each[i]}s): ${String(s.visual_prompt || "").trim()}` +
+              (spoken ? ` The person says in Indonesian: "${spoken}"` : "");
+          });
+          input = {
+            prompt: [
+              continuity ? `Same person throughout. ${continuity}.` : "Same person throughout.",
+              `A ${fitted.total}-second vertical video in ${shots.length} consecutive shots, no cuts to other people.`,
+              ...lines,
+            ].join(" ").slice(0, 2000),
+            [String(model.duration_field || "duration")]: String(fitted.total),
+          };
+          if (model.ref_image_field) {
+            input[String(model.ref_image_field)] = model.ref_image_multi ? refPhotos : refPhotos[0];
+          }
+        } else {
+          input = {
+            [String(model.init_image_field || "start_image_url")]: first.image_url,
+            // Kontinuitas dikirim UTUH di sini, karena di tiap shot ia yang
+            // pertama dipangkas. Batasnya konservatif: skema fal tidak selalu
+            // menyebut maxLength, dan melampauinya berbiaya 422.
+            prompt: [board.title, continuity].filter(Boolean).join(". ").slice(0, 500),
+            [String(model.duration_field || "duration")]: String(fitted.total),
+            [String(model.multishot_field)]: multi,
+            elements: [element],
+          };
+        }
         mergeExtra(input, model.extra_input);
 
         const est = model.unit === "per_second"
@@ -1856,6 +1899,15 @@ Deno.serve(async (req) => {
               );
             }
             input[String(model.init_image_field)] = source_image_url;
+          }
+          // Model video yang mengunci wajah dari foto referensi (Seedance 2.x
+          // reference-to-video). Sama dengan cabang gambar di atas: nama field
+          // dan bentuknya dari katalog. Tanpa ini model itu tetap jalan — prompt
+          // saja sudah sah — tapi wajahnya orang asing, dan itu ketahuan setelah
+          // dibayar per detik.
+          if (model.keeps_identity && model.ref_image_field && refPhotos.length) {
+            input[String(model.ref_image_field)] = model.ref_image_multi ? refPhotos : refPhotos[0];
+            input.prompt = `The same person as in the reference images, face and hairstyle unchanged. ${finalPrompt}`;
           }
         } else if (task === "tts") {
           input.text = String(text);
