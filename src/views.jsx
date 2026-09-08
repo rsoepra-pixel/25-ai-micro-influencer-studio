@@ -1,4 +1,5 @@
 import React, { useEffect, useState, useCallback } from "react";
+import { LibraryPicker } from "./library.jsx";
 import { supa, callGenerate, callSocial, callCalendar, callApp, callLinks, callMedia, STATUS_LABELS, TYPE_LABELS, usd } from "./supa.js";
 
 const linkBtn = { background: "none", border: "none", padding: 0, cursor: "pointer", fontWeight: 700, fontSize: 11 };
@@ -1167,6 +1168,7 @@ export function InfluencerDetail({ id, ws, refresh, tick, mode }) {
 // ---------- GenerateForm ----------
 export function GenerateForm({ models, influencers, influencerId, refresh, mode, picked }) {
   const [task, setTask] = useState("image");
+  const [prompt, setPrompt] = useState("");
   const [modelId, setModelId] = useState("");
   const [duration, setDuration] = useState(5);
   const [text, setText] = useState("");
@@ -1392,8 +1394,12 @@ export function GenerateForm({ models, influencers, influencerId, refresh, mode,
           <textarea name="text" className="input" rows={3} value={text} onChange={(e) => setText(e.target.value)} placeholder="Script yang akan diucapkan…" />
         </div>
       ) : (
-        <div className="mb3"><label className="label">Prompt</label>
-          <textarea name="prompt" className="input" rows={3}
+        <div className="mb3">
+          {(task === "image" || task === "video") && (
+            <LibraryPicker kind={task} onPick={(t) => { setPrompt(t.prompt || ""); if (t.seconds) setDuration(t.seconds); }} />
+          )}
+          <label className="label">Prompt</label>
+          <textarea name="prompt" className="input" rows={3} value={prompt} onChange={(e) => setPrompt(e.target.value)}
             placeholder={task === "image" ? "mis. selfie di cafe aesthetic, natural light, candid smile"
               : task === "lipsync" ? "Gaya penyampaian (opsional)"
               : "mis. walking through Jakarta street market, golden hour"} />
