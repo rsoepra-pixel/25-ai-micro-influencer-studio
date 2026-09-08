@@ -1165,7 +1165,9 @@ export function GenerateForm({ models, influencers, influencerId, refresh, mode,
     callGenerate({ action: "status" }).then((r) => { if (alive) setKeys(r); }).catch(() => {});
     return () => { alive = false; };
   }, []);
-  const KEY_FIELD = { hf: "hf_token", fal: "fal_key", dashscope: "dashscope_key" };
+  // Katalog menulis provider fal dengan dua ejaan ('fal' di baris lama,
+  // 'fal_key' sejak 0025); dua-duanya memakai key yang sama.
+  const KEY_FIELD = { hf: "hf_token", fal: "fal_key", fal_key: "fal_key", dashscope: "dashscope_key" };
   // Belum tahu → jangan menghalangi. Hanya `false` yang tegas berarti belum ada.
   const keyReady = (m) => !keys || !m?.requires_key || keys[KEY_FIELD[m.requires_key]] !== false;
   let est = selected ? Number(selected.est_price_usd) : 0;
@@ -1304,6 +1306,17 @@ export function GenerateForm({ models, influencers, influencerId, refresh, mode,
             placeholder={task === "image" ? "mis. selfie di cafe aesthetic, natural light, candid smile"
               : task === "lipsync" ? "Gaya penyampaian (opsional)"
               : "mis. walking through Jakarta street market, golden hour"} />
+          {/* Kolom ini selama ini tidak dikirim ke mana pun untuk lipsync.
+              Sekarang dikirim hanya ke model yang punya field prompt (Kling
+              Avatar, OmniHuman); untuk yang lain dikatakan terang-terangan,
+              daripada user mengetik gaya yang tidak pernah sampai. */}
+          {task === "lipsync" && selected && (
+            <p className="tiny muted mt1">
+              {selected.prompt_field
+                ? <>Model ini membaca prompt sebagai gaya penyampaian — mis. <i>"speaking excitedly to camera, holding the product up"</i>.</>
+                : <>{selected.label.split(" —")[0]} tidak menerima prompt; gaya penyampaian sepenuhnya mengikuti audionya.</>}
+            </p>
+          )}
         </div>
       )}
       {/* Cocok-tidaknya model dengan maksud user, dijawab sebelum Generate ditekan.

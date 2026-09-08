@@ -1327,9 +1327,39 @@ Deno.serve(async (req) => {
           }
         }
         else if (task === "lipsync") {
-          if (String(model.model_key).includes("sadtalker")) {
-            input.source_image_url = source_image_url; input.driven_audio_url = audio_url;
-          } else { input.video_url = source_image_url; input.audio_url = audio_url; }
+          // Nama field sumber (foto atau video) dan audio dibaca dari katalog.
+          //
+          // Dulu ditebak dari nama: "sadtalker pakai source_image_url, selain
+          // itu video_url". Tebakan itu benar untuk dua model, lalu model avatar
+          // (Kling Avatar, Fabric, OmniHuman — migration 0027) datang dengan
+          // `image_url`, jatuh ke cabang "selain itu", dan dikirimi video_url
+          // yang tidak mereka kenal. 422, tanpa petunjuk bahwa katalognya yang
+          // kurang. Sekarang model tanpa pemetaan ditolak di sini, sebelum ada
+          // yang dibayar.
+          if (!model.init_image_field || !model.audio_field) {
+            await abort(`Model ${model.label} belum punya pemetaan field foto/audio di katalog, jadi belum bisa dipakai.`);
+          }
+          if (!source_image_url) {
+            await abort(
+              "Talking head butuh wajahnya: pilih foto sumber dari Aset (tombol \"Talking\"), " +
+              "atau tempel URL-nya di kolom \"URL gambar sumber\".",
+            );
+          }
+          if (!audio_url) {
+            await abort(
+              "Talking head butuh audionya: tulis naskahnya supaya suaranya dibuat otomatis, " +
+              "atau tempel URL audio hasil TTS di kolom \"URL audio\".",
+            );
+          }
+          input[String(model.init_image_field)] = source_image_url;
+          input[String(model.audio_field)] = audio_url;
+          // Prompt hanya untuk model yang punya field-nya (field asing = 422),
+          // dan hanya prompt user — bukan identity_prompt. Wajahnya sudah
+          // datang dari foto; deskripsi fisik di sini cuma mengganggu instruksi
+          // gaya penyampaian.
+          if (model.prompt_field && String(prompt).trim()) {
+            input[String(model.prompt_field)] = String(prompt).trim();
+          }
         }
 
         // Knob tetap per model, paling akhir supaya bisa menimpa default di atas.
