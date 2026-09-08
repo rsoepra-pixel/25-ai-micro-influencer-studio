@@ -1256,6 +1256,16 @@ Deno.serve(async (req) => {
           .eq("id", body.model_id).eq("active", true).maybeSingle();
         if (!model) throw new Error("Model tidak ditemukan / tidak aktif.");
         if (model.task !== "image") throw new Error("Lembar storyboard butuh model gambar.");
+        // Cabang ini mengirim ke queue.fal.run tanpa melihat `provider`. Model
+        // DashScope (qwen-image) yang dipilih di sini dibalas 404 mentah oleh
+        // fal — ketahuan dari job 862b51af. Sampai jalur DashScope-nya dibuat,
+        // tolak di depan dengan pesan yang menyebut pilihan yang jalan.
+        if (model.provider !== "fal") {
+          throw new Error(
+            `${model.label} bukan model fal, dan lembar storyboard sekarang hanya bisa lewat fal. ` +
+            `Pilih Seedream 4 Edit, Nano Banana Edit, atau FLUX Kontext.`,
+          );
+        }
 
         let refPhotos: string[] = [];
         let identity = "";

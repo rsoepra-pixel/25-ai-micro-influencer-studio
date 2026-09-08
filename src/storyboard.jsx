@@ -769,6 +769,20 @@ function BoardDetail({ id, models, influencers, mode, onBack, refresh }) {
         .select("id, status, output_url").in("id", pendingIds);
       if (!alive || !jobs?.length) return;
       for (const j of jobs) {
+        // Job yang GAGAL harus dilepas dari storyboard, bukan dibiarkan
+        // tergantung. Kalau id-nya tetap tersimpan, badge "video diproses"
+        // tidak pernah hilang, effect ini mem-poll selamanya, dan tombol
+        // Buat video memakai ulang job mati itu — ketahuan dari job 1a7b181b
+        // (Seedance ditolak fal) yang membuat tombolnya langsung gagal lagi.
+        if (j.status === "failed") {
+          if (j.id === shots[0]?.image_job_id) {
+            await supa.from("storyboard_shots").update({ image_job_id: null }).eq("id", shots[0].id);
+          }
+          if (j.id === board?.video_job_id) {
+            await supa.from("storyboards").update({ video_job_id: null }).eq("id", board.id);
+          }
+          continue;
+        }
         if (j.status !== "succeeded" || !j.output_url) continue;
         if (j.id === shots[0]?.image_job_id) {
           await supa.from("storyboard_shots").update({ image_url: j.output_url }).eq("id", shots[0].id);
@@ -975,6 +989,11 @@ function StepProduksi({ board, shots, inf, refCount, models, mode, frameReady, p
       // ---- 2. Video ----
       setRunning({ stage: "video", sec: 0 });
       let vJob = board.video_job_id;
+      if (vJob && !board.video_url) {
+        // Id tersimpan tidak otomatis berarti job-nya masih hidup.
+        const { data: prev } = await supa.from("production_jobs").select("status").eq("id", vJob).maybeSingle();
+        if (!prev || prev.status === "failed") vJob = null;
+      }
       if (!vJob || board.video_url) {
         const res = await callGenerate({
           action: "submit_multishot", storyboard_id: board.id, model_id: vidModel.id, max_seconds: maxSec,
@@ -1082,7 +1101,7 @@ function StepProduksi({ board, shots, inf, refCount, models, mode, frameReady, p
           </div>
           <button className="btn btn2 tiny" onClick={() => setSheetOpen((v) => !v)}>{sheetOpen ? "Tutup" : "Buka"}</button>
         </div>
-        {sheetOpen && <SheetPanel board={board} shots={shots} imgModels={imgModels} refCount={refCount} mode={mode} onDone={async () => { await load(); refresh?.(); }} />}
+        {sheetOpen && <SheetPanel board={board} shots={shots} imgModels={imgModels.filter((m) => m.provider === "fal")} refCount={refCount} mode={mode} onDone={async () => { await load(); refresh?.(); }} />}
       </div>
     </div>
   );
