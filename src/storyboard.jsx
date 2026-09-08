@@ -22,6 +22,7 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { supa, callGenerate } from "./supa.js";
 import { ModelPicker, byPrice, priceLabel, Badge, useQuery, unwrap } from "./views.jsx";
+import { LibraryPicker } from "./library.jsx";
 
 const PLATFORMS = [
   ["tiktok", "TikTok"],
@@ -386,6 +387,10 @@ function NewBoard({ ws, influencers, onCreated }) {
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState(null);
   const [draft, setDraft] = useState(null);
+  // Contoh dari pustaka yang sedang dipakai. Kontinuitasnya jadi cadangan
+  // kalau penulis AI tidak mengusulkan sendiri — bukan penimpa: AI melihat
+  // idenya utuh, pustaka cuma melihat kategorinya.
+  const [tpl, setTpl] = useState(null);
 
   const [items, setItems] = useState([]);
   useEffect(() => {
@@ -436,7 +441,7 @@ function NewBoard({ ws, influencers, onCreated }) {
         content_item_id: contentItemId || null,
         title: draft.title,
         logline: draft.logline,
-        continuity: draft.continuity,
+        continuity: draft.continuity || tpl?.continuity || null,
         platform,
       }).select("id").single();
       if (e1) throw new Error(e1.message);
@@ -452,7 +457,7 @@ function NewBoard({ ws, influencers, onCreated }) {
         })),
       );
       if (e2) throw new Error(e2.message);
-      setDraft(null); setIdea(""); setContentItemId("");
+      setDraft(null); setIdea(""); setContentItemId(""); setTpl(null);
       onCreated(board.id);
     } catch (e) { setErr(e.message); }
     setBusy(false);
@@ -493,6 +498,15 @@ function NewBoard({ ws, influencers, onCreated }) {
         </div>
       )}
 
+      <LibraryPicker kind="storyboard" onPick={(t) => {
+        setTpl(t); setIdea(t.idea || ""); setContentItemId("");
+        if (t.platform) setPlatform(t.platform);
+        if (t.shots) setShotCount(t.shots);
+        if (t.seconds) setPerShot(t.seconds);
+      }} />
+      {tpl && !contentItemId && (
+        <p className="tiny muted mb2">Dari pustaka: <b>{tpl.title}</b>. Ubah idenya sesuka hati — pakaian & lokasi bawaannya tetap dipakai kalau AI tidak mengusulkan sendiri.</p>
+      )}
       {!contentItemId && (
         <div className="mb3">
           <label className="label">Ide video *</label>
