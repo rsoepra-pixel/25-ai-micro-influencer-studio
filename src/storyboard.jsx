@@ -2,7 +2,8 @@
 //
 // ALUR YANG DIPAKSAKAN DI SINI, DAN KENAPA
 //
-//   ide → shot list → LEMBAR (1 gambar) → FRAME PEMBUKA (1 gambar) → video
+//   ide → NASKAH (shot list + kesiapan) → PRODUKSI (frame pembuka, lalu video,
+//   satu persetujuan) → HASIL. Lembar storyboard opsional, di samping.
 //
 // Rancangan pertama membuat satu gambar kunci PER SHOT. Dipakai sungguhan, dua
 // hal muncul yang tidak terlihat saat merancang: Drive penuh potongan yang
@@ -359,11 +360,14 @@ function BoardCard({ board, influencers, onOpen }) {
         {inf ? ` · ${inf.name}` : ""}
       </div>
       {board.logline && <p className="small mb2">{board.logline}</p>}
-      {counts && (
-        <div className="tiny muted mb3">
-          {counts.total} shot · {counts.images} gambar · {counts.videos} video
-        </div>
-      )}
+      <div className="row mb3" style={{ gap: 8 }}>
+        {board.video_url
+          ? <Badge tone="green">video siap</Badge>
+          : board.video_job_id ? <Badge tone="amber">video diproses</Badge>
+            : board.status === "producing" ? <Badge tone="amber">diproduksi</Badge>
+              : <Badge tone="zinc">naskah</Badge>}
+        {counts && <span className="tiny muted">{counts.total} shot</span>}
+      </div>
       <button className="btn btn2" onClick={onOpen}>Buka</button>
     </div>
   );
@@ -548,15 +552,133 @@ function NewBoard({ ws, influencers, onCreated }) {
 }
 
 // ---------------------------------------------------------------------------
-// Langkah 2-4: edit shot, gambar kunci, lalu video.
+// Wizard produksi: NASKAH → PRODUKSI → HASIL.
+//
+// KENAPA WIZARD, BUKAN TIGA KARTU
+//
+// Versi sebelumnya menaruh tiga kartu bernomor di satu halaman: lembar, frame
+// pembuka, video. Dipakai sungguhan, tiga hal terjadi. Nomornya terbaca sebagai
+// urutan wajib padahal lembar itu jalan buntu — tidak pernah dibaca pembuat
+// video. Tiap kartu punya pemilih modelnya sendiri, jadi orang memilih model
+// yang sama tiga kali. Dan videonya butuh tiga klik berbayar terpisah, dengan
+// menunggu di antaranya, sehingga orang harus kembali ke halaman ini dua kali
+// hanya untuk menekan tombol berikutnya.
+//
+// KETERGANTUNGAN YANG SESUNGGUHNYA (dari kode server, bukan dari nomor kartu)
+//
+//   daftar shot + Identity Kit ──┬──▶ frame pembuka ──▶ video multi-shot
+//                                └──▶ lembar (untuk mata manusia; opsional)
+//
+// Hanya satu ketergantungan: video butuh shots[0].image_url, karena Kling
+// mewajibkan sebuah foto sebagai frame pertama. Jadi wizard ini menjalankan
+// KEDUANYA dalam satu persetujuan: frame dulu, tunggu, lalu video. Satu
+// tombol, satu angka total, satu kali menunggu. Lembar diturunkan jadi
+// tindakan sampingan, bukan langkah.
+//
+// SYARAT DIPERIKSA DI DEPAN, BUKAN DI UJUNG
+//
+// Foto referensi minimal 2, influencer terikat, model multi-shot aktif —
+// semuanya dulu baru ketahuan di kartu ketiga, setelah dua kartu di atasnya
+// dibayar. Sekarang diperiksa di langkah Naskah, dengan tautan ke tempat
+// memperbaikinya, dan tombol Lanjut tidak menyala sebelum semuanya beres.
+
+// Salinan PERSIS dari fitShotDurations di edge function `generate`.
+//
+// Dipakai supaya angka yang dilihat user sebelum menekan tombol — durasi tiap
+// shot dan total detik yang ditagih — sama dengan yang benar-benar dikirim.
+// Kalau versi server berubah, ubah ini juga; keduanya sengaja tidak dibagi
+// lewat satu modul karena edge function dan browser tidak berbagi build.
+export function fitShotDurations(wanted, maxTotal = 15) {
+  const n = wanted.length;
+  if (!n) return { each: [], total: 0 };
+  const safe = wanted.map((s) => Math.max(1, Math.round(Number(s) || 1)));
+  const raw = safe.reduce((a, b) => a + b, 0);
+  const target = Math.min(Math.max(raw, 3), maxTotal);
+  const each = raw <= maxTotal
+    ? [...safe]
+    : safe.map((s) => Math.max(1, Math.floor((s * maxTotal) / raw)));
+  const order = each.map((_, i) => i).sort((a, b) => safe[b] - safe[a]);
+  let drift = target - each.reduce((a, b) => a + b, 0);
+  for (let k = 0; drift > 0; k = (k + 1) % n) { each[order[k]]++; drift--; }
+  for (let guard = 0; drift < 0 && guard < n * maxTotal; guard++) {
+    const i = order[guard % n];
+    if (each[i] > 1) { each[i]--; drift++; }
+  }
+  return { each, total: each.reduce((a, b) => a + b, 0), raw };
+}
+
+const STEPS = [
+  { key: "naskah", label: "Naskah", hint: "periksa shot & kesiapan" },
+  { key: "produksi", label: "Produksi", hint: "satu persetujuan, dua job" },
+  { key: "hasil", label: "Hasil", hint: "tonton & bagikan" },
+];
+
+function Stepper({ current, reached, onGo }) {
+  const idx = STEPS.findIndex((s) => s.key === current);
+  return (
+    <div className="row mb4" style={{ gap: 0, alignItems: "stretch" }}>
+      {STEPS.map((s, i) => {
+        const done = i < idx;
+        const active = i === idx;
+        const allowed = i <= reached;
+        return (
+          <React.Fragment key={s.key}>
+            <button
+              type="button"
+              disabled={!allowed}
+              onClick={() => allowed && onGo(s.key)}
+              style={{
+                flex: 1, textAlign: "left", padding: "10px 14px", borderRadius: 10, cursor: allowed ? "pointer" : "default",
+                border: `1px solid ${active ? "var(--brand)" : done ? "var(--ok-line)" : "var(--border)"}`,
+                background: active ? "var(--brand-soft)" : done ? "var(--ok-soft)" : "var(--card)",
+                opacity: allowed ? 1 : 0.55,
+              }}
+            >
+              <div className="tiny bold" style={{ color: active ? "var(--brand-strong)" : done ? "var(--ok)" : "var(--ink-3)" }}>
+                {done ? "✓" : i + 1} · {s.label}
+              </div>
+              <div className="tiny muted">{s.hint}</div>
+            </button>
+            {i < STEPS.length - 1 && (
+              <div style={{ width: 18, display: "flex", alignItems: "center", justifyContent: "center", color: "var(--ink-3)" }}>→</div>
+            )}
+          </React.Fragment>
+        );
+      })}
+    </div>
+  );
+}
+
+// Menunggu satu job sampai selesai. Dipakai frame pembuka, video, dan lembar.
+//
+// Server tidak punya worker latar: job hanya maju kalau `poll` dipanggil.
+// Diperiksa dulu SEBELUM tidur, karena job mode mock (dan sebagian provider)
+// sudah selesai saat submit menjawab — tidak perlu menunggu 5 detik untuk
+// hasil yang sudah ada.
+async function waitForJob(jobId, { timeoutMs, every = 5000, onTick } = {}) {
+  const deadline = Date.now() + timeoutMs;
+  for (let n = 0; ; n++) {
+    if (n > 0) {
+      await new Promise((r) => setTimeout(r, every));
+      await callGenerate({ action: "poll" }).catch(() => {});
+    }
+    const { data: job } = await supa.from("production_jobs")
+      .select("status, output_url, error").eq("id", jobId).maybeSingle();
+    onTick?.(job, Math.round((Date.now() - (deadline - timeoutMs)) / 1000));
+    if (job?.status === "succeeded" && job.output_url) return job.output_url;
+    if (job?.status === "failed") throw new Error(job.error || "Job gagal tanpa pesan.");
+    if (Date.now() > deadline) {
+      throw new Error("Belum selesai setelah batas waktu. Job-nya tetap jalan dan hasilnya akan muncul di storyboard ini — buka lagi sebentar lagi.");
+    }
+  }
+}
 
 function BoardDetail({ id, models, influencers, mode, onBack, refresh }) {
   const [board, setBoard] = useState(null);
   const [shots, setShots] = useState([]);
   const [err, setErr] = useState(null);
-  const [busy, setBusy] = useState(null);
-  const [imgModelId, setImgModelId] = useState("");
   const [refCount, setRefCount] = useState(0);
+  const [step, setStep] = useState(null);
 
   const load = useCallback(async () => {
     const [{ data: b }, { data: s }] = await Promise.all([
@@ -577,261 +699,399 @@ function BoardDetail({ id, models, influencers, mode, onBack, refresh }) {
     return () => { alive = false; };
   }, [board?.influencer_id]);
 
-  const imgModels = useMemo(() => (models || []).filter((m) => m.task === "image").sort(byPrice), [models]);
-  // Model gambar yang BENAR-BENAR dipakai untuk frame pembuka.
-  //
-  // Sempat hilang: variabel ini ikut terhapus waktu kartu "Video per shot"
-  // dibuang, sementara enam rujukannya tertinggal — dua di antaranya jalan saat
-  // render, jadi BoardDetail melempar ReferenceError dan React membongkar
-  // seluruh pohonnya. Yang terlihat user bukan pesan error melainkan halaman
-  // kosong yang menggantung, dan `npm run build` tetap hijau karena bundler
-  // tidak memeriksa nama yang tidak dideklarasikan.
-  //
-  // Urutan pilihannya sama dengan SheetCard supaya keduanya tidak diam-diam
-  // memakai model berbeda: pilihan user dulu, lalu model penjaga wajah kalau
-  // memang ada foto referensi, baru yang termurah.
-  const identityImgModel = imgModels.find((m) => m.keeps_identity);
-  const imgModel = imgModels.find((m) => m.id === imgModelId)
-    || (refCount > 0 && identityImgModel)
-    || imgModels[0];
-  // Model video di sini HARUS yang berangkat dari foto. Model text-to-video
-  // sengaja tidak ditawarkan: ia mengarang wajah baru tiap dijalankan, jadi
-  // memakainya di sini akan membatalkan seluruh gunanya langkah gambar kunci
-  // yang barusan dibayar.
+  const inf = (influencers || []).find((i) => i.id === board?.influencer_id);
+  const frameReady = !!shots[0]?.image_url;
+  const videoReady = !!board?.video_url;
+  const videoPending = !videoReady && !!board?.video_job_id;
+  const framePending = !frameReady && !!shots[0]?.image_job_id;
 
-  // Gambar per-shot tidak lagi diproduksi semuanya — lihat migration 0029.
-  // Yang tersisa cuma SATU: frame pembuka, karena Kling mewajibkan
-  // start_image_url dan itu jadi frame pertama videonya. Lembar storyboard
-  // dibuat terpisah sebagai satu gambar utuh.
-  const needImage = shots.slice(0, 1).filter((s) => !s.image_url);
+  // Langkah tertinggi yang boleh dibuka, DITURUNKAN dari data — bukan disimpan.
+  // Kalau disimpan, storyboard yang videonya sudah jadi tapi dibuka dari
+  // perangkat lain akan mulai lagi dari Naskah.
+  const reached = videoReady ? 2 : 1;
 
-  // Job yang masih jalan — dipakai untuk memutuskan apakah perlu poll.
-  const pendingJobIds = shots.flatMap((s) => [
-    !s.image_url && s.image_job_id ? s.image_job_id : null,
-    !s.video_url && s.video_job_id ? s.video_job_id : null,
-  ].filter(Boolean));
-
-  // Server tidak punya worker latar: job baru maju kalau `poll` dipanggil.
-  // Halaman ini yang memanggilnya selama masih ada yang ditunggu, lalu
-  // menyalin hasilnya ke baris shot supaya gambar/video muncul di tempatnya —
-  // bukan cuma nyasar ke Drive sebagai media lepas.
+  // Langkah awal saat dibuka: lompat ke tempat pekerjaannya sedang berada.
   useEffect(() => {
-    if (!pendingJobIds.length) return undefined;
+    if (!board || step) return;
+    setStep(videoReady ? "hasil" : (videoPending || framePending) ? "produksi" : "naskah");
+  }, [board, step, videoReady, videoPending, framePending]);
+
+  // Begitu videonya jadi — dari jalur mana pun — pindah ke Hasil.
+  useEffect(() => { if (videoReady && step && step !== "hasil") setStep("hasil"); }, [videoReady]); // eslint-disable-line
+
+  // Jaring pengaman untuk job yang ditinggal: frame pembuka atau video yang
+  // masih jalan saat halaman ditutup. Produksi utama menunggu sendiri secara
+  // inline (lihat StepProduksi); effect ini hanya untuk melanjutkan yang
+  // terputus, supaya video yang sudah dibayar tidak kehilangan jejak.
+  const pendingIds = [
+    framePending ? shots[0].image_job_id : null,
+    videoPending ? board.video_job_id : null,
+  ].filter(Boolean);
+  useEffect(() => {
+    if (!pendingIds.length) return undefined;
     let alive = true;
     const timer = setInterval(async () => {
       await callGenerate({ action: "poll" }).catch(() => {});
       const { data: jobs } = await supa.from("production_jobs")
-        .select("id, status, output_url, error").in("id", pendingJobIds);
+        .select("id, status, output_url").in("id", pendingIds);
       if (!alive || !jobs?.length) return;
-      const byId = Object.fromEntries(jobs.map((j) => [j.id, j]));
-      const patches = [];
-      for (const s of shots) {
-        const img = !s.image_url && s.image_job_id ? byId[s.image_job_id] : null;
-        if (img?.status === "succeeded" && img.output_url) {
-          patches.push({ id: s.id, image_url: img.output_url });
+      for (const j of jobs) {
+        if (j.status !== "succeeded" || !j.output_url) continue;
+        if (j.id === shots[0]?.image_job_id) {
+          await supa.from("storyboard_shots").update({ image_url: j.output_url }).eq("id", shots[0].id);
         }
-        const vid = !s.video_url && s.video_job_id ? byId[s.video_job_id] : null;
-        if (vid?.status === "succeeded" && vid.output_url) {
-          patches.push({ id: s.id, video_url: vid.output_url });
+        if (j.id === board?.video_job_id) {
+          await supa.from("storyboards").update({ video_url: j.output_url, status: "done" }).eq("id", board.id);
         }
       }
-      if (patches.length) {
-        await Promise.all(patches.map((p) => {
-          const { id: sid, ...rest } = p;
-          return supa.from("storyboard_shots").update(rest).eq("id", sid);
-        }));
-      }
-      // Selalu muat ulang, bahkan tanpa patch: job yang GAGAL juga perlu
-      // terlihat. Kalau hanya dimuat ulang saat ada hasil, shot yang jobnya
-      // gagal akan berputar "menunggu" selamanya.
       if (alive) await load();
-      if (alive) refresh?.();
-    }, 6000);
+    }, 8000);
     return () => { alive = false; clearInterval(timer); };
-  }, [pendingJobIds.join(","), shots, load, refresh]);
+  }, [pendingIds.join(",")]); // eslint-disable-line
 
   async function patchShot(shotId, patch) {
     setShots((list) => list.map((s) => (s.id === shotId ? { ...s, ...patch } : s)));
     const { error } = await supa.from("storyboard_shots").update(patch).eq("id", shotId);
     if (error) setErr(error.message);
   }
-
   async function patchBoard(patch) {
     setBoard((b) => ({ ...b, ...patch }));
     const { error } = await supa.from("storyboards").update(patch).eq("id", id);
     if (error) setErr(error.message);
   }
 
-  async function runBatch(kind) {
-    const model = imgModel;
-    const list = needImage;
-    if (!model || !list.length) return;
-    setErr(null);
-    const bad = [];
-    for (let i = 0; i < list.length; i++) {
-      const s = list[i];
-      setBusy({ kind, done: i, total: list.length });
-      try {
-        const r = await callGenerate({
-          action: "submit",
-          task: kind,
-          model_id: model.id,
-          influencer_id: board.influencer_id || null,
-          content_item_id: board.content_item_id || null,
-          prompt: shotPrompt(s, board.continuity),
-          duration: Number(s.seconds) || 5,
-          source_image_url: kind === "video" ? s.image_url : null,
-          label: `${board.title} — shot ${s.position}`,
-        });
-        // Job id dicatat SEBELUM hasilnya ada. Kalau dicatat setelah selesai,
-        // menutup halaman di tengah antrean memutus hubungan shot dengan job
-        // yang tetap jalan dan tetap ditagih.
-        await patchShot(s.id, kind === "image" ? { image_job_id: r.job_id } : { video_job_id: r.job_id });
-      } catch (e) {
-        bad.push(`Shot ${s.position}: ${e.message}`);
-      }
-    }
-    setBusy(null);
-    if (bad.length) setErr(bad.join("\n"));
-    await load();
-    refresh?.();
-    if (board.status === "draft") await patchBoard({ status: "producing" });
-  }
+  if (!board || !step) return <div className="card p6">Memuat storyboard…</div>;
 
-  if (!board) return <div className="card p6">Memuat storyboard…</div>;
-
-  const inf = (influencers || []).find((i) => i.id === board.influencer_id);
-  const identityBlocked = !!imgModel?.keeps_identity && refCount === 0;
-  const imgCost = batchCost(imgModel, needImage);
+  const shared = { board, shots, inf, refCount, models, mode, patchShot, patchBoard, load, refresh, setErr, setStep };
 
   return (
     <div>
       <button className="btn btn2 mb3" onClick={onBack}>← Semua storyboard</button>
       <h1 className="mb1">{board.title}</h1>
-      <p className="muted mb4">
+      <p className="muted mb3">
         {PLATFORMS.find(([v]) => v === board.platform)?.[1]}
         {inf ? ` · ${inf.name}` : " · tanpa influencer"}
         {" · "}{shots.length} shot
         {mode === "mock" && " · MODE MOCK (hasil contoh, tidak ditagih)"}
       </p>
 
+      <Stepper current={step} reached={reached} onGo={setStep} />
+
       {err && <div className="msg-err mb3" style={{ whiteSpace: "pre-wrap" }}>{err}</div>}
 
-      <div className="card p4 mb4">
-        <label className="label">Kontinuitas — ditempelkan ke prompt SETIAP shot</label>
-        <textarea className="input" rows={2} value={board.continuity || ""}
-          onChange={(e) => setBoard((b) => ({ ...b, continuity: e.target.value }))}
-          onBlur={(e) => patchBoard({ continuity: e.target.value })} />
-        <p className="tiny muted" style={{ marginTop: 4 }}>
-          Baju, lokasi, waktu, cahaya, warna. Ini yang membuat potongan-potongan terasa satu video.
-          Mengubahnya di sini langsung berlaku untuk semua shot yang belum digenerate — tidak perlu disisir satu per satu.
-        </p>
-      </div>
+      {step === "naskah" && <StepNaskah {...shared} />}
+      {step === "produksi" && <StepProduksi {...shared} frameReady={frameReady} />}
+      {step === "hasil" && <StepHasil {...shared} />}
+    </div>
+  );
+}
 
-      {/* ---- Lembar storyboard ---- */}
-      <SheetCard board={board} shots={shots} models={models} refCount={refCount} inf={inf}
-        mode={mode} onDone={async () => { await load(); refresh?.(); }} />
+// Kesiapan produksi. Dihitung di satu tempat supaya Naskah (yang menampilkan)
+// dan Produksi (yang menegakkan) tidak pernah berbeda pendapat.
+function readiness({ board, shots, inf, refCount, models }) {
+  const videoModels = (models || []).filter((m) => m.multishot_field);
+  const fit = fitShotDurations(shots.map((s) => Number(s.seconds) || 5));
+  const blockers = [];
+  if (!shots.length) blockers.push({ text: "Belum ada shot." });
+  if (!board.influencer_id) {
+    blockers.push({ text: "Storyboard ini tidak terikat influencer, jadi wajahnya tidak bisa dikunci. Buat storyboard baru dan pilih influencernya." });
+  } else if (refCount < 2) {
+    blockers.push({
+      text: `${inf?.name || "Influencer ini"} butuh minimal 2 foto bertanda referensi di Identity Kit (sekarang ${refCount}). Satu foto utama + minimal satu sudut lain — itu cara wajahnya dikunci.`,
+      href: `#/influencers/${board.influencer_id}`, cta: "Buka Identity Kit",
+    });
+  }
+  if (!videoModels.length) blockers.push({ text: "Belum ada model video multi-shot yang aktif di katalog." });
 
-      {/* ---- Frame pembuka ---- */}
-      <div className="card p4 mb4">
-        <div className="bold mb2">2. Frame pembuka</div>
-        <p className="tiny muted mb3">
-          Satu gambar saja: adegan shot 1. Kling mewajibkan sebuah foto sebagai frame pertama video,
-          dan inilah fotonya. Sisa shot tidak perlu gambar sendiri — model yang menyusunnya di dalam video.
-        </p>
-        <div className="grid mb3" style={{ gridTemplateColumns: "1fr 1fr" }}>
-          <div>
-            <ModelPicker models={imgModels} value={imgModel?.id || ""} onChange={setImgModelId} label="Model gambar" />
-            {imgModel?.description && <p className="tiny muted" style={{ marginTop: 4 }}>{imgModel.description}</p>}
-          </div>
-          <div>
-            <div className="label">Frame pembuka</div>
-            <div className="bold">{needImage.length ? "belum ada" : "sudah ada"}</div>
-            {needImage.length > 0 && (
-              <div className="tiny muted mt1">Perkiraan biaya: {priceLabel(imgCost)}</div>
-            )}
-          </div>
+  const warnings = [];
+  const voiceReady = !!inf?.voice?.kling_voice_id;
+  if (board.influencer_id && !voiceReady) {
+    warnings.push({
+      text: `${inf?.name || "Influencer ini"} belum punya suara hasil klon, jadi suaranya dipilih model dan bisa berbeda di video berikutnya. Unggah rekaman 5–30 detik untuk menguncinya.`,
+      href: `#/influencers/${board.influencer_id}`, cta: "Klon suara",
+    });
+  }
+  if (fit.raw > fit.total) {
+    warnings.push({ text: `Diminta ${fit.raw} detik, dipangkas ke ${fit.total} — batas model. Durasi tiap shot diperkecil proporsional (${fit.each.join("+")}).` });
+  }
+  return { blockers, warnings, fit, voiceReady, videoModels };
+}
+
+function Notice({ tone, items }) {
+  if (!items.length) return null;
+  const cls = tone === "err" ? "msg-err" : "msg-warn";
+  return (
+    <div className={`${cls} mb3`}>
+      {items.map((it, i) => (
+        <div key={i} className="row" style={{ justifyContent: "space-between", gap: 12, marginTop: i ? 6 : 0 }}>
+          <span>{it.text}</span>
+          {it.href && <a className="btn btn2 tiny" href={it.href} style={{ flexShrink: 0 }}>{it.cta} →</a>}
         </div>
-        {imgModel?.keeps_identity && refCount > 0 && (
-          <p className="tiny muted mb3">✓ {Math.min(refCount, 3)} foto Identity Kit {inf?.name} dipakai sebagai acuan wajah.</p>
-        )}
-        {identityBlocked && (
-          <div className="msg-err mb3">
-            {imgModel.label} mengambil wajah dari foto, tapi {inf?.name || "influencer ini"} belum punya foto
-            bertanda referensi di Identity Kit. Tambahkan dulu, atau pilih model gambar yang bukan penjaga identitas.
-          </div>
-        )}
-        {!board.influencer_id && (
-          <div className="msg-warn mb3">
-            Storyboard ini tidak terikat influencer, jadi wajah di tiap shot akan berbeda-beda.
-            Untuk video yang menampilkan orang, buka storyboard baru dan pilih influencernya.
-          </div>
-        )}
-        <button className="btn" disabled={!!busy || !needImage.length || identityBlocked} onClick={() => runBatch("image")}>
-          {busy?.kind === "image" ? "Mengantre…" : needImage.length ? "Buat frame pembuka" : "Frame pembuka sudah ada"}
-        </button>
-      </div>
-
-      {/* ---- Satu video multi-shot ---- */}
-      <MultiShotCard
-        board={board}
-        shots={shots}
-        models={models}
-        refCount={refCount}
-        inf={inf}
-        mode={mode}
-        onQueued={async () => { await load(); refresh?.(); }}
-      />
-
-      {/* ---- Daftar shot ---- */}
-      <h2 className="mb2">Shot</h2>
-      {shots.map((s) => (
-        <ShotRow key={s.id} shot={s} board={board} onPatch={(p) => patchShot(s.id, p)} />
       ))}
     </div>
   );
 }
 
-function SheetCard({ board, shots, models, refCount, inf, mode, onDone }) {
-  const imgModels = useMemo(
-    () => (models || []).filter((m) => m.task === "image").sort(byPrice), [models],
+function StepNaskah({ board, shots, inf, refCount, models, patchShot, patchBoard, setStep }) {
+  const r = readiness({ board, shots, inf, refCount, models });
+  return (
+    <div>
+      <div className="card p4 mb4">
+        <label className="label">Kontinuitas — ditempelkan ke prompt SETIAP shot</label>
+        <textarea className="input" rows={2} defaultValue={board.continuity || ""}
+          onBlur={(e) => patchBoard({ continuity: e.target.value })} />
+        <p className="tiny muted" style={{ marginTop: 4 }}>
+          Baju, lokasi, waktu, cahaya, warna. Ini yang membuat potongan-potongan terasa satu video.
+          Mengubahnya di sini berlaku untuk semua shot sekaligus.
+        </p>
+      </div>
+
+      <div className="card p4 mb4">
+        <div className="row mb2" style={{ justifyContent: "space-between" }}>
+          <div className="bold">Kesiapan</div>
+          <div className="tiny muted">
+            {shots.length} shot · {r.fit.total} detik{r.fit.raw > r.fit.total ? ` (diminta ${r.fit.raw})` : ""}
+          </div>
+        </div>
+        <Notice tone="err" items={r.blockers} />
+        <Notice tone="warn" items={r.warnings} />
+        {!r.blockers.length && (
+          <p className="tiny muted mb0">
+            ✓ {inf?.name} · {Math.min(refCount, 4)} foto referensi dipakai mengunci wajah
+            {r.voiceReady ? " · suara hasil klon" : ""}
+          </p>
+        )}
+      </div>
+
+      <h2 className="mb2">Shot</h2>
+      {shots.map((s, i) => (
+        <ShotRow key={s.id} shot={s} board={board} fitted={r.fit.each[i]} onPatch={(p) => patchShot(s.id, p)} />
+      ))}
+
+      <div className="row mt3">
+        <button className="btn" disabled={!!r.blockers.length} onClick={() => setStep("produksi")}>
+          Lanjut ke produksi →
+        </button>
+        {!!r.blockers.length && <span className="tiny muted">Bereskan yang merah dulu.</span>}
+      </div>
+    </div>
   );
+}
+
+function StepProduksi({ board, shots, inf, refCount, models, mode, frameReady, patchShot, patchBoard, load, refresh, setErr, setStep }) {
+  const r = readiness({ board, shots, inf, refCount, models });
+  const imgModels = useMemo(() => (models || []).filter((m) => m.task === "image").sort(byPrice), [models]);
+  const videoModels = useMemo(() => r.videoModels.slice().sort(byPrice), [models]); // eslint-disable-line
+  const [imgId, setImgId] = useState("");
+  const [vidId, setVidId] = useState("");
+  const [showModels, setShowModels] = useState(false);
+  const [running, setRunning] = useState(null);
+  const [sheetOpen, setSheetOpen] = useState(false);
+
+  // Pilihan bawaan: yang menjaga wajah untuk gambar (kalau ada fotonya),
+  // yang termurah untuk video. Bisa diganti, tapi tidak harus dipilih.
+  const identityModel = imgModels.find((m) => m.keeps_identity);
+  const imgModel = imgModels.find((m) => m.id === imgId) || (refCount > 0 && identityModel) || imgModels[0];
+  const vidModel = videoModels.find((m) => m.id === vidId) || videoModels[0];
+
+  const frameCost = frameReady ? 0 : Number(imgModel?.est_price_usd) || 0;
+  const videoCost = vidModel?.unit === "per_second"
+    ? (Number(vidModel.est_price_usd) || 0) * r.fit.total
+    : Number(vidModel?.est_price_usd) || 0;
+  const total = frameCost + videoCost;
+  const blocked = !!r.blockers.length || !imgModel || !vidModel;
+
+  // Job yang ditinggal saat halaman ditutup: tampilkan bahwa ia masih jalan.
+  // Menunggunya diurus effect pengaman di BoardDetail.
+  const videoPending = !board.video_url && !!board.video_job_id;
+
+  async function produce() {
+    setErr(null);
+    try {
+      // ---- 1. Frame pembuka ----
+      const first = shots[0];
+      if (!first.image_url) {
+        setRunning({ stage: "frame", sec: 0 });
+        let jobId = first.image_job_id;
+        if (!jobId) {
+          const res = await callGenerate({
+            action: "submit", task: "image", model_id: imgModel.id,
+            influencer_id: board.influencer_id, content_item_id: board.content_item_id || null,
+            prompt: shotPrompt(first, board.continuity),
+            label: `${board.title} — frame pembuka`,
+          });
+          jobId = res.job_id;
+          // Dicatat SEBELUM hasilnya ada, supaya menutup halaman tidak memutus
+          // hubungan shot dengan job yang tetap jalan dan tetap ditagih.
+          await patchShot(first.id, { image_job_id: jobId });
+        }
+        const url = await waitForJob(jobId, { timeoutMs: 240000, onTick: (_, sec) => setRunning({ stage: "frame", sec }) });
+        await patchShot(first.id, { image_url: url });
+      }
+      if (board.status === "draft") await patchBoard({ status: "producing" });
+
+      // ---- 2. Video ----
+      setRunning({ stage: "video", sec: 0 });
+      let vJob = board.video_job_id;
+      if (!vJob || board.video_url) {
+        const res = await callGenerate({
+          action: "submit_multishot", storyboard_id: board.id, model_id: vidModel.id, max_seconds: 15,
+        });
+        vJob = res.job_id;
+        await patchBoard({ video_job_id: vJob, video_url: null });
+      }
+      const vurl = await waitForJob(vJob, { timeoutMs: 900000, onTick: (_, sec) => setRunning({ stage: "video", sec }) });
+      await patchBoard({ video_url: vurl, status: "done" });
+      refresh?.();
+      setStep("hasil");
+    } catch (e) {
+      setErr(e.message);
+      await load();
+    }
+    setRunning(null);
+  }
+
+  const stageLabel = running?.stage === "frame"
+    ? `Membuat frame pembuka… ${running.sec}s`
+    : running?.stage === "video"
+      ? `Membuat video ${r.fit.total} detik… ${Math.floor(running.sec / 60)}:${String(running.sec % 60).padStart(2, "0")} — biasanya 2–6 menit`
+      : null;
+
+  return (
+    <div>
+      <div className="card p4 mb4">
+        <div className="bold mb1">Satu persetujuan, dua job berurutan</div>
+        <p className="tiny muted mb3">
+          Frame pembuka dibuat dulu (Kling mewajibkan sebuah foto sebagai frame pertama), lalu videonya
+          langsung diantre begitu framenya jadi. Kamu tidak perlu kembali ke halaman ini untuk menekan
+          tombol kedua.
+        </p>
+
+        <table className="mb3" style={{ width: "100%", borderCollapse: "collapse" }}>
+          <tbody>
+            <tr style={{ borderBottom: "1px solid var(--line-soft)" }}>
+              <td className="small" style={{ padding: "8px 0" }}>
+                <div className="bold">Frame pembuka</div>
+                <div className="tiny muted">{frameReady ? "sudah ada — tidak dibuat ulang" : imgModel?.label}</div>
+              </td>
+              <td className="small bold" style={{ textAlign: "right", fontVariantNumeric: "tabular-nums" }}>{priceLabel(frameCost)}</td>
+            </tr>
+            <tr style={{ borderBottom: "1px solid var(--line-soft)" }}>
+              <td className="small" style={{ padding: "8px 0" }}>
+                <div className="bold">Video {r.fit.total} detik · {shots.length} shot ({r.fit.each.join("+")})</div>
+                <div className="tiny muted">{vidModel?.label} · suara {r.voiceReady ? "hasil klon" : "bawaan model"}</div>
+              </td>
+              <td className="small bold" style={{ textAlign: "right", fontVariantNumeric: "tabular-nums" }}>{priceLabel(videoCost)}</td>
+            </tr>
+            <tr>
+              <td className="small bold" style={{ padding: "10px 0 0" }}>Total{mode === "mock" ? " (mock — tidak ditagih)" : ""}</td>
+              <td className="bold" style={{ textAlign: "right", padding: "10px 0 0", fontVariantNumeric: "tabular-nums" }}>{priceLabel(total)}</td>
+            </tr>
+          </tbody>
+        </table>
+
+        <button className="btn btn2 tiny mb3" onClick={() => setShowModels((v) => !v)}>
+          {showModels ? "Sembunyikan model" : "Ganti model"}
+        </button>
+        {showModels && (
+          <div className="grid mb3" style={{ gridTemplateColumns: "1fr 1fr" }}>
+            <div>
+              <ModelPicker models={imgModels} value={imgModel?.id || ""} onChange={setImgId} label="Model gambar (frame pembuka)" />
+              {imgModel?.description && <p className="tiny muted" style={{ marginTop: 4 }}>{imgModel.description}</p>}
+            </div>
+            <div>
+              <ModelPicker models={videoModels} value={vidModel?.id || ""} onChange={setVidId} label="Model video (multi-shot)" />
+              {vidModel?.description && <p className="tiny muted" style={{ marginTop: 4 }}>{vidModel.description}</p>}
+            </div>
+          </div>
+        )}
+
+        <Notice tone="err" items={r.blockers} />
+        <Notice tone="warn" items={r.warnings.filter((w) => w.href)} />
+
+        {videoPending && !running && (
+          <div className="msg-warn mb3">
+            Video dari kunjungan sebelumnya masih diproses. Halaman ini memeriksanya sendiri tiap beberapa detik —
+            begitu jadi, kamu dipindah ke Hasil.
+          </div>
+        )}
+
+        {stageLabel ? (
+          <div className="card p4" style={{ background: "var(--subtle)" }}>
+            <div className="row" style={{ gap: 14 }}>
+              <span>{running.stage === "frame" ? "⏳" : "✓"} Frame pembuka</span>
+              <span className="muted">→</span>
+              <span style={{ opacity: running.stage === "video" ? 1 : 0.5 }}>{running.stage === "video" ? "⏳" : "○"} Video</span>
+            </div>
+            <div className="tiny muted mt1">{stageLabel}. Boleh ditinggal — hasilnya tersimpan di storyboard ini.</div>
+          </div>
+        ) : (
+          <button className="btn" disabled={blocked || videoPending} onClick={produce}>
+            {board.video_url ? `Buat ulang video — ${priceLabel(total)}` : `Buat video — ${priceLabel(total)}`}
+          </button>
+        )}
+      </div>
+
+      <div className="card p4 mb4">
+        <div className="row" style={{ justifyContent: "space-between" }}>
+          <div>
+            <div className="bold">Lembar storyboard untuk ditinjau <span className="muted">(opsional)</span></div>
+            <div className="tiny muted">Semua panel dalam satu gambar + narasi. Untuk kamu atau klien — tidak dipakai pembuat video.</div>
+          </div>
+          <button className="btn btn2 tiny" onClick={() => setSheetOpen((v) => !v)}>{sheetOpen ? "Tutup" : "Buka"}</button>
+        </div>
+        {sheetOpen && <SheetPanel board={board} shots={shots} imgModels={imgModels} refCount={refCount} mode={mode} onDone={async () => { await load(); refresh?.(); }} />}
+      </div>
+    </div>
+  );
+}
+
+function StepHasil({ board, shots, inf, setStep }) {
+  const fit = fitShotDurations(shots.map((s) => Number(s.seconds) || 5));
+  return (
+    <div>
+      <div className="card p4 mb4">
+        <video src={board.video_url} controls playsInline style={{ width: "100%", maxHeight: 640, borderRadius: 10, background: "#000" }} />
+        <div className="row mt3" style={{ justifyContent: "space-between" }}>
+          <div className="tiny muted">
+            {fit.total} detik · {shots.length} shot{inf ? ` · ${inf.name}` : ""} · juga tersimpan di Drive
+          </div>
+          <div className="row">
+            <a className="btn btn2" href={board.video_url} download target="_blank" rel="noreferrer">Unduh video</a>
+            <button className="btn btn2" onClick={() => setStep("produksi")}>Buat ulang</button>
+            {board.content_item_id && <a className="btn" href="#/planner">Ke planner →</a>}
+          </div>
+        </div>
+      </div>
+      {shots[0]?.image_url && (
+        <div className="card p4 mb4">
+          <div className="tiny bold muted mb2">Frame pembuka yang dipakai</div>
+          <img src={shots[0].image_url} alt="" style={{ maxWidth: 240, borderRadius: 8, border: "1px solid var(--border)" }} />
+        </div>
+      )}
+    </div>
+  );
+}
+
+// Lembar storyboard sebagai tindakan sampingan. Satu job, satu gambar; klien
+// menunggu sampai selesai lalu memasang sheet_url. Narasi ditempel sebagai
+// teks sungguhan saat diunduh, bukan diminta ke model — model gambar menulis
+// huruf dengan buruk.
+function SheetPanel({ board, shots, imgModels, refCount, mode, onDone }) {
   const identityModel = imgModels.find((m) => m.keeps_identity);
   const [modelId, setModelId] = useState("");
-  const model = imgModels.find((m) => m.id === modelId)
-    || (refCount > 0 && identityModel)
-    || imgModels[0];
-
+  const model = imgModels.find((m) => m.id === modelId) || (refCount > 0 && identityModel) || imgModels[0];
   const [busy, setBusy] = useState(null);
   const [err, setErr] = useState(null);
-  const blocked = !!model?.keeps_identity && refCount === 0;
   const cost = Number(model?.est_price_usd) || 0;
 
-  // Satu job, satu gambar. Klien menunggu sampai selesai lalu memasang
-  // sheet_url — server tidak bisa melakukannya karena rendernya belum ada saat
-  // job dikirim.
   async function generate() {
     if (!model) return;
     setErr(null); setBusy("generate");
     try {
       const r = await callGenerate({ action: "submit_sheet", storyboard_id: board.id, model_id: model.id });
-      if (r.status !== "succeeded") {
-        const deadline = Date.now() + 240000;
-        for (;;) {
-          await new Promise((res) => setTimeout(res, 4000));
-          await callGenerate({ action: "poll" }).catch(() => {});
-          const { data: job } = await supa.from("production_jobs")
-            .select("status, output_url, error").eq("id", r.job_id).maybeSingle();
-          if (job?.status === "succeeded" && job.output_url) {
-            await supa.from("storyboards").update({ sheet_url: job.output_url }).eq("id", board.id);
-            break;
-          }
-          if (job?.status === "failed") throw new Error(job.error || "Pembuatan lembar gagal.");
-          if (Date.now() > deadline) {
-            throw new Error("Lembarnya belum selesai setelah 4 menit. Gambarnya tetap tersimpan di Drive — muat ulang halaman ini sebentar lagi.");
-          }
-        }
-      }
+      const url = await waitForJob(r.job_id, { timeoutMs: 240000 });
+      await supa.from("storyboards").update({ sheet_url: url }).eq("id", board.id);
       await onDone?.();
     } catch (e) { setErr(e.message); }
     setBusy(null);
@@ -840,70 +1100,33 @@ function SheetCard({ board, shots, models, refCount, inf, mode, onDone }) {
   async function download() {
     setErr(null); setBusy("download");
     try {
-      // Lembar hasil generate kalau ada; kalau tidak, disusun dari gambar
-      // per-shot lama supaya storyboard yang dibuat sebelum perubahan ini
-      // tetap bisa diunduh.
-      const blob = board.sheet_url
-        ? await buildSheetFromImage(board, shots)
-        : await buildSheet(board, shots);
+      const blob = board.sheet_url ? await buildSheetFromImage(board, shots) : await buildSheet(board, shots);
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
       a.href = url;
       a.download = `storyboard-${String(board.title || "tanpa-judul").replace(/[^\w-]+/g, "-").toLowerCase()}.png`;
       document.body.appendChild(a); a.click(); a.remove();
-      // Ditunda: mencabut URL-nya terlalu cepat membatalkan unduhan di sebagian browser.
       setTimeout(() => URL.revokeObjectURL(url), 10000);
     } catch (e) { setErr(e.message); }
     setBusy(null);
   }
 
-  const punyaGambarLama = shots.some((s) => s.image_url);
-
   return (
-    <div className="card p4 mb4">
-      <div className="bold mb2">1. Lembar storyboard</div>
-      <p className="tiny muted mb3">
-        Semua panel dalam <b>satu</b> gambar, sekali generate. Lebih murah daripada satu gambar per shot,
-        dan wajahnya lebih konsisten — keenam panel lahir dari satu proses yang sama, bukan enam proses
-        yang kebetulan diberi acuan sama. Narasinya ditempel sebagai teks sungguhan saat diunduh, bukan
-        diminta ke model: model gambar menulis huruf dengan buruk.
-      </p>
-
-      {board.sheet_url && (
-        <div className="mb3">
-          <img src={board.sheet_url} alt="Lembar storyboard" style={{ width: "100%", borderRadius: 10, border: "1px solid var(--border)" }} />
-        </div>
-      )}
-
-      <div className="grid mb3" style={{ gridTemplateColumns: "1fr 1fr" }}>
-        <div>
-          <ModelPicker models={imgModels} value={model?.id || ""} onChange={setModelId} label="Model gambar" />
-          {model?.description && <p className="tiny muted" style={{ marginTop: 4 }}>{model.description}</p>}
-        </div>
-        <div>
-          <div className="label">Lembar</div>
-          <div className="bold">{board.sheet_url ? "sudah ada" : "belum ada"}</div>
-          <div className="tiny muted mt1">{shots.length} panel · perkiraan biaya {priceLabel(cost)}</div>
-        </div>
+    <div className="mt3">
+      {board.sheet_url && <img src={board.sheet_url} alt="Lembar storyboard" className="mb3" style={{ width: "100%", borderRadius: 10, border: "1px solid var(--border)" }} />}
+      <div className="row mb2" style={{ justifyContent: "space-between" }}>
+        <div className="tiny muted">{model?.label} · {shots.length} panel</div>
+        <select className="input" style={{ maxWidth: 320 }} value={model?.id || ""} onChange={(e) => setModelId(e.target.value)}>
+          {imgModels.map((m) => <option key={m.id} value={m.id}>{m.label} · {priceLabel(Number(m.est_price_usd) || 0)}</option>)}
+        </select>
       </div>
-
-      {model?.keeps_identity && refCount > 0 && (
-        <p className="tiny muted mb3">✓ {Math.min(refCount, 3)} foto Identity Kit {inf?.name} dipakai sebagai acuan wajah di semua panel.</p>
-      )}
-      {blocked && (
-        <div className="msg-err mb3">
-          {model.label} mengambil wajah dari foto, tapi {inf?.name || "influencer ini"} belum punya foto
-          bertanda referensi di Identity Kit. Tambahkan dulu, atau pilih model gambar yang bukan penjaga identitas.
-        </div>
-      )}
       {mode === "mock" && <p className="tiny muted mb2">Mode mock — hasilnya contoh, tidak ditagih.</p>}
       {err && <div className="msg-err mb3" style={{ whiteSpace: "pre-wrap" }}>{err}</div>}
-
       <div className="row">
-        <button className="btn" disabled={!!busy || blocked} onClick={generate}>
-          {busy === "generate" ? "Membuat lembar…" : board.sheet_url ? `Buat ulang — ${priceLabel(cost)}` : `Buat lembar — ${priceLabel(cost)}`}
+        <button className="btn btn2" disabled={!!busy || (model?.keeps_identity && refCount === 0)} onClick={generate}>
+          {busy === "generate" ? "Membuat lembar…" : `${board.sheet_url ? "Buat ulang" : "Buat lembar"} — ${priceLabel(cost)}`}
         </button>
-        <button className="btn btn2" disabled={!!busy || (!board.sheet_url && !punyaGambarLama)} onClick={download}>
+        <button className="btn btn2" disabled={!!busy || (!board.sheet_url && !shots.some((s) => s.image_url))} onClick={download}>
           {busy === "download" ? "Menyusun…" : "Unduh lembar + narasi"}
         </button>
       </div>
@@ -911,102 +1134,8 @@ function SheetCard({ board, shots, models, refCount, inf, mode, onDone }) {
   );
 }
 
-function MultiShotCard({ board, shots, models, refCount, inf, mode, onQueued }) {
-  const multiModels = useMemo(
-    () => (models || []).filter((m) => m.multishot_field).sort(byPrice), [models],
-  );
-  const [modelId, setModelId] = useState("");
-  const [busy, setBusy] = useState(false);
-  const [err, setErr] = useState(null);
-  const [note, setNote] = useState(null);
-  const model = multiModels.find((m) => m.id === modelId) || multiModels[0];
-  if (!multiModels.length) return null;
-
-  // Durasi dipaskan persis seperti di server, supaya angka yang dilihat user
-  // sebelum menekan tombol adalah angka yang benar-benar akan ditagih.
-  const wanted = shots.map((s) => Number(s.seconds) || 5);
-  const raw = wanted.reduce((a, b) => a + b, 0);
-  const total = Math.min(Math.max(raw, 3), 15);
-  const cost = model?.unit === "per_second"
-    ? (Number(model.est_price_usd) || 0) * total
-    : Number(model?.est_price_usd) || 0;
-
-  const firstReady = !!shots[0]?.image_url;
-  const voiceReady = !!inf?.voice?.kling_voice_id;
-
-  async function run() {
-    setErr(null); setNote(null); setBusy(true);
-    try {
-      const r = await callGenerate({
-        action: "submit_multishot",
-        storyboard_id: board.id,
-        model_id: model.id,
-        max_seconds: 15,
-      });
-      setNote(
-        `Diantre — ${r.seconds} detik, ${shots.length} shot (${(r.shot_seconds || []).join("+")} detik), ` +
-        `suara: ${r.voice}. Hasilnya muncul di Drive dan di Riwayat job.`,
-      );
-      onQueued?.();
-    } catch (e) { setErr(e.message); }
-    setBusy(false);
-  }
-
-  return (
-    <div className="card p4 mb4">
-      <div className="bold mb2">3. Satu video utuh, beberapa shot di dalamnya</div>
-      <p className="tiny muted mb3">
-        Alternatif dari membuat klip per shot lalu menjahitnya. Model membagi sendiri videonya jadi
-        beberapa shot berurutan, wajah dikunci dari Identity Kit, dan suaranya keluar dari mulut
-        karakternya. Satu file, tanpa penyuntingan.
-      </p>
-      <div className="grid mb3" style={{ gridTemplateColumns: "1fr 1fr" }}>
-        <div>
-          <ModelPicker models={multiModels} value={model?.id || ""} onChange={setModelId} label="Model multi-shot" />
-          {model?.description && <p className="tiny muted" style={{ marginTop: 4 }}>{model.description}</p>}
-        </div>
-        <div>
-          <div className="label">Yang akan dibuat</div>
-          <div className="bold">{total} detik · {shots.length} shot</div>
-          <div className="tiny muted mt1">Perkiraan biaya: <b>{priceLabel(cost)}</b></div>
-          {raw > 15 && (
-            <div className="tiny muted mt1">
-              Diminta {raw} detik, dipangkas ke 15 — batas model. Durasi tiap shot diperkecil proporsional.
-            </div>
-          )}
-        </div>
-      </div>
-
-      {!firstReady && (
-        <div className="msg-err mb3">
-          Frame pembuka belum dibuat. Kling mewajibkan sebuah foto sebagai frame pertama video —
-          buat dulu di langkah 2 di atas.
-        </div>
-      )}
-      {refCount < 2 && (
-        <div className="msg-err mb3">
-          Wajah dikunci lewat satu foto utama ditambah minimal satu foto sudut lain, jadi
-          {inf ? ` ${inf.name}` : " influencer ini"} butuh minimal 2 foto bertanda referensi di Identity Kit
-          (sekarang {refCount}).
-        </div>
-      )}
-      {firstReady && refCount >= 2 && !voiceReady && (
-        <div className="msg-warn mb3">
-          {inf?.name || "Influencer ini"} belum punya suara hasil klon, jadi suaranya akan dipilih model dan
-          bisa berbeda di video berikutnya. Unggah satu rekaman 5-30 detik di halaman influencer untuk menguncinya.
-        </div>
-      )}
-      {mode === "mock" && <p className="tiny muted mb2">Mode mock — hasilnya contoh, tidak ditagih.</p>}
-      {err && <div className="msg-err mb3" style={{ whiteSpace: "pre-wrap" }}>{err}</div>}
-      {note && <div className="msg-ok mb3">{note}</div>}
-      <button className="btn" disabled={busy || !firstReady || refCount < 2} onClick={run}>
-        {busy ? "Mengantre…" : `Buat video ${total} detik — ${priceLabel(cost)}`}
-      </button>
-    </div>
-  );
-}
-
-function ShotRow({ shot, board, onPatch }) {
+function ShotRow({ shot, board, onPatch, fitted }) {
+  const trimmed = fitted != null && fitted !== Number(shot.seconds);
   const [open, setOpen] = useState(false);
   const waitingImage = !shot.image_url && shot.image_job_id;
   const waitingVideo = !shot.video_url && shot.video_job_id;
@@ -1026,7 +1155,7 @@ function ShotRow({ shot, board, onPatch }) {
           <div className="row mb1" style={{ gap: 8 }}>
             <span className="bold small">{shot.position}. {shot.beat}</span>
             <Badge tone="zinc">{CAMERA_LABEL[shot.camera] || shot.camera}</Badge>
-            <Badge tone="zinc">{shot.seconds}s</Badge>
+            <Badge tone={trimmed ? "amber" : "zinc"}>{trimmed ? `${shot.seconds}s → ${fitted}s` : `${shot.seconds}s`}</Badge>
             {shot.video_url
               ? <Badge tone="green">video siap</Badge>
               : waitingVideo ? <Badge tone="amber">video diproses</Badge>
