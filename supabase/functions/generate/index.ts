@@ -1444,16 +1444,39 @@ Deno.serve(async (req) => {
         // Karakter dirujuk sebagai @Element1 — itu cara Kling menautkan prompt
         // ke elemen yang wajahnya sudah dikunci. Narasi ikut masuk sebagai
         // kalimat yang diucapkan, karena dari situlah audionya dibentuk.
+        // BATAS 512 KARAKTER PER SHOT — dari fal, dan ditemukan dengan cara
+        // yang mahal: job 441d4e2b ditolak 422 "Prompt must not exceed 512
+        // characters", tapi poll menandainya berhasil dan mencatat $0.896.
+        // Kontinuitas hasil AI saja bisa 300 karakter; ditambah prompt visual
+        // dan narasi, 512 gampang terlampaui.
+        //
+        // Urutan prioritas saat memangkas: visual dan kalimat yang diucapkan
+        // TIDAK pernah dipotong (itu ceritanya); kontinuitas dipangkas dulu,
+        // dan kalau tetap tidak muat, dihilangkan dari shot itu — ia masih
+        // dikirim utuh lewat prompt tingkat atas di bawah.
+        const MULTI_MAX = 512;
+        const continuity = board.continuity ? String(board.continuity).trim() : "";
         const multi = shots.map((s, i) => {
           const spoken = String(s.narration || "").trim();
-          return {
-            prompt: [
-              `@Element1 ${String(s.visual_prompt || "").trim()}`,
-              board.continuity ? String(board.continuity).trim() : "",
-              spoken ? `@Element1 speaks in Indonesian: "${spoken}"` : "",
-            ].filter(Boolean).join(", "),
-            duration: String(fitted.each[i]),
-          };
+          const core = [
+            `@Element1 ${String(s.visual_prompt || "").trim()}`,
+            spoken ? `@Element1 speaks in Indonesian: "${spoken}"` : "",
+          ].filter(Boolean);
+          let prompt = core.join(", ");
+          if (prompt.length > MULTI_MAX) {
+            // Bahkan tanpa kontinuitas masih kepanjangan: pangkas visualnya
+            // pada batas kata, sisakan kalimat yang diucapkan utuh.
+            const speakPart = core[1] ? `, ${core[1]}` : "";
+            const room = MULTI_MAX - speakPart.length - 1;
+            prompt = core[0].slice(0, Math.max(room, 40)).replace(/\s+\S*$/, "") + "…" + speakPart;
+          } else if (continuity) {
+            const room = MULTI_MAX - prompt.length - 2;
+            if (room >= 24) {
+              const c = continuity.length <= room ? continuity : continuity.slice(0, room - 1).replace(/\s+\S*$/, "") + "…";
+              prompt = `${core[0]}, ${c}${core[1] ? `, ${core[1]}` : ""}`;
+            }
+          }
+          return { prompt: prompt.slice(0, MULTI_MAX), duration: String(fitted.each[i]) };
         });
 
         const element: Record<string, unknown> = {
@@ -1469,7 +1492,10 @@ Deno.serve(async (req) => {
         // kedua muncul dengan nama lain, saat itulah kolomnya dibuat.
         const input: Record<string, unknown> = {
           [String(model.init_image_field || "start_image_url")]: first.image_url,
-          prompt: [board.title, board.logline].filter(Boolean).join(" — ").slice(0, 400),
+          // Kontinuitas dikirim UTUH di sini, karena di tiap shot ia yang
+          // pertama dipangkas. Batasnya konservatif: skema fal tidak selalu
+          // menyebut maxLength, dan melampauinya berbiaya 422.
+          prompt: [board.title, continuity].filter(Boolean).join(". ").slice(0, 500),
           [String(model.duration_field || "duration")]: String(fitted.total),
           [String(model.multishot_field)]: multi,
           elements: [element],
@@ -1936,7 +1962,23 @@ Deno.serve(async (req) => {
             if (st.status === "COMPLETED") {
               const rres = await fetch(base, { headers: { Authorization: `Key ${falKey}` } });
               const result = await rres.json().catch(() => ({}));
-              const raw = findMediaUrl(result);
+              // Status boleh COMPLETED sementara HASILNYA 422: fal menerima
+              // antrean lalu menolak isinya saat validasi. Dulu cabang ini
+              // tetap menandai berhasil dengan output_url NULL dan MENCATAT
+              // biayanya — job 441d4e2b: $0.896 untuk video yang tidak pernah
+              // dirender. Jawaban bukan-2xx atau tanpa URL media berarti gagal,
+              // dan yang gagal tidak ditagih.
+              const raw = rres.ok ? findMediaUrl(result) : null;
+              if (!raw) {
+                const detail = (result as Record<string, unknown>)?.detail ?? (result as Record<string, unknown>)?.error ?? result;
+                await admin.from("production_jobs").update({
+                  status: "failed",
+                  error: (rres.ok ? "fal selesai tanpa URL media di jawabannya: " : `fal menolak hasil (${rres.status}): `)
+                    + JSON.stringify(detail).slice(0, 450),
+                }).eq("id", jb.id);
+                updated++;
+                continue;
+              }
               // Hasil HF dan DashScope sudah lama dipindahkan ke bucket `media`;
               // fal satu-satunya yang tidak, jadi Drive menyimpan tautan ke CDN
               // orang lain yang tidak kita kendalikan masa hidupnya. Pindahkan
