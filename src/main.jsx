@@ -90,6 +90,35 @@ function Login() {
   );
 }
 
+
+// Pagar terakhir untuk error saat render.
+//
+// Tanpa ini React 18 membongkar SELURUH pohon begitu satu komponen melempar
+// saat render — yang terlihat user bukan pesan error melainkan halaman kosong
+// yang menggantung, dan itu persis yang dilaporkan sebagai "frozen, gak
+// loading" pada halaman storyboard. Kesalahannya sendiri (variabel yang
+// dirujuk tapi sudah dihapus) tidak tertangkap `npm run build`.
+//
+// Boundary tidak memperbaiki bug-nya. Ia hanya memastikan bug berikutnya
+// TERLIHAT: pesannya terbaca, sisa aplikasi (sidebar, navigasi) tetap hidup,
+// dan pindah halaman mengatur ulang boundary-nya lewat `resetKey`.
+class ViewBoundary extends React.Component {
+  state = { err: null };
+  static getDerivedStateFromError(err) { return { err }; }
+  componentDidCatch(err, info) { console.error("render gagal:", err, info?.componentStack); }
+  componentDidUpdate(prev) { if (prev.resetKey !== this.props.resetKey && this.state.err) this.setState({ err: null }); }
+  render() {
+    if (!this.state.err) return this.props.children;
+    return (
+      <div className="card p4 msg-err" style={{ whiteSpace: "pre-wrap" }}>
+        <div className="bold mb1">Halaman ini gagal ditampilkan</div>
+        <div className="small">{String(this.state.err?.message || this.state.err)}</div>
+        <div className="tiny muted mt1">Pindah ke halaman lain lalu kembali, atau muat ulang. Kalau terulang, laporkan pesan di atas.</div>
+      </div>
+    );
+  }
+}
+
 function App() {
   const route = useRoute();
   const [session, setSession] = useState(undefined);
@@ -232,7 +261,9 @@ function App() {
           </div>
         </div>
       </aside>
-      <main style={{ flex: 1, padding: 32, overflow: "auto" }}>{view}</main>
+      <main style={{ flex: 1, padding: 32, overflow: "auto" }}>
+        <ViewBoundary resetKey={routePath}>{view}</ViewBoundary>
+      </main>
     </div>
   );
 }

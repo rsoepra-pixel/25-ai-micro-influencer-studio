@@ -1,5 +1,6 @@
 // Edge function `generate` — job produksi AI + penulis teks AI.
 // Actions: status | set_key | set_text_config | set_mode | submit | poll | write
+//          | clone_voice | submit_sheet | submit_multishot
 //
 // Provider gambar/video ditentukan oleh kolom `provider` di provider_models:
 //   fal → fal.ai (berbayar, image/video/tts/lipsync)
@@ -54,13 +55,59 @@ function safeEqual(a: string, b: string): boolean {
   return diff === 0;
 }
 
+// Baca daftar kunci internal — dengan satu kali percobaan ulang, dan dengan
+// kegagalan baca DIBEDAKAN dari kunci yang tidak cocok.
+//
+// KENAPA PEMBEDAAN INI PENTING
+//
+// Versi sebelumnya membuang `error` dari hasil query lalu memakai `rows || []`.
+// Akibatnya pembacaan yang GAGAL tidak bisa dibedakan dari pembacaan yang
+// berhasil tapi tidak cocok: keduanya berakhir di daftar kosong, dan keduanya
+// dijawab "Kunci internal tidak cocok."
+//
+// Itu bukan sekadar kurang rapi — pesannya menunjuk ke arah yang salah. Orang
+// yang membacanya akan pergi memeriksa kuncinya, yang sebenarnya benar,
+// alih-alih mengulang panggilannya, yang akan langsung berhasil.
+//
+// Ini bukan kemungkinan teoretis. Dari lima submit video dalam satu batch,
+// satu ditolak begini — dengan kunci yang identik dengan empat lainnya yang
+// lolos pada detik yang sama. Diulang sekali, langsung jalan.
+//
+// Tiga keadaan, tiga jawaban yang berbeda:
+//   baca gagal      → sementara, layak diulang
+//   tabelnya kosong → salah konfigurasi, mengulang tidak akan menolong
+//   tidak cocok     → kuncinya memang salah
+async function readInternalKeys(): Promise<{ key: string; value: string }[]> {
+  const names = Object.keys(INTERNAL_KEYS);
+  let lastErr = "";
+  for (let attempt = 0; attempt < 2; attempt++) {
+    const { data, error } = await admin.from("service_config").select("key, value").in("key", names);
+    if (!error && data) {
+      if (!data.length) {
+        throw new Error(
+          "Belum ada satu pun kunci internal terpasang di service_config. " +
+          "Ini salah konfigurasi server, bukan kunci yang salah — mengulang panggilan tidak akan menolong.",
+        );
+      }
+      return data as { key: string; value: string }[];
+    }
+    lastErr = error?.message || "query tidak mengembalikan apa pun";
+    // Jeda pendek sebelum mencoba lagi; kegagalan seperti ini biasanya sekejap.
+    if (attempt === 0) await new Promise((r) => setTimeout(r, 150));
+  }
+  throw new Error(
+    `Konfigurasi kunci internal tidak bisa dibaca setelah dua percobaan: ${lastErr}. ` +
+    `Ini kegagalan sementara di server, BUKAN kunci yang salah — coba lagi.`,
+  );
+}
+
 async function internalWorkspace(req: Request, body: Record<string, unknown>): Promise<string | null> {
   const given = req.headers.get("x-internal-key");
   if (!given) return null;
   const wsId = String(body.workspace_id || "");
   if (!wsId) throw new Error("workspace_id wajib diisi untuk pemanggilan internal.");
-  const { data: rows } = await admin.from("service_config").select("key, value").in("key", Object.keys(INTERNAL_KEYS));
-  const match = (rows || []).find((r) => safeEqual(given, String(r.value)));
+  const rows = await readInternalKeys();
+  const match = rows.find((r) => safeEqual(given, String(r.value)));
   if (!match) throw new Error("Kunci internal tidak cocok.");
   const action = String(body.action || "");
   if (!(INTERNAL_KEYS[match.key] || []).includes(action)) {
@@ -535,6 +582,123 @@ function mergeExtra(input: Record<string, unknown>, extra: unknown) {
   for (const [k, v] of Object.entries(extra as Record<string, unknown>)) input[k] = v;
 }
 
+// Jalankan satu endpoint fal sampai selesai, di dalam satu request.
+//
+// Dipakai untuk operasi PENDEK yang bukan job produksi — sejauh ini cuma
+// pembuatan voice. Job gambar/video TIDAK boleh lewat sini: rendernya bisa
+// menit-menitan, jauh melewati batas hidup satu edge function, dan hasilnya
+// akan hilang meski sudah dibayar. Itu sebabnya job produksi punya
+// `production_jobs` + `poll`, dan ini hanya untuk yang selesai dalam detik.
+async function falRunSync(
+  falKey: string,
+  modelKey: string,
+  input: Record<string, unknown>,
+  maxWaitMs = 45000,
+): Promise<Record<string, unknown>> {
+  const sub = await fetch(`https://queue.fal.run/${modelKey}`, {
+    method: "POST",
+    headers: { Authorization: `Key ${falKey}`, "content-type": "application/json" },
+    body: JSON.stringify(input),
+  });
+  const qr = await sub.json().catch(() => ({}));
+  if (!sub.ok || !qr.request_id) {
+    throw new Error(
+      `fal.ai menolak permintaan: ${(qr?.detail ? JSON.stringify(qr.detail) : `HTTP ${sub.status}`).slice(0, 300)}`,
+    );
+  }
+  const base = falQueueUrl(qr.response_url) || falQueueUrlFallback(modelKey, qr.request_id);
+  const deadline = Date.now() + maxWaitMs;
+  while (Date.now() < deadline) {
+    await new Promise((r) => setTimeout(r, 2000));
+    const sres = await fetch(`${base}/status`, { headers: { Authorization: `Key ${falKey}` } });
+    const st = await sres.json().catch(() => ({}));
+    if (st.status === "COMPLETED") {
+      const rres = await fetch(base, { headers: { Authorization: `Key ${falKey}` } });
+      return (await rres.json().catch(() => ({}))) as Record<string, unknown>;
+    }
+    if (st.status === "ERROR" || sres.status >= 400) {
+      throw new Error(`fal.ai gagal: ${JSON.stringify(st.error || st.detail || st).slice(0, 300)}`);
+    }
+  }
+  throw new Error("fal.ai belum selesai setelah 45 detik. Coba lagi.");
+}
+
+// Simpan satu file data-URI (audio atau video pendek) ke bucket media.
+//
+// Terpisah dari storePhotos karena yang ini TIDAK boleh gagal diam-diam:
+// sampel suara cuma diunggah sekali lalu dipakai berulang untuk mengkloning
+// suara. Kalau unggahannya gagal tanpa suara, yang terjadi bukan satu foto
+// kurang — melainkan influencer yang selamanya bersuara orang lain.
+async function storeVoiceSample(ws: string, dataUri: string, infId: string): Promise<string> {
+  const m = /^data:(audio\/[a-z0-9.+-]+|video\/[a-z0-9.+-]+);base64,(.+)$/i.exec(dataUri);
+  if (!m) {
+    throw new Error(
+      "Format sampel suara tidak dikenali. Yang diterima: .mp3, .wav, .mp4, atau .mov.",
+    );
+  }
+  const bin = atob(m[2]);
+  const bytes = new Uint8Array(bin.length);
+  for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+  // Kling menolak file di luar 5-30 detik, dan durasi tidak bisa dibaca di sini
+  // tanpa men-decode audionya. Yang bisa diperiksa cuma ukurannya, sebagai
+  // saringan kasar; batas sebenarnya ditegakkan fal dan pesannya diteruskan.
+  if (bytes.byteLength < 4000) throw new Error("Sampel suaranya terlalu kecil — kemungkinan filenya rusak atau kosong.");
+  if (bytes.byteLength > 25 * 1024 * 1024) throw new Error("Sampel suaranya lebih dari 25 MB. Potong dulu jadi 5-30 detik.");
+  const ext = m[1].includes("wav") ? "wav" : m[1].includes("mp4") ? "mp4" : m[1].includes("quicktime") || m[1].includes("mov") ? "mov" : "mp3";
+  const path = `${ws}/voices/${infId}-${crypto.randomUUID()}.${ext}`;
+  const { error } = await admin.storage.from("media")
+    .upload(path, bytes, { contentType: m[1], upsert: true, cacheControl: "3600" });
+  if (error) throw new Error(`Gagal menyimpan sampel suara: ${error.message}`);
+  return admin.storage.from("media").getPublicUrl(path).data.publicUrl;
+}
+
+// Paskan durasi tiap shot supaya jumlahnya TEPAT sama dengan durasi video.
+//
+// Kling membagi satu video jadi beberapa shot lewat `multi_prompt`, dan tiap
+// shot menyebut durasinya sendiri. Kalau jumlahnya tidak sama dengan `duration`
+// di tingkat video, yang terjadi bukan error yang jelas melainkan hasil yang
+// terpotong di tempat yang tidak diduga — shot terakhir hilang separuh, dan
+// ajakan penutupnya ikut hilang bersamanya.
+//
+// Jadi dipaskan di sini, bukan diserahkan ke user untuk menghitung sendiri:
+// 6 shot @ 5 detik = 30 detik, sementara batas Kling 15. Diskalakan turun
+// proporsional, minimal 1 detik per shot, lalu sisa pembulatannya dibagikan
+// satu per satu supaya jumlahnya persis.
+function fitShotDurations(wanted: number[], maxTotal = 15): { each: number[]; total: number } {
+  const n = wanted.length;
+  if (!n) return { each: [], total: 0 };
+  const safe = wanted.map((s) => Math.max(1, Math.round(Number(s) || 1)));
+  const raw = safe.reduce((a, b) => a + b, 0);
+
+  // Durasi video yang dituju: apa adanya kalau muat, dijepit ke 3-15 karena itu
+  // rentang yang diterima Kling di tingkat video.
+  //
+  // Versi pertama fungsi ini memakai Math.max(3, raw) untuk `total` TAPI
+  // mengembalikan `each` apa adanya. Untuk dua shot @1 detik hasilnya total=3
+  // sementara shotnya berjumlah 2 — persis ketidakcocokan yang fungsi ini
+  // dibuat untuk mencegah, cuma dari arah sebaliknya. Ketahuan oleh tes.
+  const target = Math.min(Math.max(raw, 3), maxTotal);
+
+  // Titik awal: apa adanya kalau muat, diskalakan proporsional kalau kepanjangan.
+  const each = raw <= maxTotal
+    ? [...safe]
+    : safe.map((s) => Math.max(1, Math.floor((s * maxTotal) / raw)));
+
+  // Lalu dipaksa berjumlah TEPAT `target`, dari arah mana pun selisihnya datang.
+  // Sisa dibagikan ke shot terpanjang lebih dulu: satu detik tambahan lebih
+  // berarti di shot 4 detik daripada di shot 1 detik.
+  const order = each.map((_, i) => i).sort((a, b) => safe[b] - safe[a]);
+  let drift = target - each.reduce((a, b) => a + b, 0);
+  for (let k = 0; drift > 0; k = (k + 1) % n) { each[order[k]]++; drift--; }
+  // Menurunkan tidak boleh membuat shot jadi nol; kalau semuanya sudah 1 detik,
+  // berhenti daripada menghapus shot dari cerita.
+  for (let guard = 0; drift < 0 && guard < n * maxTotal; guard++) {
+    const i = order[guard % n];
+    if (each[i] > 1) { each[i]--; drift++; }
+  }
+  return { each, total: each.reduce((a, b) => a + b, 0) };
+}
+
 // Tulis nilai ke jalur bertitik, membuat objek antara kalau belum ada.
 // Dipakai untuk voice id: ElevenLabs menaruhnya di "voice", MiniMax di
 // "voice_setting.voice_id". Jalurnya dari katalog (provider_models.voice_field),
@@ -634,7 +798,7 @@ Deno.serve(async (req) => {
         // deskripsi baju yang mirip-mirip tapi tidak sama.
         if (kind === "storyboard") {
           const shotCount = Math.min(Math.max(Number(body.shots) || 5, 2), 10);
-          const perShot = Math.min(Math.max(Number(body.seconds_per_shot) || 5, 3), 15);
+          const perShot = Math.min(Math.max(Number(body.seconds_per_shot) || 5, 2), 15);
 
           let iname = "kreator", iniche = "", ibio = "", ilang = "Indonesia";
           if (body.influencer_id) {
@@ -719,7 +883,7 @@ Deno.serve(async (req) => {
                 // Durasi dari model tidak dipercaya mentah-mentah: ia sering
                 // menulis angka yang tidak ada di daftar model video mana pun.
                 // Yang mengikat tetap pilihan user; ini cuma usulan.
-                seconds: Math.min(Math.max(Number(s?.seconds) || perShot, 3), 15),
+                seconds: Math.min(Math.max(Number(s?.seconds) || perShot, 2), 15),
               })).filter((s) => s.visual_prompt),
             },
           });
@@ -1013,6 +1177,437 @@ Deno.serve(async (req) => {
         if (error) throw new Error(error.message);
         return json({ ok: true });
       }
+      case "clone_voice": {
+        // Sampel suara → voice_id Kling, diikat ke satu influencer.
+        //
+        // KENAPA DIKLON, BUKAN DIPILIH DARI DAFTAR
+        //
+        // Suara bawaan yang dipilih model membuat 25 influencer berisiko
+        // kedengaran mirip, dan yang lebih buruk: suaranya bisa berganti antar
+        // video tanpa ada yang memberi tahu. Voice hasil klon punya id tetap,
+        // jadi orang yang sama terdengar sama di video ke-1 dan ke-50.
+        const { data: inf } = await admin.from("influencers")
+          .select("id, name, voice, workspace_id").eq("id", body.influencer_id).maybeSingle();
+        if (!inf || inf.workspace_id !== ws) throw new Error("Influencer tidak ditemukan di workspace ini.");
+        const falKey = await providerKey(ws, "fal_key");
+        if (!falKey) throw new Error("FAL key belum dipasang — isi di Settings.");
+
+        // Sampelnya boleh unggahan baru (data URI) atau file yang sudah ada di Drive.
+        let sampleUrl = String(body.sample_url || "");
+        if (body.sample_data_uri) {
+          sampleUrl = await storeVoiceSample(ws, String(body.sample_data_uri), inf.id);
+        }
+        if (!sampleUrl) throw new Error("Belum ada sampel suara. Unggah rekaman 5-30 detik berisi satu suara saja.");
+
+        let out: Record<string, unknown>;
+        try {
+          out = await falRunSync(falKey, "fal-ai/kling-video/create-voice", { voice_url: sampleUrl });
+        } catch (e) {
+          // Pesan fal diteruskan apa adanya: batas 5-30 detik dan "satu suara
+          // bersih" ditegakkan di sana, dan alasannya jauh lebih berguna
+          // daripada kalimat umum bikinan kita.
+          throw new Error(
+            `Gagal membuat suara: ${(e as Error).message}. ` +
+            `Syarat Kling: 5-30 detik, satu suara saja, tanpa musik atau suara latar.`,
+          );
+        }
+        const voiceId = String(out?.voice_id || "");
+        if (!voiceId) throw new Error("Kling tidak mengembalikan voice id.");
+
+        // Disimpan di `influencers.voice` dengan kunci `kling_voice_id` — BUKAN
+        // model_key seperti voice TTS lain. Alasannya: voice id ini milik akun
+        // Kling dan berlaku di semua endpoint v3-nya, jadi mengikatnya ke satu
+        // model_key akan memaksa klon ulang setiap kali ganti varian model.
+        const voice = { ...(inf.voice as Record<string, unknown> || {}), kling_voice_id: voiceId };
+        const { error: upErr } = await admin.from("influencers").update({ voice }).eq("id", inf.id);
+        if (upErr) throw new Error(upErr.message);
+        return json({ ok: true, voice_id: voiceId, sample_url: sampleUrl, influencer: inf.name });
+      }
+      case "submit_sheet": {
+        // SATU gambar berisi semua panel storyboard.
+        //
+        // KENAPA SATU GENERATE, BUKAN ENAM
+        //
+        // Rancangan pertama membuat satu gambar per shot. Dipakai sungguhan,
+        // dua hal muncul yang tidak terlihat saat merancang: Drive penuh
+        // potongan yang tidak pernah ditinjau satu-satu, dan enam generate
+        // terpisah berarti enam kesempatan wajahnya bergeser.
+        //
+        // Enam panel dalam SATU generate justru lebih konsisten — keenamnya
+        // lahir dari satu proses yang sama, bukan enam proses yang kebetulan
+        // diberi acuan yang sama. Dan harganya $0.04, bukan $0.24. Jarang ada
+        // perubahan yang menurunkan biaya sekaligus menaikkan kualitas.
+        //
+        // TEKS SENGAJA TIDAK DIMINTA KE MODEL
+        //
+        // Prompt di bawah melarang teks, angka, dan caption. Model gambar
+        // menulis huruf dengan buruk, dan narasi yang setengah terbaca lebih
+        // buruk daripada tidak ada — orang jadi mengira itu salah ketik, bukan
+        // keterbatasan mesin. Narasinya ditempelkan sebagai teks sungguhan di
+        // browser, di bawah lembarnya.
+        const { data: board } = await admin.from("storyboards").select("*")
+          .eq("id", body.storyboard_id).eq("workspace_id", ws).maybeSingle();
+        if (!board) throw new Error("Storyboard tidak ditemukan di workspace ini.");
+        const { data: shots } = await admin.from("storyboard_shots").select("*")
+          .eq("storyboard_id", board.id).order("position");
+        if (!shots?.length) throw new Error("Storyboard ini belum punya shot.");
+
+        const { data: model } = await admin.from("provider_models").select("*")
+          .eq("id", body.model_id).eq("active", true).maybeSingle();
+        if (!model) throw new Error("Model tidak ditemukan / tidak aktif.");
+        if (model.task !== "image") throw new Error("Lembar storyboard butuh model gambar.");
+
+        let refPhotos: string[] = [];
+        let identity = "";
+        if (board.influencer_id) {
+          const { data: inf } = await admin.from("influencers")
+            .select("identity_prompt").eq("id", board.influencer_id).maybeSingle();
+          identity = inf?.identity_prompt || "";
+          const { data: refs } = await admin.from("character_assets")
+            .select("url").eq("influencer_id", board.influencer_id).eq("kind", "reference")
+            .not("url", "is", null)
+            .order("created_at", { ascending: false }).order("id", { ascending: false }).limit(3);
+          refPhotos = (refs || []).map((r) => String(r.url)).filter(Boolean);
+        }
+        if (model.keeps_identity && model.ref_image_field && !refPhotos.length) {
+          throw new Error(
+            `${model.label} mengambil wajah dari foto, jadi butuh minimal satu foto bertanda referensi di Identity Kit.`,
+          );
+        }
+
+        // Grid dipilih dari jumlah shot, bukan dipatok 3x2: 4 shot dalam grid
+        // enam kotak menyisakan dua kotak kosong yang akan diisi model dengan
+        // karangan.
+        const n = shots.length;
+        const cols = n <= 2 ? n : n <= 4 ? 2 : 3;
+        const rows = Math.ceil(n / cols);
+        const panels = shots
+          .map((s, i) => `Panel ${i + 1}: ${String(s.visual_prompt || "").trim()}`)
+          .join(" ");
+
+        const sheetPrompt =
+          `A ${cols}x${rows} storyboard contact sheet containing exactly ${n} separate cinematic frames ` +
+          `of the same person, arranged in a clean grid with thin white gutters between panels. ` +
+          `Absolutely no text, no numbers, no captions, no watermarks, no lettering anywhere in the image. ` +
+          `${panels} ` +
+          `Every panel shares the same wardrobe, location, lighting and colour palette: ` +
+          `${String(board.continuity || "").trim()}`;
+
+        const input: Record<string, unknown> = { prompt: sheetPrompt };
+        if (model.keeps_identity && model.ref_image_field) {
+          input[String(model.ref_image_field)] = model.ref_image_multi ? refPhotos : refPhotos[0];
+          input.prompt =
+            `Keep the person's face, hairstyle, and identity from the reference image exactly the same in every panel. ` +
+            `${sheetPrompt}`;
+        } else if (identity) {
+          input.prompt = `${identity}. ${sheetPrompt}`;
+        }
+        mergeExtra(input, model.extra_input);
+
+        // Bentuk lembarnya dipaksa mendatar SETELAH extra_input, karena katalog
+        // menyetel 9:16 untuk semua model gambar — benar untuk Reels, salah
+        // total untuk lembar bergrid. Field mana yang dipakai dibaca dari
+        // extra_input model itu sendiri, jadi tidak perlu menebak nama field.
+        const extra = (model.extra_input || {}) as Record<string, unknown>;
+        if ("aspect_ratio" in extra) input.aspect_ratio = rows >= cols ? "1:1" : "3:2";
+        if ("image_size" in extra) {
+          input.image_size = rows >= cols ? { width: 1536, height: 1536 } : { width: 2048, height: 1408 };
+        }
+
+        // Pagar biaya, DUA-DUANYA — bukan cuma saldo kredit.
+        //
+        // Versi pertama blok ini hanya memeriksa mode `credit`, dengan alasan
+        // "lembarnya cuma $0.04". Itu keliru sebagai pola: pagar yang bolong di
+        // satu jalur akan tetap bolong saat harganya naik, dan tidak ada yang
+        // akan ingat memeriksanya lagi. Batas bulanan berlaku untuk semua
+        // pengeluaran, tanpa kecuali berdasarkan besarnya.
+        const est = Number(model.est_price_usd) || 0;
+        if (mode === "live" && est > 0) {
+          if ((await billingMode(ws)) === "credit") {
+            const balance = await creditBalance(ws);
+            if (balance < est) throw new Error(`Kredit tidak cukup: butuh sekitar $${est.toFixed(2)}, saldomu $${balance.toFixed(2)}.`);
+          } else {
+            const { data: bud } = await admin.from("budget_settings").select("*").eq("workspace_id", ws).maybeSingle();
+            const cap = Number(bud?.monthly_cap_usd ?? 200);
+            if ((bud?.hard_stop ?? true) && (await monthSpent(ws)) + est > cap) {
+              throw new Error(`Budget guard: estimasi $${est.toFixed(2)} akan melewati batas bulanan $${cap.toFixed(2)}.`);
+            }
+          }
+        }
+
+        const { data: job, error: jobErr } = await admin.from("production_jobs").insert({
+          workspace_id: ws, influencer_id: board.influencer_id, task: "image",
+          model_key: model.model_key, prompt: sheetPrompt.slice(0, 500),
+          status: "queued", cost_estimate_usd: est,
+          label: `Lembar storyboard — ${board.title}`,
+          content_item_id: board.content_item_id ?? null,
+        }).select("*").single();
+        if (jobErr) throw new Error(jobErr.message);
+
+        if (mode === "mock") {
+          const url = MOCK_OUTPUTS.image(job.id.slice(0, 8));
+          await admin.from("production_jobs")
+            .update({ status: "succeeded", output_url: url, cost_actual_usd: 0 }).eq("id", job.id);
+          await admin.from("storyboards").update({ sheet_url: url }).eq("id", board.id);
+          return json({ ok: true, job_id: job.id, status: "succeeded", mode, sheet_url: url });
+        }
+
+        const falKey = await providerKey(ws, "fal_key");
+        if (!falKey) {
+          await admin.from("production_jobs").update({ status: "failed", error: "FAL key belum dipasang." }).eq("id", job.id);
+          throw new Error("FAL key belum dipasang — isi di Settings.");
+        }
+        const res = await fetch(`https://queue.fal.run/${model.model_key}`, {
+          method: "POST",
+          headers: { Authorization: `Key ${falKey}`, "content-type": "application/json" },
+          body: JSON.stringify(input),
+        });
+        const qr = await res.json().catch(() => ({}));
+        if (!res.ok || !qr.request_id) {
+          const errMsg = (qr?.detail ? JSON.stringify(qr.detail) : `fal.ai error ${res.status}`).slice(0, 500);
+          await admin.from("production_jobs").update({ status: "failed", error: errMsg }).eq("id", job.id);
+          throw new Error(`Gagal submit ke fal.ai: ${errMsg}`);
+        }
+        await admin.from("production_jobs").update({
+          status: "running", external_id: qr.request_id, external_url: falQueueUrl(qr.response_url),
+        }).eq("id", job.id);
+        // Job id dikembalikan supaya klien bisa memasang `sheet_url` begitu
+        // hasilnya ada. Tidak bisa dipasang sekarang: rendernya belum selesai.
+        return json({ ok: true, job_id: job.id, status: "running", mode, panels: n, grid: `${cols}x${rows}` });
+      }
+      case "submit_multishot": {
+        // Satu video, beberapa shot DI DALAMNYA — bukan beberapa klip yang dijahit.
+        //
+        // KENAPA INI BUKAN SEKADAR VERSI LAIN DARI `submit`
+        //
+        // Menyuapkan satu gambar berisi 6 panel ke model image-to-video tidak
+        // menghasilkan cerita 6 adegan: i2v memperlakukan gambar masukan sebagai
+        // FRAME PERTAMA, jadi yang keluar adalah lembar storyboard yang bergerak.
+        //
+        // Kling 3 Pro menyelesaikannya di sisi model, lewat tiga field sekaligus:
+        //   multi_prompt — membagi satu video jadi beberapa shot berurutan
+        //   elements     — mengunci wajah dari foto Identity Kit (@Element1)
+        //   voice_id     — mengikat suara ke karakter itu, jadi dia yang bicara
+        //
+        // Hasilnya satu file utuh tanpa penjahitan, dan tanpa risiko wajah
+        // berganti di antara potongan.
+        const { data: board } = await admin.from("storyboards").select("*")
+          .eq("id", body.storyboard_id).eq("workspace_id", ws).maybeSingle();
+        if (!board) throw new Error("Storyboard tidak ditemukan di workspace ini.");
+        const { data: shots } = await admin.from("storyboard_shots").select("*")
+          .eq("storyboard_id", board.id).order("position");
+        if (!shots?.length) throw new Error("Storyboard ini belum punya shot.");
+
+        const { data: model } = await admin.from("provider_models").select("*")
+          .eq("id", body.model_id).eq("active", true).maybeSingle();
+        if (!model) throw new Error("Model tidak ditemukan / tidak aktif.");
+        if (!model.multishot_field) {
+          throw new Error(`${model.label} tidak mendukung multi-shot. Pilih model yang bertanda multi-shot di katalog.`);
+        }
+
+        // DUA CARA MODEL MEMBAGI SHOT, dan katalog yang menentukan mana yang dipakai:
+        //
+        //   multishot_field = "multi_prompt"  -> Kling: array shot, tiap shot punya
+        //                                        prompt & durasi sendiri; wajah lewat
+        //                                        `elements`; WAJIB start_image_url.
+        //   multishot_field = "prompt"        -> Seedance 2.x reference-to-video:
+        //                                        satu prompt naratif berisi semua shot;
+        //                                        wajah lewat image_urls (Identity Kit);
+        //                                        TIDAK butuh frame pembuka — foto
+        //                                        referensi itulah identitasnya.
+        //
+        // Yang kedua ditandai "prompt" karena memang tidak ada field terpisah:
+        // Seedance membaca "Shot 1: ... Shot 2: ..." dari teks. Menamainya sesuai
+        // field yang benar-benar dikirim menjaga aturan lama tetap berlaku —
+        // nama field dari katalog, bukan dari nama model.
+        const promptMultishot = String(model.multishot_field) === "prompt";
+
+        // Frame pertama wajib untuk Kling: shot 1-lah yang menentukan tampilan
+        // awal, dan tanpa gambar kuncinya Kling menolak permintaannya. Seedance
+        // reference-to-video tidak memakainya sama sekali.
+        const first = shots[0];
+        if (!promptMultishot && !first.image_url) {
+          throw new Error("Shot 1 belum punya gambar kunci. Buat dulu gambar kuncinya — itu yang jadi frame pertama video.");
+        }
+
+        // Identity Kit: satu foto jadi acuan utama, sisanya sudut lain.
+        let refPhotos: string[] = [];
+        let voiceId = "";
+        let infName = "";
+        if (board.influencer_id) {
+          const { data: inf } = await admin.from("influencers")
+            .select("name, voice").eq("id", board.influencer_id).maybeSingle();
+          infName = inf?.name || "";
+          voiceId = String((inf?.voice as Record<string, unknown>)?.kling_voice_id || "");
+          const { data: refs } = await admin.from("character_assets")
+            .select("url").eq("influencer_id", board.influencer_id).eq("kind", "reference")
+            .not("url", "is", null)
+            .order("created_at", { ascending: false }).order("id", { ascending: false }).limit(4);
+          refPhotos = (refs || []).map((r) => String(r.url)).filter(Boolean);
+        }
+        if (refPhotos.length < 2) {
+          throw new Error(
+            `Multi-shot mengunci wajah lewat satu foto utama DITAMBAH minimal satu foto sudut lain, ` +
+            `jadi ${infName || "influencer ini"} butuh minimal 2 foto bertanda referensi di Identity Kit ` +
+            `(sekarang ${refPhotos.length}).`,
+          );
+        }
+
+        // Durasi tiap shot dipaskan supaya jumlahnya persis durasi videonya.
+        const fitted = fitShotDurations(
+          shots.map((s) => Number(s.seconds) || 5),
+          Number(body.max_seconds) || 15,
+        );
+
+        // Karakter dirujuk sebagai @Element1 — itu cara Kling menautkan prompt
+        // ke elemen yang wajahnya sudah dikunci. Narasi ikut masuk sebagai
+        // kalimat yang diucapkan, karena dari situlah audionya dibentuk.
+        // BATAS 512 KARAKTER PER SHOT — dari fal, dan ditemukan dengan cara
+        // yang mahal: job 441d4e2b ditolak 422 "Prompt must not exceed 512
+        // characters", tapi poll menandainya berhasil dan mencatat $0.896.
+        // Kontinuitas hasil AI saja bisa 300 karakter; ditambah prompt visual
+        // dan narasi, 512 gampang terlampaui.
+        //
+        // Urutan prioritas saat memangkas: visual dan kalimat yang diucapkan
+        // TIDAK pernah dipotong (itu ceritanya); kontinuitas dipangkas dulu,
+        // dan kalau tetap tidak muat, dihilangkan dari shot itu — ia masih
+        // dikirim utuh lewat prompt tingkat atas di bawah.
+        const MULTI_MAX = 512;
+        const continuity = board.continuity ? String(board.continuity).trim() : "";
+        const multi = shots.map((s, i) => {
+          const spoken = String(s.narration || "").trim();
+          const core = [
+            `@Element1 ${String(s.visual_prompt || "").trim()}`,
+            spoken ? `@Element1 speaks in Indonesian: "${spoken}"` : "",
+          ].filter(Boolean);
+          let prompt = core.join(", ");
+          if (prompt.length > MULTI_MAX) {
+            // Bahkan tanpa kontinuitas masih kepanjangan: pangkas visualnya
+            // pada batas kata, sisakan kalimat yang diucapkan utuh.
+            const speakPart = core[1] ? `, ${core[1]}` : "";
+            const room = MULTI_MAX - speakPart.length - 1;
+            prompt = core[0].slice(0, Math.max(room, 40)).replace(/\s+\S*$/, "") + "…" + speakPart;
+          } else if (continuity) {
+            const room = MULTI_MAX - prompt.length - 2;
+            if (room >= 24) {
+              const c = continuity.length <= room ? continuity : continuity.slice(0, room - 1).replace(/\s+\S*$/, "") + "…";
+              prompt = `${core[0]}, ${c}${core[1] ? `, ${core[1]}` : ""}`;
+            }
+          }
+          return { prompt: prompt.slice(0, MULTI_MAX), duration: String(fitted.each[i]) };
+        });
+
+        const element: Record<string, unknown> = {
+          frontal_image_url: refPhotos[0],
+          reference_image_urls: refPhotos.slice(1, 4),
+        };
+        if (voiceId) element.voice_id = voiceId;
+
+        // Semua nama field dari katalog, dengan satu pengecualian yang disengaja:
+        // `elements`. Sejauh ini hanya Kling yang punya konsep itu, jadi belum
+        // ada dua bentuk berbeda untuk dibandingkan — dan kolom katalog yang
+        // dibuat sebelum kebutuhannya nyata biasanya menebak salah. Kalau model
+        // kedua muncul dengan nama lain, saat itulah kolomnya dibuat.
+        let input: Record<string, unknown>;
+        if (promptMultishot) {
+          // Satu prompt naratif. Kontinuitas ditulis SEKALI di depan, lalu tiap
+          // shot dengan durasinya — Seedance membaca urutan dan waktunya dari
+          // teks ini. Narasi ditulis sebagai kalimat yang diucapkan supaya audio
+          // native-nya mengikuti. Tidak ada batas 512 per shot di sini, tapi
+          // seluruh prompt tetap dijaga wajar.
+          const lines = shots.map((s, i) => {
+            const spoken = String(s.narration || "").trim();
+            return `Shot ${i + 1} (${fitted.each[i]}s): ${String(s.visual_prompt || "").trim()}` +
+              (spoken ? ` The person says in Indonesian: "${spoken}"` : "");
+          });
+          input = {
+            prompt: [
+              continuity ? `Same person throughout. ${continuity}.` : "Same person throughout.",
+              `A ${fitted.total}-second vertical video in ${shots.length} consecutive shots, no cuts to other people.`,
+              ...lines,
+            ].join(" ").slice(0, 2000),
+            [String(model.duration_field || "duration")]: String(fitted.total),
+          };
+          if (model.ref_image_field) {
+            input[String(model.ref_image_field)] = model.ref_image_multi ? refPhotos : refPhotos[0];
+          }
+        } else {
+          input = {
+            [String(model.init_image_field || "start_image_url")]: first.image_url,
+            // Kontinuitas dikirim UTUH di sini, karena di tiap shot ia yang
+            // pertama dipangkas. Batasnya konservatif: skema fal tidak selalu
+            // menyebut maxLength, dan melampauinya berbiaya 422.
+            prompt: [board.title, continuity].filter(Boolean).join(". ").slice(0, 500),
+            [String(model.duration_field || "duration")]: String(fitted.total),
+            [String(model.multishot_field)]: multi,
+            elements: [element],
+          };
+        }
+        mergeExtra(input, model.extra_input);
+
+        const est = model.unit === "per_second"
+          ? Number(model.est_price_usd) * fitted.total
+          : Number(model.est_price_usd);
+
+        if (mode === "live" && est > 0) {
+          if ((await billingMode(ws)) === "credit") {
+            const balance = await creditBalance(ws);
+            if (balance < est) {
+              throw new Error(`Kredit tidak cukup: butuh sekitar $${est.toFixed(2)}, saldomu $${balance.toFixed(2)}.`);
+            }
+          } else {
+            const { data: bud } = await admin.from("budget_settings").select("*").eq("workspace_id", ws).maybeSingle();
+            const cap = Number(bud?.monthly_cap_usd ?? 200);
+            if ((bud?.hard_stop ?? true) && (await monthSpent(ws)) + est > cap) {
+              throw new Error(`Budget guard: estimasi $${est.toFixed(2)} akan melewati batas bulanan $${cap.toFixed(2)}.`);
+            }
+          }
+        }
+
+        const { data: job, error: jobErr } = await admin.from("production_jobs").insert({
+          workspace_id: ws, influencer_id: board.influencer_id, task: "video",
+          model_key: model.model_key,
+          prompt: `${board.title} — ${shots.length} shot / ${fitted.total} detik`,
+          status: "queued", cost_estimate_usd: est,
+          label: `${board.title} — video ${fitted.total} detik`,
+          content_item_id: board.content_item_id ?? null,
+        }).select("*").single();
+        if (jobErr) throw new Error(jobErr.message);
+
+        if (mode === "mock") {
+          await admin.from("production_jobs")
+            .update({ status: "succeeded", output_url: MOCK_OUTPUTS.video(""), cost_actual_usd: 0 }).eq("id", job.id);
+          return json({ ok: true, job_id: job.id, status: "succeeded", mode, seconds: fitted.total });
+        }
+
+        const falKey = await providerKey(ws, "fal_key");
+        if (!falKey) {
+          await admin.from("production_jobs").update({ status: "failed", error: "FAL key belum dipasang." }).eq("id", job.id);
+          throw new Error("FAL key belum dipasang — isi di Settings.");
+        }
+        const res = await fetch(`https://queue.fal.run/${model.model_key}`, {
+          method: "POST",
+          headers: { Authorization: `Key ${falKey}`, "content-type": "application/json" },
+          body: JSON.stringify(input),
+        });
+        const qr = await res.json().catch(() => ({}));
+        if (!res.ok || !qr.request_id) {
+          const errMsg = (qr?.detail ? JSON.stringify(qr.detail) : `fal.ai error ${res.status}`).slice(0, 500);
+          await admin.from("production_jobs").update({ status: "failed", error: errMsg }).eq("id", job.id);
+          throw new Error(`Gagal submit ke fal.ai: ${errMsg}`);
+        }
+        await admin.from("production_jobs").update({
+          status: "running", external_id: qr.request_id, external_url: falQueueUrl(qr.response_url),
+        }).eq("id", job.id);
+        // `shot_seconds` dikembalikan supaya UI bisa menunjukkan durasi yang
+        // BENAR-BENAR dipakai, bukan yang diminta — 6 shot @5 detik jadi
+        // [3,3,3,2,2,2], dan user berhak tahu itu sebelum menunggu hasilnya.
+        return json({
+          ok: true, job_id: job.id, status: "running", mode,
+          seconds: fitted.total, shot_seconds: fitted.each,
+          voice: voiceId ? "klon" : "bawaan model",
+        });
+      }
       case "submit": {
         const { task, model_id, influencer_id, prompt = "", text = "", source_image_url, audio_url } = body;
         // Untuk ide konten yang mana job ini dikerjakan. Opsional — character
@@ -1305,6 +1900,15 @@ Deno.serve(async (req) => {
             }
             input[String(model.init_image_field)] = source_image_url;
           }
+          // Model video yang mengunci wajah dari foto referensi (Seedance 2.x
+          // reference-to-video). Sama dengan cabang gambar di atas: nama field
+          // dan bentuknya dari katalog. Tanpa ini model itu tetap jalan — prompt
+          // saja sudah sah — tapi wajahnya orang asing, dan itu ketahuan setelah
+          // dibayar per detik.
+          if (model.keeps_identity && model.ref_image_field && refPhotos.length) {
+            input[String(model.ref_image_field)] = model.ref_image_multi ? refPhotos : refPhotos[0];
+            input.prompt = `The same person as in the reference images, face and hairstyle unchanged. ${finalPrompt}`;
+          }
         } else if (task === "tts") {
           input.text = String(text);
           // Kunci suara. Kalau job ini atas nama seorang influencer, suaranya
@@ -1440,7 +2044,23 @@ Deno.serve(async (req) => {
             if (st.status === "COMPLETED") {
               const rres = await fetch(base, { headers: { Authorization: `Key ${falKey}` } });
               const result = await rres.json().catch(() => ({}));
-              const raw = findMediaUrl(result);
+              // Status boleh COMPLETED sementara HASILNYA 422: fal menerima
+              // antrean lalu menolak isinya saat validasi. Dulu cabang ini
+              // tetap menandai berhasil dengan output_url NULL dan MENCATAT
+              // biayanya — job 441d4e2b: $0.896 untuk video yang tidak pernah
+              // dirender. Jawaban bukan-2xx atau tanpa URL media berarti gagal,
+              // dan yang gagal tidak ditagih.
+              const raw = rres.ok ? findMediaUrl(result) : null;
+              if (!raw) {
+                const detail = (result as Record<string, unknown>)?.detail ?? (result as Record<string, unknown>)?.error ?? result;
+                await admin.from("production_jobs").update({
+                  status: "failed",
+                  error: (rres.ok ? "fal selesai tanpa URL media di jawabannya: " : `fal menolak hasil (${rres.status}): `)
+                    + JSON.stringify(detail).slice(0, 450),
+                }).eq("id", jb.id);
+                updated++;
+                continue;
+              }
               // Hasil HF dan DashScope sudah lama dipindahkan ke bucket `media`;
               // fal satu-satunya yang tidak, jadi Drive menyimpan tautan ke CDN
               // orang lain yang tidak kita kendalikan masa hidupnya. Pindahkan
