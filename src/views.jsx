@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useCallback } from "react";
-import { LibraryPicker } from "./library.jsx";
+import { LibraryPicker, LibraryCard } from "./library.jsx";
 import { supa, callGenerate, callSocial, callCalendar, callApp, callLinks, callMedia, STATUS_LABELS, TYPE_LABELS, usd } from "./supa.js";
 
 const linkBtn = { background: "none", border: "none", padding: 0, cursor: "pointer", fontWeight: 700, fontSize: 11 };
@@ -3870,6 +3870,7 @@ export function Settings({ ws, refresh, tick, spend, spendError, query }) {
       {platform?.is_platform_admin && <PromotionsCard tick={tick} />}
       <BillingCard ws={ws} tick={tick} />
       <LinksCard ws={ws} tick={tick} />
+      <LibraryCard ws={ws} tick={tick} />
       {msg && <div className="msg-ok mb3">{msg}</div>}
       <div className="grid mb4" style={{ gridTemplateColumns: "repeat(auto-fit,minmax(340px,1fr))" }}>
         <div className="card p6">
