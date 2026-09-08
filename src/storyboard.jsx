@@ -602,6 +602,25 @@ function NewBoard({ ws, influencers, onCreated }) {
 // shot dan total detik yang ditagih — sama dengan yang benar-benar dikirim.
 // Kalau versi server berubah, ubah ini juga; keduanya sengaja tidak dibagi
 // lewat satu modul karena edge function dan browser tidak berbagi build.
+// Batas durasi satu model, dibaca dari katalog — bukan dipaku 15.
+//
+// Angka 15 itu batas Kling 3 Pro, dan dulu satu-satunya model multi-shot.
+// Seedance 2.5 sampai 30 detik; kalau batasnya tetap 15, separuh kemampuan
+// yang dibayar per detik itu tidak pernah bisa dipakai, dan storyboard 6
+// shot @5 detik selalu dipangkas padahal modelnya muat.
+export function modelMaxSeconds(model) {
+  const vals = Array.isArray(model?.duration_values) ? model.duration_values : [];
+  const secs = vals.map((v) => parseFloat(String(v))).filter(Number.isFinite);
+  return secs.length ? Math.max(...secs) : 15;
+}
+// Batas paling longgar di antara semua model multi-shot yang aktif — dipakai
+// SEBELUM modelnya dipilih (langkah Naskah), supaya peringatan "dipangkas"
+// tidak muncul untuk durasi yang sebenarnya masih muat di salah satu model.
+export function catalogMaxSeconds(models) {
+  const ms = (models || []).filter((m) => m.multishot_field).map(modelMaxSeconds);
+  return ms.length ? Math.max(...ms) : 15;
+}
+
 export function fitShotDurations(wanted, maxTotal = 15) {
   const n = wanted.length;
   if (!n) return { each: [], total: 0 };
@@ -804,7 +823,7 @@ function BoardDetail({ id, models, influencers, mode, onBack, refresh }) {
 // dan Produksi (yang menegakkan) tidak pernah berbeda pendapat.
 function readiness({ board, shots, inf, refCount, models }) {
   const videoModels = (models || []).filter((m) => m.multishot_field);
-  const fit = fitShotDurations(shots.map((s) => Number(s.seconds) || 5));
+  const fit = fitShotDurations(shots.map((s) => Number(s.seconds) || 5), catalogMaxSeconds(models));
   const blockers = [];
   if (!shots.length) blockers.push({ text: "Belum ada shot." });
   if (!board.influencer_id) {
@@ -826,7 +845,7 @@ function readiness({ board, shots, inf, refCount, models }) {
     });
   }
   if (fit.raw > fit.total) {
-    warnings.push({ text: `Diminta ${fit.raw} detik, dipangkas ke ${fit.total} — batas model. Durasi tiap shot diperkecil proporsional (${fit.each.join("+")}).` });
+    warnings.push({ text: `Diminta ${fit.raw} detik, dipangkas ke ${fit.total} — batas model terpanjang di katalog. Durasi tiap shot diperkecil proporsional (${fit.each.join("+")}).` });
   }
   return { blockers, warnings, fit, voiceReady, videoModels };
 }
@@ -908,9 +927,18 @@ function StepProduksi({ board, shots, inf, refCount, models, mode, frameReady, p
   const imgModel = imgModels.find((m) => m.id === imgId) || (refCount > 0 && identityModel) || imgModels[0];
   const vidModel = videoModels.find((m) => m.id === vidId) || videoModels[0];
 
-  const frameCost = frameReady ? 0 : Number(imgModel?.est_price_usd) || 0;
+  // Seedance reference-to-video (multishot_field = "prompt") mengunci wajah
+  // dari foto Identity Kit dan tidak memakai frame pembuka sama sekali —
+  // membuatnya hanya membayar $0.03 untuk gambar yang tidak dikirim ke mana pun.
+  const needFrame = vidModel?.multishot_field !== "prompt";
+  const frameCost = !needFrame || frameReady ? 0 : Number(imgModel?.est_price_usd) || 0;
+  // Durasi dipaskan ke batas model YANG DIPILIH, bukan batas umum katalog:
+  // Kling berhenti di 15, Seedance 2.5 di 30 — biaya dan pemangkasannya
+  // harus mengikuti model yang benar-benar akan menagih.
+  const maxSec = modelMaxSeconds(vidModel);
+  const fit = fitShotDurations(shots.map((s) => Number(s.seconds) || 5), maxSec);
   const videoCost = vidModel?.unit === "per_second"
-    ? (Number(vidModel.est_price_usd) || 0) * r.fit.total
+    ? (Number(vidModel.est_price_usd) || 0) * fit.total
     : Number(vidModel?.est_price_usd) || 0;
   const total = frameCost + videoCost;
   const blocked = !!r.blockers.length || !imgModel || !vidModel;
@@ -924,7 +952,7 @@ function StepProduksi({ board, shots, inf, refCount, models, mode, frameReady, p
     try {
       // ---- 1. Frame pembuka ----
       const first = shots[0];
-      if (!first.image_url) {
+      if (needFrame && !first.image_url) {
         setRunning({ stage: "frame", sec: 0 });
         let jobId = first.image_job_id;
         if (!jobId) {
@@ -949,7 +977,7 @@ function StepProduksi({ board, shots, inf, refCount, models, mode, frameReady, p
       let vJob = board.video_job_id;
       if (!vJob || board.video_url) {
         const res = await callGenerate({
-          action: "submit_multishot", storyboard_id: board.id, model_id: vidModel.id, max_seconds: 15,
+          action: "submit_multishot", storyboard_id: board.id, model_id: vidModel.id, max_seconds: maxSec,
         });
         vJob = res.job_id;
         await patchBoard({ video_job_id: vJob, video_url: null });
@@ -968,7 +996,7 @@ function StepProduksi({ board, shots, inf, refCount, models, mode, frameReady, p
   const stageLabel = running?.stage === "frame"
     ? `Membuat frame pembuka… ${running.sec}s`
     : running?.stage === "video"
-      ? `Membuat video ${r.fit.total} detik… ${Math.floor(running.sec / 60)}:${String(running.sec % 60).padStart(2, "0")} — biasanya 2–6 menit`
+      ? `Membuat video ${fit.total} detik… ${Math.floor(running.sec / 60)}:${String(running.sec % 60).padStart(2, "0")} — biasanya 2–6 menit`
       : null;
 
   return (
@@ -986,13 +1014,13 @@ function StepProduksi({ board, shots, inf, refCount, models, mode, frameReady, p
             <tr style={{ borderBottom: "1px solid var(--line-soft)" }}>
               <td className="small" style={{ padding: "8px 0" }}>
                 <div className="bold">Frame pembuka</div>
-                <div className="tiny muted">{frameReady ? "sudah ada — tidak dibuat ulang" : imgModel?.label}</div>
+                <div className="tiny muted">{!needFrame ? "tidak dipakai model ini — wajah dari Identity Kit" : frameReady ? "sudah ada — tidak dibuat ulang" : imgModel?.label}</div>
               </td>
               <td className="small bold" style={{ textAlign: "right", fontVariantNumeric: "tabular-nums" }}>{priceLabel(frameCost)}</td>
             </tr>
             <tr style={{ borderBottom: "1px solid var(--line-soft)" }}>
               <td className="small" style={{ padding: "8px 0" }}>
-                <div className="bold">Video {r.fit.total} detik · {shots.length} shot ({r.fit.each.join("+")})</div>
+                <div className="bold">Video {fit.total} detik · {shots.length} shot ({fit.each.join("+")}){fit.raw > fit.total ? <span className="muted"> — diminta {fit.raw}, batas {vidModel?.label?.split(" — ")[0] || "model"} {maxSec} detik</span> : null}</div>
                 <div className="tiny muted">{vidModel?.label} · suara {r.voiceReady ? "hasil klon" : "bawaan model"}</div>
               </td>
               <td className="small bold" style={{ textAlign: "right", fontVariantNumeric: "tabular-nums" }}>{priceLabel(videoCost)}</td>
@@ -1060,8 +1088,8 @@ function StepProduksi({ board, shots, inf, refCount, models, mode, frameReady, p
   );
 }
 
-function StepHasil({ board, shots, inf, setStep }) {
-  const fit = fitShotDurations(shots.map((s) => Number(s.seconds) || 5));
+function StepHasil({ board, shots, inf, models, setStep }) {
+  const fit = fitShotDurations(shots.map((s) => Number(s.seconds) || 5), catalogMaxSeconds(models));
   return (
     <div>
       <div className="card p4 mb4">
