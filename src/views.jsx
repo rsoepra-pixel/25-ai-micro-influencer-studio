@@ -309,7 +309,7 @@ const PERSONA_QS = [
 
 // Perkecil foto di browser sebelum dikirim: provider vision hanya menerima
 // base64 (bukan URL), jadi ukuran payload harus ditekan di sisi klien.
-function downscaleToDataUri(file, maxSide = 768, quality = 0.82) {
+export function downscaleToDataUri(file, maxSide = 768, quality = 0.82) {
   return new Promise((resolve, reject) => {
     const img = new Image();
     const url = URL.createObjectURL(file);
@@ -908,6 +908,72 @@ const fileToDataUri = (file) => new Promise((resolve, reject) => {
 // id BUATAN PROVIDER LAIN untuk TTS. Yang ini membuat suara baru dari rekaman
 // sungguhan, lalu mengikatnya ke karakter di dalam video — jadi suaranya keluar
 // dari mulut orangnya, bukan ditempel belakangan.
+// Klon suara untuk jalur avatar UGC (foto + audio → orang bicara).
+//
+// Kartu Kling di bawah menghasilkan voice id yang hanya dikenal endpoint video
+// Kling. Model avatar (Kling Avatar, OmniHuman, Fabric) tidak menerima voice id
+// — mereka menerima FILE AUDIO, jadi suara klonnya harus lahir di sisi TTS.
+// Satu-satunya klon TTS lewat fal adalah MiniMax; hasilnya disimpan sebagai
+// suara terkunci untuk model MiniMax Speech-02 HD, dan wizard UGC memakainya
+// otomatis.
+function MiniMaxCloneCard({ inf, models, onSaved }) {
+  const TTS_KEY = "fal-ai/minimax/speech-02-hd";
+  const tts = (models || []).find((m) => m.model_key === TTS_KEY);
+  const [busy, setBusy] = useState(false);
+  const [msg, setMsg] = useState(null);
+  const [err, setErr] = useState(null);
+  const [preview, setPreview] = useState(null);
+  const voiceId = String(inf.voice?.[TTS_KEY] || "");
+  if (!tts) return null;
+
+  async function upload(e) {
+    const file = e.target.files?.[0];
+    e.target.value = "";
+    if (!file) return;
+    setErr(null); setMsg(null); setPreview(null);
+    if (file.size > 25 * 1024 * 1024) { setErr("Filenya lebih dari 25 MB. Potong dulu jadi 10-60 detik."); return; }
+    const dur = await mediaDuration(file);
+    if (dur && dur < 10) {
+      setErr(`Rekamannya ${dur.toFixed(1)} detik. MiniMax butuh minimal 10 detik — rekam lebih panjang.`);
+      return;
+    }
+    setBusy(true);
+    try {
+      const dataUri = await fileToDataUri(file);
+      const r = await callGenerate({ action: "clone_voice_tts", influencer_id: inf.id, sample_data_uri: dataUri });
+      setMsg(`Suara ${r.influencer} tersimpan sebagai suara MiniMax. Wizard UGC akan memakainya.`);
+      if (r.preview_url) setPreview(r.preview_url);
+      onSaved?.();
+    } catch (e2) { setErr(e2.message); }
+    setBusy(false);
+  }
+
+  return (
+    <div className="card p6 mb4">
+      <div className="row mb1" style={{ justifyContent: "space-between" }}>
+        <div className="bold">Suara untuk video UGC (klon MiniMax)</div>
+        <Badge tone={voiceId ? "green" : "amber"}>{voiceId ? "sudah diklon" : "belum ada"}</Badge>
+      </div>
+      <p className="tiny muted mb3">
+        Unggah satu rekaman <b>minimal 10 detik</b> berisi <b>satu suara saja</b>, tanpa musik atau suara latar.
+        Hasil klonnya dipakai saat naskah dibacakan untuk video UGC (foto + audio). Kalau belum ada, wizard
+        memakai suara preset yang dipilih di kartu Suara di atas. Klon yang tidak dipakai 7 hari dihapus
+        otomatis oleh MiniMax — pemakaian di wizard memperpanjangnya.
+      </p>
+      {err && <div className="msg-err mb2">{err}</div>}
+      {msg && <div className="msg-ok mb2">{msg}</div>}
+      {preview && <audio src={preview} controls style={{ width: "100%", marginBottom: 8 }} />}
+      {voiceId && (
+        <p className="tiny muted mb2">Voice id: <code>{voiceId}</code> — unggah rekaman baru untuk menggantinya.</p>
+      )}
+      <label className="btn" style={{ cursor: busy ? "not-allowed" : "pointer" }}>
+        {busy ? "Mengkloning…" : voiceId ? "Ganti rekaman" : "Unggah rekaman suara"}
+        <input type="file" accept="audio/*,video/mp4,video/quicktime" hidden disabled={busy} onChange={upload} />
+      </label>
+    </div>
+  );
+}
+
 function KlingVoiceCard({ inf, models, onSaved }) {
   const multishot = (models || []).find((m) => m.multishot_field);
   const [busy, setBusy] = useState(false);
@@ -1125,6 +1191,7 @@ export function InfluencerDetail({ id, ws, refresh, tick, mode }) {
             ) : <div className="small muted">Belum ada foto referensi.</div>}
           </div>
           <VoiceCard inf={inf} models={d.models} onSaved={() => { reload(); refresh(); }} />
+          <MiniMaxCloneCard inf={inf} models={d.models} onSaved={() => { reload(); refresh(); }} />
           <KlingVoiceCard inf={inf} models={d.models} onSaved={() => { reload(); refresh(); }} />
           <div className="card p6 mb4" ref={genRef}>
             <div className="bold mb3">Generate untuk {inf.name}</div>
