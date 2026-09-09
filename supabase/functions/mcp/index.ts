@@ -213,6 +213,10 @@ const TOOLS = [
         duration: { type: "number", description: "Durasi detik untuk video/lipsync (default 5)" },
         source_image_url: str("URL foto awal — WAJIB untuk model video yang init_image_field-nya terisi"),
         audio_url: str("URL audio (hasil TTS) — WAJIB untuk task lipsync, bersama source_image_url fotonya"),
+        extra_ref_urls: {
+          type: "array", items: { type: "string" },
+          description: "URL foto produk (Product Kit) sebagai referensi tambahan untuk task image pada model penjaga wajah yang menerima banyak referensi. Maks. 4.",
+        },
         content_item_id: str("Ide konten yang hasilnya ini (opsional)"),
         label: str("Nama terbaca untuk aset hasilnya (opsional)"),
       },
@@ -560,7 +564,7 @@ async function runTool(name: string, args: Record<string, unknown>, ctx: Ctx) {
         action: "submit",
         task: need("task"),
         model_id: need("model_id"),
-        ...pick(["influencer_id", "prompt", "text", "duration", "source_image_url", "audio_url", "content_item_id", "label"]),
+        ...pick(["influencer_id", "prompt", "text", "duration", "source_image_url", "audio_url", "extra_ref_urls", "content_item_id", "label"]),
       });
       return ok(out);
     }
