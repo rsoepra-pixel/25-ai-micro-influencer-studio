@@ -433,7 +433,9 @@ async function storeRemote(ws: string, url: string, jobId: string, fallbackCtype
 // exception) sama-sama di-skip diam-diam, jadi user mengira Identity Kit-nya
 // lengkap padahal kurang — dan itu baru ketahuan saat wajah hasilnya meleset.
 type StoredPhotos = { urls: string[]; failed: { index: number; reason: string }[] };
-async function storePhotos(ws: string, photos: string[]): Promise<StoredPhotos> {
+// `folder` memisahkan foto wajah (refs) dari foto produk (products) di bucket,
+// supaya keduanya bisa dibedakan saat dibersihkan tanpa membuka tabelnya.
+async function storePhotos(ws: string, photos: string[], folder = "refs"): Promise<StoredPhotos> {
   const urls: string[] = [];
   const failed: { index: number; reason: string }[] = [];
   // `index` 1-based: yang dibaca manusia di UI ("Foto ke-4"), bukan indeks array.
@@ -448,7 +450,7 @@ async function storePhotos(ws: string, photos: string[]): Promise<StoredPhotos> 
       const bytes = new Uint8Array(bin.length);
       for (let k = 0; k < bin.length; k++) bytes[k] = bin.charCodeAt(k);
       const ext = m[1].includes("png") ? "png" : m[1].includes("webp") ? "webp" : "jpg";
-      const path = `${ws}/refs/${crypto.randomUUID()}-${i}.${ext}`;
+      const path = `${ws}/${folder}/${crypto.randomUUID()}-${i}.${ext}`;
       const { error: upErr } = await admin.storage.from("media")
         .upload(path, bytes, { contentType: m[1], upsert: true, cacheControl: "3600" });
       if (upErr) failed.push({ index: i + 1, reason: upErr.message });
@@ -780,7 +782,7 @@ Deno.serve(async (req) => {
       }
       case "write": {
         // Penulis AI: kind = script | ideas | persona | lookalike | plan | storyboard.
-        const kind = ["ideas", "persona", "lookalike", "plan", "storyboard"].includes(body.kind) ? body.kind : "script";
+        const kind = ["ideas", "persona", "lookalike", "plan", "storyboard", "ugc"].includes(body.kind) ? body.kind : "script";
 
         // storyboard: satu ide → daftar shot yang siap diproduksi.
         //
@@ -885,6 +887,99 @@ Deno.serve(async (req) => {
                 // Yang mengikat tetap pilihan user; ini cuma usulan.
                 seconds: Math.min(Math.max(Number(s?.seconds) || perShot, 2), 15),
               })).filter((s) => s.visual_prompt),
+            },
+          });
+        }
+
+        // ugc: produk + orang + durasi → naskah yang diucapkan ke kamera.
+        //
+        // KENAPA NASKAHNYA DIPASKAN KE DURASI, BUKAN SEBALIKNYA
+        //
+        // Model avatar (Kling Avatar, OmniHuman, Fabric) tidak punya knob
+        // durasi: videonya sepanjang audionya, dan audionya sepanjang naskahnya.
+        // Jadi satu-satunya tempat durasi bisa dikendalikan adalah jumlah kata.
+        // Kira-kira 2,3 kata per detik untuk bahasa Indonesia santai; angka itu
+        // dari mengukur audio TTS yang sudah dibuat app ini, bukan dari teori.
+        //
+        // Naskah 10 detik yang menyebut lima keunggulan terdengar seperti iklan
+        // radio — kebalikan dari UGC. Penulis diminta memilih SATU-DUA selling
+        // point, bukan membacakan daftar.
+        if (kind === "ugc") {
+          const seconds = Math.min(Math.max(Number(body.target_seconds) || 10, 5), 60);
+          const wordBudget = Math.round(seconds * 2.3);
+
+          let iname = "kreator", iniche = "", ibio = "", ilang = "Indonesia";
+          if (body.influencer_id) {
+            const { data: inf } = await admin.from("influencers")
+              .select("name,niche,persona,language,workspace_id").eq("id", body.influencer_id).maybeSingle();
+            if (inf?.workspace_id === ws) {
+              iname = inf.name; iniche = inf.niche || "";
+              ibio = (inf.persona as { bio?: string })?.bio || "";
+              ilang = inf.language === "en" ? "English" : inf.language === "mix" ? "campuran Indonesia-Inggris" : "Indonesia";
+            }
+          }
+
+          // Produk wajib milik workspace ini. Produk orang lain yang nyasar ke
+          // sini akan menghasilkan naskah yang menjual barang yang salah —
+          // dan itu baru ketahuan setelah videonya tayang.
+          const { data: product } = await admin.from("products")
+            .select("name, description, selling_points, avoid_claims").eq("id", body.product_id).eq("workspace_id", ws).maybeSingle();
+          if (!product) throw new Error("Produk tidak ditemukan di workspace ini.");
+          const points = Array.isArray(product.selling_points) ? (product.selling_points as unknown[]).map(String).filter(Boolean) : [];
+
+          const platform = ["tiktok", "instagram", "youtube"].includes(body.platform) ? body.platform : "tiktok";
+          const platformLabel = platform === "instagram" ? "Instagram Reels" : platform === "youtube" ? "YouTube Shorts" : "TikTok";
+          const angle = String(body.idea || "").slice(0, 400);
+
+          const system =
+            `Kamu penulis konten UGC (user-generated content) untuk ${platformLabel}, pasar Indonesia. ` +
+            `UGC berarti seseorang bicara ke kamera ponselnya sendiri seperti ke teman — bukan iklan, bukan presenter. ` +
+            `Talent-nya ${iname}${iniche ? `, niche ${iniche}` : ""}. ` +
+            (ibio ? `Persona: ${ibio} ` : "") +
+            `Jawab HANYA dengan JSON valid, tanpa penjelasan lain.`;
+
+          const user =
+            `Produk: ${product.name}\n` +
+            (product.description ? `Tentang produk: ${product.description}\n` : "") +
+            (points.length ? `Keunggulan yang boleh disebut: ${points.join(" | ")}\n` : "") +
+            (product.avoid_claims ? `DILARANG KERAS mengucapkan klaim ini atau yang semakna: ${product.avoid_claims}\n` : "") +
+            (angle ? `Sudut cerita yang diminta: ${angle}\n` : "") +
+            `Bahasa naskah: ${ilang}. Target durasi ${seconds} detik = MAKSIMAL ${wordBudget} kata.\n` +
+            `\nAturan yang harus dipatuhi:\n` +
+            `1. "script": orang pertama, kalimat pendek seperti orang bicara, tanpa "halo guys", tanpa membaca daftar. ` +
+            `Sebut nama produk secara natural 1-2 kali. Pilih SATU atau DUA keunggulan saja. ` +
+            `Kalimat pertama adalah hook yang menahan orang di 2 detik pertama. Kalimat terakhir ajakan singkat (mis. "link-nya di bio"). ` +
+            `Total TIDAK LEBIH dari ${wordBudget} kata — hitung.\n` +
+            `2. "hook": kalimat pertama script itu, disalin apa adanya.\n` +
+            `3. "caption": maksimal 150 karakter, bahasa ${ilang}, BUKAN salinan script — satu kalimat yang bikin orang menonton.\n` +
+            `4. "hashtags": 4-6 tag tanpa tanda #, relevan dengan produk dan niche.\n` +
+            `5. "scene": bahasa Inggris, 30-50 kata, latar untuk SATU foto selfie kamera depan: ruangan, cahaya, pakaian, ` +
+            `cara produk dipegang/dipakai dengan labelnya menghadap kamera. DILARANG mendeskripsikan wajah, usia, kulit, ` +
+            `atau rambut (wajahnya dari foto), dan DILARANG mendeskripsikan kemasan/warna produk (produknya dari foto).\n` +
+            `6. "delivery": bahasa Inggris, 15-30 kata, gaya penyampaian ke kamera: energi, ekspresi, gerak tangan, kapan produk diangkat.\n` +
+            `7. Hindari klaim medis, kesehatan, atau finansial yang spesifik, dan klaim yang dilarang di atas.\n` +
+            `\nFormat JSON: {"hook": "...", "script": "...", "caption": "...", "hashtags": ["..."], "scene": "...", "delivery": "..."}`;
+
+          const parsed = parseJsonLoose(await chat(ws, system, user, undefined, 1500)) as Record<string, unknown>;
+          const script = String(parsed.script || "").trim();
+          if (!script) throw new Error("Penulis AI tidak mengembalikan naskah. Coba lagi.");
+          const words = script.split(/\s+/).filter(Boolean).length;
+          return json({
+            ok: true,
+            ugc: {
+              hook: String(parsed.hook || "").slice(0, 300),
+              script: script.slice(0, 2000),
+              caption: String(parsed.caption || "").slice(0, 300),
+              hashtags: Array.isArray(parsed.hashtags)
+                ? (parsed.hashtags as unknown[]).map((h) => String(h).trim().replace(/^#+/, "")).filter(Boolean).slice(0, 8)
+                : [],
+              scene: String(parsed.scene || "").slice(0, 800),
+              delivery: String(parsed.delivery || "").slice(0, 400),
+              words,
+              // Perkiraan detik dari jumlah kata, dengan rasio yang sama dengan
+              // anggarannya. Yang mengikat tetap audio sungguhan nanti.
+              est_seconds: Math.max(3, Math.round(words / 2.3)),
+              word_budget: wordBudget,
             },
           });
         }
@@ -1222,6 +1317,83 @@ Deno.serve(async (req) => {
         const { error: upErr } = await admin.from("influencers").update({ voice }).eq("id", inf.id);
         if (upErr) throw new Error(upErr.message);
         return json({ ok: true, voice_id: voiceId, sample_url: sampleUrl, influencer: inf.name });
+      }
+      case "clone_voice_tts": {
+        // Sampel suara → custom_voice_id MiniMax, dipakai TTS speech-02-hd.
+        //
+        // BEDANYA DENGAN clone_voice DI ATAS, DAN KENAPA DUA-DUANYA ADA
+        //
+        // clone_voice menghasilkan voice id KLING, yang hanya dikenal endpoint
+        // video Kling (multi-shot storyboard). Jalur avatar UGC (Kling Avatar,
+        // OmniHuman, Fabric) tidak menerima voice id sama sekali — ia menerima
+        // FILE AUDIO. Jadi suara klon untuk UGC harus lahir di sisi TTS, dan
+        // satu-satunya klon TTS yang tersedia lewat fal adalah MiniMax.
+        //
+        // Disimpan di influencers.voice dengan kunci model_key TTS-nya, persis
+        // struktur voice lock yang sudah ada (migration 0017), jadi cabang tts
+        // di `submit` memakainya tanpa perubahan apa pun.
+        //
+        // Dua batasan dari dokumentasi fal: sampel minimal 10 detik, dan klon
+        // yang tidak dipakai TTS dalam 7 hari dihapus otomatis. Yang kedua
+        // dijaga dengan langsung membuat pratinjau TTS di panggilan yang sama.
+        const { data: inf } = await admin.from("influencers")
+          .select("id, name, voice, workspace_id").eq("id", body.influencer_id).maybeSingle();
+        if (!inf || inf.workspace_id !== ws) throw new Error("Influencer tidak ditemukan di workspace ini.");
+        const falKey = await providerKey(ws, "fal_key");
+        if (!falKey) throw new Error("FAL key belum dipasang — isi di Settings.");
+
+        let sampleUrl = String(body.sample_url || "");
+        if (body.sample_data_uri) {
+          sampleUrl = await storeVoiceSample(ws, String(body.sample_data_uri), inf.id);
+        }
+        if (!sampleUrl) throw new Error("Belum ada sampel suara. Unggah rekaman minimal 10 detik berisi satu suara saja.");
+
+        const TTS_MODEL_KEY = "fal-ai/minimax/speech-02-hd";
+        let out: Record<string, unknown>;
+        try {
+          out = await falRunSync(falKey, "fal-ai/minimax/voice-clone", {
+            audio_url: sampleUrl,
+            text: "Halo, ini contoh suara hasil klon. Kalau terdengar mirip, berarti sudah siap dipakai.",
+            model: "speech-02-hd",
+          }, 90000);
+        } catch (e) {
+          throw new Error(
+            `Gagal mengklon suara: ${(e as Error).message}. ` +
+            `Syarat MiniMax: rekaman minimal 10 detik, satu suara saja, tanpa musik atau suara latar.`,
+          );
+        }
+        const voiceId = String(out?.custom_voice_id || "");
+        if (!voiceId) throw new Error("MiniMax tidak mengembalikan voice id.");
+
+        const voice = { ...(inf.voice as Record<string, unknown> || {}), [TTS_MODEL_KEY]: voiceId };
+        const { error: upErr } = await admin.from("influencers").update({ voice }).eq("id", inf.id);
+        if (upErr) throw new Error(upErr.message);
+        return json({
+          ok: true, voice_id: voiceId, model_key: TTS_MODEL_KEY, sample_url: sampleUrl,
+          preview_url: findMediaUrl(out), influencer: inf.name,
+        });
+      }
+      case "product_photos": {
+        // Foto produk asli → Product Kit. Sama seperti Identity Kit, tapi untuk
+        // barangnya: foto ini yang nanti dikirim sebagai referensi tambahan ke
+        // model gambar supaya kemasannya tidak dikarang.
+        const { data: p } = await admin.from("products").select("id, workspace_id")
+          .eq("id", body.product_id).maybeSingle();
+        if (!p || p.workspace_id !== ws) throw new Error("Produk tidak ditemukan di workspace ini.");
+        const photos: string[] = Array.isArray(body.photos)
+          ? (body.photos as unknown[]).filter((x) => typeof x === "string").slice(0, 6) as string[]
+          : [];
+        if (!photos.length) throw new Error("Tidak ada foto untuk diunggah.");
+        const stored = await storePhotos(ws, photos, "products");
+        if (stored.urls.length) {
+          const { count } = await admin.from("product_photos")
+            .select("id", { count: "exact", head: true }).eq("product_id", p.id);
+          const base = count ?? 0;
+          const { error } = await admin.from("product_photos")
+            .insert(stored.urls.map((url, i) => ({ product_id: p.id, url, position: base + i })));
+          if (error) throw new Error(error.message);
+        }
+        return json({ ok: true, urls: stored.urls, photos_failed: stored.failed });
       }
       case "submit_sheet": {
         // SATU gambar berisi semua panel storyboard.
@@ -1624,6 +1796,14 @@ Deno.serve(async (req) => {
       }
       case "submit": {
         const { task, model_id, influencer_id, prompt = "", text = "", source_image_url, audio_url } = body;
+        // Foto referensi tambahan di luar Identity Kit — foto produk dari
+        // Product Kit (wizard UGC). Hanya https, maksimal 4. Hanya model yang
+        // menerima banyak referensi (ref_image_multi) yang bisa memakainya;
+        // yang satu foto mengabaikannya, dan wizard memberi tahu itu sebelum
+        // job berangkat — bukan diam-diam mengarang kemasan.
+        const extraRefs: string[] = Array.isArray(body.extra_ref_urls)
+          ? (body.extra_ref_urls as unknown[]).map(String).filter((u) => /^https:\/\//.test(u)).slice(0, 4)
+          : [];
         // Untuk ide konten yang mana job ini dikerjakan. Opsional — character
         // sheet, b-roll umum, dan uji prompt memang tidak punya konten induk.
         // Tapi kalau diisi dan ternyata bukan milik workspace ini, jangan
@@ -1792,8 +1972,11 @@ Deno.serve(async (req) => {
               }
               const content = isEdit
                 ? [
-                    ...refPhotos.map((u) => ({ image: u })),
-                    { text: `Generate a new photo of the exact same person as in the reference image(s) — preserve the face, hairstyle, and identity precisely. ${finalPrompt || "portrait photo"}` },
+                    ...[...refPhotos, ...extraRefs].map((u) => ({ image: u })),
+                    { text:
+                        `Generate a new photo of the exact same person as in the first ${refPhotos.length} reference image(s) — preserve the face, hairstyle, and identity precisely. ` +
+                        (extraRefs.length ? `The product in the last ${extraRefs.length} reference image(s) must keep its exact packaging, label, colours and shape. ` : "") +
+                        `${finalPrompt || "portrait photo"}` },
                   ]
                 : [{ text: finalPrompt || "portrait photo" }];
               const res = await fetch(`${DS_BASE}/services/aigc/multimodal-generation/generation`, {
@@ -1878,13 +2061,21 @@ Deno.serve(async (req) => {
                 `Kalau memang ingin wajah bebas, pilih model gambar yang bukan penjaga identitas.`,
               );
             }
+            // Foto produk ikut HANYA kalau modelnya menerima banyak referensi.
+            // Urutannya penting dan disebut di prompt: wajah dulu, produk
+            // belakangan — model tidak tahu mana yang orang dan mana yang
+            // barang kalau tidak diberi tahu.
+            const withProduct = !!model.ref_image_multi && extraRefs.length > 0;
             input[String(model.ref_image_field)] = model.ref_image_multi
-              ? refPhotos
+              ? [...refPhotos, ...extraRefs]
               : refPhotos[0];
             // Identity Kit sudah memberi wajahnya; instruksi ini yang mencegah
             // model memperlakukan foto itu sekadar sebagai inspirasi gaya.
             input.prompt =
-              `Keep the person's face, hairstyle, and identity from the reference image exactly the same. ` +
+              (withProduct
+                ? `Keep the person's face, hairstyle, and identity from the first ${refPhotos.length} reference image(s) exactly the same. ` +
+                  `The product shown in the last ${extraRefs.length} reference image(s) must appear with its exact packaging, label text, colours and shape unchanged. `
+                : `Keep the person's face, hairstyle, and identity from the reference image exactly the same. `) +
               `${finalPrompt || "portrait photo"}`;
           }
         }
@@ -1945,9 +2136,39 @@ Deno.serve(async (req) => {
           }
         }
         else if (task === "lipsync") {
-          if (String(model.model_key).includes("sadtalker")) {
-            input.source_image_url = source_image_url; input.driven_audio_url = audio_url;
-          } else { input.video_url = source_image_url; input.audio_url = audio_url; }
+          // Nama field sumber (foto atau video) dan audio dibaca dari katalog.
+          //
+          // Dulu ditebak dari nama: "sadtalker pakai source_image_url, selain
+          // itu video_url". Tebakan itu benar untuk dua model, lalu model avatar
+          // (Kling Avatar, Fabric, OmniHuman — migration 0035) datang dengan
+          // `image_url`, jatuh ke cabang "selain itu", dan dikirimi video_url
+          // yang tidak mereka kenal. 422, tanpa petunjuk bahwa katalognya yang
+          // kurang. Sekarang model tanpa pemetaan ditolak di sini, sebelum ada
+          // yang dibayar.
+          if (!model.init_image_field || !model.audio_field) {
+            await abort(`Model ${model.label} belum punya pemetaan field foto/audio di katalog, jadi belum bisa dipakai.`);
+          }
+          if (!source_image_url) {
+            await abort(
+              "Talking head butuh wajahnya: pilih foto sumber dari Aset (tombol \"Talking\"), " +
+              "atau tempel URL-nya di kolom \"URL gambar sumber\".",
+            );
+          }
+          if (!audio_url) {
+            await abort(
+              "Talking head butuh audionya: tulis naskahnya supaya suaranya dibuat otomatis, " +
+              "atau tempel URL audio hasil TTS di kolom \"URL audio\".",
+            );
+          }
+          input[String(model.init_image_field)] = source_image_url;
+          input[String(model.audio_field)] = audio_url;
+          // Prompt hanya untuk model yang punya field-nya (field asing = 422),
+          // dan hanya prompt user — bukan identity_prompt. Wajahnya sudah
+          // datang dari foto; deskripsi fisik di sini cuma mengganggu instruksi
+          // gaya penyampaian.
+          if (model.prompt_field && String(prompt).trim()) {
+            input[String(model.prompt_field)] = String(prompt).trim();
+          }
         }
 
         // Knob tetap per model, paling akhir supaya bisa menimpa default di atas.

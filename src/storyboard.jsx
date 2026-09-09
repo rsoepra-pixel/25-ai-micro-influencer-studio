@@ -688,7 +688,7 @@ function Stepper({ current, reached, onGo }) {
 // Diperiksa dulu SEBELUM tidur, karena job mode mock (dan sebagian provider)
 // sudah selesai saat submit menjawab — tidak perlu menunggu 5 detik untuk
 // hasil yang sudah ada.
-async function waitForJob(jobId, { timeoutMs, every = 5000, onTick } = {}) {
+export async function waitForJob(jobId, { timeoutMs, every = 5000, onTick } = {}) {
   const deadline = Date.now() + timeoutMs;
   for (let n = 0; ; n++) {
     if (n > 0) {

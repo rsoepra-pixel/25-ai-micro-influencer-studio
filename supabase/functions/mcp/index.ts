@@ -186,7 +186,9 @@ const TOOLS = [
     description:
       "Katalog model produksi yang aktif beserta harga per satuan. Panggil ini dulu sebelum generate_media " +
       "untuk memilih model: yang keeps_identity=true memakai foto Identity Kit sebagai acuan wajah, " +
-      "yang init_image_field terisi membuat video DARI sebuah foto (foto awalnya wajib).",
+      "yang init_image_field terisi membuat video DARI sebuah foto (foto awalnya wajib). " +
+      "Untuk UGC (orang bicara ke kamera) pilih task lipsync yang audio_field-nya terisi: foto + audio TTS " +
+      "dengan suara terkunci → video bicara; yang prompt_field terisi juga menerima prompt gaya penyampaian.",
     inputSchema: {
       type: "object",
       properties: { task: { type: "string", enum: ["image", "video", "tts", "lipsync"], description: "Saring per jenis" } },
@@ -210,7 +212,11 @@ const TOOLS = [
         text: str("Naskah yang diucapkan, untuk task tts"),
         duration: { type: "number", description: "Durasi detik untuk video/lipsync (default 5)" },
         source_image_url: str("URL foto awal — WAJIB untuk model video yang init_image_field-nya terisi"),
-        audio_url: str("URL audio, untuk task lipsync"),
+        audio_url: str("URL audio (hasil TTS) — WAJIB untuk task lipsync, bersama source_image_url fotonya"),
+        extra_ref_urls: {
+          type: "array", items: { type: "string" },
+          description: "URL foto produk (Product Kit) sebagai referensi tambahan untuk task image pada model penjaga wajah yang menerima banyak referensi. Maks. 4.",
+        },
         content_item_id: str("Ide konten yang hasilnya ini (opsional)"),
         label: str("Nama terbaca untuk aset hasilnya (opsional)"),
       },
@@ -543,7 +549,7 @@ async function runTool(name: string, args: Record<string, unknown>, ctx: Ctx) {
     }
     case "list_models": {
       let q = admin.from("provider_models")
-        .select("id,model_key,label,task,provider,est_price_usd,unit,description,keeps_identity,init_image_field,voice_field,requires_key")
+        .select("id,model_key,label,task,provider,est_price_usd,unit,description,keeps_identity,init_image_field,audio_field,prompt_field,voice_field,requires_key")
         .eq("active", true).order("task").order("est_price_usd");
       if (typeof args.task === "string") q = q.eq("task", args.task);
       const { data, error } = await q;
@@ -558,7 +564,7 @@ async function runTool(name: string, args: Record<string, unknown>, ctx: Ctx) {
         action: "submit",
         task: need("task"),
         model_id: need("model_id"),
-        ...pick(["influencer_id", "prompt", "text", "duration", "source_image_url", "audio_url", "content_item_id", "label"]),
+        ...pick(["influencer_id", "prompt", "text", "duration", "source_image_url", "audio_url", "extra_ref_urls", "content_item_id", "label"]),
       });
       return ok(out);
     }
