@@ -1641,44 +1641,46 @@ Deno.serve(async (req) => {
           Number(body.max_seconds) || 15,
         );
 
-        // Karakter dirujuk sebagai @Element1 — itu cara Kling menautkan prompt
-        // ke elemen yang wajahnya sudah dikunci. Narasi ikut masuk sebagai
-        // kalimat yang diucapkan, karena dari situlah audionya dibentuk.
-        // BATAS 512 KARAKTER PER SHOT — dari fal, dan ditemukan dengan cara
-        // yang mahal: job 441d4e2b ditolak 422 "Prompt must not exceed 512
-        // characters", tapi poll menandainya berhasil dan mencatat $0.896.
-        // Kontinuitas hasil AI saja bisa 300 karakter; ditambah prompt visual
-        // dan narasi, 512 gampang terlampaui.
-        //
-        // Urutan prioritas saat memangkas: visual dan kalimat yang diucapkan
-        // TIDAK pernah dipotong (itu ceritanya); kontinuitas dipangkas dulu,
-        // dan kalau tetap tidak muat, dihilangkan dari shot itu. Tidak ada
-        // tempat lain untuknya: Kling menolak `prompt` tingkat atas kalau
-        // `multi_prompt` ada ("cannot both be provided", 422 — job Kettlebell
-        // 9 Sep). Kontinuitas hidup hanya di dalam tiap shot.
-        const MULTI_MAX = 512;
+        // BATAS fal 512, tapi Kling menolak prompt 506 karakter / 510 byte
+        // (job Kettlebell 9 Sep: "multiPrompt[0].prompt: size must be between
+        // 0 and 512"). Artinya yang diukur bukan teks yang kita kirim: Kling
+        // mengganti @Element1 dengan sesuatu yang lebih panjang sebelum
+        // memeriksa. Berapa persisnya tidak terdokumentasi, jadi anggarannya
+        // dibuat longgar (400 byte, diukur dalam byte UTF-8 karena em dash dan
+        // huruf non-ASCII 3 byte) dan @Element1 disebut SEKALI per shot.
+        const MULTI_BUDGET = 400;
+        const enc = new TextEncoder();
+        const blen = (t: string) => enc.encode(t).length;
+        // Potong di batas kata sampai muat `max` byte, termasuk "..." penanda.
+        const cutBytes = (t: string, max: number) => {
+          if (blen(t) <= max) return t;
+          let out = t;
+          while (out.length && blen(out) > max - 3) out = out.slice(0, -1);
+          // Mundur ke batas kata, kecuali kalau itu membuang hampir semuanya
+          // (satu "kata" raksasa tanpa spasi) — lebih baik terpotong di tengah.
+          const atWord = out.replace(/\s+\S*$/, "");
+          return (atWord.length >= out.length * 0.6 ? atWord : out) + "...";
+        };
         const continuity = board.continuity ? String(board.continuity).trim() : "";
+        // Urutan prioritas: visual dan kalimat yang diucapkan tidak pernah
+        // dikorbankan untuk kontinuitas; kontinuitas dipangkas dulu, dan kalau
+        // tetap tidak muat, dihilangkan dari shot itu. Tidak ada tempat lain
+        // untuknya: `prompt` tingkat atas ditolak Kling kalau `multi_prompt` ada.
         const multi = shots.map((s, i) => {
           const spoken = String(s.narration || "").trim();
-          const core = [
-            `@Element1 ${String(s.visual_prompt || "").trim()}`,
-            spoken ? `@Element1 speaks in Indonesian: "${spoken}"` : "",
-          ].filter(Boolean);
-          let prompt = core.join(", ");
-          if (prompt.length > MULTI_MAX) {
-            // Bahkan tanpa kontinuitas masih kepanjangan: pangkas visualnya
-            // pada batas kata, sisakan kalimat yang diucapkan utuh.
-            const speakPart = core[1] ? `, ${core[1]}` : "";
-            const room = MULTI_MAX - speakPart.length - 1;
-            prompt = core[0].slice(0, Math.max(room, 40)).replace(/\s+\S*$/, "") + "…" + speakPart;
-          } else if (continuity) {
-            const room = MULTI_MAX - prompt.length - 2;
-            if (room >= 24) {
-              const c = continuity.length <= room ? continuity : continuity.slice(0, room - 1).replace(/\s+\S*$/, "") + "…";
-              prompt = `${core[0]}, ${c}${core[1] ? `, ${core[1]}` : ""}`;
+          const visual = `@Element1 ${String(s.visual_prompt || "").trim()}`;
+          const speak = spoken ? `, speaking in Indonesian: "${spoken}"` : "";
+          let prompt: string;
+          if (blen(visual + speak) > MULTI_BUDGET) {
+            prompt = cutBytes(visual, Math.max(MULTI_BUDGET - blen(speak), 40)) + speak;
+          } else {
+            prompt = visual + speak;
+            if (continuity) {
+              const room = MULTI_BUDGET - blen(prompt) - 2;
+              if (room >= 24) prompt = `${visual}, ${cutBytes(continuity, room)}${speak}`;
             }
           }
-          return { prompt: prompt.slice(0, MULTI_MAX), duration: String(fitted.each[i]) };
+          return { prompt, duration: String(fitted.each[i]) };
         });
 
         const element: Record<string, unknown> = {
