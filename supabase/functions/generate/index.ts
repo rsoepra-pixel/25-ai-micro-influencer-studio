@@ -1945,7 +1945,7 @@ Deno.serve(async (req) => {
           //
           // Dulu ditebak dari nama: "sadtalker pakai source_image_url, selain
           // itu video_url". Tebakan itu benar untuk dua model, lalu model avatar
-          // (Kling Avatar, Fabric, OmniHuman — migration 0034) datang dengan
+          // (Kling Avatar, Fabric, OmniHuman — migration 0035) datang dengan
           // `image_url`, jatuh ke cabang "selain itu", dan dikirimi video_url
           // yang tidak mereka kenal. 422, tanpa petunjuk bahwa katalognya yang
           // kurang. Sekarang model tanpa pemetaan ditolak di sini, sebelum ada
