@@ -1652,8 +1652,10 @@ Deno.serve(async (req) => {
         //
         // Urutan prioritas saat memangkas: visual dan kalimat yang diucapkan
         // TIDAK pernah dipotong (itu ceritanya); kontinuitas dipangkas dulu,
-        // dan kalau tetap tidak muat, dihilangkan dari shot itu — ia masih
-        // dikirim utuh lewat prompt tingkat atas di bawah.
+        // dan kalau tetap tidak muat, dihilangkan dari shot itu. Tidak ada
+        // tempat lain untuknya: Kling menolak `prompt` tingkat atas kalau
+        // `multi_prompt` ada ("cannot both be provided", 422 — job Kettlebell
+        // 9 Sep). Kontinuitas hidup hanya di dalam tiap shot.
         const MULTI_MAX = 512;
         const continuity = board.continuity ? String(board.continuity).trim() : "";
         const multi = shots.map((s, i) => {
@@ -1714,12 +1716,12 @@ Deno.serve(async (req) => {
             input[String(model.ref_image_field)] = model.ref_image_multi ? refPhotos : refPhotos[0];
           }
         } else {
+          // SENGAJA tanpa `prompt` tingkat atas. Versi 29 menaruh judul +
+          // kontinuitas di sana, dan fal menolak seluruh job: "'prompt' and
+          // 'multi_prompt' cannot both be provided". Skema fal tidak menandai
+          // keduanya saling eksklusif, jadi ini hanya ketahuan saat dijalankan.
           input = {
             [String(model.init_image_field || "start_image_url")]: first.image_url,
-            // Kontinuitas dikirim UTUH di sini, karena di tiap shot ia yang
-            // pertama dipangkas. Batasnya konservatif: skema fal tidak selalu
-            // menyebut maxLength, dan melampauinya berbiaya 422.
-            prompt: [board.title, continuity].filter(Boolean).join(". ").slice(0, 500),
             [String(model.duration_field || "duration")]: String(fitted.total),
             [String(model.multishot_field)]: multi,
             elements: [element],
