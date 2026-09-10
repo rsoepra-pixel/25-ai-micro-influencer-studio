@@ -11,7 +11,10 @@
 import { createClient } from "npm:@supabase/supabase-js@2";
 
 const SB_URL = Deno.env.get("SUPABASE_URL")!;
-const admin = createClient(SB_URL, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!, { auth: { persistSession: false } });
+// Dipakai dua kali: oleh klien admin di bawah, dan oleh storeRemote yang
+// memanggil REST Storage langsung karena butuh mengalirkan body.
+const SB_SERVICE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+const admin = createClient(SB_URL, SB_SERVICE_KEY, { auth: { persistSession: false } });
 
 const CORS = {
   "Access-Control-Allow-Origin": "*",
@@ -405,24 +408,65 @@ async function dashscopeKey(ws: string): Promise<string | null> {
   return provider === "qwen" ? await providerKey(ws, "text_api_key") : null;
 }
 
+// Sumber yang sudah hilang tidak akan pernah bisa diunduh ulang, jadi
+// kegagalannya diberi tanda supaya sapuan coba-ulang di poll berhenti
+// menyentuhnya. Sisanya sengaja TIDAK ditandai permanen: batas ukuran bisa
+// dinaikkan dan memori bisa lega di panggilan berikutnya, jadi mencoba lagi
+// masuk akal.
+const ARCHIVE_GONE = "PERMANEN";
+
+function archiveReason(e: unknown): string {
+  const msg = String((e as Error)?.message || e);
+  const gone = /Gagal mengunduh hasil \(HTTP (404|403|410)\)/.test(msg);
+  return `${gone ? ARCHIVE_GONE + ": " : ""}${msg}`.slice(0, 500);
+}
+
 // Unduh hasil dari URL provider dan simpan permanen di bucket media. Dipakai
 // untuk gambar, video, maupun audio — dari DashScope (URL-nya kedaluwarsa 24
 // jam) dan dari fal.ai (URL-nya awet, tapi tetap milik server orang lain).
 async function storeRemote(ws: string, url: string, jobId: string, fallbackCtype: string): Promise<string> {
   const res = await fetch(url);
-  if (!res.ok) throw new Error(`Gagal mengunduh hasil (HTTP ${res.status}).`);
+  if (!res.ok || !res.body) throw new Error(`Gagal mengunduh hasil (HTTP ${res.status}).`);
   const ctype = res.headers.get("content-type") || fallbackCtype;
-  const bytes = new Uint8Array(await res.arrayBuffer());
-  if (bytes.byteLength < 100) throw new Error("Hasil yang diunduh kosong.");
+  // Panjangnya dipakai dua kali: menolak badan kosong sebelum diunggah, dan
+  // ikut dilaporkan kalau unggahannya ditolak — karena "413" tanpa angka
+  // tidak memberi tahu siapa pun berapa batas yang terlampaui.
+  const lenHeader = res.headers.get("content-length");
+  const size = lenHeader ? Number(lenHeader) : NaN;
+  if (Number.isFinite(size) && size < 100) throw new Error("Hasil yang diunduh kosong.");
   // Urutannya penting: "video/mpeg" mengandung "mpeg" juga, jadi video dulu.
   const ext = ctype.includes("mp4") || ctype.includes("video") ? "mp4"
     : ctype.includes("mpeg") || ctype.includes("mp3") ? "mp3"
     : ctype.includes("wav") ? "wav"
     : ctype.includes("png") ? "png" : ctype.includes("webp") ? "webp" : "jpg";
   const path = `${ws}/${jobId}.${ext}`;
-  const { error: upErr } = await admin.storage.from("media")
-    .upload(path, bytes, { contentType: ctype, upsert: true, cacheControl: "3600" });
-  if (upErr) throw new Error(`Gagal menyimpan hasil: ${upErr.message}`);
+
+  // supabase-js tidak dipakai di sini. `upload()` meneruskan body apa adanya
+  // ke fetch, sementara Deno menolak ReadableStream sebagai body tanpa
+  // `duplex: "half"` — opsi yang tidak bisa disisipkan lewat storage-js. REST
+  // Storage dipanggil langsung supaya opsi itu bisa diatur.
+  const up = await fetch(`${SB_URL}/storage/v1/object/media/${path}`, {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${SB_SERVICE_KEY}`,
+      "content-type": ctype,
+      "cache-control": "max-age=3600",
+      "x-upsert": "true",
+      // Content-Length sengaja TIDAK dikirim. Body-nya aliran, jadi
+      // panjangnya baru pasti setelah aliran habis; mengirim angka dari
+      // header provider berarti bertaruh keduanya sama persis, dan kalau
+      // meleset unggahannya ditolak karena alasan yang menyesatkan. Biarkan
+      // Deno memakai chunked encoding. `size` tetap dipakai untuk menolak
+      // badan kosong dan untuk menyebut ukurannya di pesan galat.
+    },
+    body: res.body,
+    duplex: "half",
+  } as RequestInit);
+  if (!up.ok) {
+    const detail = (await up.text().catch(() => "")).slice(0, 300);
+    const mb = Number.isFinite(size) ? ` (${(size / 1048576).toFixed(1)} MB)` : "";
+    throw new Error(`Gagal menyimpan hasil${mb}: HTTP ${up.status} ${detail}`);
+  }
   return admin.storage.from("media").getPublicUrl(path).data.publicUrl;
 }
 
@@ -2339,15 +2383,25 @@ Deno.serve(async (req) => {
               // URL fal yang masih hidup selalu lebih baik daripada menandai
               // pekerjaan berbayar sebagai gagal.
               let url = raw;
+              let archiveError: string | null = null;
               if (raw) {
                 try {
                   url = await storeRemote(ws, raw, jb.id, defaultCtype(jb.task));
-                } catch (_e) {
+                } catch (e) {
+                  // Job-nya TETAP berhasil, persis seperti sebelumnya. Yang
+                  // berubah cuma satu: alasannya tidak lagi hilang. Tanpa ini
+                  // hasil yang masih menumpang CDN provider tidak bisa
+                  // dibedakan dari yang sudah aman, dan tidak ada yang tahu
+                  // ada yang perlu diulang.
                   url = raw;
+                  archiveError = archiveReason(e);
+                  console.error(`arsip gagal untuk job ${jb.id}: ${archiveError}`);
                 }
               }
               const cost = Number(jb.cost_estimate_usd) || 0;
-              await admin.from("production_jobs").update({ status: "succeeded", output_url: url, cost_actual_usd: cost }).eq("id", jb.id);
+              await admin.from("production_jobs").update({
+                status: "succeeded", output_url: url, cost_actual_usd: cost, archive_error: archiveError,
+              }).eq("id", jb.id);
               if (url) {
                 await admin.from("assets").insert({
                   workspace_id: ws, created_by: jb.created_by ?? null, influencer_id: jb.influencer_id,
@@ -2368,7 +2422,41 @@ Deno.serve(async (req) => {
             }
           } catch (_e) { /* job berikutnya; dicoba lagi di poll berikut */ }
         }
-        return json({ updated });
+
+        // ---- Arsip yang tertunggak ----
+        //
+        // Gagal arsip tidak menggagalkan job, jadi tanpa sapuan ini ia tidak
+        // akan pernah dicoba lagi: poll cuma melihat job `running`. Hasilnya
+        // menumpang CDN provider sampai tautannya mati, dan itu terjadi tanpa
+        // ada yang tahu — persis nasib job a1d0e5fe.
+        //
+        // Tiga per panggilan. Satu file besar yang selalu gagal tidak boleh
+        // memakan jatah waktu poll dan menahan job lain yang sedang berjalan.
+        // Yang sumbernya sudah hilang ditandai PERMANEN dan tidak diambil lagi
+        // — mengunduh ulang URL yang 404 tidak akan pernah berhasil.
+        let rescued = 0;
+        const { data: pending } = await admin.from("production_jobs")
+          .select("id, task, output_url")
+          .eq("workspace_id", ws).eq("status", "succeeded")
+          .not("archive_error", "is", null)
+          .not("archive_error", "like", `${ARCHIVE_GONE}%`)
+          .limit(3);
+        for (const jb of pending || []) {
+          if (!jb.output_url) continue;
+          const from = String(jb.output_url);
+          try {
+            const url = await storeRemote(ws, from, jb.id, defaultCtype(jb.task));
+            await admin.from("production_jobs").update({ output_url: url, archive_error: null }).eq("id", jb.id);
+            // Asetnya masih menunjuk URL lama. Ikut dipindahkan, kalau tidak
+            // Drive tetap memutar dari CDN provider padahal salinannya sudah
+            // aman — dan tautan itu yang nanti mati.
+            await admin.from("assets").update({ url }).eq("workspace_id", ws).eq("url", from);
+            rescued++;
+          } catch (e) {
+            await admin.from("production_jobs").update({ archive_error: archiveReason(e) }).eq("id", jb.id);
+          }
+        }
+        return json({ updated, rescued });
       }
       default:
         throw new Error(`Action tidak dikenal: ${body.action}`);
