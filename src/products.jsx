@@ -7,6 +7,11 @@
 // yang sedikit berbeda — lalu kemasannya "berubah" antar video tanpa ada yang
 // tahu kenapa. Foto produk disimpan sekali di sini, wizard tinggal memilih.
 //
+// Wizard UGC boleh memanggil <NewProduct> agar produk bisa dibuat tanpa pindah
+// halaman. Itu tidak melanggar alasan di atas: yang dibuat tetap satu baris
+// `products` yang sama, tersimpan dan bisa dipakai video berikutnya — yang
+// dihindari adalah foto yang menempel pada satu video saja.
+//
 // Foto yang dipakai HARUS foto asli. Model gambar mengarang label dan bentuk
 // kemasan kalau cuma diberi teks; foto asli sebagai referensi adalah
 // satu-satunya cara kemasannya tetap sama — dan itu pun tidak 100%, jadi
@@ -72,7 +77,7 @@ async function filesToDataUris(files) {
   return out;
 }
 
-function NewProduct({ ws, onCreated }) {
+export function NewProduct({ ws, onCreated, className = "card p6", title = "Tambah produk" }) {
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
   const [points, setPoints] = useState("");
@@ -87,10 +92,11 @@ function NewProduct({ ws, onCreated }) {
     setErr(null); setBusy(true);
     try {
       if (!name.trim()) throw new Error("Nama produk wajib diisi.");
+      const savedName = name.trim();
       setStep("Menyimpan produk…");
       const { data: p, error } = await supa.from("products").insert({
         workspace_id: ws.id,
-        name: name.trim(),
+        name: savedName,
         description: description.trim() || null,
         selling_points: linesToList(points),
         avoid_claims: avoid.trim() || null,
@@ -98,24 +104,29 @@ function NewProduct({ ws, onCreated }) {
       }).select("id").single();
       if (error) throw new Error(error.message);
 
+      let photosFailed = 0;
       if (files.length) {
         setStep(`Mengunggah ${files.length} foto…`);
         const photos = await filesToDataUris(files);
         const r = await callGenerate({ action: "product_photos", product_id: p.id, photos });
-        if (r.photos_failed?.length) {
-          setErr(`Produk tersimpan, tapi ${r.photos_failed.length} foto gagal: ` +
+        photosFailed = r.photos_failed?.length || 0;
+        if (photosFailed) {
+          setErr(`Produk tersimpan, tapi ${photosFailed} foto gagal: ` +
             r.photos_failed.map((f) => `foto ke-${f.index} (${f.reason})`).join(", "));
         }
       }
       setName(""); setDescription(""); setPoints(""); setAvoid(""); setLink(""); setFiles([]);
-      onCreated?.(p.id);
+      // photosFailed ikut dilaporkan: pemanggil yang menutup form ini setelah
+      // sukses (wizard UGC) kalau tidak akan ikut menutup pesan galat di atas
+      // sebelum sempat dibaca.
+      onCreated?.(p.id, { name: savedName, photosFailed });
     } catch (e) { setErr(e.message); }
     setBusy(false); setStep(null);
   }
 
   return (
-    <div className="card p6">
-      <div className="bold mb3">Tambah produk</div>
+    <div className={className}>
+      <div className="bold mb3">{title}</div>
       <div className="grid mb3" style={{ gridTemplateColumns: "1fr 1fr" }}>
         <div>
           <label className="label">Nama produk *</label>
