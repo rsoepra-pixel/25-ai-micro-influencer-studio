@@ -45,11 +45,12 @@ const legalHref = (page) => {
 
 const NAV = [
   ["/", "🏠 Dashboard"],
+  // Dua aset yang dipakai ulang (siapa, apa) di atas; alat produksi di bawahnya.
   ["/influencers", "👥 Influencers"],
+  ["/products", "📦 Product Kit"],
   ["/studio", "🎬 Production Studio"],
   ["/storyboard", "🎞️ Storyboard"],
   ["/ugc", "🎤 Video UGC"],
-  ["/products", "📦 Product Kit"],
   ["/planner", "🗓️ Content Planner"],
   ["/reports", "📊 Laporan"],
   ["/tasks", "✅ Tasks"],

@@ -32,7 +32,7 @@ import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { supa, callGenerate } from "./supa.js";
 import { useQuery, unwrap, Badge, byPrice, priceLabel } from "./views.jsx";
 import { LibraryPicker } from "./library.jsx";
-import { useProducts } from "./products.jsx";
+import { useProducts, NewProduct } from "./products.jsx";
 import { waitForJob } from "./storyboard.jsx";
 
 const PLATFORMS = [
@@ -99,7 +99,8 @@ export function Ugc({ ws, refresh, tick, mode }) {
         (wajah dan kemasan harus benar), baru audio dan videonya dibayar.
       </p>
 
-      <NewProject ws={ws} influencers={influencers} products={products} onCreated={(id) => { bump(); setOpenId(id); }} />
+      <NewProject ws={ws} influencers={influencers} products={products}
+        onProductCreated={bump} onCreated={(id) => { bump(); setOpenId(id); }} />
 
       <h2 className="mt6 mb2">Proyek UGC</h2>
       {error && <div className="msg-err mb3">Gagal memuat proyek: {String(error.message || error)}</div>}
@@ -145,7 +146,7 @@ function ProjectCard({ project, influencers, products, onOpen }) {
 // ---------------------------------------------------------------------------
 // Brief: lima input → proyek tersimpan.
 
-function NewProject({ ws, influencers, products, onCreated }) {
+function NewProject({ ws, influencers, products, onProductCreated, onCreated }) {
   const [infId, setInfId] = useState("");
   const [productId, setProductId] = useState("");
   const [platform, setPlatform] = useState("tiktok");
@@ -153,11 +154,16 @@ function NewProject({ ws, influencers, products, onCreated }) {
   const [idea, setIdea] = useState("");
   const [script, setScript] = useState("");
   const [tpl, setTpl] = useState(null);
+  const [showNewProduct, setShowNewProduct] = useState(false);
+  // Produk yang baru dibuat sudah bisa dipilih sebelum daftarnya selesai
+  // dimuat ulang; tanpa ini <select> sempat kosong padahal sudah tersimpan.
+  const [pending, setPending] = useState(null);
   const [draft, setDraft] = useState(null);
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState(null);
 
   const product = products?.find((p) => p.id === productId);
+  const pendingUnlisted = pending && !(products || []).some((p) => p.id === pending.id);
   const ownScript = script.trim().length > 0;
 
   async function compose() {
@@ -216,11 +222,15 @@ function NewProject({ ws, influencers, products, onCreated }) {
           <label className="label">Produk *</label>
           <select className="input" value={productId} onChange={(e) => setProductId(e.target.value)}>
             <option value="">— pilih —</option>
+            {pendingUnlisted && <option value={pending.id}>{pending.name} (menyimpan…)</option>}
             {(products || []).map((p) => <option key={p.id} value={p.id}>{p.name} ({p.photos.length} foto)</option>)}
           </select>
-          <p className="tiny muted" style={{ marginTop: 4 }}>
-            Belum ada? <a href="#/products">Tambah di Product Kit →</a>
-          </p>
+          <div className="row" style={{ gap: 6, marginTop: 4 }}>
+            <button type="button" className="btn btn2 tiny" onClick={() => setShowNewProduct((v) => !v)}>
+              {showNewProduct ? "Tutup" : "+ Produk baru"}
+            </button>
+            <a className="tiny muted" href="#/products" style={{ alignSelf: "center" }}>Kelola Product Kit →</a>
+          </div>
         </div>
         <div>
           <label className="label">Platform</label>
@@ -229,6 +239,23 @@ function NewProject({ ws, influencers, products, onCreated }) {
           </select>
         </div>
       </div>
+
+      {showNewProduct && (
+        <div className="mb3">
+          <NewProduct
+            ws={ws}
+            className="card p4"
+            title="Produk baru — tersimpan ke Product Kit dan bisa dipakai video berikutnya"
+            onCreated={(id, { name, photosFailed }) => {
+              setPending({ id, name });
+              setProductId(id);
+              // Tetap terbuka kalau ada foto yang gagal, supaya galatnya terbaca.
+              setShowNewProduct(photosFailed > 0);
+              onProductCreated?.();
+            }}
+          />
+        </div>
+      )}
 
       <LibraryPicker kind="ugc" onPick={(t) => {
         setTpl(t); setIdea(t.idea || "");
