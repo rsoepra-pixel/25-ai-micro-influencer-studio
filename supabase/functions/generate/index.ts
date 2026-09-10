@@ -715,6 +715,13 @@ function fitShotDurations(wanted: number[], maxTotal = 15): { each: number[]; to
 // Statusnya dibaca dari subscription_state() di database, fungsi yang sama
 // yang dipakai halaman admin. Menyalin aturannya ke sini akan membuat dua
 // tempat yang cepat atau lambat berbeda, dan yang lebih longgar selalu menang.
+//
+// Pagar ini BUKAN satu-satunya. Aturan yang sama juga dipasang sebagai trigger
+// BEFORE INSERT di `production_jobs` (migrasi 0038), dan itulah yang benar-
+// benar menjamin: tiga pemanggilan di bawah adalah tiga hal yang harus
+// sama-sama benar selamanya, sementara jalur submit keempat yang ditulis nanti
+// tidak akan mengingatkan siapa pun bahwa ia lupa dipagari. Yang di sini ada
+// supaya penolakannya datang lebih cepat dan berbahasa manusia sejak awal.
 async function requireSubscription(
   ws: string,
   mode: string,
