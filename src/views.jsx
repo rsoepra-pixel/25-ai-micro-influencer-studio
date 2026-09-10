@@ -2792,7 +2792,10 @@ function SocialConnections({ ws, tick, query }) {
     const socialErr = p.get("social_error");
     if (connected) setMsg(`${connected === "instagram" ? "Instagram" : "TikTok"} berhasil terhubung.`);
     if (socialErr) setMsg(`Gagal menghubungkan akun: ${socialErr}`);
-    if (connected || socialErr) window.history.replaceState(null, "", window.location.pathname + window.location.search + "#/settings");
+    // Query dibersihkan supaya refresh tidak memunculkan pesan yang sama lagi
+    // — tapi tabnya IKUT ditulis balik. Tanpa itu, refresh sesudah OAuth
+    // melempar user ke tab Akun, jauh dari kartu yang baru saja dia hubungkan.
+    if (connected || socialErr) window.history.replaceState(null, "", window.location.pathname + window.location.search + "#/settings?tab=koneksi");
   }, [query]);
 
   async function saveConfig(platform, e) {
@@ -2949,7 +2952,7 @@ function CalendarConnection({ ws, tick, query }) {
     const calErr = p.get("calendar_error");
     if (connected) setMsg("Google Calendar berhasil terhubung.");
     if (calErr) setMsg(`Gagal menghubungkan Google Calendar: ${calErr}`);
-    if (connected || calErr) window.history.replaceState(null, "", window.location.pathname + window.location.search + "#/settings");
+    if (connected || calErr) window.history.replaceState(null, "", window.location.pathname + window.location.search + "#/settings?tab=koneksi");
   }, [query]);
 
   async function saveConfig(e) {
@@ -3798,6 +3801,81 @@ function LinksCard({ ws, tick }) {
   );
 }
 
+// Settings dipecah jadi tab, bukan satu kolom kartu yang panjang.
+//
+// KENAPA
+//
+// Halaman ini sudah berisi 13 kartu yang tidak saling berhubungan: password
+// akun, key provider, batas budget, koneksi sosial, pustaka prompt, katalog
+// harga. Digulung jadi satu, mencari "di mana setelan X" berarti menggulir
+// melewati sembilan kartu yang tidak dicari — dan tiap kartu itu menembak
+// query-nya sendiri saat halaman dibuka, padahal cuma satu yang dilihat.
+//
+// Tab menyelesaikan dua-duanya sekaligus: yang dicari punya alamat, dan yang
+// tidak dibuka tidak ikut dimuat (panel non-aktif tidak dipasang sama sekali).
+const SETTINGS_TABS = [
+  ["akun", "Akun"],
+  ["provider", "Provider & Biaya"],
+  ["koneksi", "Koneksi"],
+  ["pustaka", "Pustaka Prompt"],
+  ["katalog", "Katalog Model"],
+  ["lanjutan", "Lanjutan"],
+];
+
+// Tab mana yang terbuka disimpan di URL (#/settings?tab=koneksi), BUKAN di
+// state saja. Alasannya bukan kerapian: OAuth Instagram/TikTok/Calendar
+// kembali ke halaman ini dengan hasilnya di query string, dan kalau tabnya
+// tidak ikut ditentukan, pesan "berhasil terhubung" muncul di panel yang
+// sedang tidak dilihat siapa pun.
+function tabFromQuery(query) {
+  const p = new URLSearchParams(query || "");
+  if (p.get("social_connected") || p.get("social_error")
+    || p.get("calendar_connected") || p.get("calendar_error")) return "koneksi";
+  const t = p.get("tab");
+  return SETTINGS_TABS.some(([k]) => k === t) ? t : "akun";
+}
+
+function SettingsTabs({ current, onGo }) {
+  return (
+    <div
+      className="row mb4"
+      role="tablist"
+      style={{
+        gap: 4, overflowX: "auto", paddingBottom: 2,
+        borderBottom: "1px solid var(--border)", flexWrap: "nowrap",
+      }}
+    >
+      {SETTINGS_TABS.map(([key, label]) => {
+        const active = key === current;
+        return (
+          <button
+            key={key}
+            type="button"
+            role="tab"
+            aria-selected={active}
+            onClick={() => onGo(key)}
+            style={{
+              flex: "0 0 auto", whiteSpace: "nowrap", cursor: "pointer",
+              padding: "9px 14px", fontSize: 14, fontWeight: active ? 700 : 500,
+              color: active ? "var(--brand-strong)" : "var(--ink-2)",
+              background: active ? "var(--brand-soft)" : "transparent",
+              border: "none",
+              // Garis bawah tebal, bukan kotak folder: mana yang aktif harus
+              // terbaca dalam sekali lihat, termasuk saat baris tabnya digeser
+              // ke samping di layar sempit.
+              borderBottom: "2px solid " + (active ? "var(--brand)" : "transparent"),
+              borderRadius: "8px 8px 0 0",
+              marginBottom: -1,
+            }}
+          >
+            {label}
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
 export function Settings({ ws, refresh, tick, spend, spendError, query }) {
   const [models, reload, modelsError] = useQuery(async () =>
     unwrap(await supa.from("provider_models").select("*").order("task").order("est_price_usd")), [ws.id, tick]);
@@ -3813,6 +3891,14 @@ export function Settings({ ws, refresh, tick, spend, spendError, query }) {
   // Default byo_key selagi status masih dimuat: itu tampilan yang sudah ada
   // sekarang, jadi tidak ada kedipan kartu yang muncul lalu hilang.
   const creditMode = keyState?.billing_mode === "credit";
+
+  // Nilai awal dibaca dari query SEKALI saat mount, sebelum kartu koneksi
+  // membersihkan query-nya sendiri lewat replaceState.
+  const [tab, setTab] = useState(() => tabFromQuery(query));
+  const goTab = useCallback((key) => {
+    setTab(key);
+    window.history.replaceState(null, "", `#/settings?tab=${key}`);
+  }, []);
 
   useEffect(() => {
     callGenerate({ action: "status" }).then(setKeyState).catch(() => setKeyState({ fal_key: false, mode: "mock" }));
@@ -3863,14 +3949,29 @@ export function Settings({ ws, refresh, tick, spend, spendError, query }) {
   return (
     <div>
       <h1 style={{ fontSize: 24, fontWeight: 800 }} className="mb4">Settings</h1>
-      <AccountAdmin ws={ws} tick={tick} />
+      <SettingsTabs current={tab} onGo={goTab} />
+
+      {tab === "akun" && (<>
+        <AccountAdmin ws={ws} tick={tick} />
+        <BillingCard ws={ws} tick={tick} />
+      </>)}
+
+      {tab === "koneksi" && (<>
+        <SocialConnections ws={ws} tick={tick} query={query} />
+        <CalendarConnection ws={ws} tick={tick} query={query} />
+        <LinksCard ws={ws} tick={tick} />
+      </>)}
+
+      {tab === "pustaka" && <LibraryCard ws={ws} tick={tick} />}
+
+      {tab === "lanjutan" && (<>
+        <McpSettings ws={ws} tick={tick} />
+        <PlatformConfig st={platform} reload={reloadPlatform} />
+        {platform?.is_platform_admin && <PromotionsCard tick={tick} />}
+      </>)}
+
+      {tab === "provider" && (<>
       <AiWriterSettings keyState={keyState} onSaved={() => callGenerate({ action: "status" }).then(setKeyState).catch(() => {})} />
-      <McpSettings ws={ws} tick={tick} />
-      <PlatformConfig st={platform} reload={reloadPlatform} />
-      {platform?.is_platform_admin && <PromotionsCard tick={tick} />}
-      <BillingCard ws={ws} tick={tick} />
-      <LinksCard ws={ws} tick={tick} />
-      <LibraryCard ws={ws} tick={tick} />
       {msg && <div className="msg-ok mb3">{msg}</div>}
       <div className="grid mb4" style={{ gridTemplateColumns: "repeat(auto-fit,minmax(340px,1fr))" }}>
         <div className="card p6">
@@ -3886,7 +3987,7 @@ export function Settings({ ws, refresh, tick, spend, spendError, query }) {
             <p className="small muted mb3">
               Workspace ini memakai <b>kredit</b>: API key provider disediakan platform,
               jadi kamu tidak perlu memasang key sendiri. Yang menentukan job bisa jalan
-              atau tidak adalah saldo di kartu Saldo Kredit di atas.
+              atau tidak adalah saldo di tab <b>Akun</b>.
             </p>
           ) : (<>
           <div className="card p4 mb3" style={{ background: "var(--subtle)" }}>
@@ -3944,8 +4045,9 @@ export function Settings({ ws, refresh, tick, spend, spendError, query }) {
         </div>
         )}
       </div>
-      <SocialConnections ws={ws} tick={tick} query={query} />
-      <CalendarConnection ws={ws} tick={tick} query={query} />
+      </>)}
+
+      {tab === "katalog" && (
       <div className="card p6">
         <div className="bold mb1">Katalog Model</div>
         <p className="tiny muted mb3">Harga indikatif (riset Jul 2026) untuk estimasi + budget guard. Verifikasi dengan harga resmi provider, lalu perbarui di sini.</p>
@@ -3970,6 +4072,7 @@ export function Settings({ ws, refresh, tick, spend, spendError, query }) {
           </tbody>
         </table>
       </div>
+      )}
     </div>
   );
 }
