@@ -108,21 +108,36 @@ Deno.serve(async (req) => {
   let payload: Record<string, unknown> = {};
   try { payload = JSON.parse(rawBody); } catch { /* dicatat apa adanya di bawah */ }
 
-  // Semua jalan keluar lewat sini, supaya tidak ada cabang yang bisa selesai
-  // tanpa meninggalkan jejak. `event_id` unik = idempotensi: notifikasi yang
-  // sama dikirim ulang akan bentrok di sini dan tidak diproses dua kali.
+  // Dihitung SEKALI. Dulu nilainya dibuat ulang di dalam record(), jadi dua
+  // pemanggilan dalam satu request yang tidak punya Request-Id akan memakai
+  // dua event_id yang berbeda — dan idempotensi yang kuncinya berubah-ubah
+  // bukan idempotensi.
+  const eventId = requestId || `no-request-id-${crypto.randomUUID()}`;
+  const rawForLog = Object.keys(payload).length ? payload : { unparsed: rawBody.slice(0, 4000) };
+
+  // Baris tempat hasil pemrosesan ini akan tinggal. Diklaim setelah tanda
+  // tangannya terbukti, sebelum ada satu pun tindakan yang dijalankan.
+  let eventRowId: string | null = null;
+
+  // Pencatatan untuk cabang-cabang SEBELUM verifikasi selesai (secret belum
+  // dipasang, tanda tangan salah). Cabang-cabang itu tidak pernah bertindak,
+  // jadi mereka cukup meninggalkan jejak.
   async function record(fields: Record<string, unknown>) {
     const { error } = await admin.from("payment_events").insert({
-      provider: "doku",
-      event_id: requestId || `no-request-id-${crypto.randomUUID()}`,
-      raw: Object.keys(payload).length ? payload : { unparsed: rawBody.slice(0, 4000) },
-      ...fields,
+      provider: "doku", event_id: eventId, raw: rawForLog, ...fields,
     });
-    // Bentrok unique = notifikasi ulangan. Itu bukan kegagalan: jawab 200
-    // supaya Doku berhenti mengirim ulang.
     if (error && !String(error.message).includes("duplicate key")) {
       console.error("gagal mencatat payment_event:", error.message);
     }
+    return !!error;
+  }
+
+  // Hasil akhir ditulis ke baris yang SUDAH diklaim, bukan disisipkan baris
+  // baru — kalau disisipkan, ia bentrok dengan klaimnya sendiri.
+  async function finish(fields: Record<string, unknown>) {
+    if (!eventRowId) return record(fields);
+    const { error } = await admin.from("payment_events").update(fields).eq("id", eventRowId);
+    if (error) console.error("gagal memperbarui payment_event:", error.message);
     return !!error;
   }
 
@@ -161,6 +176,42 @@ Deno.serve(async (req) => {
     }
 
     // ---- Mulai dari sini, pengirimnya sudah terbukti Doku ----
+
+    // KLAIM DULU, BARU BERTINDAK.
+    //
+    // Versi pertama mengandalkan unique (provider, event_id) di pencatatan
+    // AKHIR sebagai idempotensi. Itu keliru, dan kelirunya mahal: bentroknya
+    // baru terjadi setelah activate_subscription selesai. Kiriman ulang — dan
+    // payment gateway SELALU mengirim ulang — tetap memperpanjang langganan
+    // sekali lagi, lalu baris catatannya dibuang karena bentrok. Satu
+    // pembayaran jadi dua tahun, dan satu-satunya jejaknya justru yang hilang.
+    // Ketahuan dari uji end-to-end: kiriman kedua memindahkan expires_at dari
+    // 2027 ke 2028.
+    //
+    // Sekarang barisnya dibuat lebih dulu dengan result "processing". Yang
+    // kalah di unique constraint adalah kiriman ulang, dan ia pulang tanpa
+    // menyentuh apa pun.
+    const { data: claimed, error: claimErr } = await admin.from("payment_events")
+      .insert({ provider: "doku", event_id: eventId, signature_ok: true, raw: rawForLog, result: "processing" })
+      .select("id").single();
+
+    if (claimErr) {
+      const { data: prev } = await admin.from("payment_events")
+        .select("id, result").eq("provider", "doku").eq("event_id", eventId).maybeSingle();
+      // Boleh diproses ulang HANYA kalau percobaan sebelumnya tidak sampai
+      // memberi akses. Contoh nyata: harga paket belum diisi saat notifikasi
+      // pertama datang (result "no_plan_match"); operator mengisinya, Doku
+      // mengirim ulang, dan kiriman itu memang HARUS jadi. Yang tidak boleh
+      // diulang cuma yang sudah aktif atau sedang diproses.
+      if (!prev || prev.result === "activated" || prev.result === "processing") {
+        return json({ ok: true, duplicate: true });
+      }
+      eventRowId = prev.id as string;
+      await admin.from("payment_events").update({ result: "processing" }).eq("id", eventRowId);
+    } else {
+      eventRowId = claimed.id as string;
+    }
+
     const status = String(pick(payload, ["transaction.status", "status", "order.status"]) || "").toUpperCase();
     const email = String(pick(payload, [
       "customer.email", "order.customer.email", "email", "customer_email",
@@ -176,14 +227,14 @@ Deno.serve(async (req) => {
     ]) || "");
 
     if (!PAID.has(status)) {
-      await record({
+      await finish({
         signature_ok: true, email, amount_idr: amount, external_ref: invoice,
         result: "ignored_status", detail: `Status "${status}" bukan pembayaran lunas — tidak ada akses yang diberikan.`,
       });
       return json({ ok: true, ignored: status });
     }
     if (!email) {
-      await record({
+      await finish({
         signature_ok: true, amount_idr: amount, external_ref: invoice,
         result: "error", detail: "Payload tidak memuat email pembeli — akun tidak bisa dibuat. Lihat kolom raw untuk bentuk payload sebenarnya.",
       });
@@ -197,7 +248,7 @@ Deno.serve(async (req) => {
       || (plans || []).find((p) => p.price_idr != null && Number(p.price_idr) === amount);
 
     if (!plan) {
-      await record({
+      await finish({
         signature_ok: true, email, amount_idr: amount, external_ref: invoice,
         result: "no_plan_match",
         detail: `Tidak ada paket aktif dengan SKU "${sku}" atau harga ${amount}. Isi harga/SKU paket di halaman Pelanggan, lalu proses ulang event ini.`,
@@ -223,7 +274,7 @@ Deno.serve(async (req) => {
         email, password: pw, email_confirm: true,
       });
       if (mkErr) {
-        await record({
+        await finish({
           signature_ok: true, email, amount_idr: amount, external_ref: invoice,
           matched_plan: plan.code, result: "error", detail: `Gagal membuat akun: ${mkErr.message}`,
         });
@@ -237,7 +288,7 @@ Deno.serve(async (req) => {
     const { data: mem } = await admin.from("workspace_members")
       .select("workspace_id").eq("user_id", userId).order("created_at").limit(1).maybeSingle();
     if (!mem) {
-      await record({
+      await finish({
         signature_ok: true, email, amount_idr: amount, external_ref: invoice,
         matched_plan: plan.code, result: "error", detail: "Akun ada tapi tidak punya workspace.",
       });
@@ -249,7 +300,7 @@ Deno.serve(async (req) => {
       memo: `Doku ${status} — ${amount}`, actor: null,
     });
     if (actErr) {
-      await record({
+      await finish({
         signature_ok: true, email, amount_idr: amount, external_ref: invoice,
         matched_plan: plan.code, workspace_id: mem.workspace_id,
         result: "error", detail: `Aktivasi gagal: ${actErr.message}`,
@@ -258,7 +309,7 @@ Deno.serve(async (req) => {
     }
 
     const row = Array.isArray(act) ? act[0] : act;
-    await record({
+    await finish({
       signature_ok: true, email, amount_idr: amount, external_ref: invoice,
       matched_plan: plan.code, workspace_id: mem.workspace_id, result: "activated",
       detail: `${created ? "Akun baru dibuat" : "Akun lama"}, aktif sampai ${row?.out_expires_at}` +
@@ -266,7 +317,13 @@ Deno.serve(async (req) => {
     });
     return json({ ok: true, activated: true, new_account: created });
   } catch (e) {
-    await record({ signature_ok: false, result: "error", detail: String((e as Error).message || e).slice(0, 500) });
+    // `signature_ok` hanya ditulis kalau barisnya belum ada. Kalau sudah
+    // diklaim, tanda tangannya SUDAH terbukti benar dan menimpanya dengan
+    // false akan menuduh Doku mengirim sesuatu yang tidak pernah ia kirim.
+    await finish({
+      ...(eventRowId ? {} : { signature_ok: false }),
+      result: "error", detail: String((e as Error).message || e).slice(0, 500),
+    });
     return json({ error: "internal" }, 500);
   }
 });
