@@ -4122,11 +4122,22 @@ export function Settings({ ws, refresh, tick, spend, spendError, query }) {
 
           <p className="tiny muted mb2">Semua key disimpan di tabel terkunci server — tidak pernah dikirim balik ke browser.</p>
           </>)}
-          <div className="row">
-            <button className="btn btn2" onClick={() => setMode("mock")} type="button">Mode Mock</button>
-            <button className="btn" onClick={() => setMode("live")} type="button"
-              disabled={!creditMode && !keyState?.fal_key && !keyState?.hf_token}>Aktifkan Live</button>
-          </div>
+          {/* Mode mock hanya untuk operator platform, dan itu ditegakkan di
+              database (migrasi 0042), bukan di sini. Menyembunyikan tombolnya
+              adalah kerapian: pelanggan yang menekannya akan mendapat
+              penolakan yang benar tapi membingungkan, karena tombolnya sendiri
+              yang menjanjikan sesuatu yang tidak pernah boleh terjadi. */}
+          {platform?.is_platform_admin ? (
+            <div className="row">
+              <button className="btn btn2" onClick={() => setMode("mock")} type="button">Mode Mock</button>
+              <button className="btn" onClick={() => setMode("live")} type="button">Aktifkan Live</button>
+            </div>
+          ) : (
+            <p className="tiny muted" style={{ marginBottom: 0 }}>
+              Generate selalu memanggil provider sungguhan dan memotong saldo. Model gratis
+              (Hugging Face) tidak memotong apa pun.
+            </p>
+          )}
         </div>
         {/* Batas bulanan itu rem sukarela atas uang user sendiri. Di mode kredit
             yang membatasi adalah saldo, dan saldo tidak boleh bisa dimatikan

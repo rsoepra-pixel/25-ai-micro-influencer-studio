@@ -74,6 +74,112 @@ export function SubscriptionCard({ tick }) {
 }
 
 // ---------------------------------------------------------------------------
+// Memberi saldo ke satu pelanggan.
+//
+// Operator menerima RUPIAH, tapi saldo dihitung dalam USD. Memaksa dia membagi
+// sendiri di kalkulator adalah cara paling mudah menaruh angka yang salah ke
+// dalam saldo orang — jadi dua-duanya bisa diketik, dan hasil konversinya
+// terlihat SEBELUM tombolnya ditekan, bukan sesudah.
+function TopupForm({ target, rate, onDone, onCancel }) {
+  const [satuan, setSatuan] = useState("idr");
+  const [nilai, setNilai] = useState("");
+  const [kind, setKind] = useState("topup");
+  const [note, setNote] = useState("");
+  const [ref, setRef] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [err, setErr] = useState(null);
+
+  const angka = Number(nilai);
+  const valid = Number.isFinite(angka) && angka !== 0;
+  // Pratinjau konversi. Tanpa kurs, rupiah tidak bisa dihitung sama sekali —
+  // dan itu dikatakan di sini, bukan disembunyikan sampai tombolnya ditekan.
+  const usdPreview = satuan === "usd" ? angka : (rate ? Math.round((angka / rate) * 100) / 100 : null);
+
+  async function kirim(e) {
+    e.preventDefault();
+    setBusy(true); setErr(null);
+    try {
+      const r = await callApp({
+        action: "customer_topup",
+        workspace_id: target.workspace_id,
+        [satuan]: angka,
+        kind,
+        note: note.trim() || null,
+        ref: ref.trim() || null,
+      });
+      onDone(
+        r.duplicate
+          ? `Referensi "${r.ref}" sudah pernah dicatat — saldo TIDAK ditambah dua kali. Saldo ${target.email}: $${r.balance.toFixed(2)}.`
+          : `${r.credited_usd < 0 ? "Dikurangi" : "Ditambahkan"} $${Math.abs(r.credited_usd).toFixed(2)} ke ${target.email}. Saldo sekarang $${r.balance.toFixed(2)}.`,
+      );
+    } catch (e2) { setErr(e2.message); }
+    setBusy(false);
+  }
+
+  return (
+    <div className="card p6 mb4" style={{ borderLeft: "3px solid var(--brand)" }}>
+      <div className="bold mb1">Beri saldo — {target.email}</div>
+      <p className="tiny muted mb3">
+        Saldo sekarang <b>${Number(target.balance_usd || 0).toFixed(2)}</b>.
+        {rate
+          ? <> Kurs jual yang berlaku: <b>Rp {rate.toLocaleString("id-ID")}</b> per USD.</>
+          : <> Kurs jual belum diisi, jadi hanya USD yang bisa dipakai.</>}
+      </p>
+      <form onSubmit={kirim}>
+        <div className="row mb3" style={{ gap: 8, flexWrap: "wrap" }}>
+          <select className="input" style={{ width: 110 }} value={satuan} onChange={(e) => setSatuan(e.target.value)}>
+            <option value="idr" disabled={!rate}>Rupiah</option>
+            <option value="usd">USD</option>
+          </select>
+          <input
+            className="input" style={{ width: 160 }} type="number" step={satuan === "idr" ? "1000" : "0.01"}
+            placeholder={satuan === "idr" ? "1000000" : "38.89"}
+            value={nilai} onChange={(e) => setNilai(e.target.value)} required
+          />
+          <select className="input" style={{ width: 160 }} value={kind} onChange={(e) => setKind(e.target.value)}>
+            <option value="topup">Pembelian saldo</option>
+            <option value="grant">Bonus / hadiah</option>
+            <option value="refund">Pengembalian</option>
+            <option value="adjustment">Koreksi (boleh minus)</option>
+          </select>
+        </div>
+
+        {valid && usdPreview != null && (
+          <p className="small mb3">
+            Akan dicatat sebagai <b>${usdPreview.toFixed(2)}</b>
+            {satuan === "idr" ? <> dari Rp {angka.toLocaleString("id-ID")}</> : null}
+            {" — saldo menjadi "}
+            <b>${(Number(target.balance_usd || 0) + usdPreview).toFixed(2)}</b>.
+          </p>
+        )}
+
+        <div className="row mb3" style={{ gap: 8, flexWrap: "wrap" }}>
+          <input className="input" style={{ flex: 2, minWidth: 200 }} placeholder="Catatan (mis. transfer BCA 10 Sep)"
+            value={note} onChange={(e) => setNote(e.target.value)} />
+          {/* Referensi opsional, TAPI kalau diisi ia jadi pengaman: mengirim
+              form yang sama dua kali dengan referensi yang sama tidak akan
+              menambah saldo dua kali. */}
+          <input className="input" style={{ flex: 1, minWidth: 160 }} placeholder="No. referensi (opsional)"
+            value={ref} onChange={(e) => setRef(e.target.value)} />
+        </div>
+
+        {kind === "adjustment" && (
+          <p className="tiny mb3" style={{ color: "#d97706" }}>
+            Koreksi boleh bernilai minus untuk menarik kembali saldo yang terlanjur salah.
+          </p>
+        )}
+        {err && <div className="msg-err mb3">{err}</div>}
+
+        <div className="row" style={{ gap: 8 }}>
+          <button className="btn" disabled={busy || !valid}>{busy ? "Menyimpan…" : "Simpan"}</button>
+          <button type="button" className="btn btn2" onClick={onCancel}>Batal</button>
+        </div>
+      </form>
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
 // Panel operator.
 export function CustomersAdmin({ tick }) {
   const [customers, setCustomers] = useState(null);
@@ -83,6 +189,11 @@ export function CustomersAdmin({ tick }) {
   const [msg, setMsg] = useState(null);
   const [q, setQ] = useState("");
   const [busy, setBusy] = useState(false);
+  const [topupFor, setTopupFor] = useState(null);
+  // Kurs jual dibaca dari price_quote, bukan dihitung ulang di sini: satu
+  // rumus di satu tempat, dan halaman ini tidak pernah bisa memakai kurs
+  // yang berbeda dari yang dipakai menjual.
+  const [rate, setRate] = useState(null);
 
   const load = useCallback(async () => {
     setErr(null);
@@ -95,6 +206,9 @@ export function CustomersAdmin({ tick }) {
       setCustomers(c.customers || []);
       setPlans(p.plans || []);
       setEvents(e.events || []);
+      callApp({ action: "price_quote", credit_usd: 1 })
+        .then((r) => setRate(r.priced ? r.idr_per_usd : null))
+        .catch(() => setRate(null));
     } catch (e2) { setErr(e2.message); setCustomers([]); }
   }, []);
   useEffect(() => { load(); }, [load, tick]);
@@ -124,6 +238,14 @@ export function CustomersAdmin({ tick }) {
       <WebhookCard />
       <PlansCard plans={plans} onSave={savePlan} busy={busy} />
       <GrantCard plans={plans} onDone={(m) => { setMsg(m); load(); }} />
+
+      {topupFor && (
+        <TopupForm
+          target={topupFor} rate={rate}
+          onDone={(m) => { setTopupFor(null); setMsg(m); load(); }}
+          onCancel={() => setTopupFor(null)}
+        />
+      )}
 
       {msg && <div className={msg.startsWith("Gagal") ? "msg-err mb3" : "msg-ok mb3"}>{msg}</div>}
 
@@ -161,9 +283,14 @@ export function CustomersAdmin({ tick }) {
                       <td className="tiny muted">{c.last_sign_in_at ? `${c.login_count}×` : "belum pernah"}</td>
                       <td>
                         {c.email && (
-                          <button type="button" className="tiny"
-                            style={{ background: "none", border: "none", color: "var(--brand)", fontWeight: 700, cursor: "pointer", padding: 0, whiteSpace: "nowrap" }}
-                            onClick={() => accessLink(c.email)}>🔗 Link akses</button>
+                          <div className="row" style={{ gap: 10, flexWrap: "nowrap" }}>
+                            <button type="button" className="tiny"
+                              style={{ background: "none", border: "none", color: "var(--brand)", fontWeight: 700, cursor: "pointer", padding: 0, whiteSpace: "nowrap" }}
+                              onClick={() => { setMsg(null); setTopupFor(c); }}>💰 Beri saldo</button>
+                            <button type="button" className="tiny"
+                              style={{ background: "none", border: "none", color: "var(--brand)", fontWeight: 700, cursor: "pointer", padding: 0, whiteSpace: "nowrap" }}
+                              onClick={() => accessLink(c.email)}>🔗 Link akses</button>
+                          </div>
                         )}
                       </td>
                     </tr>

@@ -686,6 +686,64 @@ Deno.serve(async (req) => {
         }
         return json({ ok: true, results, granted: results.filter((r) => r.ok).length });
       }
+      if (body.action === "customer_topup") {
+        // Operator memberi saldo ke pelanggan.
+        //
+        // Logikanya TIDAK ada di sini — semuanya di `credit_topup()` (migrasi
+        // 0043), karena sebentar lagi webhook top-up Doku memanggil fungsi yang
+        // sama. Dua pemanggil dengan dua salinan logika adalah dua tempat yang
+        // cepat atau lambat berbeda soal uang.
+        const c = await requirePlatformAdmin(req);
+
+        let wsId = String(body.workspace_id || "").trim();
+        if (!wsId) {
+          const email = String(body.email || "").trim().toLowerCase();
+          if (!email) throw new Error("Isi email pelanggan atau workspace_id.");
+          const { data: uid } = await admin.rpc("user_id_by_email", { addr: email });
+          if (!uid) throw new Error(`Tidak ada akun dengan email ${email}.`);
+          const { data: mem } = await admin.from("workspace_members")
+            .select("workspace_id").eq("user_id", uid).order("created_at").limit(1).maybeSingle();
+          if (!mem) throw new Error("Akun itu tidak punya workspace.");
+          wsId = mem.workspace_id as string;
+        }
+
+        // Operator menerima RUPIAH, tapi saldo dihitung dalam USD. Memaksa dia
+        // membagi sendiri di kalkulator adalah cara paling mudah menaruh angka
+        // yang salah ke dalam saldo orang. Jadi dua-duanya diterima, dan
+        // konversinya memakai kurs jual yang sama dengan yang dipakai menjual —
+        // bukan salinan yang bisa berbeda.
+        let usd = Number(body.usd);
+        let idr: number | null = null;
+        if (body.idr !== undefined && body.idr !== null && String(body.idr) !== "") {
+          idr = Number(body.idr);
+          if (!Number.isFinite(idr)) throw new Error("Nilai rupiah harus angka.");
+          const p = await pricing();
+          if (!p) throw new Error("Kurs jual belum diisi, jadi rupiah belum bisa dikonversi ke saldo. Isi kurs di tab Lanjutan, atau masukkan nilainya dalam USD.");
+          usd = Math.round((idr / p.idrPerUsd) * 100) / 100;
+        }
+        if (!Number.isFinite(usd)) throw new Error("Isi jumlahnya, dalam USD atau rupiah.");
+
+        const kind = ["topup", "grant", "refund", "adjustment"].includes(String(body.kind))
+          ? String(body.kind) : "topup";
+
+        const { data, error } = await admin.rpc("credit_topup", {
+          ws: wsId, amount: usd, kind,
+          ref: String(body.ref || "").trim() || null,
+          memo: String(body.note || "").trim() || null,
+          actor: c.user.id,
+        });
+        if (error) throw new Error(error.message);
+        const row = Array.isArray(data) ? data[0] : data;
+        return json({
+          ok: true,
+          credited_usd: usd,
+          idr,
+          kind,
+          balance: Number(row?.out_balance || 0),
+          duplicate: !!row?.out_duplicate,
+          ref: row?.out_ref || null,
+        });
+      }
       if (body.action === "customer_access_link") {
         // Akun yang dibuat webhook/bulk punya password acak yang tidak disimpan
         // di mana pun. Cara pelanggan masuk pertama kali adalah link atur-ulang
@@ -910,57 +968,35 @@ Deno.serve(async (req) => {
         const ref = String(body.external_ref || "").trim();
         if (!ref) throw new Error("external_ref wajib diisi supaya satu pembayaran tidak dihitung dua kali.");
 
-        const { data: w } = await admin.from("workspaces")
-          .select("id, billing_mode, credit_since").eq("id", wsId).maybeSingle();
-        if (!w) throw new Error("Workspace tidak ditemukan.");
-
-        // Kredit pertama menyalakan modenya sekaligus menandai titik mulai.
-        // `credit_since` inilah yang membuat riwayat pemakaian era BYO-key tidak
-        // ikut terhitung sebagai utang saat saldo dijumlahkan.
-        if (!w.credit_since) {
-          const { error: upErr } = await admin.from("workspaces")
-            .update({ billing_mode: "credit", credit_since: new Date().toISOString() })
-            .eq("id", wsId);
-          if (upErr) throw new Error(upErr.message);
-        } else if (w.billing_mode !== "credit") {
-          const { error: upErr } = await admin.from("workspaces")
-            .update({ billing_mode: "credit" }).eq("id", wsId);
-          if (upErr) throw new Error(upErr.message);
-        }
-
         // Kelayakan promo dinilai SEBELUM kreditnya masuk, dan ini bukan detail
         // gaya: menilai sesudahnya membuat grant itu sendiri membatalkan
         // syaratnya. Promo "saldo tinggal 25%" tidak akan pernah cocok, karena
-        // saat diperiksa saldonya sudah terisi. Ketahuan dari uji end-to-end;
-        // dari membaca kode saja urutannya terlihat wajar.
+        // saat diperiksa saldonya sudah terisi.
         const promoCode = String(body.promo_code || "").trim().toUpperCase();
         const promoMatch = promoCode
           ? (await eligiblePromotions(wsId)).find((x) => String(x.code).toUpperCase() === promoCode) || null
           : null;
 
         const kind = body.kind === "refund" ? "refund" : body.kind === "adjustment" ? "adjustment" : "topup";
-        const { error: insErr } = await admin.from("credits_ledger").insert({
-          workspace_id: wsId, kind, delta_usd: amount,
-          note: body.note ? String(body.note).slice(0, 300) : null,
-          external_ref: ref,
+
+        // Pintu yang sama dengan halaman operator: credit_topup() di database.
+        // Dulu blok ini menyalakan mode kredit dan menyisipkan ledger sendiri —
+        // salinan kedua dari logika yang sama, dan salinan kedua soal uang
+        // adalah tempat kedua yang bisa berbeda.
+        const { data, error } = await admin.rpc("credit_topup", {
+          ws: wsId, amount, kind, ref,
+          memo: body.note ? String(body.note).slice(0, 300) : null,
+          actor: null,
         });
-        if (insErr) {
-          // 23505 = unique violation di credits_ledger_external_ref_key: kiriman
-          // ulang untuk pembayaran yang sudah dicatat. Itu bukan kegagalan —
-          // webhook justru harus menerima 200, kalau tidak ia mengulang terus.
-          if ((insErr as { code?: string }).code === "23505") {
-            const { data: bal } = await admin.rpc("credit_balance", { ws: wsId });
-            return json({ ok: true, duplicate: true, balance: Number(bal || 0) });
-          }
-          throw new Error(insErr.message);
+        if (error) throw new Error(error.message);
+        const row = Array.isArray(data) ? data[0] : data;
+        if (row?.out_duplicate) {
+          return json({ ok: true, duplicate: true, balance: Number(row?.out_balance || 0) });
         }
-        // Pemakaiannya baru DICATAT di sini, setelah kreditnya benar-benar
+
+        // Pemakaian promo baru DICATAT di sini, setelah kreditnya benar-benar
         // masuk: kalau dicatat lebih dulu, grant yang gagal di tengah akan
         // menghabiskan jatah promo pelanggan tanpa memberi mereka apa pun.
-        //
-        // Kelayakannya tetap dinilai sendiri di atas, tidak percaya pada apa
-        // yang dikirim pemanggil — kode promo yang datang dari luar tidak
-        // membuktikan pemiliknya berhak atasnya.
         let promoApplied: Record<string, unknown> | null = null;
         if (promoCode) {
           if (promoMatch) {
@@ -975,10 +1011,7 @@ Deno.serve(async (req) => {
             promoApplied = { code: promoCode, rejected: "tidak berlaku untuk workspace ini" };
           }
         }
-
-        const { data: bal, error: balErr } = await admin.rpc("credit_balance", { ws: wsId });
-        if (balErr) throw new Error(balErr.message);
-        return json({ ok: true, granted_usd: amount, balance: Number(bal || 0), promo: promoApplied });
+        return json({ ok: true, granted_usd: amount, balance: Number(row?.out_balance || 0), promo: promoApplied });
       }
       if (body.action === "signup") {
         const email = String(body.email || "").trim().toLowerCase();
