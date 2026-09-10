@@ -62,6 +62,15 @@ const PLATFORM_SETTABLE: Record<string, "secret" | "plain"> = {
   // Nilai "plain" dikembalikan apa adanya ke halaman admin; "secret" tidak.
   forex_idr_per_usd: "plain",
   margin_pct: "plain",
+  // DOKU. Secret Key menandatangani setiap notifikasi pembayaran, jadi ia
+  // rahasia. Dua yang lain justru harus terlihat: kalau Client-Id atau path
+  // notifikasi tidak sama persis dengan yang terdaftar di Back Office Doku,
+  // SEMUA notifikasi ditolak dengan pesan "tanda tangan tidak cocok" — dan
+  // operator yang tidak bisa membaca nilai yang sedang dipakai tidak punya
+  // cara membandingkannya.
+  doku_secret_key: "secret",
+  doku_client_id: "plain",
+  doku_notification_path: "plain",
 };
 
 // Operator platform, BUKAN owner workspace.
@@ -437,6 +446,147 @@ Deno.serve(async (req) => {
         });
         if (error) throw new Error(error.message);
         return json({ ok: true, key, set: true });
+      }
+      // ---------- Pelanggan (operator platform) ----------
+      //
+      // Tiga jalur memberi akses — webhook Doku, tambah manual, bulk upload —
+      // dan ketiganya berakhir di satu fungsi SQL `activate_subscription`.
+      // Yang berbeda cuma dari mana email-nya datang.
+      if (body.action === "customers") {
+        await requirePlatformAdmin(req);
+        const q = String(body.q || "").trim().toLowerCase();
+        const { data: rows, error } = await admin.rpc("customer_overview");
+        if (error) throw new Error(error.message);
+        const list = (rows || []) as Record<string, unknown>[];
+        const filtered = q
+          ? list.filter((r) => String(r.email || "").toLowerCase().includes(q))
+          : list;
+        return json({ ok: true, customers: filtered });
+      }
+      if (body.action === "plans") {
+        await requirePlatformAdmin(req);
+        const { data, error } = await admin.from("subscription_plans")
+          .select("*").order("sort");
+        if (error) throw new Error(error.message);
+        return json({ ok: true, plans: data || [] });
+      }
+      if (body.action === "plan_save") {
+        const c = await requirePlatformAdmin(req);
+        const code = String(body.code || "");
+        const patch: Record<string, unknown> = {};
+        // Angka dibiarkan NULL kalau dikosongkan, bukan dipaksa 0: harga 0 dan
+        // "harga belum ditentukan" adalah dua hal yang sangat berbeda di
+        // pencocokan webhook — yang pertama akan cocok dengan pembayaran nol.
+        if (body.price_idr !== undefined) {
+          const v = String(body.price_idr).trim();
+          patch.price_idr = v === "" ? null : Number(v);
+          if (patch.price_idr !== null && !Number.isFinite(patch.price_idr as number)) {
+            throw new Error("Harga harus angka.");
+          }
+        }
+        if (body.credit_grant_usd !== undefined) {
+          const v = Number(body.credit_grant_usd);
+          if (!Number.isFinite(v) || v < 0) throw new Error("Jatah kredit harus angka >= 0.");
+          patch.credit_grant_usd = v;
+        }
+        if (body.sku !== undefined) patch.sku = String(body.sku).trim() || null;
+        if (body.active !== undefined) patch.active = !!body.active;
+        if (!Object.keys(patch).length) throw new Error("Tidak ada yang diubah.");
+        const { error } = await admin.from("subscription_plans").update(patch).eq("code", code);
+        if (error) throw new Error(error.message);
+        console.log(`plan ${code} diubah oleh ${c.user.id}`);
+        return json({ ok: true });
+      }
+      if (body.action === "customer_grant") {
+        // Tambah manual DAN bulk upload lewat pintu yang sama. Bulk cuma
+        // berarti daftarnya lebih dari satu — memisahkannya jadi dua aksi
+        // berarti dua tempat yang harus sama-sama benar selamanya.
+        const c = await requirePlatformAdmin(req);
+        const plan = String(body.plan || "");
+        const emails: string[] = (Array.isArray(body.emails) ? body.emails : [body.email])
+          .map((e: unknown) => String(e || "").trim().toLowerCase())
+          .filter(Boolean);
+        if (!emails.length) throw new Error("Tidak ada email yang diproses.");
+        if (emails.length > 500) throw new Error("Maksimal 500 email sekali unggah.");
+
+        const results: Record<string, unknown>[] = [];
+        for (const email of emails) {
+          try {
+            if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) {
+              results.push({ email, ok: false, error: "Format email tidak valid." });
+              continue;
+            }
+            const { data: found } = await admin.rpc("user_id_by_email", { addr: email });
+            let userId = found as string | null;
+            let created = false;
+            if (!userId) {
+              const pw = Array.from(crypto.getRandomValues(new Uint8Array(24)))
+                .map((n) => "abcdefghijkmnpqrstuvwxyzABCDEFGHJKLMNPQRSTUVWXYZ23456789!@#$%"[n % 60]).join("");
+              const { data: made, error: mkErr } = await admin.auth.admin.createUser({
+                email, password: pw, email_confirm: true,
+              });
+              if (mkErr) { results.push({ email, ok: false, error: mkErr.message }); continue; }
+              userId = made.user!.id;
+              created = true;
+            }
+            const { data: mem } = await admin.from("workspace_members")
+              .select("workspace_id").eq("user_id", userId).order("created_at").limit(1).maybeSingle();
+            if (!mem) { results.push({ email, ok: false, error: "Akun tanpa workspace." }); continue; }
+            const { data: act, error: actErr } = await admin.rpc("activate_subscription", {
+              ws: mem.workspace_id, plan,
+              src: emails.length > 1 ? "bulk" : "manual",
+              ref: String(body.ref || "") || null,
+              memo: String(body.note || "") || null,
+              actor: c.user.id,
+            });
+            if (actErr) { results.push({ email, ok: false, error: actErr.message }); continue; }
+            const row = Array.isArray(act) ? act[0] : act;
+            results.push({ email, ok: true, created, expires_at: row?.out_expires_at, credit: row?.out_credit_granted });
+          } catch (e) {
+            results.push({ email, ok: false, error: (e as Error).message });
+          }
+        }
+        return json({ ok: true, results, granted: results.filter((r) => r.ok).length });
+      }
+      if (body.action === "customer_access_link") {
+        // Akun yang dibuat webhook/bulk punya password acak yang tidak disimpan
+        // di mana pun. Cara pelanggan masuk pertama kali adalah link atur-ulang
+        // password yang dibuat di sini dan dikirim operator lewat jalur apa pun
+        // yang dia pakai (WhatsApp, email manual).
+        //
+        // Link dibuat SAAT DIMINTA, bukan disimpan: link yang mengendap di tabel
+        // adalah kunci masuk yang menunggu dibaca orang yang salah.
+        await requirePlatformAdmin(req);
+        const email = String(body.email || "").trim().toLowerCase();
+        if (!email) throw new Error("Email wajib diisi.");
+        const { data, error } = await admin.auth.admin.generateLink({
+          type: "recovery", email,
+        });
+        if (error) throw new Error(error.message);
+        return json({ ok: true, link: data?.properties?.action_link || null });
+      }
+      if (body.action === "payment_events") {
+        await requirePlatformAdmin(req);
+        const { data, error } = await admin.from("payment_events")
+          .select("id, created_at, signature_ok, result, detail, email, amount_idr, external_ref, matched_plan")
+          .order("created_at", { ascending: false }).limit(40);
+        if (error) throw new Error(error.message);
+        return json({ ok: true, events: data || [] });
+      }
+      if (body.action === "my_subscription") {
+        // Dipakai pelanggan sendiri, bukan operator: sisa masa aktif dan status.
+        const c = await requireUser(req);
+        const { data: st } = await admin.rpc("subscription_state", { ws: c.ws });
+        const { data: sub } = await admin.from("subscriptions")
+          .select("plan_code, expires_at, started_at").eq("workspace_id", c.ws).maybeSingle();
+        const { data: plan } = sub?.plan_code
+          ? await admin.from("subscription_plans").select("label").eq("code", sub.plan_code).maybeSingle()
+          : { data: null };
+        return json({
+          ok: true, state: st || "unpaid",
+          plan: sub?.plan_code || null, plan_label: plan?.label || null,
+          expires_at: sub?.expires_at || null, started_at: sub?.started_at || null,
+        });
       }
       if (body.action === "touch") {
         // Pencacah sesi, bukan page load. Hanya naik kalau kunjungan terakhir
