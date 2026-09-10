@@ -1,5 +1,6 @@
 import React, { useEffect, useState, useCallback } from "react";
 import { LibraryPicker, LibraryCard } from "./library.jsx";
+import { CustomersAdmin, SubscriptionCard } from "./customers.jsx";
 import { supa, callGenerate, callSocial, callCalendar, callApp, callLinks, callMedia, STATUS_LABELS, TYPE_LABELS, usd } from "./supa.js";
 
 const linkBtn = { background: "none", border: "none", padding: 0, cursor: "pointer", fontWeight: 700, fontSize: 11 };
@@ -3899,6 +3900,10 @@ const SETTINGS_TABS = [
   ["koneksi", "Koneksi"],
   ["pustaka", "Pustaka Prompt"],
   ["katalog", "Katalog Model"],
+  // Hanya muncul untuk operator platform. Tabnya disaring di render, dan
+  // server tetap memeriksa sendiri di setiap aksi — tab yang disembunyikan
+  // adalah kerapian, bukan pengamanan.
+  ["pelanggan", "Pelanggan", "platform"],
   ["lanjutan", "Lanjutan"],
 ];
 
@@ -3915,7 +3920,16 @@ function tabFromQuery(query) {
   return SETTINGS_TABS.some(([k]) => k === t) ? t : "akun";
 }
 
-function SettingsTabs({ current, onGo }) {
+// Tab operator yang dibuka lewat URL oleh yang bukan operator akan
+// menghasilkan panel kosong — jadi dikembalikan ke Akun. Ini kenyamanan,
+// bukan pengamanan: server menolak aksinya sendiri.
+function safeTab(tab, isPlatformAdmin) {
+  const def = SETTINGS_TABS.find(([k]) => k === tab);
+  if (def && def[2] === "platform" && !isPlatformAdmin) return "akun";
+  return tab;
+}
+
+function SettingsTabs({ current, onGo, tabs }) {
   return (
     <div
       className="row mb4"
@@ -3925,7 +3939,7 @@ function SettingsTabs({ current, onGo }) {
         borderBottom: "1px solid var(--border)", flexWrap: "nowrap",
       }}
     >
-      {SETTINGS_TABS.map(([key, label]) => {
+      {tabs.map(([key, label]) => {
         const active = key === current;
         return (
           <button
@@ -3975,6 +3989,8 @@ export function Settings({ ws, refresh, tick, spend, spendError, query }) {
   // Nilai awal dibaca dari query SEKALI saat mount, sebelum kartu koneksi
   // membersihkan query-nya sendiri lewat replaceState.
   const [tab, setTab] = useState(() => tabFromQuery(query));
+  const visibleTabs = SETTINGS_TABS.filter(([, , gate]) => gate !== "platform" || platform?.is_platform_admin);
+  const shownTab = safeTab(tab, platform?.is_platform_admin);
   const goTab = useCallback((key) => {
     setTab(key);
     window.history.replaceState(null, "", `#/settings?tab=${key}`);
@@ -4029,28 +4045,31 @@ export function Settings({ ws, refresh, tick, spend, spendError, query }) {
   return (
     <div>
       <h1 style={{ fontSize: 24, fontWeight: 800 }} className="mb4">Settings</h1>
-      <SettingsTabs current={tab} onGo={goTab} />
+      <SettingsTabs current={shownTab} onGo={goTab} tabs={visibleTabs} />
 
-      {tab === "akun" && (<>
+      {shownTab === "akun" && (<>
         <AccountAdmin ws={ws} tick={tick} />
+        <SubscriptionCard tick={tick} />
         <BillingCard ws={ws} tick={tick} />
       </>)}
 
-      {tab === "koneksi" && (<>
+      {shownTab === "pelanggan" && platform?.is_platform_admin && <CustomersAdmin tick={tick} />}
+
+      {shownTab === "koneksi" && (<>
         <SocialConnections ws={ws} tick={tick} query={query} />
         <CalendarConnection ws={ws} tick={tick} query={query} />
         <LinksCard ws={ws} tick={tick} />
       </>)}
 
-      {tab === "pustaka" && <LibraryCard ws={ws} tick={tick} />}
+      {shownTab === "pustaka" && <LibraryCard ws={ws} tick={tick} />}
 
-      {tab === "lanjutan" && (<>
+      {shownTab === "lanjutan" && (<>
         <McpSettings ws={ws} tick={tick} />
         <PlatformConfig st={platform} reload={reloadPlatform} />
         {platform?.is_platform_admin && <PromotionsCard tick={tick} />}
       </>)}
 
-      {tab === "provider" && (<>
+      {shownTab === "provider" && (<>
       <AiWriterSettings keyState={keyState} onSaved={() => callGenerate({ action: "status" }).then(setKeyState).catch(() => {})} />
       {msg && <div className="msg-ok mb3">{msg}</div>}
       <div className="grid mb4" style={{ gridTemplateColumns: "repeat(auto-fit,minmax(340px,1fr))" }}>
@@ -4127,7 +4146,7 @@ export function Settings({ ws, refresh, tick, spend, spendError, query }) {
       </div>
       </>)}
 
-      {tab === "katalog" && (
+      {shownTab === "katalog" && (
       <div className="card p6">
         <div className="bold mb1">Katalog Model</div>
         <p className="tiny muted mb3">Harga indikatif (riset Jul 2026) untuk estimasi + budget guard. Verifikasi dengan harga resmi provider, lalu perbarui di sini.</p>

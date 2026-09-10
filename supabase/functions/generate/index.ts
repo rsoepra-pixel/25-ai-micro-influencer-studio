@@ -701,6 +701,47 @@ function fitShotDurations(wanted: number[], maxTotal = 15): { each: number[]; to
   return { each, total: each.reduce((a, b) => a + b, 0) };
 }
 
+// Pagar langganan.
+//
+// ATURANNYA SATU KALIMAT: model berbayar butuh langganan aktif, model gratis
+// tidak pernah butuh apa pun.
+//
+// Yang menentukan "berbayar" adalah harga di katalog, BUKAN daftar nama
+// provider. Kalau suatu hari ada provider gratis baru, ia langsung ikut
+// aturan ini tanpa siapa pun harus ingat menambahkannya — dan yang lebih
+// penting, model berbayar baru tidak akan pernah lolos karena namanya belum
+// terdaftar di mana-mana.
+//
+// Statusnya dibaca dari subscription_state() di database, fungsi yang sama
+// yang dipakai halaman admin. Menyalin aturannya ke sini akan membuat dua
+// tempat yang cepat atau lambat berbeda, dan yang lebih longgar selalu menang.
+async function requireSubscription(
+  ws: string,
+  mode: string,
+  model: { est_price_usd?: unknown; label?: unknown },
+) {
+  // Mode mock tidak memanggil provider mana pun dan tidak menagih apa pun,
+  // jadi tidak ada yang perlu dijaga.
+  if (mode !== "live") return;
+  if (!(Number(model.est_price_usd) > 0)) return;
+
+  const { data: state, error } = await admin.rpc("subscription_state", { ws });
+  // Gagal baca TIDAK boleh diperlakukan sebagai "belum bayar": satu gangguan
+  // database sesaat akan menolak pelanggan yang sah. Tapi juga tidak boleh
+  // diam-diam meloloskan — jadi errornya dinaikkan apa adanya, dan pelanggan
+  // diminta mencoba lagi.
+  if (error) throw new Error(`Status langganan tidak bisa dibaca: ${error.message}. Coba lagi sebentar lagi.`);
+
+  if (state === "active") return;
+  throw new Error(
+    state === "expired"
+      ? `Masa langganan kamu sudah habis, jadi ${model.label || "model berbayar"} belum bisa dipakai. ` +
+        `Perpanjang dulu, atau pakai model gratis (Hugging Face) yang tetap terbuka tanpa langganan.`
+      : `${model.label || "Model ini"} berbayar dan butuh langganan aktif. ` +
+        `Akun kamu belum tercatat berlangganan. Model gratis (Hugging Face) tetap bisa dipakai sekarang.`,
+  );
+}
+
 // Tulis nilai ke jalur bertitik, membuat objek antara kalau belum ada.
 // Dipakai untuk voice id: ElevenLabs menaruhnya di "voice", MiniMax di
 // "voice_setting.voice_id". Jalurnya dari katalog (provider_models.voice_field),
@@ -1428,6 +1469,7 @@ Deno.serve(async (req) => {
           .eq("id", body.model_id).eq("active", true).maybeSingle();
         if (!model) throw new Error("Model tidak ditemukan / tidak aktif.");
         if (model.task !== "image") throw new Error("Lembar storyboard butuh model gambar.");
+        await requireSubscription(ws, mode, model);
         // Cabang ini mengirim ke queue.fal.run tanpa melihat `provider`. Model
         // DashScope (qwen-image) yang dipilih di sini dibalas 404 mentah oleh
         // fal — ketahuan dari job 862b51af. Sampai jalur DashScope-nya dibuat,
@@ -1586,6 +1628,7 @@ Deno.serve(async (req) => {
         if (!model.multishot_field) {
           throw new Error(`${model.label} tidak mendukung multi-shot. Pilih model yang bertanda multi-shot di katalog.`);
         }
+        await requireSubscription(ws, mode, model);
 
         // DUA CARA MODEL MEMBAGI SHOT, dan katalog yang menentukan mana yang dipakai:
         //
@@ -1825,6 +1868,7 @@ Deno.serve(async (req) => {
           .eq("id", model_id).eq("active", true).maybeSingle();
         if (!model) throw new Error("Model tidak ditemukan / tidak aktif.");
         if (model.provider === "hf" && task !== "image") throw new Error("Model Hugging Face di katalog ini hanya untuk gambar.");
+        await requireSubscription(ws, mode, model);
 
         // Durasi diputuskan SEBELUM biaya dihitung, karena model jarang memberi
         // persis yang diminta: minta 5 detik ke Veo, yang keluar 6 detik, dan
