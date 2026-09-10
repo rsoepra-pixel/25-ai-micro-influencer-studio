@@ -686,6 +686,64 @@ Deno.serve(async (req) => {
         }
         return json({ ok: true, results, granted: results.filter((r) => r.ok).length });
       }
+      if (body.action === "customer_topup") {
+        // Operator memberi saldo ke pelanggan.
+        //
+        // Logikanya TIDAK ada di sini — semuanya di `credit_topup()` (migrasi
+        // 0043), karena sebentar lagi webhook top-up Doku memanggil fungsi yang
+        // sama. Dua pemanggil dengan dua salinan logika adalah dua tempat yang
+        // cepat atau lambat berbeda soal uang.
+        const c = await requirePlatformAdmin(req);
+
+        let wsId = String(body.workspace_id || "").trim();
+        if (!wsId) {
+          const email = String(body.email || "").trim().toLowerCase();
+          if (!email) throw new Error("Isi email pelanggan atau workspace_id.");
+          const { data: uid } = await admin.rpc("user_id_by_email", { addr: email });
+          if (!uid) throw new Error(`Tidak ada akun dengan email ${email}.`);
+          const { data: mem } = await admin.from("workspace_members")
+            .select("workspace_id").eq("user_id", uid).order("created_at").limit(1).maybeSingle();
+          if (!mem) throw new Error("Akun itu tidak punya workspace.");
+          wsId = mem.workspace_id as string;
+        }
+
+        // Operator menerima RUPIAH, tapi saldo dihitung dalam USD. Memaksa dia
+        // membagi sendiri di kalkulator adalah cara paling mudah menaruh angka
+        // yang salah ke dalam saldo orang. Jadi dua-duanya diterima, dan
+        // konversinya memakai kurs jual yang sama dengan yang dipakai menjual —
+        // bukan salinan yang bisa berbeda.
+        let usd = Number(body.usd);
+        let idr: number | null = null;
+        if (body.idr !== undefined && body.idr !== null && String(body.idr) !== "") {
+          idr = Number(body.idr);
+          if (!Number.isFinite(idr)) throw new Error("Nilai rupiah harus angka.");
+          const p = await pricing();
+          if (!p) throw new Error("Kurs jual belum diisi, jadi rupiah belum bisa dikonversi ke saldo. Isi kurs di tab Lanjutan, atau masukkan nilainya dalam USD.");
+          usd = Math.round((idr / p.idrPerUsd) * 100) / 100;
+        }
+        if (!Number.isFinite(usd)) throw new Error("Isi jumlahnya, dalam USD atau rupiah.");
+
+        const kind = ["topup", "grant", "refund", "adjustment"].includes(String(body.kind))
+          ? String(body.kind) : "topup";
+
+        const { data, error } = await admin.rpc("credit_topup", {
+          ws: wsId, amount: usd, kind,
+          ref: String(body.ref || "").trim() || null,
+          memo: String(body.note || "").trim() || null,
+          actor: c.user.id,
+        });
+        if (error) throw new Error(error.message);
+        const row = Array.isArray(data) ? data[0] : data;
+        return json({
+          ok: true,
+          credited_usd: usd,
+          idr,
+          kind,
+          balance: Number(row?.out_balance || 0),
+          duplicate: !!row?.out_duplicate,
+          ref: row?.out_ref || null,
+        });
+      }
       if (body.action === "customer_access_link") {
         // Akun yang dibuat webhook/bulk punya password acak yang tidak disimpan
         // di mana pun. Cara pelanggan masuk pertama kali adalah link atur-ulang
