@@ -1,6 +1,7 @@
 import React, { useEffect, useState, useCallback } from "react";
 import { LibraryPicker, LibraryCard } from "./library.jsx";
 import { CustomersAdmin, SubscriptionCard } from "./customers.jsx";
+import { MembersCard } from "./members.jsx";
 import { supa, callGenerate, callSocial, callCalendar, callApp, callLinks, callMedia, STATUS_LABELS, TYPE_LABELS, usd } from "./supa.js";
 
 const linkBtn = { background: "none", border: "none", padding: 0, cursor: "pointer", fontWeight: 700, fontSize: 11 };
@@ -3896,6 +3897,10 @@ function LinksCard({ ws, tick }) {
 // tidak dibuka tidak ikut dimuat (panel non-aktif tidak dipasang sama sekali).
 const SETTINGS_TABS = [
   ["akun", "Akun"],
+  // Selalu terlihat, juga di paket 1 kursi — di situlah orang mencari saat
+  // ingin tahu apakah workspace-nya bisa dibagi, dan tab yang muncul-hilang
+  // tergantung paket membuat pertanyaan itu tidak punya alamat.
+  ["tim", "Tim & Kursi"],
   ["provider", "Provider & Biaya"],
   ["koneksi", "Koneksi"],
   ["pustaka", "Pustaka Prompt"],
@@ -4052,6 +4057,8 @@ export function Settings({ ws, refresh, tick, spend, spendError, query }) {
         <SubscriptionCard tick={tick} />
         <BillingCard ws={ws} tick={tick} />
       </>)}
+
+      {shownTab === "tim" && <MembersCard tick={tick} />}
 
       {shownTab === "pelanggan" && platform?.is_platform_admin && <CustomersAdmin tick={tick} />}
 
