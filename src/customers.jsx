@@ -12,6 +12,7 @@
 // tanpa jejaknya hanya bisa dijawab dengan tebakan.
 import React, { useEffect, useState, useCallback } from "react";
 import { callApp, SUPABASE_URL } from "./supa.js";
+import { QuotaBanner } from "./members.jsx";
 
 const STATE_TONE = { active: "#16a34a", expired: "#d97706", unpaid: "#71717a" };
 const STATE_LABEL = { active: "Aktif", expired: "Kedaluwarsa", unpaid: "Belum bayar" };
@@ -65,6 +66,9 @@ export function SubscriptionCard({ tick }) {
           {" "}Model gratis (Hugging Face) tetap bisa dipakai tanpa langganan.
         </p>
       )}
+      {/* Jatah pribadi hanya berarti untuk anggota; owner tidak pernah
+          dibatasi, dan QuotaBanner memulangkan null untuk mereka. */}
+      <QuotaBanner sub={sub} />
     </div>
   );
 }

@@ -770,7 +770,21 @@ Deno.serve(async (req) => {
   try {
     const body = await req.json();
     // Cron internal dulu; kalau tidak ada headernya, jalur normal lewat JWT user.
-    const ws = (await internalWorkspace(req, body)) ?? (await requireUser(req)).ws;
+    //
+    // Pemanggilnya ikut disimpan, bukan cuma workspace-nya. Sejak satu
+    // workspace bisa dipakai bertiga, "job ini milik workspace X" tidak lagi
+    // menjawab siapa yang membelanjakan saldonya — dan jatah per anggota
+    // dihitung dari kolom `created_by` di production_jobs.
+    //
+    // Pemanggilan internal (cron, MCP) tidak punya orang di baliknya, jadi
+    // nilainya null. Trigger jatah di database sengaja MELEWATI job tanpa
+    // pelaku: job otomatis tidak boleh berhenti bekerja hanya karena fitur ini
+    // ada, dan yang menjaga workspace secara keseluruhan tetap saldo dan
+    // budget guard.
+    const internalWs = await internalWorkspace(req, body);
+    const caller = internalWs ? null : await requireUser(req);
+    const ws = internalWs ?? caller!.ws;
+    const actor = caller?.user?.id ?? null;
     const mode = (await getSecret(ws, "generation_mode")) || "mock";
 
     switch (body.action) {
@@ -1567,7 +1581,7 @@ Deno.serve(async (req) => {
         }
 
         const { data: job, error: jobErr } = await admin.from("production_jobs").insert({
-          workspace_id: ws, influencer_id: board.influencer_id, task: "image",
+          workspace_id: ws, created_by: actor, influencer_id: board.influencer_id, task: "image",
           model_key: model.model_key, prompt: sheetPrompt.slice(0, 500),
           status: "queued", cost_estimate_usd: est,
           label: `Lembar storyboard — ${board.title}`,
@@ -1801,7 +1815,7 @@ Deno.serve(async (req) => {
         }
 
         const { data: job, error: jobErr } = await admin.from("production_jobs").insert({
-          workspace_id: ws, influencer_id: board.influencer_id, task: "video",
+          workspace_id: ws, created_by: actor, influencer_id: board.influencer_id, task: "video",
           model_key: model.model_key,
           prompt: `${board.title} — ${shots.length} shot / ${fitted.total} detik`,
           status: "queued", cost_estimate_usd: est,
@@ -1954,7 +1968,7 @@ Deno.serve(async (req) => {
         }
 
         const { data: job, error: jobErr } = await admin.from("production_jobs").insert({
-          workspace_id: ws, influencer_id: influencer_id || null, task,
+          workspace_id: ws, created_by: actor, influencer_id: influencer_id || null, task,
           model_key: model.model_key, prompt: finalPrompt || String(text).slice(0, 500) || null,
           status: "queued", cost_estimate_usd: est, label, content_item_id: contentItemId,
         }).select("*").single();
@@ -1963,7 +1977,7 @@ Deno.serve(async (req) => {
         const finish = async (url: string, cost: number) => {
           await admin.from("production_jobs").update({ status: "succeeded", output_url: url, cost_actual_usd: cost }).eq("id", job.id);
           await admin.from("assets").insert({
-            workspace_id: ws, influencer_id: influencer_id || null,
+            workspace_id: ws, created_by: actor, influencer_id: influencer_id || null,
             content_item_id: contentItemId,
             kind: assetKind(task), url,
             name: `${label || `${task}-${job.id.slice(0, 8)}`}${mode === "mock" ? " (mock)" : model.provider === "hf" ? " (HF)" : ""}`,
@@ -2273,7 +2287,7 @@ Deno.serve(async (req) => {
                 const cost = Number(jb.cost_estimate_usd) || 0;
                 await admin.from("production_jobs").update({ status: "succeeded", output_url: url, cost_actual_usd: cost }).eq("id", jb.id);
                 await admin.from("assets").insert({
-                  workspace_id: ws, influencer_id: jb.influencer_id,
+                  workspace_id: ws, created_by: jb.created_by ?? null, influencer_id: jb.influencer_id,
                   content_item_id: jb.content_item_id ?? null,
                   kind: assetKind(jb.task), url, name: jb.label || `${jb.task}-${jb.id.slice(0, 8)}`,
                 });
@@ -2336,7 +2350,7 @@ Deno.serve(async (req) => {
               await admin.from("production_jobs").update({ status: "succeeded", output_url: url, cost_actual_usd: cost }).eq("id", jb.id);
               if (url) {
                 await admin.from("assets").insert({
-                  workspace_id: ws, influencer_id: jb.influencer_id,
+                  workspace_id: ws, created_by: jb.created_by ?? null, influencer_id: jb.influencer_id,
                   content_item_id: jb.content_item_id ?? null,
                   kind: assetKind(jb.task), url, name: jb.label || `${jb.task}-${jb.id.slice(0, 8)}`,
                 });

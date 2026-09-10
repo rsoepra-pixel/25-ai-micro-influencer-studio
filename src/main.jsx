@@ -9,6 +9,22 @@ import { Storyboard } from "./storyboard.jsx";
 import { Products } from "./products.jsx";
 import { Ugc } from "./ugc.jsx";
 
+// Token undangan dibaca SEKALI saat modul dimuat, sebelum apa pun sempat
+// membersihkan query string. Link-nya berbentuk `/?invite=...` (query, bukan
+// hash) supaya ia tetap utuh saat ditempel di WhatsApp dan saat browser
+// mengarahkan ulang ke halaman login.
+const INVITE_TOKEN = new URLSearchParams(window.location.search).get("invite");
+
+// Undangan dilepas dari URL begitu selesai diproses — berhasil maupun gagal.
+// Kalau dibiarkan, satu kali refresh akan mencoba memakainya lagi, dan
+// percobaan kedua selalu gagal dengan "link sudah dipakai" untuk undangan yang
+// sebenarnya baru saja berhasil.
+function bersihkanUrlUndangan() {
+  const u = new URL(window.location.href);
+  u.searchParams.delete("invite");
+  window.history.replaceState(null, "", u.toString());
+}
+
 // ---------- Hash router sederhana ----------
 function useRoute() {
   const [route, setRoute] = useState(window.location.hash.slice(1) || "/");
@@ -42,7 +58,10 @@ const NAV = [
 ];
 
 function Login() {
-  const [mode, setMode] = useState("signin");
+  // Yang datang lewat link undangan hampir pasti belum punya akun, jadi
+  // formnya dibuka di "Daftar". Menyambut mereka dengan form "Masuk" berarti
+  // orang pertama yang diundang akan mengira link-nya rusak.
+  const [mode, setMode] = useState(INVITE_TOKEN ? "signup" : "signin");
   const [email, setEmail] = useState("");
   const [pw, setPw] = useState("");
   const [err, setErr] = useState(null);
@@ -67,9 +86,17 @@ function Login() {
     <div style={{ minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center", padding: 24 }}>
       <div className="card p6" style={{ width: "100%", maxWidth: 420 }}>
         <div style={{ fontSize: 24, fontWeight: 800 }} className="gradient-title">AI Micro Influencer Studio</div>
-        <p className="muted small mt1 mb4">
-          {mode === "signin" ? "Masuk ke workspace kamu." : "Daftar — kamu langsung dapat workspace sendiri sebagai owner."}
-        </p>
+        {INVITE_TOKEN ? (
+          <p className="muted small mt1 mb4">
+            Kamu diundang bergabung ke sebuah workspace. Buat akun dengan <b>email dan password kamu
+            sendiri</b> — undangannya diterima otomatis setelah masuk. Link ini berlaku 24 jam dan
+            hanya bisa dipakai sekali.
+          </p>
+        ) : (
+          <p className="muted small mt1 mb4">
+            {mode === "signin" ? "Masuk ke workspace kamu." : "Daftar — kamu langsung dapat workspace sendiri sebagai owner."}
+          </p>
+        )}
         <form onSubmit={submit}>
           <label className="label">Email</label>
           <input className="input mb3" type="email" value={email} onChange={(e) => setEmail(e.target.value)} required />
@@ -130,6 +157,7 @@ function App() {
   const [spend, setSpend] = useState({ spent: 0, cap: 200, mode: "mock", billing: "byo_key", balance: 0 });
   const [spendError, setSpendError] = useState(null);
   const [tick, setTick] = useState(0);
+  const [invite, setInvite] = useState(null);
   const refresh = useCallback(() => setTick((t) => t + 1), []);
 
   useEffect(() => {
@@ -147,6 +175,28 @@ function App() {
     if (!session) return;
     callApp({ action: "touch" }).catch(() => {});
   }, [session]);
+
+  // Menerima undangan.
+  //
+  // Dijalankan sekali, setelah orangnya punya sesi. Semua pemeriksaan —
+  // link masih hidup, belum dipakai, kursi masih ada — terjadi di
+  // accept_invite() di database; di sini tinggal menunjukkan hasilnya dan
+  // memuat ulang workspace, karena workspace yang sedang dipegang state
+  // sudah bukan workspace yang benar begitu undangannya diterima.
+  useEffect(() => {
+    if (!session || !INVITE_TOKEN || invite) return;
+    setInvite({ status: "working" });
+    callApp({ action: "invite_accept", token: INVITE_TOKEN })
+      .then((r) => {
+        setInvite({ status: "ok", name: r.workspace_name });
+        bersihkanUrlUndangan();
+        refresh();
+      })
+      .catch((e) => {
+        setInvite({ status: "error", message: e.message });
+        bersihkanUrlUndangan();
+      });
+  }, [session, invite, refresh]);
 
   useEffect(() => {
     if (!session) return;
@@ -195,6 +245,38 @@ function App() {
 
   if (session === undefined) return null;
   if (!session) return <Login />;
+
+  // Layar undangan menahan aplikasi sebentar dengan sengaja: saat undangan
+  // diterima, workspace yang sedang dipegang state adalah workspace lama yang
+  // baru saja ditutup. Menampilkan aplikasi di detik itu berarti menampilkan
+  // tempat yang sudah tidak ada.
+  if (invite && invite.status !== "dismissed") {
+    const tutup = () => setInvite({ status: "dismissed" });
+    return (
+      <div style={{ minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center", padding: 24 }}>
+        <div className="card p6" style={{ maxWidth: 460, textAlign: "center" }}>
+          {invite.status === "working" && <>
+            <div className="bold">Menerima undangan…</div>
+            <p className="muted small mt2">Sebentar, kami sedang memasukkan kamu ke workspace-nya.</p>
+          </>}
+          {invite.status === "ok" && <>
+            <div className="bold">Kamu sekarang anggota {invite.name || "workspace ini"}</div>
+            <p className="muted small mt2">
+              Kamu berbagi satu saldo dengan anggota lain, jadi setiap pekerjaanmu tercatat atas namamu.
+              Owner yang menentukan jatah kreditmu — kalau model berbayar masih terkunci, mintalah ke dia.
+            </p>
+            <button className="btn mt3" onClick={tutup}>Buka workspace</button>
+          </>}
+          {invite.status === "error" && <>
+            <div className="bold">Undangan tidak bisa dipakai</div>
+            <p className="msg-err small mt2" style={{ textAlign: "left" }}>{invite.message}</p>
+            <button className="btn mt3" onClick={tutup}>Lanjut ke workspace saya</button>
+          </>}
+        </div>
+      </div>
+    );
+  }
+
   if (!ws)
     return (
       <div style={{ minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center" }}>

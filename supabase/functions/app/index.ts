@@ -47,6 +47,13 @@ function safeEqual(a: string, b: string): boolean {
   return diff === 0;
 }
 
+// Token undangan disimpan sebagai sha256-nya, tidak pernah apa adanya —
+// alasan yang sama dengan password. Lihat migrasi 0040.
+async function sha256Hex(text: string): Promise<string> {
+  const buf = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(text));
+  return Array.from(new Uint8Array(buf)).map((b) => b.toString(16).padStart(2, "0")).join("");
+}
+
 // Key yang boleh diubah dari halaman admin. Daftar tertutup: `set_platform_config`
 // menerima nama key hanya dari sini, jadi endpoint ini tidak pernah bisa dipakai
 // menulis `platform_admins` (mengangkat operator baru) atau kunci internal
@@ -370,6 +377,137 @@ Deno.serve(async (req) => {
         if (!data) throw new Error("Koneksi tidak ditemukan, atau bukan milikmu.");
         return json({ ok: true });
       }
+      // ---------- Anggota & undangan (owner workspace) ----------
+      //
+      // Tiga aturan dijaga di SQL, bukan di sini: jumlah kursi, siapa yang
+      // boleh mengundang, dan sekali-pakai. Yang tinggal di TypeScript cuma
+      // pembuatan token acak — satu-satunya bagian yang memang tidak bisa
+      // dikerjakan database. Menyalin aturannya ke sini akan membuat dua
+      // tempat yang cepat atau lambat berbeda, dan yang lebih longgar selalu
+      // menang.
+      if (body.action === "members") {
+        const c = await requireUser(req);
+        const { data: mems, error } = await admin.from("workspace_members")
+          .select("user_id, role, created_at, credit_quota_usd, credit_quota_pct, last_seen_at")
+          .eq("workspace_id", c.ws).order("created_at");
+        if (error) throw new Error(error.message);
+        const rows = [];
+        for (const m of mems || []) {
+          const { data: u } = await admin.auth.admin.getUserById(m.user_id);
+          const [{ data: quota }, { data: spent }] = await Promise.all([
+            admin.rpc("member_quota_usd", { ws: c.ws, uid: m.user_id }),
+            admin.rpc("member_spent_usd", { ws: c.ws, uid: m.user_id }),
+          ]);
+          rows.push({
+            user_id: m.user_id, role: m.role, email: u?.user?.email || "?",
+            joined_at: m.created_at, last_seen_at: m.last_seen_at,
+            // null = tanpa batas (owner). 0 = jatahnya belum diisi owner, dan
+            // itu bukan hal yang sama — yang kedua bisa diperbaiki.
+            quota_usd: quota === null ? null : Number(quota),
+            quota_pct: m.credit_quota_pct === null ? null : Number(m.credit_quota_pct),
+            spent_usd: Number(spent || 0),
+            me: m.user_id === c.user.id,
+          });
+        }
+        const [{ data: used }, { data: total }] = await Promise.all([
+          admin.rpc("seats_used", { ws: c.ws }),
+          admin.rpc("seats_total", { ws: c.ws }),
+        ]);
+        // Hanya undangan yang masih hidup. Yang sudah dipakai atau kedaluwarsa
+        // tidak bisa dilakukan apa-apa lagi, dan menampilkannya cuma membuat
+        // daftar kursi terlihat lebih penuh daripada keadaannya.
+        const { data: invs } = await admin.from("workspace_invites")
+          .select("id, created_at, expires_at")
+          .eq("workspace_id", c.ws).is("accepted_at", null).is("revoked_at", null)
+          .gt("expires_at", new Date().toISOString())
+          .order("created_at", { ascending: false });
+        return json({
+          ok: true,
+          is_owner: c.role === "owner",
+          members: rows,
+          invites: invs || [],
+          seats_used: Number(used || 0),
+          seats_total: Number(total || 1),
+        });
+      }
+      if (body.action === "invite_create") {
+        const c = await requireUser(req);
+        // Link dikembalikan SEKALI. Yang tersimpan cuma hash-nya, jadi link
+        // yang hilang tidak bisa ditampilkan ulang — hanya bisa diterbitkan
+        // yang baru, dan yang lama dicabut.
+        const token = "inv_" + crypto.randomUUID().replace(/-/g, "") +
+          crypto.randomUUID().replace(/-/g, "");
+        const { data, error } = await admin.rpc("issue_invite", {
+          ws: c.ws, actor: c.user.id, hash: await sha256Hex(token), ttl_hours: 24,
+        });
+        if (error) throw new Error(error.message);
+        const row = Array.isArray(data) ? data[0] : data;
+        return json({
+          ok: true, id: row?.out_id, expires_at: row?.out_expires_at,
+          link: `${APP_ORIGIN}/?invite=${token}`,
+        });
+      }
+      if (body.action === "invite_revoke") {
+        const c = await requireUser(req);
+        const { data, error } = await admin.rpc("revoke_invite", {
+          inv: String(body.id || ""), actor: c.user.id,
+        });
+        if (error) throw new Error(error.message);
+        return json({ ok: true, revoked: !!data });
+      }
+      if (body.action === "invite_accept") {
+        // Dipanggil setelah penerima undangan punya akun dan sudah login
+        // dengan email & password-nya sendiri. Semua pemeriksaan — masih
+        // hidup, belum dipakai, kursi masih ada — terjadi di accept_invite().
+        const c = await requireUser(req);
+        const token = String(body.token || "").trim();
+        if (!token) throw new Error("Token undangan kosong.");
+        const { data, error } = await admin.rpc("accept_invite", {
+          hash: await sha256Hex(token), uid: c.user.id,
+        });
+        if (error) throw new Error(error.message);
+        const row = Array.isArray(data) ? data[0] : data;
+        return json({
+          ok: true,
+          workspace_id: row?.out_workspace_id,
+          workspace_name: row?.out_workspace_name,
+        });
+      }
+      if (body.action === "member_quota_set") {
+        const c = await requireUser(req);
+        if (c.role !== "owner") throw new Error("Hanya owner workspace yang bisa mengatur jatah anggota.");
+        const uid = String(body.user_id || "");
+        if (!uid) throw new Error("user_id wajib diisi.");
+        if (uid === c.user.id) throw new Error("Jatah owner tidak dibatasi.");
+        // Dua bentuk, dan hanya satu yang boleh terisi — check constraint di
+        // database menegakkannya juga. Yang tidak dipakai DIKOSONGKAN, bukan
+        // dibiarkan: dua angka yang sama-sama terisi adalah dua jawaban untuk
+        // satu pertanyaan.
+        const patch: Record<string, unknown> = { credit_quota_usd: null, credit_quota_pct: null };
+        const v = Number(body.value);
+        if (!Number.isFinite(v) || v < 0) throw new Error("Nilai jatah harus angka >= 0.");
+        if (String(body.shape || "usd") === "pct") {
+          if (v <= 0 || v > 100) throw new Error("Persentase jatah harus di atas 0 dan maksimal 100.");
+          patch.credit_quota_pct = v;
+        } else {
+          patch.credit_quota_usd = v;
+        }
+        const { error } = await admin.from("workspace_members").update(patch)
+          .eq("workspace_id", c.ws).eq("user_id", uid);
+        if (error) throw new Error(error.message);
+        return json({ ok: true });
+      }
+      if (body.action === "member_remove") {
+        const c = await requireUser(req);
+        // Karyanya tidak ikut terhapus dan created_by-nya tidak dikosongkan:
+        // siapa yang membuat sesuatu tetap benar meskipun orangnya sudah
+        // pergi. Kursinya kembali kosong dan link baru bisa diterbitkan.
+        const { data, error } = await admin.rpc("remove_member", {
+          ws: c.ws, target: String(body.user_id || ""), actor: c.user.id,
+        });
+        if (error) throw new Error(error.message);
+        return json({ ok: true, removed: !!data });
+      }
       if (body.action === "platform_config_status") {
         // Untuk key rahasia yang dikembalikan cuma "terpasang atau belum",
         // panjangnya, dan siapa yang terakhir mengubah — key itu membayar
@@ -582,10 +720,23 @@ Deno.serve(async (req) => {
         const { data: plan } = sub?.plan_code
           ? await admin.from("subscription_plans").select("label").eq("code", sub.plan_code).maybeSingle()
           : { data: null };
+        // Jatah pribadi ikut dikembalikan di sini, bukan lewat aksi terpisah.
+        // Bendera "jatahmu habis" harus muncul di layar anggota tanpa dia
+        // perlu membuka halaman mana pun — kalau ia baru terlihat setelah
+        // orangnya mencari, ia sudah terlambat.
+        const [{ data: quota }, { data: spent }, { data: qstate }] = await Promise.all([
+          admin.rpc("member_quota_usd", { ws: c.ws, uid: c.user.id }),
+          admin.rpc("member_spent_usd", { ws: c.ws, uid: c.user.id }),
+          admin.rpc("member_quota_state", { ws: c.ws, uid: c.user.id }),
+        ]);
         return json({
           ok: true, state: st || "unpaid",
           plan: sub?.plan_code || null, plan_label: plan?.label || null,
           expires_at: sub?.expires_at || null, started_at: sub?.started_at || null,
+          role: c.role,
+          quota_state: qstate || "unlimited",
+          quota_usd: quota === null ? null : Number(quota),
+          spent_usd: Number(spent || 0),
         });
       }
       if (body.action === "touch") {
