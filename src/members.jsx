@@ -18,6 +18,7 @@ const SMALL = { padding: "4px 10px", fontSize: 12 };
 
 const fmtUsd = (v) => "$" + Number(v || 0).toFixed(2);
 const fmtDate = (v) => (v ? new Date(v).toLocaleDateString("id-ID", { day: "2-digit", month: "short", year: "numeric" }) : "—");
+const fmtWaktu = (v) => (v ? new Date(v).toLocaleString("id-ID", { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" }) : "—");
 
 function Tag({ tone = "#71717a", children }) {
   return (
@@ -78,6 +79,9 @@ function EditJatah({ m, onSave, busy }) {
   const [value, setValue] = useState(
     m.quota_pct != null ? String(m.quota_pct) : String(m.quota_usd ?? 0),
   );
+  // Alasan perubahan, opsional. Yang membuatnya berharga bukan saat diisi,
+  // tapi saat dibaca berbulan-bulan kemudian oleh orang yang jatahnya turun.
+  const [note, setNote] = useState("");
 
   if (!buka) {
     return (
@@ -89,7 +93,7 @@ function EditJatah({ m, onSave, busy }) {
   return (
     <form
       className="row" style={{ gap: 6, flexWrap: "wrap" }}
-      onSubmit={(e) => { e.preventDefault(); onSave(m.user_id, shape, value).then(() => setBuka(false)); }}
+      onSubmit={(e) => { e.preventDefault(); onSave(m.user_id, shape, value, note).then(() => setBuka(false)); }}
     >
       <select className="input" style={{ ...SMALL, width: 92 }} value={shape} onChange={(e) => setShape(e.target.value)}>
         <option value="usd">USD</option>
@@ -99,6 +103,10 @@ function EditJatah({ m, onSave, busy }) {
         className="input" style={{ ...SMALL, width: 80 }} type="number" min="0"
         step={shape === "pct" ? "1" : "0.01"} max={shape === "pct" ? "100" : undefined}
         value={value} onChange={(e) => setValue(e.target.value)} required
+      />
+      <input
+        className="input" style={{ ...SMALL, width: 150 }} placeholder="Alasan (opsional)"
+        value={note} onChange={(e) => setNote(e.target.value)}
       />
       <button className="btn" style={SMALL} disabled={busy}>Simpan</button>
       <button type="button" className="btn btn2" style={SMALL} onClick={() => setBuka(false)}>Batal</button>
@@ -148,10 +156,13 @@ export function MembersCard({ tick }) {
     catch (e) { setMsg(e.message); }
     setBusy(false);
   }
-  async function simpanJatah(user_id, shape, value) {
+  async function simpanJatah(user_id, shape, value, note) {
     setBusy(true); setMsg(null);
-    try { await callApp({ action: "member_quota_set", user_id, shape, value: Number(value) }); await load(); setMsg("Jatah disimpan."); }
-    catch (e) { setMsg(e.message); }
+    try {
+      const r = await callApp({ action: "member_quota_set", user_id, shape, value: Number(value), note });
+      await load();
+      setMsg(`Jatah disimpan${r.as === "platform" ? " (sebagai operator platform)" : ""}.`);
+    } catch (e) { setMsg(e.message); }
     setBusy(false);
   }
   async function cabutAnggota(user_id, email) {
@@ -167,7 +178,7 @@ export function MembersCard({ tick }) {
 
   if (!data) return <div className="card p6 mb4 muted">Memuat tim…</div>;
 
-  const { members = [], invites = [], seats_used = 0, seats_total = 1, is_owner } = data;
+  const { members = [], invites = [], history = [], seats_used = 0, seats_total = 1, is_owner } = data;
   const sisaKursi = Math.max(0, seats_total - seats_used);
 
   return (
@@ -274,6 +285,34 @@ export function MembersCard({ tick }) {
           </tbody>
         </table>
       </div>
+
+      {history.length > 0 && (
+        <div className="mt4">
+          <div className="bold small mb2">Riwayat perubahan jatah</div>
+          <div style={{ overflowX: "auto" }}>
+            <table>
+              <thead><tr><th>Waktu</th><th>Oleh</th><th>Untuk</th><th>Perubahan</th><th>Alasan</th></tr></thead>
+              <tbody>
+                {history.map((h, i) => (
+                  <tr key={i}>
+                    <td className="tiny muted" style={{ whiteSpace: "nowrap" }}>{fmtWaktu(h.at)}</td>
+                    <td className="tiny">
+                      {h.by}{" "}
+                      {h.by_role === "platform" && <Tag tone="#7c3aed">operator</Tag>}
+                    </td>
+                    <td className="tiny">{h.to}</td>
+                    <td className="tiny" style={{ fontVariantNumeric: "tabular-nums", whiteSpace: "nowrap" }}>
+                      {fmtUsd(h.from_usd)} → <b>{fmtUsd(h.to_usd)}</b>
+                      {h.pct != null && <span className="muted"> ({h.pct}%)</span>}
+                    </td>
+                    <td className="tiny muted">{h.note || "—"}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
 
       <p className="tiny muted mt3" style={{ marginBottom: 0 }}>
         Semua anggota bekerja di satu workspace dan berbagi satu saldo, jadi tiap job, influencer, konten, dan
