@@ -39,6 +39,24 @@ function sisaWaktu(expires) {
   return `${Math.max(1, Math.floor(ms / 60e3))} menit lagi`;
 }
 
+// Pemakaian penulis AI: berapa kali menulis, berapa token, berapa biayanya.
+//
+// Biayanya $0 selama operator belum menetapkan harga penulis AI — dan justru
+// itu yang perlu terlihat. Menulis hook, naskah, dan storyboard memanggil
+// provider teks yang dibayar operator; selama angkanya tidak pernah muncul di
+// mana pun, tidak ada yang tahu apakah gratis itu masih murah.
+function Penulis({ w }) {
+  const n = Number(w?.calls || 0);
+  if (!n) return <span>—</span>;
+  const tok = Number(w?.tokens || 0);
+  const biaya = Number(w?.cost_usd || 0);
+  return (
+    <span title={`${tok.toLocaleString("id-ID")} token`}>
+      {n}× · {biaya > 0 ? `$${biaya.toFixed(4)}` : "gratis"}
+    </span>
+  );
+}
+
 // Batang pemakaian. Angka saja tidak memberi tahu "hampir habis" secepat
 // bentuk — dan "hampir habis" adalah satu-satunya keadaan yang perlu
 // ditindaklanjuti sebelum terlambat.
@@ -237,6 +255,7 @@ export function MembersCard({ tick }) {
             <tr>
               <th>Anggota</th><th>Peran</th><th>Pemakaian</th>
               {is_owner && <th>Jatah</th>}
+              <th>Penulis AI</th>
               <th>Bergabung</th>
               {is_owner && <th></th>}
             </tr>
@@ -257,6 +276,7 @@ export function MembersCard({ tick }) {
                       : <EditJatah m={m} onSave={simpanJatah} busy={busy} />}
                   </td>
                 )}
+                <td className="tiny muted" style={{ whiteSpace: "nowrap" }}><Penulis w={m.writer} /></td>
                 <td className="tiny muted">{fmtDate(m.joined_at)}</td>
                 {is_owner && (
                   <td>
@@ -274,6 +294,7 @@ export function MembersCard({ tick }) {
                 <td><Tag tone="#d97706">Menunggu</Tag></td>
                 <td className="tiny muted">—</td>
                 {is_owner && <td className="tiny muted">—</td>}
+                <td className="tiny muted">—</td>
                 <td className="tiny muted">{sisaWaktu(i.expires_at)}</td>
                 {is_owner && (
                   <td>

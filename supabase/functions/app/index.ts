@@ -78,6 +78,13 @@ const PLATFORM_SETTABLE: Record<string, "secret" | "plain"> = {
   doku_secret_key: "secret",
   doku_client_id: "plain",
   doku_notification_path: "plain",
+  // Harga penulis AI, per 1.000 token, dipisah masuk/keluar karena semua
+  // provider teks menagih begitu. Keduanya "0" sampai operator mengubahnya,
+  // dan selama masih 0 penulis AI gratis persis seperti sebelumnya — yang
+  // berjalan cuma pencatatannya. Angka untuk mengisinya ada di kolom "Penulis
+  // AI" di halaman Tim & Kursi: pemakaian sungguhan, bukan tebakan.
+  text_price_per_1k_in_usd: "plain",
+  text_price_per_1k_out_usd: "plain",
 };
 
 // Operator platform, BUKAN owner workspace.
@@ -399,6 +406,19 @@ Deno.serve(async (req) => {
           .select("user_id, role, created_at, credit_quota_usd, credit_quota_pct, last_seen_at")
           .eq("workspace_id", wsId).order("created_at");
         if (error) throw new Error(error.message);
+        // Pemakaian penulis AI per orang. Ditampilkan walau harganya masih 0,
+        // karena justru selagi gratis-lah angka ini dibutuhkan: dari sinilah
+        // harga penulis AI nanti ditentukan, bukan dari tebakan.
+        const { data: tulis } = await admin.rpc("text_usage_summary", { ws: wsId });
+        const tulisPer = new Map<string, { calls: number; tokens: number; cost_usd: number }>();
+        for (const t of (tulis || []) as Array<Record<string, unknown>>) {
+          if (!t.user_id) continue;
+          tulisPer.set(String(t.user_id), {
+            calls: Number(t.calls || 0),
+            tokens: Number(t.tokens || 0),
+            cost_usd: Number(t.cost_usd || 0),
+          });
+        }
         const rows = [];
         for (const m of mems || []) {
           const { data: u } = await admin.auth.admin.getUserById(m.user_id);
@@ -414,6 +434,7 @@ Deno.serve(async (req) => {
             quota_usd: quota === null ? null : Number(quota),
             quota_pct: m.credit_quota_pct === null ? null : Number(m.credit_quota_pct),
             spent_usd: Number(spent || 0),
+            writer: tulisPer.get(m.user_id) || { calls: 0, tokens: 0, cost_usd: 0 },
             me: m.user_id === c.user.id,
           });
         }
