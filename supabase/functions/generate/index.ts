@@ -1341,6 +1341,224 @@ Deno.serve(async (req) => {
           },
         });
       }
+      case "suggest_prompts": {
+        // Pencari prompt video: satu industri → tiga paket lengkap (prompt
+        // visual, hook, script, caption, CTA), langsung tersimpan di pustaka.
+        //
+        // KENAPA TIGA, DAN KENAPA LANGSUNG DISIMPAN
+        //
+        // Satu usulan memaksa orang menerima atau menolak; tiga memberi
+        // perbandingan, dan yang dipilih biasanya gabungan dari dua. Ketiganya
+        // disimpan sebelum dipilih karena yang tidak dipakai hari ini sering
+        // yang dicari minggu depan — dan kalau harus dibuat ulang, hasilnya
+        // tidak pernah sama.
+        //
+        // RISET: APP INI TIDAK MENCARI DI WEB (lihat 0024). Yang dipakai adalah
+        // temuan yang sudah tersimpan di research_notes (ditulis Claude lewat
+        // MCP) dan masih berlaku — atau temuan yang dikirim langsung di body.
+        // Tanpa keduanya, usulan tetap dibuat dari pengetahuan umum model, dan
+        // itu dikatakan terang-terangan di `research_used`.
+        const INDUSTRY_LABELS: Record<string, string> = {
+          real_estate: "properti & real estate", finance: "keuangan pribadi & investasi",
+          wellness: "kesehatan & wellness", product_review: "review produk",
+          beauty: "kecantikan & skincare", lifestyle: "keseharian & rumah", fashion: "busana & OOTD",
+        };
+        // Nilai yang diketik sendiri disimpan APA ADANYA (spasi dirapikan,
+        // huruf kecil) — tidak dipetakan ke kategori lama.
+        const industry = String(body.industry || "").trim().toLowerCase().replace(/\s+/g, " ").slice(0, 60);
+        if (!industry) throw new Error("Sebutkan industrinya dulu — pilih salah satu, atau ketik sendiri.");
+        const industryLabel = INDUSTRY_LABELS[industry] || industry;
+        const niche = String(body.niche || "").trim().slice(0, 200);
+        const product = String(body.product || "").trim().slice(0, 300);
+        const tone = String(body.tone || "").trim().slice(0, 120);
+        const ctaUrl = String(body.cta_url || "").trim().slice(0, 300);
+        const platform = ["tiktok", "instagram", "youtube"].includes(body.platform) ? body.platform : "tiktok";
+        const platformLabel = platform === "instagram" ? "Instagram Reels" : platform === "youtube" ? "YouTube Shorts" : "TikTok";
+        const goal = ["follows", "views", "clicks"].includes(body.goal) ? body.goal : "follows";
+        const seconds = Math.min(Math.max(Number(body.seconds) || 8, 3), 15);
+
+        let iname = "", iniche = "", ibio = "", ilangCode = "id";
+        if (body.influencer_id) {
+          const { data: inf } = await admin.from("influencers")
+            .select("name,niche,persona,language,workspace_id").eq("id", body.influencer_id).maybeSingle();
+          if (inf?.workspace_id !== ws) throw new Error("Influencer tidak ditemukan di workspace ini.");
+          iname = inf.name; iniche = inf.niche || "";
+          ibio = (inf.persona as { bio?: string })?.bio || "";
+          ilangCode = inf.language || "id";
+        }
+        const langCode = ["id", "en", "mix"].includes(body.language) ? body.language : ilangCode;
+        const ilang = langCode === "en" ? "English" : langCode === "mix" ? "campuran Indonesia-Inggris" : "Indonesia";
+
+        // research_note_id harus milik workspace ini — kalau bukan, JANGAN
+        // diam-diam diabaikan: usulan akan tercatat lahir dari riset yang
+        // tidak pernah dibaca.
+        let researchNoteId: string | null = null;
+        type Finding = { title: string; summary: string; sources: string[] };
+        let research: Finding[] = [];
+        if (body.research_note_id) {
+          const { data: rn } = await admin.from("research_notes").select("id,title,summary,why_now,sources")
+            .eq("id", body.research_note_id).eq("workspace_id", ws).maybeSingle();
+          if (!rn) throw new Error("Catatan riset tidak ditemukan di workspace ini.");
+          researchNoteId = rn.id;
+          research.push({
+            title: String(rn.title), summary: [rn.summary, rn.why_now].filter(Boolean).join(" "),
+            sources: ((rn.sources as { url?: string }[]) || []).map((s) => String(s?.url || "")).filter(Boolean),
+          });
+        }
+        if (Array.isArray(body.research)) {
+          for (const r of (body.research as Record<string, unknown>[]).slice(0, 5)) {
+            const title = String(r?.title || "").trim().slice(0, 200);
+            const summary = String(r?.summary || "").trim().slice(0, 600);
+            if (!title || !summary) continue;
+            const sources = Array.isArray(r?.sources)
+              ? (r.sources as unknown[]).map((s) => String((s as { url?: string })?.url ?? s ?? "")).filter((u) => /^https?:\/\//i.test(u)).slice(0, 5)
+              : [];
+            research.push({ title, summary, sources });
+          }
+        }
+        if (!research.length) {
+          // Temuan workspace yang masih berlaku, paling baru dulu. Yang sudah
+          // kedaluwarsa tidak ikut — riset basi lebih berbahaya daripada tidak ada.
+          const today = new Date().toISOString().slice(0, 10);
+          const { data: notes } = await admin.from("research_notes").select("title,summary,why_now,sources")
+            .eq("workspace_id", ws).in("kind", ["trend", "format", "audience"])
+            .or(`expires_at.is.null,expires_at.gte.${today}`)
+            .order("observed_at", { ascending: false }).limit(5);
+          research = (notes || []).map((rn) => ({
+            title: String(rn.title), summary: [rn.summary, rn.why_now].filter(Boolean).join(" ").slice(0, 600),
+            sources: ((rn.sources as { url?: string }[]) || []).map((s) => String(s?.url || "")).filter(Boolean),
+          }));
+        }
+
+        const goalRule = goal === "clicks"
+          ? "Tujuan: KLIK ke tautan. Setiap CTA menyebut satu alasan konkret untuk klik, bukan sekadar \"cek link di bio\"."
+          : goal === "views"
+          ? "Tujuan: TONTONAN. Prioritaskan retensi — hook yang menahan, ritme cepat, satu hal yang dijanjikan di awal dan dibayar di akhir."
+          : "Tujuan: FOLLOWER BARU. Tiap usulan harus memberi alasan untuk mengikuti akunnya (seri, sudut pandang khas, janji konten berikutnya) — bukan cuma menarik ditonton.";
+        const wordBudget = Math.round(seconds * 2.3);
+
+        const system =
+          `Kamu strategis konten short-form untuk ${platformLabel}, pasar Indonesia, industri ${industryLabel}. ` +
+          `Kamu tahu format mana yang bertahan karena kamu melihat komentar dan retensi, bukan artikel tren. ` +
+          (iname ? `Talent-nya ${iname}${iniche ? `, niche ${iniche}` : ""}. ` : "") +
+          (ibio ? `Persona: ${ibio} ` : "") +
+          `Jawab HANYA dengan JSON valid, tanpa penjelasan lain.`;
+
+        const user =
+          `Buat TEPAT 3 usulan video ${seconds} detik, format vertikal 9:16, untuk industri "${industryLabel}"` +
+          (niche ? `, niche spesifik: "${niche}"` : "") + `.\n` +
+          (product ? `Produk/objek yang ditampilkan: "${product}".\n` : "") +
+          (tone ? `Nada: ${tone}.\n` : "") +
+          (ctaUrl ? `Tautan tujuan CTA: ${ctaUrl} (jangan tulis URL-nya di dalam script; cukup di caption/CTA).\n` : "") +
+          `${goalRule}\n` +
+          (research.length
+            ? `\nTemuan riset yang masih berlaku (pakai sebagai dasar, sebut nomornya di "based_on"):\n` +
+              research.map((r, i) => `${i + 1}. ${r.title} — ${r.summary}${r.sources.length ? ` [${r.sources.join(", ")}]` : ""}`).join("\n") + "\n"
+            : `\nTidak ada temuan riset tersimpan. Pakai format yang terbukti bertahan lama, dan JANGAN mengarang statistik, angka, atau "tren minggu ini".\n`) +
+          `\nTiga usulan harus BERBEDA sudut pandangnya (mis. edukasi, cerita, perbandingan) — bukan tiga variasi kalimat yang sama.\n` +
+          `\nAturan tiap usulan:\n` +
+          `1. "title": judul pendek bahasa Indonesia, maks 70 karakter.\n` +
+          `2. "angle": 1 kalimat bahasa Indonesia — kenapa format ini bekerja untuk tujuan di atas.\n` +
+          `3. "prompt": bahasa Inggris, 30-60 kata, HANYA yang terlihat di frame — aksi, ekspresi, ` +
+          `jarak dan gerak kamera, komposisi, pakaian, lokasi, cahaya. ` +
+          `DILARANG KERAS mendeskripsikan wajah, usia, warna kulit, atau bentuk rambut talent — ` +
+          `wajahnya dikunci lewat foto referensi, dan deskripsimu akan berkelahi dengan fotonya.\n` +
+          `4. "continuity": bahasa Inggris, 10-25 kata: pakaian, lokasi, cahaya yang sama untuk semua shot.\n` +
+          `5. "camera": salah satu dari close-up | medium | wide.\n` +
+          `6. "hook": bahasa ${ilang}, kalimat pembuka yang diucapkan di 1-3 detik pertama, maks 14 kata. ` +
+          `Jangan "halo guys", langsung ke hal yang bikin penasaran.\n` +
+          `7. "script": bahasa ${ilang}, yang diucapkan SETELAH hook (jangan ulangi hook-nya). ` +
+          `Hook + script total sekitar ${wordBudget} kata — itu yang muat di ${seconds} detik.\n` +
+          `8. "caption": bahasa ${ilang}, maks 2 kalimat + maksimal 4 hashtag. Caption DIBACA di bawah post, ` +
+          `bukan naskah — jangan menyalin script.\n` +
+          `9. "cta": bahasa ${ilang}, satu ajakan spesifik, maks 15 kata.\n` +
+          `10. "based_on": nomor temuan riset yang dipakai (array angka), atau [] kalau dari pengetahuan umum.\n` +
+          `11. Hindari klaim medis, kesehatan, atau finansial yang spesifik; untuk properti dan keuangan, ` +
+          `jangan menjanjikan keuntungan atau kenaikan harga.\n` +
+          `\nFormat JSON: {"suggestions": [{"title": "...", "angle": "...", "prompt": "...", "continuity": "...", ` +
+          `"camera": "medium", "hook": "...", "script": "...", "caption": "...", "cta": "...", "based_on": [1]}]}`;
+
+        const maxTokens = 2500;
+        const parsed = parseJsonLoose(await chat(ws, system, user, undefined, maxTokens)) as Record<string, unknown>;
+        const raw = Array.isArray(parsed.suggestions) ? (parsed.suggestions as Record<string, unknown>[]) : [];
+        const CAMERAS = ["close-up", "medium", "wide"];
+        const clean = raw.slice(0, 3).map((s) => ({
+          title: String(s?.title || "").trim().slice(0, 120),
+          angle: String(s?.angle || "").trim().slice(0, 300),
+          prompt: String(s?.prompt || "").trim().slice(0, 800),
+          continuity: String(s?.continuity || "").trim().slice(0, 300) || null,
+          camera: CAMERAS.includes(String(s?.camera)) ? String(s?.camera) : "medium",
+          hook: String(s?.hook || "").trim().slice(0, 300),
+          script: String(s?.script || "").trim().slice(0, 1500),
+          caption: String(s?.caption || "").trim().slice(0, 500),
+          cta: String(s?.cta || "").trim().slice(0, 200),
+          based_on: Array.isArray(s?.based_on)
+            ? (s.based_on as unknown[]).map(Number).filter((n) => Number.isInteger(n) && n >= 1 && n <= research.length)
+            : [],
+        })).filter((s) => s.title && s.prompt && s.hook);
+        if (!clean.length) throw new Error("Penulis AI tidak mengembalikan usulan yang lengkap. Coba lagi.");
+
+        // Simpan ketiganya. Judul harus unik per (workspace, kategori, jenis);
+        // kalau bentrok dengan usulan bulan lalu, judulnya diberi tanggal —
+        // bukan ditimpa, karena yang lama mungkin justru yang sedang dipakai.
+        const stamp = new Date().toISOString().slice(0, 10);
+        const brief = {
+          industry_label: industryLabel, platform, goal, tone: tone || null, product: product || null,
+          cta_url: ctaUrl || null, language: langCode, influencer_id: body.influencer_id || null, seconds,
+          research_titles: research.map((r) => r.title),
+        };
+        const saved: Record<string, unknown>[] = [];
+        for (let i = 0; i < clean.length; i++) {
+          const s = clean[i];
+          const row = {
+            workspace_id: ws, kind: "video", category: industry, niche: niche || null,
+            prompt: s.prompt, continuity: s.continuity, hook: s.hook, script: s.script, caption: s.caption, cta: s.cta,
+            seconds, platform, source: "suggested", research_note_id: researchNoteId,
+            brief: { ...brief, angle: s.angle, camera: s.camera, based_on: s.based_on.map((n) => research[n - 1]?.title).filter(Boolean) },
+            created_by: actor, sort: i + 1,
+          };
+          let ins = await admin.from("prompt_templates").insert({ ...row, title: s.title }).select("*").single();
+          if (ins.error?.code === "23505") {
+            ins = await admin.from("prompt_templates").insert({ ...row, title: `${s.title} (${stamp} #${i + 1})` }).select("*").single();
+          }
+          if (ins.error) throw new Error(ins.error.message);
+          saved.push({ ...ins.data, angle: s.angle, camera: s.camera, based_on: row.brief.based_on });
+        }
+
+        // Estimasi biaya, dua bagian:
+        //   - penulis AI: yang bisa dihitung dari sini cuma tokennya. Harganya
+        //     tergantung provider teks yang dipasang workspace, dan app ini
+        //     tidak menyimpan tarif teks — jadi disebut tokennya, bukan rupiah
+        //     yang dikarang.
+        //   - video: dari katalog, untuk model yang diminta atau yang termurah.
+        //     Ini estimasi yang SAMA dengan yang ditampilkan di Studio.
+        const cfg = await textConfig(ws);
+        const textTokensEst = Math.round((system.length + user.length) / 3.5) + maxTokens;
+        let q = admin.from("provider_models").select("id,label,est_price_usd,unit").eq("active", true).eq("task", "video");
+        q = body.model_id ? q.eq("id", String(body.model_id)) : q.order("est_price_usd").limit(1);
+        const { data: vm } = await q.maybeSingle();
+        const video = vm
+          ? {
+              model_id: vm.id, label: vm.label, unit: vm.unit, est_price_usd: Number(vm.est_price_usd), seconds,
+              est_usd: vm.unit === "per_second" ? Number(vm.est_price_usd) * seconds : Number(vm.est_price_usd),
+              mock: mode !== "live",
+            }
+          : null;
+
+        return json({
+          ok: true,
+          suggestions: saved,
+          research_used: research.map((r) => ({ title: r.title, sources: r.sources })),
+          cost: {
+            text: { provider: cfg.provider, model: cfg.model, tokens_est: textTokensEst,
+              note: "Sudah terpakai saat usulan ini dibuat; tarifnya mengikuti provider teks di Settings." },
+            video,
+            note: video
+              ? `Membuat satu video ${seconds} detik dengan ${video.label} ≈ $${video.est_usd.toFixed(3)}${video.mock ? " (mode mock — gratis)" : " (indikatif)"}.`
+              : "Belum ada model video aktif di katalog.",
+          },
+        });
+      }
       case "attach_refs": {
         // Daftarkan foto referensi ke Identity Kit influencer + pasang avatar bila kosong.
         const { data: inf } = await admin.from("influencers").select("id, avatar_url, workspace_id")
