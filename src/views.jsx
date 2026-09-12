@@ -3513,6 +3513,69 @@ function PricingCard({ keys, onSave, busy }) {
   );
 }
 
+// Harga penulis AI.
+//
+// KENAPA KARTUNYA ADA MESKI HARGANYA NOL
+//
+// Menulis hook, naskah, caption, storyboard, dan rencana konten memanggil
+// provider teks — dan sejak API dipusatkan, yang membayarnya operator. Selama
+// dua kolom di bawah ini 0, penulis AI gratis untuk pelanggan dan biayanya
+// ditanggung operator; itu pilihan yang sah (menulis memang murah, dan gratis
+// membuat orang mencoba), tapi sekarang ia jadi pilihan yang TERLIHAT, bukan
+// kebocoran yang tidak ada yang tahu.
+//
+// Angka untuk mengisinya tidak perlu ditebak: kolom "Penulis AI" di halaman
+// Tim & Kursi menunjukkan pemakaian sungguhan per orang.
+function WriterPriceCard({ keys, onSave, busy }) {
+  const val = (k) => keys.find((x) => x.key === k)?.value || "";
+  const masuk = Number(val("text_price_per_1k_in_usd")) || 0;
+  const keluar = Number(val("text_price_per_1k_out_usd")) || 0;
+  const gratis = !(masuk > 0 || keluar > 0);
+  // Satu naskah UGC 30 detik yang sudah diukur di app ini: kira-kira 900 token
+  // masuk (instruksi + persona) dan 700 token keluar.
+  const perNaskah = (900 / 1000) * masuk + (700 / 1000) * keluar;
+
+  return (
+    <div className="card p4 mb3" style={{ background: "var(--subtle)" }}>
+      <div className="row mb2" style={{ justifyContent: "space-between" }}>
+        <span className="bold small">Harga penulis AI</span>
+        <Badge tone={gratis ? "zinc" : "green"}>{gratis ? "gratis — biaya ditanggung operator" : "ditagih ke saldo"}</Badge>
+      </div>
+      <div className="grid mb2" style={{ gridTemplateColumns: "1fr 1fr", gap: 10 }}>
+        <form onSubmit={(e) => onSave(e, "text_price_per_1k_in_usd")}>
+          <label className="label">USD per 1.000 token masuk</label>
+          <div className="row">
+            <input name="value" className="input" defaultValue={val("text_price_per_1k_in_usd")} placeholder="0" />
+            <button className="btn" style={{ fontSize: 12 }} disabled={busy}>Simpan</button>
+          </div>
+        </form>
+        <form onSubmit={(e) => onSave(e, "text_price_per_1k_out_usd")}>
+          <label className="label">USD per 1.000 token keluar</label>
+          <div className="row">
+            <input name="value" className="input" defaultValue={val("text_price_per_1k_out_usd")} placeholder="0" />
+            <button className="btn" style={{ fontSize: 12 }} disabled={busy}>Simpan</button>
+          </div>
+        </form>
+      </div>
+      <div className="tiny muted">
+        {gratis ? (
+          <>
+            Penulis AI tidak menagih siapa pun sekarang, tapi pemakaiannya tetap dicatat —
+            lihat kolom <b>Penulis AI</b> di Tim &amp; Kursi. Isi dua kolom ini kalau volumenya
+            sudah cukup besar untuk ditagihkan.
+          </>
+        ) : (
+          <>
+            Satu naskah UGC (±900 token masuk, ±700 keluar) ≈ <b>${perNaskah.toFixed(4)}</b>.
+            Ditagih ke saldo workspace dan ikut mengurangi jatah anggota yang menulisnya.
+            Workspace operator tidak ikut ditagih.
+          </>
+        )}
+      </div>
+    </div>
+  );
+}
+
 // Mesin promo. Yang membuatnya berguna bukan diskonnya, melainkan syarat
 // audiensnya — dan syarat yang salah ketik tidak pernah berbunyi, ia cuma
 // diam-diam tidak menembak siapa pun. Karena itu ada tombol pratinjau yang
@@ -3675,7 +3738,12 @@ function PlatformConfig({ st, reload }) {
     setBusy(true); setMsg(null);
     try {
       const r = await callApp({ action: "set_platform_config", key, value: f.get("value") });
-      setMsg(r.cleared ? `${PLATFORM_KEY_LABELS[key][0]} dihapus.` : `${PLATFORM_KEY_LABELS[key][0]} tersimpan.`);
+      // Tidak semua key punya label: kurs, margin, Doku, dan harga penulis AI
+      // tidak ada di PLATFORM_KEY_LABELS. Tanpa jaring ini, penyimpanan yang
+      // BERHASIL berakhir dengan pesan error — nilainya masuk, tapi operator
+      // melihat "Cannot read properties of undefined" dan mengira gagal.
+      const nama = PLATFORM_KEY_LABELS[key]?.[0] || key;
+      setMsg(r.cleared ? `${nama} dihapus.` : `${nama} tersimpan.`);
       e.target.reset();
       reload();
     } catch (e2) { setMsg(e2.message); }
@@ -3695,6 +3763,7 @@ function PlatformConfig({ st, reload }) {
       </p>
       {msg && <div className={msg.includes("tersimpan") || msg.includes("dihapus") ? "msg-ok mb3" : "msg-err mb3"}>{msg}</div>}
       <PricingCard keys={st.keys || []} onSave={save} busy={busy} />
+      <WriterPriceCard keys={st.keys || []} onSave={save} busy={busy} />
       {(st.keys || []).filter((k) => k.kind !== "plain").map((k) => (
         <div key={k.key} className="card p4 mb3" style={{ background: "var(--subtle)" }}>
           <div className="row mb1" style={{ justifyContent: "space-between" }}>
