@@ -387,16 +387,24 @@ Deno.serve(async (req) => {
       // menang.
       if (body.action === "members") {
         const c = await requireUser(req);
+        let wsId = c.ws;
+        const minta = String(body.workspace_id || "").trim();
+        if (minta && minta !== c.ws) {
+          if (!(await isPlatformAdmin(c.user.id))) {
+            throw new Error("Kamu hanya bisa melihat anggota workspace sendiri.");
+          }
+          wsId = minta;
+        }
         const { data: mems, error } = await admin.from("workspace_members")
           .select("user_id, role, created_at, credit_quota_usd, credit_quota_pct, last_seen_at")
-          .eq("workspace_id", c.ws).order("created_at");
+          .eq("workspace_id", wsId).order("created_at");
         if (error) throw new Error(error.message);
         const rows = [];
         for (const m of mems || []) {
           const { data: u } = await admin.auth.admin.getUserById(m.user_id);
           const [{ data: quota }, { data: spent }] = await Promise.all([
-            admin.rpc("member_quota_usd", { ws: c.ws, uid: m.user_id }),
-            admin.rpc("member_spent_usd", { ws: c.ws, uid: m.user_id }),
+            admin.rpc("member_quota_usd", { ws: wsId, uid: m.user_id }),
+            admin.rpc("member_spent_usd", { ws: wsId, uid: m.user_id }),
           ]);
           rows.push({
             user_id: m.user_id, role: m.role, email: u?.user?.email || "?",
@@ -410,24 +418,55 @@ Deno.serve(async (req) => {
           });
         }
         const [{ data: used }, { data: total }] = await Promise.all([
-          admin.rpc("seats_used", { ws: c.ws }),
-          admin.rpc("seats_total", { ws: c.ws }),
+          admin.rpc("seats_used", { ws: wsId }),
+          admin.rpc("seats_total", { ws: wsId }),
         ]);
         // Hanya undangan yang masih hidup. Yang sudah dipakai atau kedaluwarsa
         // tidak bisa dilakukan apa-apa lagi, dan menampilkannya cuma membuat
         // daftar kursi terlihat lebih penuh daripada keadaannya.
         const { data: invs } = await admin.from("workspace_invites")
           .select("id, created_at, expires_at")
-          .eq("workspace_id", c.ws).is("accepted_at", null).is("revoked_at", null)
+          .eq("workspace_id", wsId).is("accepted_at", null).is("revoked_at", null)
           .gt("expires_at", new Date().toISOString())
           .order("created_at", { ascending: false });
+        // Riwayat jatah. Dikembalikan bersama daftar anggota, bukan lewat
+        // aksi terpisah: pertanyaan "kenapa jatahku berubah" muncul justru
+        // saat orangnya sedang melihat jatahnya, dan jawaban yang butuh satu
+        // klik lagi adalah jawaban yang tidak ditemukan.
+        const { data: hist } = await admin.from("quota_changes")
+          .select("created_at, actor_role, actor_user_id, target_user_id, old_effective_usd, new_effective_usd, new_usd, new_pct, note")
+          .eq("workspace_id", wsId).order("created_at", { ascending: false }).limit(15);
+        const nama = new Map<string, string>();
+        for (const m of mems || []) {
+          const r = rows.find((x) => x.user_id === m.user_id);
+          if (r) nama.set(m.user_id, r.email as string);
+        }
+        for (const h of hist || []) {
+          for (const id of [h.actor_user_id, h.target_user_id]) {
+            if (id && !nama.has(id)) {
+              const { data: u } = await admin.auth.admin.getUserById(id);
+              nama.set(id, u?.user?.email || "?");
+            }
+          }
+        }
         return json({
           ok: true,
           is_owner: c.role === "owner",
+          is_platform_admin: await isPlatformAdmin(c.user.id),
           members: rows,
           invites: invs || [],
           seats_used: Number(used || 0),
           seats_total: Number(total || 1),
+          history: (hist || []).map((h) => ({
+            at: h.created_at,
+            by: nama.get(h.actor_user_id) || "?",
+            by_role: h.actor_role,
+            to: nama.get(h.target_user_id) || "?",
+            from_usd: Number(h.old_effective_usd || 0),
+            to_usd: Number(h.new_effective_usd || 0),
+            pct: h.new_pct === null ? null : Number(h.new_pct),
+            note: h.note,
+          })),
         });
       }
       if (body.action === "invite_create") {
@@ -474,28 +513,35 @@ Deno.serve(async (req) => {
         });
       }
       if (body.action === "member_quota_set") {
+        // Logikanya TIDAK di sini — semuanya di `set_member_quota()` (migrasi
+        // 0045), termasuk siapa yang boleh dan pencatatan riwayatnya. Kolom
+        // jatah bahkan menolak UPDATE yang tidak lewat fungsi itu, jadi tidak
+        // ada jalur kedua yang bisa lupa mencatat pelakunya.
         const c = await requireUser(req);
-        if (c.role !== "owner") throw new Error("Hanya owner workspace yang bisa mengatur jatah anggota.");
-        const uid = String(body.user_id || "");
-        if (!uid) throw new Error("user_id wajib diisi.");
-        if (uid === c.user.id) throw new Error("Jatah owner tidak dibatasi.");
-        // Dua bentuk, dan hanya satu yang boleh terisi — check constraint di
-        // database menegakkannya juga. Yang tidak dipakai DIKOSONGKAN, bukan
-        // dibiarkan: dua angka yang sama-sama terisi adalah dua jawaban untuk
-        // satu pertanyaan.
-        const patch: Record<string, unknown> = { credit_quota_usd: null, credit_quota_pct: null };
-        const v = Number(body.value);
-        if (!Number.isFinite(v) || v < 0) throw new Error("Nilai jatah harus angka >= 0.");
-        if (String(body.shape || "usd") === "pct") {
-          if (v <= 0 || v > 100) throw new Error("Persentase jatah harus di atas 0 dan maksimal 100.");
-          patch.credit_quota_pct = v;
-        } else {
-          patch.credit_quota_usd = v;
+
+        // Operator platform boleh mengatur jatah di workspace pelanggan —
+        // biasanya karena diminta lewat support. Ia harus menyebut workspace
+        // mana; owner tidak perlu, karena cuma punya satu.
+        let wsId = c.ws;
+        const minta = String(body.workspace_id || "").trim();
+        if (minta && minta !== c.ws) {
+          if (!(await isPlatformAdmin(c.user.id))) {
+            throw new Error("Kamu hanya bisa mengatur jatah di workspace sendiri.");
+          }
+          wsId = minta;
         }
-        const { error } = await admin.from("workspace_members").update(patch)
-          .eq("workspace_id", c.ws).eq("user_id", uid);
+
+        const { data, error } = await admin.rpc("set_member_quota", {
+          ws: wsId,
+          target: String(body.user_id || ""),
+          shape: String(body.shape || "usd"),
+          value: Number(body.value),
+          actor: c.user.id,
+          memo: String(body.note || "").trim() || null,
+        });
         if (error) throw new Error(error.message);
-        return json({ ok: true });
+        const row = Array.isArray(data) ? data[0] : data;
+        return json({ ok: true, quota_usd: Number(row?.out_quota_usd || 0), as: row?.out_actor_role });
       }
       if (body.action === "member_remove") {
         const c = await requireUser(req);
