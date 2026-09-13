@@ -179,6 +179,24 @@ Harganya belum diputuskan, dan menebaknya diam-diam berarti menetapkan
 kebijakan harga lewat migrasi database. Jadi angkanya nanti datang dari
 pemakaian sungguhan.
 
+### Yang terukur bukan aksi `write`, tapi `chat()`
+
+Pengukurannya duduk di dalam `chat()` — satu-satunya tempat provider teks
+benar-benar dihubungi — bukan di tiap cabang aksi. Konsekuensinya: **setiap
+cabang baru yang memakai `chat()` ikut tercatat tanpa penulisnya perlu ingat
+menambahkan apa pun.**
+
+Ini bukan teori. Aksi `suggest_prompts` (migrasi `0047`, pencari prompt video
+per industri) dibangun setelahnya oleh orang lain, memanggil `chat()` seperti
+biasa, dan baris pertama yang pernah masuk ke `text_usage` justru miliknya —
+lengkap dengan pelaku dan jumlah token, tanpa satu baris kode pengukuran pun di
+fitur itu.
+
+Yang perlu dijaga cuma satu: **jangan memanggil provider teks langsung.** Lewat
+`chat()` saja. Cabang yang menghubungi provider sendiri akan bekerja dengan
+baik, tidak menimbulkan error apa pun, dan diam-diam tidak terhitung — jenis
+kebocoran yang tidak akan ada yang menemukan.
+
 **Melihat volumenya:** Settings → Tim & Kursi, kolom **Penulis AI** (per orang,
 jumlah panggilan + biaya).
 
@@ -287,3 +305,21 @@ menumpang di jalur yang ramai.
 | `0044` | jatah jadi porsi yang dipesan; job tanpa pelaku ditolak |
 | `0045` | `quota_changes` + `set_member_quota()` sebagai satu-satunya pintu |
 | `0046` | pengukuran penulis AI; `credits_ledger.actor_user_id` |
+| `0047` | pencari prompt video per industri (`prompt_templates`) |
+
+### Nama migrasi: repo vs ledger produksi
+
+Dua ketidakcocokan yang sudah terlanjur ada. Keduanya **tidak berbahaya**, tapi
+akan membingungkan orang pertama yang mencocokkan `supabase/migrations/` dengan
+ledger di database:
+
+- Ada dua berkas bernomor `0044`: `archive_error` dan `quota_reserved`.
+- Berkas `0047_prompt_suggestions.sql` terlanjur diterapkan di produksi dengan
+  nama **`0045_prompt_suggestions`**, dan urutan penerapannya mendahului
+  `0045_quota_audit` — berbeda dari urutan nama berkasnya.
+
+Tidak ada yang perlu diperbaiki: `0047` hanya menyentuh `prompt_templates` dan
+tidak bergantung sama sekali pada `0044`–`0046`, jadi memutar ulang berkasnya
+berurutan di project baru tetap menghasilkan skema yang sama. Yang penting:
+**jangan menambah `0044` ketiga, dan pakai nomor berikutnya yang benar-benar
+bebas.**

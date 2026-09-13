@@ -41,8 +41,11 @@ lain lolos. Sebelum menambah pemeriksaan di TS, periksa apakah tempatnya bukan
 di trigger.
 
 **5. Migrasi dijalankan manual dan tidak ikut deploy otomatis.** Nomornya harus
-unik — sudah ada dua `0044` (`archive_error` dan `quota_reserved`); jangan
-tambah yang ketiga.
+unik, dan sudah ada dua ketidakcocokan yang terlanjur: dua berkas `0044`
+(`archive_error`, `quota_reserved`), dan `0047_prompt_suggestions.sql` yang di
+produksi terlanjur bernama `0045_prompt_suggestions`. Keduanya tidak berbahaya
+(lihat `docs/OPERASI.md`), tapi jangan menambah yang ketiga — cek berkas yang
+ada dulu sebelum memilih nomor.
 
 ---
 
@@ -68,10 +71,20 @@ otomatis ikut berlaku tanpa perubahan di frontend. Yang perlu kamu tahu:
 - Job berbayar **ditolak** kalau `created_by` kosong di workspace yang dipakai
   lebih dari satu orang. `generate` sudah mengisinya; kalau kamu menambah jalur
   submit baru, ikut isikan.
-- Penulis AI (aksi `write`) **diukur** sejak migrasi `0046` — tiap panggilan
-  masuk `text_usage`. Harganya masih 0, jadi belum menagih siapa pun. Kalau
-  kamu menambah cabang baru yang memanggil `chat()`, ia ikut tercatat sendiri;
-  jangan memanggil provider teks langsung tanpa lewat `chat()`.
+- **Panggilan ke provider teks diukur di dalam `chat()`**, bukan per aksi. Jadi
+  cabang baru apa pun yang lewat `chat()` ikut tercatat ke `text_usage` sendiri,
+  tanpa kamu menulis kode pengukuran. Harganya masih 0, jadi belum menagih
+  siapa pun.
+
+  Contoh yang sudah jalan — tiru ini: aksi `suggest_prompts` memanggil
+  ```ts
+  chat(ws, { actor, purpose: "suggest_prompts" }, system, user, undefined, maxTokens)
+  ```
+  dan langsung muncul di `text_usage` lengkap dengan pelakunya.
+
+  **Jangan memanggil provider teks langsung.** Cabang yang menghubunginya
+  sendiri tetap bekerja, tidak menimbulkan error, dan diam-diam tidak
+  terhitung — kebocoran yang tidak akan ada yang menemukan.
 - Mode mock sudah bukan milik pelanggan, jadi setiap percobaan di wizard
   memakai saldo sungguhan. Perhitungkan itu saat mendesain alur yang menyuruh
   orang mencoba berkali-kali.
