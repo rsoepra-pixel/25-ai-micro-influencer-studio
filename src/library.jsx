@@ -4,7 +4,7 @@
 // kotak prompt yang kosong. Pustaka ini mengisinya dengan contoh yang sudah
 // memuat hal-hal yang menentukan hasil (pakaian, lokasi, cahaya, kamera),
 // lalu orang tinggal mengubah yang perlu. Isinya di tabel prompt_templates;
-// lima kategori awalnya beserta alasannya ada di migration 0031. Sejak 0045
+// lima kategori awalnya beserta alasannya ada di migration 0031. Sejak 0047
 // kategori boleh teks bebas (usulan AI menyimpan industri yang diketik user
 // apa adanya), jadi categoryLabel jatuh ke nilai mentahnya kalau tidak dikenal.
 import React, { useEffect, useState } from "react";

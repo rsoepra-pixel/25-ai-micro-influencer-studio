@@ -1,5 +1,13 @@
 -- Pencari prompt video: tiga usulan per industri, langsung tersimpan di pustaka.
 --
+-- NOMOR. Berkas ini SUDAH DITERAPKAN ke project produksi (12 Sep 2026, lewat
+-- MCP) dengan nama `0045_prompt_suggestions`, sebelum `0045_quota_audit` dan
+-- `0046_text_metering` dari cabang lain masuk ke main. Nomornya dinaikkan ke
+-- 0047 supaya urutan berkas di folder ini tetap satu nomor satu berkas — tapi
+-- di riwayat migrasi Supabase ia tetap tercatat sebagai 0045_prompt_suggestions.
+-- Jangan diterapkan ulang; semua pernyataannya idempoten, tapi tetap tidak
+-- perlu.
+--
 -- KENAPA INI ADA
 --
 -- Pustaka prompt (0031) mengisi kotak yang kosong dengan contoh yang sudah jadi.

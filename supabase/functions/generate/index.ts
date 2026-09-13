@@ -1521,7 +1521,7 @@ Deno.serve(async (req) => {
           `"camera": "medium", "hook": "...", "script": "...", "caption": "...", "cta": "...", "based_on": [1]}]}`;
 
         const maxTokens = 2500;
-        const parsed = parseJsonLoose(await chat(ws, system, user, undefined, maxTokens)) as Record<string, unknown>;
+        const parsed = parseJsonLoose(await chat(ws, { actor, purpose: "suggest_prompts" }, system, user, undefined, maxTokens)) as Record<string, unknown>;
         const raw = Array.isArray(parsed.suggestions) ? (parsed.suggestions as Record<string, unknown>[]) : [];
         const CAMERAS = ["close-up", "medium", "wide"];
         const clean = raw.slice(0, 3).map((s) => ({
