@@ -448,17 +448,28 @@ async function dashscopeKey(ws: string): Promise<string | null> {
   return provider === "qwen" ? await providerKey(ws, "text_api_key") : null;
 }
 
-// Sumber yang sudah hilang tidak akan pernah bisa diunduh ulang, jadi
-// kegagalannya diberi tanda supaya sapuan coba-ulang di poll berhenti
-// menyentuhnya. Sisanya sengaja TIDAK ditandai permanen: batas ukuran bisa
-// dinaikkan dan memori bisa lega di panggilan berikutnya, jadi mencoba lagi
-// masuk akal.
+// Dua jenis kegagalan arsip yang tidak akan berubah kalau dicoba lagi, dan
+// karena itu diberi tanda supaya sapuan coba-ulang di poll berhenti
+// menyentuhnya:
+//
+//   - sumbernya sudah hilang (404/403/410 saat mengunduh);
+//   - filenya melewati batas unggah Storage (413 EntityTooLarge). Batas itu
+//     global per project dan di paket Free terkunci 50 MB. Sebelum ini
+//     ditandai, sapuan arsip mengunduh ulang video 81,8 MB (job a1d0e5fe,
+//     talking head 157 detik) SETIAP MENIT selama ada job lain berjalan —
+//     hanya untuk ditolak lagi dengan alasan yang sama. Kalau batasnya nanti
+//     dinaikkan (paket Pro), kosongkan archive_error baris itu dan sapuan
+//     akan mencobanya lagi.
+//
+// Sisanya sengaja TIDAK ditandai permanen: gangguan jaringan dan memori yang
+// penuh bisa lega di panggilan berikutnya, jadi mencoba lagi masuk akal.
 const ARCHIVE_GONE = "PERMANEN";
 
 function archiveReason(e: unknown): string {
   const msg = String((e as Error)?.message || e);
   const gone = /Gagal mengunduh hasil \(HTTP (404|403|410)\)/.test(msg);
-  return `${gone ? ARCHIVE_GONE + ": " : ""}${msg}`.slice(0, 500);
+  const tooLarge = /HTTP 413\b|EntityTooLarge|Payload too large/i.test(msg);
+  return `${gone || tooLarge ? ARCHIVE_GONE + ": " : ""}${msg}`.slice(0, 500);
 }
 
 // Unduh hasil dari URL provider dan simpan permanen di bucket media. Dipakai
