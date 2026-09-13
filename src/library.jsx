@@ -279,6 +279,7 @@ export function PromptFinder({ seconds, influencerId, model, mode, onPick }) {
   const [res, setRes] = useState(null);
   const [flash, setFlash] = useState(null);
   const [savedItems, setSavedItems] = useState({});
+  const [ugcMade, setUgcMade] = useState({});
 
   const isCustom = industry === "__custom";
   const industryKey = isCustom ? custom.trim() : industry;
@@ -324,6 +325,34 @@ export function PromptFinder({ seconds, influencerId, model, mode, onPick }) {
     if (error) { setErr(error.message); return; }
     setSavedItems((m) => ({ ...m, [s.id]: data.id }));
     setFlash(`"${s.title}" masuk planner sebagai ide.`);
+  }
+
+  // Paket usulan (hook, script, CTA) adalah naskah yang DIUCAPKAN — dan task
+  // Video (b-roll) di Studio tidak mengucapkan apa pun: ia hanya memakai
+  // prompt visualnya dan menghasilkan klip bisu. Video 5 detik "tanpa arti"
+  // pada 13 Sep 2026 lahir persis dari situ. Jalur yang menyuarakan naskah
+  // adalah wizard Video UGC (naskah → suara → talking head), jadi usulan
+  // dipindahkan ke sana utuh: naskahnya jadi yang diucapkan, prompt visualnya
+  // jadi latar gambar kunci.
+  async function makeUgc(s) {
+    setErr(null);
+    if (!influencerId) { setErr("Pilih influencer dulu di form ini — video UGC butuh wajah dan suara siapa yang bicara."); return; }
+    const { data: w } = await supa.from("workspaces").select("id").limit(1).maybeSingle();
+    if (!w) { setErr("Workspace tidak ditemukan."); return; }
+    const script = [s.hook, s.script, s.cta].filter(Boolean).join("\n");
+    const { data, error } = await supa.from("ugc_projects").insert({
+      workspace_id: w.id, influencer_id: influencerId, title: String(s.title || "UGC").slice(0, 120),
+      script, caption: s.caption || null, hashtags: [],
+      // UGC menerima 5–60 detik; usulan Studio 3–15. Naskahnya yang menentukan
+      // panjang audio, angka ini cuma target untuk penulis AI dan estimasi.
+      target_seconds: Math.min(Math.max(Number(s.seconds) || 8, 5), 60),
+      scene: s.prompt || null,
+      delivery: [s.continuity, "talking to the phone camera naturally, relaxed, small hand gestures, genuine expressions between sentences"].filter(Boolean).join(", "),
+      platform: s.platform || platform,
+    }).select("id").single();
+    if (error) { setErr(error.message); return; }
+    setUgcMade((m) => ({ ...m, [s.id]: data.id }));
+    window.location.hash = `#/ugc?project=${data.id}`;
   }
 
   if (!open) {
@@ -440,7 +469,16 @@ export function PromptFinder({ seconds, influencerId, model, mode, onPick }) {
                 {savedItems[s.id]
                   ? <span className="tiny muted">✓ sudah di planner</span>
                   : <button type="button" className="btn btn2 tiny" style={{ padding: "5px 10px" }} onClick={() => saveAsContent(s)}>Simpan sebagai ide konten</button>}
+                {ugcMade[s.id]
+                  ? <a href={`#/ugc?project=${ugcMade[s.id]}`} className="tiny" style={{ color: "var(--blue)", fontWeight: 600 }}>✓ buka proyek UGC →</a>
+                  : <button type="button" className="btn btn-orange tiny" style={{ padding: "5px 10px" }} onClick={() => makeUgc(s)}
+                      title={influencerId ? "Naskahnya diucapkan: suara dibuat dari hook + script + CTA, lalu talking head" : "Pilih influencer dulu"}>
+                      🎤 Buat video UGC (bersuara)
+                    </button>}
               </div>
+              <p className="tiny muted mt1">
+                "Pakai prompt ini" hanya mengisi prompt b-roll — klipnya bisu. Hook, script, dan CTA baru terdengar lewat video UGC.
+              </p>
             </div>
           ))}
 
