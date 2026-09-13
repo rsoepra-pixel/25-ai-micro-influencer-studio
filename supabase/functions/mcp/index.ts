@@ -338,6 +338,75 @@ const TOOLS = [
       },
     },
   },
+  {
+    name: "save_prompt_suggestions",
+    description:
+      "Simpan 1-3 usulan prompt video ke pustaka prompt workspace — jalur \"cari prompt\" dari Claude. " +
+      "Alurnya: (1) tanya industri, niche, platform, tujuan (follows/views/clicks), durasi, dan produk bila ada; " +
+      "(2) RISET SENDIRI di web format & hook yang sedang bekerja di industri itu, simpan dengan save_research " +
+      "supaya ada research_note_id bertautan sumber; (3) TULIS SENDIRI tiga paket yang sudutnya berbeda-beda, " +
+      "lalu simpan lewat tool ini. Aturan paket: `prompt` bahasa Inggris 30-60 kata, hanya yang terlihat di " +
+      "frame (aksi, kamera, pakaian, lokasi, cahaya) dan TANPA deskripsi wajah — wajah dikunci Identity Kit; " +
+      "`hook` ≤ 14 kata; hook + `script` ≈ 2,3 kata per detik durasi; `caption` pendek + ≤ 4 hashtag, bukan " +
+      "salinan script; `cta` satu ajakan spesifik. Hindari klaim medis/finansial dan janji keuntungan. " +
+      "Hasilnya ikut membawa perkiraan biaya video untuk model yang diminta (atau yang termurah) — " +
+      "SEBUTKAN angkanya ke user sebelum menawarkan generate_media.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        industry: str("Industri: real_estate | finance | wellness | product_review | beauty | lifestyle | fashion, atau teks bebas yang diketik user (disimpan apa adanya)"),
+        niche: str("Niche spesifik, mis. 'villa Bali' (opsional)"),
+        platform: { type: "string", enum: ["tiktok", "instagram", "youtube"] },
+        goal: { type: "string", enum: ["follows", "views", "clicks"], description: "Tujuan utama (default follows)" },
+        seconds: { type: "number", description: "Durasi klip 3-15 detik (default 8)" },
+        tone: str("Nada penyampaian (opsional)"),
+        product: str("Produk/objek yang ditampilkan (opsional)"),
+        cta_url: str("Tautan tujuan CTA — pakai create_short_link dulu bila ada content-nya (opsional)"),
+        language: { type: "string", enum: ["id", "en", "mix"], description: "Bahasa hook/script/caption (default bahasa influencer, atau id)" },
+        influencer_id: str("Influencer yang akan membawakan (opsional)"),
+        research_note_id: str("Temuan riset dari save_research yang melahirkan usulan ini (sangat dianjurkan)"),
+        model_id: str("Model video dari list_models untuk estimasi biaya (opsional; default termurah)"),
+        suggestions: {
+          type: "array",
+          minItems: 1,
+          maxItems: 3,
+          description: "Tepat 3 usulan yang sudutnya berbeda",
+          items: {
+            type: "object",
+            properties: {
+              title: str("Judul pendek bahasa Indonesia, maks 70 karakter"),
+              angle: str("1 kalimat: kenapa format ini bekerja untuk tujuannya"),
+              prompt: str("Prompt visual bahasa Inggris, 30-60 kata, tanpa wajah"),
+              continuity: str("Pakaian, lokasi, cahaya — bahasa Inggris (opsional)"),
+              camera: { type: "string", enum: ["close-up", "medium", "wide"] },
+              hook: str("Kalimat pembuka 1-3 detik pertama"),
+              script: str("Yang diucapkan setelah hook"),
+              caption: str("Caption pendek + hashtag"),
+              cta: str("Satu ajakan spesifik"),
+            },
+            required: ["title", "prompt", "hook", "script", "caption", "cta"],
+          },
+        },
+      },
+      required: ["industry", "suggestions"],
+    },
+  },
+  {
+    name: "list_prompt_templates",
+    description:
+      "Pustaka prompt: template bawaan (semua workspace) dan milik workspace ini, termasuk usulan yang " +
+      "disimpan save_prompt_suggestions (source='suggested'). Panggil ini dulu sebelum menulis usulan baru " +
+      "untuk industri yang sama — mungkin sudah ada yang bisa dipakai ulang.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        kind: { type: "string", enum: ["image", "video", "storyboard", "ugc"] },
+        category: str("Saring per industri/kategori (opsional)"),
+        source: { type: "string", enum: ["library", "suggested"] },
+        limit: { type: "number", description: "Maks baris (default 30)" },
+      },
+    },
+  },
 ];
 
 // Panggil edge function lain sebagai pemanggil internal.
@@ -668,6 +737,99 @@ async function runTool(name: string, args: Record<string, unknown>, ctx: Ctx) {
         age_days: Math.floor((now - new Date(r.observed_at).getTime()) / 86400000),
       })));
     }
+    case "save_prompt_suggestions": {
+      // Claude yang meriset dan menulis; app ini yang mengingat. Tidak ada
+      // provider teks yang dipanggil di sini, jadi tidak ada biaya teks —
+      // biaya yang perlu disebut ke user hanya biaya videonya nanti.
+      const industry = need("industry").toLowerCase().replace(/\s+/g, " ").slice(0, 60);
+      const platform = ["tiktok", "instagram", "youtube"].includes(String(args.platform)) ? String(args.platform) : "tiktok";
+      const goal = ["follows", "views", "clicks"].includes(String(args.goal)) ? String(args.goal) : "follows";
+      const seconds = Math.min(Math.max(Number(args.seconds) || 8, 3), 15);
+      const langCode = ["id", "en", "mix"].includes(String(args.language)) ? String(args.language) : null;
+      const niche = typeof args.niche === "string" ? args.niche.trim().slice(0, 200) : "";
+
+      if (typeof args.influencer_id === "string" && args.influencer_id) {
+        const { data: inf } = await admin.from("influencers").select("id").eq("id", args.influencer_id).eq("workspace_id", ws).maybeSingle();
+        if (!inf) throw new Error("Influencer tidak ditemukan di workspace ini.");
+      }
+      // Tautan ke riset diverifikasi, bukan dipercaya: usulan yang mengaku
+      // lahir dari catatan workspace lain adalah jejak yang menyesatkan.
+      let researchNoteId: string | null = null;
+      if (typeof args.research_note_id === "string" && args.research_note_id) {
+        const { data: rn } = await admin.from("research_notes").select("id").eq("id", args.research_note_id).eq("workspace_id", ws).maybeSingle();
+        if (!rn) throw new Error("Catatan riset tidak ditemukan di workspace ini — simpan dulu lewat save_research.");
+        researchNoteId = rn.id;
+      }
+
+      const list = Array.isArray(args.suggestions) ? (args.suggestions as Record<string, unknown>[]).slice(0, 3) : [];
+      if (!list.length) throw new Error("Kirim 1-3 usulan di `suggestions`.");
+      const CAMERAS = ["close-up", "medium", "wide"];
+      const FACE_WORDS = /\b(face|facial|eyes|nose|lips|jawline|cheekbones|skin tone|hair(?:style| color)?|beard|age[ds]?\b|years? old)\b/i;
+      const stamp = new Date().toISOString().slice(0, 10);
+      const brief = {
+        platform, goal, seconds, language: langCode, niche: niche || null,
+        tone: typeof args.tone === "string" ? args.tone.slice(0, 120) : null,
+        product: typeof args.product === "string" ? args.product.slice(0, 300) : null,
+        cta_url: typeof args.cta_url === "string" ? args.cta_url.slice(0, 300) : null,
+        influencer_id: typeof args.influencer_id === "string" ? args.influencer_id : null,
+        written_by: "claude",
+      };
+      const saved: unknown[] = [];
+      const warnings: string[] = [];
+      for (let i = 0; i < list.length; i++) {
+        const s = list[i];
+        const get = (k: string, max: number) => String(s?.[k] || "").trim().slice(0, max);
+        const title = get("title", 120), prompt = get("prompt", 800), hook = get("hook", 300);
+        if (!title || !prompt || !hook) throw new Error(`Usulan #${i + 1} butuh minimal title, prompt, dan hook.`);
+        // Wajah di prompt tidak ditolak keras — Claude bisa punya alasan —
+        // tapi disebut, supaya tidak lolos diam-diam ke model video.
+        if (FACE_WORDS.test(prompt)) warnings.push(`Usulan #${i + 1}: prompt menyebut ciri wajah/rambut/usia — itu akan berkelahi dengan foto Identity Kit.`);
+        const row = {
+          workspace_id: ws, kind: "video", category: industry, niche: niche || null,
+          prompt, hook, script: get("script", 1500) || null, caption: get("caption", 500) || null, cta: get("cta", 200) || null,
+          continuity: get("continuity", 300) || null, seconds, platform, source: "suggested",
+          research_note_id: researchNoteId,
+          brief: { ...brief, angle: get("angle", 300) || null, camera: CAMERAS.includes(String(s?.camera)) ? String(s?.camera) : "medium" },
+          sort: i + 1,
+        };
+        let ins = await admin.from("prompt_templates").insert({ ...row, title }).select("*").single();
+        if (ins.error?.code === "23505") {
+          ins = await admin.from("prompt_templates").insert({ ...row, title: `${title} (${stamp} #${i + 1})` }).select("*").single();
+        }
+        if (ins.error) throw new Error(ins.error.message);
+        saved.push(ins.data);
+      }
+
+      // Estimasi video: model yang diminta, atau yang termurah — angka yang
+      // sama dengan yang tertera di Studio, bukan hitungan terpisah.
+      let q = admin.from("provider_models").select("id,label,est_price_usd,unit").eq("active", true).eq("task", "video");
+      q = typeof args.model_id === "string" && args.model_id ? q.eq("id", args.model_id) : q.order("est_price_usd").limit(1);
+      const { data: vm } = await q.maybeSingle();
+      const { data: modeRow } = await admin.from("app_secrets").select("value").eq("workspace_id", ws).eq("key", "generation_mode").maybeSingle();
+      const mock = (modeRow?.value || "mock") !== "live";
+      const estUsd = vm ? (vm.unit === "per_second" ? Number(vm.est_price_usd) * seconds : Number(vm.est_price_usd)) : null;
+      return ok({
+        saved: saved.length,
+        suggestions: saved,
+        warnings,
+        cost: vm
+          ? { model_id: vm.id, label: vm.label, unit: vm.unit, est_price_usd: Number(vm.est_price_usd), seconds, est_usd: estUsd, mock,
+              note: `Satu video ${seconds} detik dengan ${vm.label} ≈ $${estUsd!.toFixed(3)}${mock ? " (mode mock — gratis)" : " (indikatif)"}. Sebutkan ini ke user sebelum generate_media.` }
+          : { note: "Belum ada model video aktif di katalog." },
+      });
+    }
+    case "list_prompt_templates": {
+      let q = admin.from("prompt_templates")
+        .select("id,workspace_id,category,niche,kind,title,prompt,continuity,hook,script,caption,cta,seconds,shots,platform,source,research_note_id,brief,created_at")
+        .eq("active", true).or(`workspace_id.is.null,workspace_id.eq.${ws}`);
+      if (typeof args.kind === "string") q = q.eq("kind", args.kind);
+      if (typeof args.category === "string" && args.category) q = q.eq("category", args.category.toLowerCase().trim());
+      if (typeof args.source === "string") q = q.eq("source", args.source);
+      const limit = Math.min(Math.max(Number(args.limit) || 30, 1), 100);
+      const { data, error } = await q.order("created_at", { ascending: false }).limit(limit);
+      if (error) throw new Error(error.message);
+      return ok((data || []).map((r) => ({ ...r, builtin: r.workspace_id === null })));
+    }
     default:
       throw new Error(`Tool tidak dikenal: ${name}`);
   }
@@ -787,7 +949,13 @@ async function handleRpc(msg: Record<string, unknown>, ctx: Ctx): Promise<unknow
         "terdengar meyakinkan, dan yang bertaruh atasnya akun sungguhan. Panggil list_research dulu " +
         "sebelum meriset ulang — mungkin pertanyaannya sudah dijawab bulan lalu. Saat sebuah temuan " +
         "melahirkan ide konten, sebutkan research_note_id-nya di create_content, supaya nanti bisa " +
-        "diperiksa apakah konten hasil riset benar-benar berkinerja lebih baik daripada hasil tebakan.",
+        "diperiksa apakah konten hasil riset benar-benar berkinerja lebih baik daripada hasil tebakan.\n\n" +
+        "Kalau user minta \"carikan prompt video\" untuk sebuah industri (properti, keuangan, kesehatan, review " +
+        "produk, atau yang ia ketik sendiri): panggil list_prompt_templates dulu, riset di web format dan hook " +
+        "yang sedang bekerja di industri itu, simpan temuannya dengan save_research, lalu TULIS SENDIRI tiga " +
+        "paket (prompt visual, hook, script, caption, CTA) yang sudutnya berbeda dan simpan lewat " +
+        "save_prompt_suggestions dengan research_note_id-nya. Ketiganya otomatis masuk pustaka dan muncul di " +
+        "Studio. Sebutkan perkiraan biaya video yang dikembalikan tool itu sebelum menawarkan generate_media.",
     });
   }
   if (method === "notifications/initialized" || method?.startsWith("notifications/")) return null;

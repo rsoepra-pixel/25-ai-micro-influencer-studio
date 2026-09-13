@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useCallback } from "react";
-import { LibraryPicker, LibraryCard } from "./library.jsx";
+import { LibraryPicker, LibraryCard, PromptFinder } from "./library.jsx";
 import { CustomersAdmin, SubscriptionCard } from "./customers.jsx";
 import { MembersCard } from "./members.jsx";
 import { supa, callGenerate, callSocial, callCalendar, callApp, callLinks, callMedia, STATUS_LABELS, TYPE_LABELS, usd } from "./supa.js";
@@ -1466,6 +1466,13 @@ export function GenerateForm({ models, influencers, influencerId, refresh, mode,
         </div>
       ) : (
         <div className="mb3">
+          {/* Pencari prompt per industri: tiga paket lengkap dari penulis AI,
+              langsung masuk pustaka. Hanya untuk video — paket ini berisi hook,
+              script, dan CTA yang tidak punya tempat di task gambar. */}
+          {task === "video" && (
+            <PromptFinder seconds={duration} influencerId={activeInfId} model={selected} mode={mode}
+              onPick={(t) => { setPrompt(t.prompt || ""); if (t.seconds) setDuration(t.seconds); }} />
+          )}
           {(task === "image" || task === "video") && (
             <LibraryPicker kind={task} onPick={(t) => { setPrompt(t.prompt || ""); if (t.seconds) setDuration(t.seconds); }} />
           )}
