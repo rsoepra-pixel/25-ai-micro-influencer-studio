@@ -1,0 +1,63 @@
+# Setelan CLI untuk proyek ini.
+#
+# KENAPA FILE INI ADA, DAN KENAPA KETIADAANNYA BERBAHAYA
+#
+# Semua fungsi di sini dipasang dengan `verify_jwt = false`, dan itu bukan
+# kelalaian: gerbang JWT bawaan Supabase menolak permintaan SEBELUM kode fungsi
+# dijalankan sama sekali. Padahal separuh pemanggil di sistem ini memang tidak
+# punya JWT dan tidak boleh punya:
+#
+#   generate  -> cron poller & server MCP memakai header `x-internal-key`
+#   pay       -> webhook Doku, ditandatangani HMAC, bukan JWT
+#   mcp/oauth -> justru merekalah yang MENERBITKAN token
+#   app       -> signup terjadi sebelum ada akun, apalagi JWT
+#   r / links -> dibuka orang lewat browser tanpa login
+#
+# Autentikasinya tetap ada, hanya saja dikerjakan di dalam fungsi masing-masing
+# (Authorization diperiksa manual, kunci internal dibandingkan secara
+# constant-time, tanda tangan Doku diverifikasi). Mematikan gerbang bawaan
+# adalah syarat supaya pemeriksaan itu sempat berjalan.
+#
+# Tanpa file ini, `supabase functions deploy <nama>` memakai default CLI —
+# `verify_jwt = true` — dan diam-diam MENYALAKAN gerbang itu di fungsi yang
+# sedang hidup. Yang terjadi berikutnya: job berbayar tetap terkirim ke fal,
+# tapi tidak pernah ada yang memanggil `poll`, jadi hasilnya tidak pernah
+# masuk dan uangnya tetap keluar. Kegagalan seperti itu tidak berbunyi di mana
+# pun sampai ada yang bertanya "kok videoku tidak jadi-jadi".
+#
+# Jadi daftar di bawah ini bukan kerapian. Ia pagar.
+
+project_id = "kheibvzbvnmhdeokokrw"
+
+[functions.generate]
+verify_jwt = false
+
+[functions.app]
+verify_jwt = false
+
+[functions.pay]
+verify_jwt = false
+
+[functions.mcp]
+verify_jwt = false
+
+[functions.oauth]
+verify_jwt = false
+
+[functions.media]
+verify_jwt = false
+
+[functions.metrics]
+verify_jwt = false
+
+[functions.social]
+verify_jwt = false
+
+[functions.calendar]
+verify_jwt = false
+
+[functions.links]
+verify_jwt = false
+
+[functions.r]
+verify_jwt = false

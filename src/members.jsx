@@ -18,6 +18,7 @@ const SMALL = { padding: "4px 10px", fontSize: 12 };
 
 const fmtUsd = (v) => "$" + Number(v || 0).toFixed(2);
 const fmtDate = (v) => (v ? new Date(v).toLocaleDateString("id-ID", { day: "2-digit", month: "short", year: "numeric" }) : "—");
+const fmtWaktu = (v) => (v ? new Date(v).toLocaleString("id-ID", { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" }) : "—");
 
 function Tag({ tone = "#71717a", children }) {
   return (
@@ -38,19 +39,51 @@ function sisaWaktu(expires) {
   return `${Math.max(1, Math.floor(ms / 60e3))} menit lagi`;
 }
 
+// Pemakaian penulis AI: berapa kali menulis, berapa token, berapa biayanya.
+//
+// Biayanya $0 selama operator belum menetapkan harga penulis AI — dan justru
+// itu yang perlu terlihat. Menulis hook, naskah, dan storyboard memanggil
+// provider teks yang dibayar operator; selama angkanya tidak pernah muncul di
+// mana pun, tidak ada yang tahu apakah gratis itu masih murah.
+function Penulis({ w }) {
+  const n = Number(w?.calls || 0);
+  if (!n) return <span>—</span>;
+  const tok = Number(w?.tokens || 0);
+  const biaya = Number(w?.cost_usd || 0);
+  return (
+    <span title={`${tok.toLocaleString("id-ID")} token`}>
+      {n}× · {biaya > 0 ? `$${biaya.toFixed(4)}` : "gratis"}
+    </span>
+  );
+}
+
 // Batang pemakaian. Angka saja tidak memberi tahu "hampir habis" secepat
 // bentuk — dan "hampir habis" adalah satu-satunya keadaan yang perlu
 // ditindaklanjuti sebelum terlambat.
-function BatangJatah({ terpakai, jatah }) {
+function BatangJatah({ terpakai, jatah, saldo }) {
   if (jatah == null) return <span className="tiny muted">tanpa batas</span>;
   const pct = jatah > 0 ? Math.min(100, (terpakai / jatah) * 100) : 100;
   const warna = pct >= 100 ? "var(--warn)" : pct >= 80 ? "#d97706" : "var(--ok)";
+
+  // Yang BENAR-BENAR bisa dipakai, bukan yang dijanjikan. Jatah adalah porsi
+  // yang dipesan dari saldo bersama; kalau saldonya sendiri sudah menipis,
+  // porsi yang tersisa di atas kertas tidak bisa dibelanjakan. Menampilkan
+  // angka janji saja membuat penolakan "saldo tidak cukup" terdengar seperti
+  // kesalahan sistem, padahal itu keadaan yang sebenarnya.
+  const sisaJatah = Math.max(0, jatah - terpakai);
+  const bisaDipakai = saldo == null ? sisaJatah : Math.min(sisaJatah, saldo);
+  const tertahan = saldo != null && bisaDipakai < sisaJatah;
+
   return (
-    <div style={{ minWidth: 120 }}>
+    <div style={{ minWidth: 140 }}>
       <div style={{ height: 6, borderRadius: 999, background: "var(--border)", overflow: "hidden" }}>
         <div style={{ width: `${pct}%`, height: "100%", background: warna }} />
       </div>
       <div className="tiny muted mt1">{fmtUsd(terpakai)} dari {fmtUsd(jatah)}</div>
+      <div className="tiny mt1" style={{ color: tertahan ? "#d97706" : "var(--dim)" }}>
+        bisa dipakai {fmtUsd(bisaDipakai)}
+        {tertahan ? " — dibatasi saldo workspace" : ""}
+      </div>
     </div>
   );
 }
@@ -64,6 +97,9 @@ function EditJatah({ m, onSave, busy }) {
   const [value, setValue] = useState(
     m.quota_pct != null ? String(m.quota_pct) : String(m.quota_usd ?? 0),
   );
+  // Alasan perubahan, opsional. Yang membuatnya berharga bukan saat diisi,
+  // tapi saat dibaca berbulan-bulan kemudian oleh orang yang jatahnya turun.
+  const [note, setNote] = useState("");
 
   if (!buka) {
     return (
@@ -75,7 +111,7 @@ function EditJatah({ m, onSave, busy }) {
   return (
     <form
       className="row" style={{ gap: 6, flexWrap: "wrap" }}
-      onSubmit={(e) => { e.preventDefault(); onSave(m.user_id, shape, value).then(() => setBuka(false)); }}
+      onSubmit={(e) => { e.preventDefault(); onSave(m.user_id, shape, value, note).then(() => setBuka(false)); }}
     >
       <select className="input" style={{ ...SMALL, width: 92 }} value={shape} onChange={(e) => setShape(e.target.value)}>
         <option value="usd">USD</option>
@@ -85,6 +121,10 @@ function EditJatah({ m, onSave, busy }) {
         className="input" style={{ ...SMALL, width: 80 }} type="number" min="0"
         step={shape === "pct" ? "1" : "0.01"} max={shape === "pct" ? "100" : undefined}
         value={value} onChange={(e) => setValue(e.target.value)} required
+      />
+      <input
+        className="input" style={{ ...SMALL, width: 150 }} placeholder="Alasan (opsional)"
+        value={note} onChange={(e) => setNote(e.target.value)}
       />
       <button className="btn" style={SMALL} disabled={busy}>Simpan</button>
       <button type="button" className="btn btn2" style={SMALL} onClick={() => setBuka(false)}>Batal</button>
@@ -102,10 +142,20 @@ export function MembersCard({ tick }) {
   // ditutup, link itu hilang untuk selamanya dan harus diterbitkan ulang.
   const [linkBaru, setLinkBaru] = useState(null);
 
+  const [saldo, setSaldo] = useState(null);
   const load = useCallback(async () => {
     setErr(null);
-    try { setData(await callApp({ action: "members" })); }
-    catch (e) { setErr(e.message); setData({ members: [], invites: [] }); }
+    try {
+      // Dua panggilan, karena saldo memang bukan urusan daftar anggota.
+      // Digabung di layar, bukan di server: "jatah" dan "saldo" adalah dua
+      // fakta berbeda, dan yang menyesatkan justru kalau salah satunya hilang.
+      const [m, b] = await Promise.all([
+        callApp({ action: "members" }),
+        callApp({ action: "billing_status" }).catch(() => null),
+      ]);
+      setData(m);
+      setSaldo(b && b.billing_mode === "credit" ? Number(b.balance || 0) : null);
+    } catch (e) { setErr(e.message); setData({ members: [], invites: [] }); }
   }, []);
   useEffect(() => { load(); }, [load, tick]);
 
@@ -124,10 +174,13 @@ export function MembersCard({ tick }) {
     catch (e) { setMsg(e.message); }
     setBusy(false);
   }
-  async function simpanJatah(user_id, shape, value) {
+  async function simpanJatah(user_id, shape, value, note) {
     setBusy(true); setMsg(null);
-    try { await callApp({ action: "member_quota_set", user_id, shape, value: Number(value) }); await load(); setMsg("Jatah disimpan."); }
-    catch (e) { setMsg(e.message); }
+    try {
+      const r = await callApp({ action: "member_quota_set", user_id, shape, value: Number(value), note });
+      await load();
+      setMsg(`Jatah disimpan${r.as === "platform" ? " (sebagai operator platform)" : ""}.`);
+    } catch (e) { setMsg(e.message); }
     setBusy(false);
   }
   async function cabutAnggota(user_id, email) {
@@ -143,7 +196,7 @@ export function MembersCard({ tick }) {
 
   if (!data) return <div className="card p6 mb4 muted">Memuat tim…</div>;
 
-  const { members = [], invites = [], seats_used = 0, seats_total = 1, is_owner } = data;
+  const { members = [], invites = [], history = [], seats_used = 0, seats_total = 1, is_owner } = data;
   const sisaKursi = Math.max(0, seats_total - seats_used);
 
   return (
@@ -161,6 +214,14 @@ export function MembersCard({ tick }) {
           </button>
         )}
       </div>
+
+      {saldo != null && (
+        <p className="tiny muted mb3" style={{ marginTop: 0 }}>
+          Saldo workspace <b>{fmtUsd(saldo)}</b>, dibagi bersama. Jatah tiap anggota adalah porsi
+          yang <b>dipesan</b> dari saldo itu — totalnya tidak bisa melebihi saldo, dan
+          <b> jatah owner adalah sisanya</b>. Memberi jatah ke anggota otomatis mengurangi jatah owner.
+        </p>
+      )}
 
       {err && <div className="msg-err mb3">{err}</div>}
       {msg && <div className="small mb3" style={{ color: "var(--ok)" }}>{msg}</div>}
@@ -194,6 +255,7 @@ export function MembersCard({ tick }) {
             <tr>
               <th>Anggota</th><th>Peran</th><th>Pemakaian</th>
               {is_owner && <th>Jatah</th>}
+              <th>Penulis AI</th>
               <th>Bergabung</th>
               {is_owner && <th></th>}
             </tr>
@@ -206,14 +268,15 @@ export function MembersCard({ tick }) {
                   {m.me && <span className="tiny muted">(kamu)</span>}
                 </td>
                 <td><Tag tone={m.role === "owner" ? "#7c3aed" : "#0ea5e9"}>{m.role === "owner" ? "Owner" : "Anggota"}</Tag></td>
-                <td><BatangJatah terpakai={m.spent_usd} jatah={m.quota_usd} /></td>
+                <td><BatangJatah terpakai={m.spent_usd} jatah={m.quota_usd} saldo={saldo} /></td>
                 {is_owner && (
                   <td>
                     {m.role === "owner"
-                      ? <span className="tiny muted">tanpa batas</span>
+                      ? <span className="tiny muted">sisa yang belum dibagikan</span>
                       : <EditJatah m={m} onSave={simpanJatah} busy={busy} />}
                   </td>
                 )}
+                <td className="tiny muted" style={{ whiteSpace: "nowrap" }}><Penulis w={m.writer} /></td>
                 <td className="tiny muted">{fmtDate(m.joined_at)}</td>
                 {is_owner && (
                   <td>
@@ -231,6 +294,7 @@ export function MembersCard({ tick }) {
                 <td><Tag tone="#d97706">Menunggu</Tag></td>
                 <td className="tiny muted">—</td>
                 {is_owner && <td className="tiny muted">—</td>}
+                <td className="tiny muted">—</td>
                 <td className="tiny muted">{sisaWaktu(i.expires_at)}</td>
                 {is_owner && (
                   <td>
@@ -243,10 +307,39 @@ export function MembersCard({ tick }) {
         </table>
       </div>
 
+      {history.length > 0 && (
+        <div className="mt4">
+          <div className="bold small mb2">Riwayat perubahan jatah</div>
+          <div style={{ overflowX: "auto" }}>
+            <table>
+              <thead><tr><th>Waktu</th><th>Oleh</th><th>Untuk</th><th>Perubahan</th><th>Alasan</th></tr></thead>
+              <tbody>
+                {history.map((h, i) => (
+                  <tr key={i}>
+                    <td className="tiny muted" style={{ whiteSpace: "nowrap" }}>{fmtWaktu(h.at)}</td>
+                    <td className="tiny">
+                      {h.by}{" "}
+                      {h.by_role === "platform" && <Tag tone="#7c3aed">operator</Tag>}
+                    </td>
+                    <td className="tiny">{h.to}</td>
+                    <td className="tiny" style={{ fontVariantNumeric: "tabular-nums", whiteSpace: "nowrap" }}>
+                      {fmtUsd(h.from_usd)} → <b>{fmtUsd(h.to_usd)}</b>
+                      {h.pct != null && <span className="muted"> ({h.pct}%)</span>}
+                    </td>
+                    <td className="tiny muted">{h.note || "—"}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+
       <p className="tiny muted mt3" style={{ marginBottom: 0 }}>
         Semua anggota bekerja di satu workspace dan berbagi satu saldo, jadi tiap job, influencer, konten, dan
         postingan dicatat atas nama pembuatnya. Anggota yang jatahnya <b>belum diisi</b> punya jatah nol: model
-        gratis (Hugging Face) tetap terbuka, model berbayar menunggu kamu memberi angkanya.
+        gratis (Hugging Face) tetap terbuka, model berbayar menunggu kamu memberi angkanya. Kalau kamu menjual
+        jatah itu ke anggotamu, urusan uangnya di luar sistem — di sini yang tercatat cuma porsinya.
       </p>
     </div>
   );

@@ -249,7 +249,20 @@ async function textConfig(ws: string) {
 
 // photos = data URI base64. Provider Kimi menolak URL publik, jadi base64 dipakai
 // untuk semua provider agar satu jalur saja.
-async function chat(ws: string, system: string, user: string, photos?: string[], maxTokens = 1200): Promise<string> {
+//
+// `meta` bukan pelengkap: sejak API dipusatkan, tagihan penulis AI jatuh ke
+// operator, jadi setiap panggilan harus punya nama pelaku dan keperluannya.
+// Ditaruh di sini — bukan di tiap cabang aksi `write` — karena ini SATU-SATUNYA
+// tempat provider teks benar-benar dihubungi. Cabang baru apa pun yang menulis
+// lewat chat() ikut tercatat tanpa perlu ingat menambahkannya.
+async function chat(
+  ws: string,
+  meta: { actor: string | null; purpose: string },
+  system: string,
+  user: string,
+  photos?: string[],
+  maxTokens = 1200,
+): Promise<string> {
   const cfg = await textConfig(ws);
   if (!cfg.key) throw new Error("API key penulis AI belum dipasang — isi di Settings → Penulis AI.");
   if (!cfg.base || !cfg.model) throw new Error("Base URL / model penulis AI belum lengkap.");
@@ -263,11 +276,21 @@ async function chat(ws: string, system: string, user: string, photos?: string[],
         ...photos!.slice(0, 4).map((url) => ({ type: "image_url", image_url: { url } })),
       ]
     : user;
+
+  // Gerbang SEBELUM provider dihubungi. Sesudahnya sudah terlambat: uangnya
+  // keluar begitu permintaan terkirim, dan menolak di belakang berarti orangnya
+  // membayar untuk naskah yang tidak pernah ia terima.
+  const { error: gateErr } = await admin.rpc("text_precheck", {
+    ws, uid: meta.actor, max_tokens: maxTokens,
+  });
+  if (gateErr) throw new Error(gateErr.message);
+
+  const model = withPhotos ? cfg.vision : cfg.model;
   const res = await fetch(`${cfg.base.replace(/\/$/, "")}/chat/completions`, {
     method: "POST",
     headers: { Authorization: `Bearer ${cfg.key}`, "content-type": "application/json" },
     body: JSON.stringify({
-      model: withPhotos ? cfg.vision : cfg.model,
+      model,
       messages: [{ role: "system", content: system }, { role: "user", content: userContent }],
       temperature: 0.8,
       max_tokens: maxTokens,
@@ -280,6 +303,23 @@ async function chat(ws: string, system: string, user: string, photos?: string[],
   }
   const content = out?.choices?.[0]?.message?.content;
   if (!content) throw new Error("Provider teks tidak mengembalikan konten.");
+
+  // Token dari provider, bukan taksiran sendiri: itu angka yang dipakai
+  // menagih. Kalau provider tidak mengirimnya, jatuh ke perkiraan kasar 4
+  // karakter per token — ditandai dengan purpose yang sama supaya kelihatan di
+  // laporan kalau ternyata provider ini memang tidak pernah melaporkan token.
+  const usage = (out?.usage || {}) as Record<string, unknown>;
+  const tokIn = Number(usage.prompt_tokens ?? Math.ceil((system.length + JSON.stringify(userContent).length) / 4));
+  const tokOut = Number(usage.completion_tokens ?? Math.ceil(String(content).length / 4));
+
+  // Gagal mencatat TIDAK membatalkan hasil yang sudah di tangan user — naskahnya
+  // sudah jadi dan uangnya sudah keluar; menghapus jawabannya tidak mengembalikan
+  // apa pun. Tapi ia juga tidak boleh hilang diam-diam, jadi masuk log.
+  const { error: chargeErr } = await admin.rpc("charge_text", {
+    ws, uid: meta.actor, tokens_in: tokIn, tokens_out: tokOut, model, purpose: meta.purpose,
+  });
+  if (chargeErr) console.error("charge_text gagal", ws, meta.purpose, chargeErr.message);
+
   return String(content);
 }
 
@@ -889,6 +929,8 @@ Deno.serve(async (req) => {
       case "write": {
         // Penulis AI: kind = script | ideas | persona | lookalike | plan | storyboard.
         const kind = ["ideas", "persona", "lookalike", "plan", "storyboard", "ugc"].includes(body.kind) ? body.kind : "script";
+        // Pelaku + keperluan, dibawa ke setiap panggilan chat() di bawah ini.
+        const penulis = { actor, purpose: String(kind) };
 
         // storyboard: satu ide → daftar shot yang siap diproduksi.
         //
@@ -972,7 +1014,7 @@ Deno.serve(async (req) => {
             `"visual_prompt": "...", "narration": "...", "camera": "close-up | medium | wide", ` +
             `"seconds": ${perShot}}]}`;
 
-          const parsed = parseJsonLoose(await chat(ws, system, user, undefined, 3000)) as Record<string, unknown>;
+          const parsed = parseJsonLoose(await chat(ws, penulis, system, user, undefined, 3000)) as Record<string, unknown>;
           const rawShots = Array.isArray(parsed.shots) ? parsed.shots : [];
           if (!rawShots.length) throw new Error("Penulis AI tidak mengembalikan satu shot pun. Coba lagi.");
           const CAMERAS = ["close-up", "medium", "wide"];
@@ -1066,7 +1108,7 @@ Deno.serve(async (req) => {
             `7. Hindari klaim medis, kesehatan, atau finansial yang spesifik, dan klaim yang dilarang di atas.\n` +
             `\nFormat JSON: {"hook": "...", "script": "...", "caption": "...", "hashtags": ["..."], "scene": "...", "delivery": "..."}`;
 
-          const parsed = parseJsonLoose(await chat(ws, system, user, undefined, 1500)) as Record<string, unknown>;
+          const parsed = parseJsonLoose(await chat(ws, penulis, system, user, undefined, 1500)) as Record<string, unknown>;
           const script = String(parsed.script || "").trim();
           if (!script) throw new Error("Penulis AI tidak mengembalikan naskah. Coba lagi.");
           const words = script.split(/\s+/).filter(Boolean).length;
@@ -1151,7 +1193,7 @@ Deno.serve(async (req) => {
             `"series": [{"name": "...", "format": "1 kalimat cara eksekusinya"}], ` +
             `"items": [{"title": "...", "hook": "...", "pillar": "...", "content_type": "talking", "series": "", "weekday_hint": 0}]}`;
 
-          const parsed = parseJsonLoose(await chat(ws, system, user, undefined, 4000)) as Record<string, unknown>;
+          const parsed = parseJsonLoose(await chat(ws, penulis, system, user, undefined, 4000)) as Record<string, unknown>;
           const rawItems = Array.isArray(parsed.items) ? parsed.items : [];
           const rawPillars = Array.isArray(parsed.pillars) ? parsed.pillars : [];
           const TYPES = ["talking", "broll", "photo", "carousel"];
@@ -1207,7 +1249,7 @@ Deno.serve(async (req) => {
               `jenis & arah cahaya, color grading, latar/lokasi, cuaca/waktu, tekstur, mood, gaya kamera (lensa, kedalaman ruang, grain). ` +
               `DILARANG mendeskripsikan wajah, tubuh, atau identitas siapa pun di foto.\n` +
               `Format JSON: {"identity_prompt": "", "style_notes": "...", "summary": "1-2 kalimat bahasa Indonesia menjelaskan suasana yang kamu tangkap"}`;
-          const parsed = parseJsonLoose(await chat(ws, system, user, photos)) as Record<string, unknown>;
+          const parsed = parseJsonLoose(await chat(ws, penulis, system, user, photos)) as Record<string, unknown>;
           const stored = await storePhotos(ws, photos);
           return json({
             ok: true,
@@ -1277,7 +1319,7 @@ Deno.serve(async (req) => {
             `Format JSON: {"names": ["3 usulan nama"], "handles": ["3 usulan handle diawali @"], ` +
             `"niche": "niche ringkas", "bio": "...", "identity_prompt": "...", ` +
             `"style_notes": "1 kalimat bahasa Indonesia: saran gaya visual untuk ditulis di prompt per-gambar, bukan di identity prompt"}`;
-          const parsed = parseJsonLoose(await chat(ws, system, user, photos)) as Record<string, unknown>;
+          const parsed = parseJsonLoose(await chat(ws, penulis, system, user, photos)) as Record<string, unknown>;
 
           // Simpan foto referensi ke Storage supaya bisa dipakai sebagai Identity Kit.
           const stored = await storePhotos(ws, photos);
@@ -1318,7 +1360,7 @@ Deno.serve(async (req) => {
           const user =
             `Buat ${n} ide konten baru${body.topic ? ` seputar: ${body.topic}` : ""}. ` +
             `Format JSON: [{"title": "judul singkat", "hook": "kalimat pembuka 1-3 detik", "angle": "sudut pandang singkat"}]`;
-          const parsed = parseJsonLoose(await chat(ws, system, user));
+          const parsed = parseJsonLoose(await chat(ws, penulis, system, user));
           return json({ ok: true, ideas: Array.isArray(parsed) ? parsed : [] });
         }
 
@@ -1330,7 +1372,7 @@ Deno.serve(async (req) => {
           `Judul/ide konten: "${item.title}". Platform: ${platform}. Durasi target 30-45 detik.\n` +
           `Format JSON: {"hook": "kalimat pembuka kuat 1-3 detik", "script": "naskah lengkap siap dibacakan, 90-140 kata, pakai baris baru antar beat", ` +
           `"caption": "caption siap posting, maksimal 200 karakter", "hashtags": ["tag1","tag2"]}`;
-        const parsed = parseJsonLoose(await chat(ws, system, user)) as Record<string, unknown>;
+        const parsed = parseJsonLoose(await chat(ws, penulis, system, user)) as Record<string, unknown>;
         return json({
           ok: true,
           draft: {

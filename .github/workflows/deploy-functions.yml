@@ -1,0 +1,159 @@
+# Deploy edge function otomatis saat merge ke main.
+#
+# MASALAH YANG DISELESAIKAN
+#
+# Netlify sudah membangun `src/` sendiri setiap merge, tapi edge function tidak
+# punya pasangannya: satu-satunya cara memasangnya selama ini adalah mengetik
+# `supabase functions deploy <nama>` dari laptop. Akibatnya kode yang sudah
+# di-merge bisa menunggu berhari-hari sebelum benar-benar hidup, dan selama
+# jeda itu database, frontend, dan fungsi berada di tiga versi yang berbeda —
+# jenis ketidakcocokan yang gejalanya selalu muncul di tempat lain.
+#
+# `generate/index.ts` memperjelasnya: 143 KB, terlalu besar untuk dipasang
+# lewat jalur mana pun selain CLI, jadi ia jadi satu-satunya bagian sistem
+# yang selalu tertinggal.
+#
+# YANG DIBUTUHKAN SEKALI SAJA
+#
+# Satu secret di repo: SUPABASE_ACCESS_TOKEN
+#   Settings -> Secrets and variables -> Actions -> New repository secret
+#   Nilainya dibuat di https://supabase.com/dashboard/account/tokens
+#
+# Project ref TIDAK rahasia — ia muncul di setiap URL publik proyek ini — jadi
+# ia ditulis apa adanya di bawah, bukan disembunyikan sebagai secret. Secret
+# yang isinya bukan rahasia hanya membuat orang berhenti membedakan mana yang
+# benar-benar harus dijaga.
+#
+# CATATAN: alur ini TIDAK menjalankan migrasi database. Itu disengaja. Migrasi
+# mengubah data yang tidak bisa dikembalikan dengan "deploy ulang versi
+# sebelumnya"; ia pantas dijalankan sadar-sadar, bukan sebagai efek samping
+# sebuah merge.
+
+name: Deploy edge functions
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "supabase/functions/**"
+      - "supabase/config.toml"
+      - ".github/workflows/deploy-functions.yml"
+  # Untuk memasang ulang tanpa menunggu ada perubahan — misalnya setelah
+  # mengganti environment variable di dashboard Supabase.
+  workflow_dispatch:
+    inputs:
+      only:
+        description: "Nama fungsi tertentu, atau 'all' untuk semua"
+        required: false
+        default: "all"
+
+env:
+  # Bukan rahasia: ref ini ada di setiap URL publik proyek.
+  PROJECT_REF: kheibvzbvnmhdeokokrw
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          # Butuh riwayat untuk membandingkan commit sebelum & sesudah push.
+          fetch-depth: 0
+
+      - uses: supabase/setup-cli@v1
+        with:
+          version: latest
+
+      - name: Tentukan fungsi mana yang perlu dipasang
+        id: pilih
+        # Nilai dari luar dibawa lewat `env`, TIDAK ditempel sebagai ${{ }} ke
+        # dalam skrip. Ekspresi yang diinterpolasi langsung ke shell disisipkan
+        # sebagai teks mentah sebelum bash membacanya, jadi isinya bisa menutup
+        # perintah dan membuka perintah baru — dan skrip ini berjalan dengan
+        # token yang boleh memasang kode ke produksi.
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          INPUT_ONLY: ${{ github.event.inputs.only }}
+          SHA_SEBELUM: ${{ github.event.before }}
+          SHA_SEKARANG: ${{ github.sha }}
+        run: |
+          set -euo pipefail
+          semua() { ls supabase/functions | tr '\n' ' '; }
+
+          if [ "$EVENT_NAME" = "workflow_dispatch" ]; then
+            pilihan="$INPUT_ONLY"
+            if [ "$pilihan" = "all" ] || [ -z "$pilihan" ]; then
+              daftar="$(semua)"
+            else
+              # Dicocokkan ke daftar folder yang benar-benar ada, bukan sekadar
+              # diperiksa "ada direktorinya": nama seperti `../x` atau `a b`
+              # lolos uji -d tapi bukan nama fungsi.
+              if ! ls supabase/functions | grep -qx -- "$pilihan"; then
+                echo "::error::Fungsi '$pilihan' tidak ada di supabase/functions."
+                exit 1
+              fi
+              daftar="$pilihan"
+            fi
+          else
+            sebelum="$SHA_SEBELUM"
+            # Push pertama ke branch baru tidak punya commit pembanding yang
+            # valid. Memasang semuanya lebih aman daripada diam-diam tidak
+            # memasang apa pun.
+            if [ -z "$sebelum" ] || [ "$sebelum" = "0000000000000000000000000000000000000000" ] \
+               || ! git cat-file -e "$sebelum^{commit}" 2>/dev/null; then
+              daftar="$(semua)"
+            else
+              # config.toml memegang verify_jwt SEMUA fungsi, jadi perubahannya
+              # harus menyentuh semuanya — bukan cuma yang file-nya berubah.
+              if git diff --name-only "$sebelum" "$SHA_SEKARANG" | grep -q '^supabase/config\.toml$'; then
+                daftar="$(semua)"
+              else
+                daftar="$(git diff --name-only "$sebelum" "$SHA_SEKARANG" \
+                  | grep '^supabase/functions/' \
+                  | cut -d/ -f3 | sort -u | tr '\n' ' ')"
+              fi
+            fi
+          fi
+
+          echo "daftar=$daftar" >> "$GITHUB_OUTPUT"
+          echo "Akan dipasang: ${daftar:-(tidak ada)}"
+
+      - name: Pasang
+        if: steps.pilih.outputs.daftar != ''
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+          DAFTAR: ${{ steps.pilih.outputs.daftar }}
+        run: |
+          set -euo pipefail
+          if [ -z "${SUPABASE_ACCESS_TOKEN:-}" ]; then
+            echo "::error::Secret SUPABASE_ACCESS_TOKEN belum diisi di repo ini." >&2
+            echo "Buat token di https://supabase.com/dashboard/account/tokens," >&2
+            echo "lalu simpan di Settings -> Secrets and variables -> Actions." >&2
+            exit 1
+          fi
+
+          # Sengaja TIDAK memakai --no-verify-jwt di sini. Nilainya dibaca dari
+          # supabase/config.toml, supaya hanya ADA SATU tempat yang menentukan
+          # gerbang JWT tiap fungsi. Flag di baris perintah adalah tempat kedua,
+          # dan tempat kedua soal keamanan adalah tempat yang cepat atau lambat
+          # berbeda dari yang pertama.
+          for fn in $DAFTAR; do
+            echo "::group::deploy $fn"
+            supabase functions deploy "$fn" --project-ref "$PROJECT_REF"
+            echo "::endgroup::"
+          done
+
+      - name: Ringkasan
+        if: always()
+        env:
+          DAFTAR: ${{ steps.pilih.outputs.daftar }}
+        run: |
+          {
+            echo "### Edge functions"
+            echo ""
+            if [ -z "${DAFTAR:-}" ]; then
+              echo "Tidak ada fungsi yang berubah."
+            else
+              for fn in $DAFTAR; do echo "- \`$fn\`"; done
+            fi
+          } >> "$GITHUB_STEP_SUMMARY"
