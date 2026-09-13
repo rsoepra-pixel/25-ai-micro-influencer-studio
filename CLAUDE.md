@@ -73,8 +73,9 @@ otomatis ikut berlaku tanpa perubahan di frontend. Yang perlu kamu tahu:
   submit baru, ikut isikan.
 - **Panggilan ke provider teks diukur di dalam `chat()`**, bukan per aksi. Jadi
   cabang baru apa pun yang lewat `chat()` ikut tercatat ke `text_usage` sendiri,
-  tanpa kamu menulis kode pengukuran. Harganya masih 0, jadi belum menagih
-  siapa pun.
+  tanpa kamu menulis kode pengukuran. Sejak 13 Sep 2026 **sudah menagih** ke
+  saldo (≈ Rp 40 per naskah), jadi cabang boros benar-benar terasa di dompet
+  pelanggan.
 
   Contoh yang sudah jalan — tiru ini: aksi `suggest_prompts` memanggil
   ```ts
