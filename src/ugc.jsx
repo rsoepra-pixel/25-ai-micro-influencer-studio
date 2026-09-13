@@ -62,8 +62,15 @@ const DEFAULT_DELIVERY =
 const isAvatarModel = (m) =>
   m.task === "lipsync" && m.audio_field && m.init_image_field && m.init_image_field !== "video_url";
 
-export function Ugc({ ws, refresh, tick, mode }) {
+export function Ugc({ ws, refresh, tick, mode, query }) {
   const [openId, setOpenId] = useState(null);
+  // `#/ugc?project=<id>` membuka proyek itu langsung — dipakai tombol "Buat
+  // video UGC" di pencari prompt Studio, supaya usulan yang baru dipindahkan
+  // tidak harus dicari lagi di daftar.
+  useEffect(() => {
+    const id = new URLSearchParams(query || "").get("project");
+    if (id) setOpenId(id);
+  }, [query]);
   const [localTick, setLocalTick] = useState(0);
   const bump = useCallback(() => setLocalTick((t) => t + 1), []);
 
@@ -85,7 +92,7 @@ export function Ugc({ ws, refresh, tick, mode }) {
         influencers={influencers}
         products={products}
         mode={mode}
-        onBack={() => { setOpenId(null); bump(); }}
+        onBack={() => { setOpenId(null); bump(); if (window.location.hash.includes("?")) window.location.hash = "#/ugc"; }}
         refresh={refresh}
       />
     );

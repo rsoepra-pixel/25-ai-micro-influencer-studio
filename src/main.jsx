@@ -296,7 +296,7 @@ function App() {
   else if (routePath.startsWith("/influencers/")) view = <InfluencerDetail {...props} key={routePath.split("/")[2]} id={routePath.split("/")[2]} />;
   else if (routePath === "/studio") view = <Studio {...props} />;
   else if (routePath === "/storyboard") view = <Storyboard {...props} />;
-  else if (routePath === "/ugc") view = <Ugc {...props} />;
+  else if (routePath === "/ugc") view = <Ugc {...props} query={routeQuery} />;
   else if (routePath === "/products") view = <Products {...props} />;
   else if (routePath === "/planner") view = <Planner {...props} />;
   else if (routePath === "/reports") view = <Reports {...props} />;
