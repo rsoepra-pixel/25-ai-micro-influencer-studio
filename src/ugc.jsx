@@ -641,7 +641,7 @@ function StepProduksi({ project, inf, product, refCount, models, mode, pending, 
       }
       if (!jobId) {
         const res = await callGenerate({
-          action: "submit", task: "image", model_id: imgModel.id,
+          action: "submit", origin: "ugc", task: "image", model_id: imgModel.id,
           influencer_id: project.influencer_id, content_item_id: project.content_item_id || null,
           prompt: project.scene || DEFAULT_SCENE,
           extra_ref_urls: r.productPhotos,
@@ -676,7 +676,7 @@ function StepProduksi({ project, inf, product, refCount, models, mode, pending, 
         }
         if (!aJob) {
           const res = await callGenerate({
-            action: "submit", task: "tts", model_id: ttsModel.id,
+            action: "submit", origin: "ugc", task: "tts", model_id: ttsModel.id,
             influencer_id: project.influencer_id, content_item_id: project.content_item_id || null,
             text: project.script, label: `${project.title} — audio`,
           });
@@ -695,7 +695,7 @@ function StepProduksi({ project, inf, product, refCount, models, mode, pending, 
       }
       if (!vJob) {
         const res = await callGenerate({
-          action: "submit", task: "lipsync", model_id: avatarModel.id,
+          action: "submit", origin: "ugc", task: "lipsync", model_id: avatarModel.id,
           influencer_id: project.influencer_id, content_item_id: project.content_item_id || null,
           source_image_url: project.keyframe_url, audio_url: audioUrl,
           prompt: project.delivery || DEFAULT_DELIVERY, duration: r.seconds,

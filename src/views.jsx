@@ -1249,6 +1249,9 @@ export function GenerateForm({ models, influencers, influencerId, refresh, mode,
   const [step, setStep] = useState(null);
   const [formInfId, setFormInfId] = useState("");
   const [contentItemId, setContentItemId] = useState("");
+  // Template/usulan pustaka yang mengisi kolom prompt, dicatat di jejak job
+  // supaya "usulannya yang buruk" dan "editannya yang buruk" bisa dibedakan.
+  const [templateId, setTemplateId] = useState(null);
 
   // Influencer yang sedang aktif: dari prop (halaman influencer) atau dari
   // dropdown (Production Studio). Menentukan foto Identity Kit mana yang relevan.
@@ -1383,7 +1386,7 @@ export function GenerateForm({ models, influencers, influencerId, refresh, mode,
         if (!ttsModel) throw new Error("Belum ada model suara aktif. Cek Settings → provider.");
         setStep("Membuat suara dari naskah…");
         const voice = await callGenerate({
-          action: "submit", task: "tts", model_id: ttsModel.id,
+          action: "submit", origin: "studio", task: "tts", model_id: ttsModel.id,
           influencer_id: infId, text: ttsText, duration: Number(f.get("duration") || 5),
         });
         audioUrl = await waitForAudio(voice.job_id);
@@ -1392,7 +1395,7 @@ export function GenerateForm({ models, influencers, influencerId, refresh, mode,
       }
 
       await callGenerate({
-        action: "submit",
+        action: "submit", origin: "studio", prompt_template_id: templateId,
         task, model_id: selected?.id,
         influencer_id: infId,
         prompt: f.get("prompt") || "",
@@ -1411,7 +1414,7 @@ export function GenerateForm({ models, influencers, influencerId, refresh, mode,
     <form onSubmit={submit}>
       <div className="grid mb3" style={{ gridTemplateColumns: "1fr 1fr" }}>
         <div><label className="label">Task</label>
-          <select className="input" value={task} onChange={(e) => { setTask(e.target.value); setModelId(""); }}>
+          <select className="input" value={task} onChange={(e) => { setTask(e.target.value); setModelId(""); setTemplateId(null); }}>
             <option value="image">Gambar</option><option value="video">Video (b-roll)</option>
             <option value="tts">Suara (TTS)</option><option value="lipsync">Talking / Lip Sync</option>
           </select>
@@ -1471,10 +1474,10 @@ export function GenerateForm({ models, influencers, influencerId, refresh, mode,
               script, dan CTA yang tidak punya tempat di task gambar. */}
           {task === "video" && (
             <PromptFinder seconds={duration} influencerId={activeInfId} model={selected} mode={mode}
-              onPick={(t) => { setPrompt(t.prompt || ""); if (t.seconds) setDuration(t.seconds); }} />
+              onPick={(t) => { setPrompt(t.prompt || ""); setTemplateId(t.id || null); if (t.seconds) setDuration(t.seconds); }} />
           )}
           {(task === "image" || task === "video") && (
-            <LibraryPicker kind={task} onPick={(t) => { setPrompt(t.prompt || ""); if (t.seconds) setDuration(t.seconds); }} />
+            <LibraryPicker kind={task} onPick={(t) => { setPrompt(t.prompt || ""); setTemplateId(t.id || null); if (t.seconds) setDuration(t.seconds); }} />
           )}
           <label className="label">Prompt</label>
           <textarea name="prompt" className="input" rows={3} value={prompt} onChange={(e) => setPrompt(e.target.value)}
@@ -1746,7 +1749,7 @@ function CharacterSheetPanel({ models, influencers, refresh, mode, lockInfluence
       const s = list[i];
       try {
         await callGenerate({
-          action: "submit", task: "image", model_id: model.id, influencer_id: inf.id,
+          action: "submit", origin: "character_sheet", task: "image", model_id: model.id, influencer_id: inf.id,
           prompt: [s.prompt, bd.prompt, SHEET_BASE, extra.trim()].filter(Boolean).join(", "),
           label: `${SHEET_LABEL_PREFIX}${inf.name} — ${s.label}`,
         });
@@ -1861,6 +1864,119 @@ function CharacterSheetPanel({ models, influencers, refresh, mode, lockInfluence
   );
 }
 
+// ---------- Jejak produksi ----------
+// Satu job, semua yang menentukannya: dari mana dikirim, model dan knob-nya,
+// prompt yang benar-benar disusun, acuan yang ikut, dan apa yang provider
+// kembalikan. Dibuat karena pertanyaan "kenapa hasilnya begini?" selama ini
+// hanya bisa dijawab dengan menebak — alasannya panjang di migrasi 0048.
+const ORIGIN_LABELS = {
+  studio: "Production Studio", character_sheet: "Character sheet", ugc: "Wizard Video UGC",
+  storyboard: "Storyboard", mcp: "Claude (MCP)", unknown: "tidak tercatat",
+};
+
+function TrailRow({ label, children }) {
+  return (
+    <div className="row mb2" style={{ alignItems: "flex-start", gap: 10 }}>
+      <div className="tiny bold muted" style={{ width: 130, flex: "none", textTransform: "uppercase", letterSpacing: ".04em", paddingTop: 2 }}>{label}</div>
+      <div className="small" style={{ flex: 1, minWidth: 0 }}>{children}</div>
+    </div>
+  );
+}
+
+function JobTrail({ job }) {
+  const a = job.audit && typeof job.audit === "object" ? job.audit : {};
+  if (!Object.keys(a).length) {
+    return (
+      <div className="tiny muted" style={{ padding: "4px 0 8px" }}>
+        Job ini dibuat sebelum jejak produksi ada (13 Sep 2026), jadi yang tersimpan hanya model dan prompt terpotong di kolom atas.
+      </div>
+    );
+  }
+  const m = a.model || {}, rq = a.request || {}, c = a.composed || {}, r = a.result || {};
+  const mono = { fontFamily: "ui-monospace, SFMono-Regular, Menlo, monospace", fontSize: 12, whiteSpace: "pre-wrap", background: "var(--subtle-2)", borderRadius: 8, padding: "8px 10px", wordBreak: "break-word" };
+  const link = (url, text) => <a href={url} target="_blank" rel="noreferrer" style={{ color: "var(--blue)", fontWeight: 600 }}>{text}</a>;
+  const pick = c.duration_picked;
+  const originKey = a.origin || job.origin || "unknown";
+  return (
+    <div className="card p4 mb2" style={{ background: "var(--subtle)" }}>
+      <TrailRow label="Asal">
+        {ORIGIN_LABELS[originKey] || originKey}
+        {a.action && a.action !== "submit" ? ` · ${a.action}` : ""}
+        {a.mode === "mock" ? " · mode mock" : ""}
+      </TrailRow>
+      <TrailRow label="Model">
+        <b>{m.label || job.model_key}</b>
+        <span className="muted"> · {m.provider} · {priceLabel(m.est_price_usd)}{UNIT_SUFFIX[m.unit] || ""}</span>
+        <div className="tiny muted mt1">
+          {m.keeps_identity
+            ? "✓ membaca foto Identity Kit sebagai acuan wajah"
+            : "✗ tidak membaca foto Identity Kit — wajah mengikuti teks dan berbeda tiap generate"}
+          {m.accepts_init_image ? " · menerima foto awal" : ""}
+          {m.duration_field ? ` · knob durasi: ${m.duration_field}` : " · tanpa knob durasi (panjang klip ditentukan model)"}
+        </div>
+      </TrailRow>
+      {rq.prompt_template && (
+        <TrailRow label="Template">
+          {rq.prompt_template.title}
+          <span className="muted"> ({rq.prompt_template.source === "suggested" ? "usulan AI" : "pustaka"})</span>
+          {rq.prompt_template.prompt_changed
+            ? <span className="badge" style={{ background: "var(--warn-soft)", color: "var(--warn-strong)", marginLeft: 6 }}>diubah sebelum dikirim</span>
+            : <span className="badge" style={{ background: "var(--subtle-2)", color: "var(--ink-3)", marginLeft: 6 }}>dipakai apa adanya</span>}
+        </TrailRow>
+      )}
+      {c.final_prompt !== undefined && (
+        <TrailRow label="Prompt dikirim">
+          <div style={mono}>{c.final_prompt || <i className="muted">(kosong)</i>}</div>
+          {c.identity_prompt_injected && (
+            <div className="tiny muted mt1">
+              Identity prompt influencer ({c.identity_prompt_chars} karakter) ditempel di depan prompt adegan.
+              {!m.keeps_identity ? " Model ini tidak melihat fotonya, jadi teks itulah satu-satunya acuan wajah — dan ia bersaing dengan deskripsi adegan." : ""}
+            </div>
+          )}
+        </TrailRow>
+      )}
+      {r.actual_prompt && (
+        <TrailRow label="Ditulis ulang provider">
+          <div style={mono}>{r.actual_prompt}</div>
+          <div className="tiny muted mt1">DashScope merender prompt versi ini, bukan yang kita kirim. Kalau hasilnya melenceng, bandingkan keduanya.</div>
+        </TrailRow>
+      )}
+      <TrailRow label="Acuan">
+        {(c.ref_photos || []).length ? `${c.ref_photos.length} foto Identity Kit` : "tanpa foto Identity Kit"}
+        {rq.source_image_url ? <> · foto awal: {link(rq.source_image_url, "buka")}</> : " · tanpa foto awal"}
+        {rq.audio_url ? <> · audio: {link(rq.audio_url, "buka")}</> : ""}
+        {(rq.extra_ref_urls || []).length ? ` · ${rq.extra_ref_urls.length} foto produk` : ""}
+        {c.voice_locked ? " · suara terkunci" : ""}
+      </TrailRow>
+      {(rq.duration_requested || pick || c.total_seconds) ? (
+        <TrailRow label="Durasi">
+          {c.total_seconds
+            ? `${c.total_seconds} detik total (${(c.shot_seconds || []).join(" + ")})`
+            : <>diminta {rq.duration_requested} detik → {pick
+                ? `dikirim ${String(pick.value)} (${pick.seconds} detik ditagih)`
+                : `model tidak punya knob durasi; ditagih ${c.billed_seconds} detik, panjang klip ditentukan model`}</>}
+        </TrailRow>
+      ) : null}
+      {(r.task_status || r.seed !== undefined || r.request_id) ? (
+        <TrailRow label="Provider">
+          {r.task_status ? `status ${r.task_status}` : ""}
+          {r.seed !== undefined ? ` · seed ${r.seed}` : ""}
+          {r.request_id ? ` · request ${String(r.request_id).slice(0, 8)}…` : ""}
+        </TrailRow>
+      ) : null}
+      <TrailRow label="Waktu">
+        {a.submitted_at ? new Date(a.submitted_at).toLocaleString("id-ID") : "—"}
+        {a.finished_at ? ` → selesai ${new Date(a.finished_at).toLocaleString("id-ID")}` : ""}
+        {a.actor ? <span className="muted"> · pelaku {String(a.actor).slice(0, 8)}…</span> : <span className="muted"> · tanpa pelaku (otomatis / MCP)</span>}
+      </TrailRow>
+      <details className="mt2">
+        <summary className="tiny muted" style={{ cursor: "pointer" }}>JSON lengkap (termasuk body yang dikirim ke provider)</summary>
+        <pre style={{ ...mono, marginTop: 6, maxHeight: 320, overflow: "auto" }}>{JSON.stringify(a, null, 2)}</pre>
+      </details>
+    </div>
+  );
+}
+
 // ---------- Studio ----------
 export function Studio({ ws, refresh, tick, mode }) {
   const [d, reload, loadError] = useQuery(async () => {
@@ -1871,6 +1987,8 @@ export function Studio({ ws, refresh, tick, mode }) {
     ]);
     return { models: unwrap(models), inf: unwrap(inf), jobs: unwrap(jobs) };
   }, [ws.id, tick]);
+  // Job yang jejaknya sedang dibuka di riwayat.
+  const [trail, setTrail] = useState(null);
 
   // Poll job berjalan tiap 8 detik
   useEffect(() => {
@@ -1903,7 +2021,8 @@ export function Studio({ ws, refresh, tick, mode }) {
             <thead><tr><th></th><th>Task</th><th>Influencer</th><th>Model</th><th>Status</th><th>Biaya</th><th>Hasil</th><th></th></tr></thead>
             <tbody>
               {d.jobs.map((j) => (
-                <tr key={j.id}>
+                <React.Fragment key={j.id}>
+                <tr>
                   {/* Pratinjau media. Tanpa ini satu-satunya cara tahu apa yang
                       dihasilkan sebuah job adalah membuka tautannya satu per
                       satu — dan job yang salah hasilnya baru ketahuan setelah
@@ -1928,8 +2047,16 @@ export function Studio({ ws, refresh, tick, mode }) {
                   </td>
                   <td>{usd(j.cost_actual_usd ?? j.cost_estimate_usd)}</td>
                   <td>{j.output_url ? <a href={j.output_url} target="_blank" rel="noreferrer" style={{ color: "var(--blue-strong)", fontWeight: 600 }}>Buka →</a> : "—"}</td>
-                  <td><DeleteMedia kind="job" id={j.id} onDeleted={reload} /></td>
+                  <td style={{ whiteSpace: "nowrap" }}>
+                    <button type="button" className="btn btn2 tiny" style={{ padding: "4px 9px", marginRight: 6 }}
+                      onClick={() => setTrail(trail === j.id ? null : j.id)}>{trail === j.id ? "Tutup" : "Jejak"}</button>
+                    <DeleteMedia kind="job" id={j.id} onDeleted={reload} />
+                  </td>
                 </tr>
+                {trail === j.id && (
+                  <tr><td colSpan={8} style={{ paddingTop: 0 }}><JobTrail job={j} /></td></tr>
+                )}
+                </React.Fragment>
               ))}
             </tbody>
           </table>
