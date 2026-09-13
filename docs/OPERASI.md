@@ -175,9 +175,29 @@ Migrasi `0046` memasang pengukurannya **dengan harga 0**:
 - Hari ini tidak ada yang berubah bagi siapa pun. Penulis AI tetap gratis.
 - Tapi setiap panggilan tercatat: siapa, keperluan apa, model apa, berapa token.
 
-Harganya belum diputuskan, dan menebaknya diam-diam berarti menetapkan
-kebijakan harga lewat migrasi database. Jadi angkanya nanti datang dari
-pemakaian sungguhan.
+**Sejak 13 Sep 2026 harganya sudah dinyalakan**, sebesar biaya provider apa
+adanya:
+
+| | per 1.000 token |
+|---|---|
+| masuk | $0,0004 |
+| keluar | $0,0012 |
+
+Itu tarif `qwen-plus` di endpoint internasional ($0,40 / $1,20 per 1 juta
+token). Praktisnya: satu naskah rata-rata (919 token masuk, 987 keluar)
+memotong **$0,00155** — sekitar **Rp 40** dari saldo pelanggan, dengan modal
+**Rp 28**.
+
+### Kenapa TIDAK ditambah margin lagi di sini
+
+Ini jebakan hitungan yang mudah sekali terlewat. Margin 30% **sudah** diambil
+saat saldo dijual: pelanggan membayar Rp 25.714 untuk $1 yang modalnya
+Rp 18.000. Jadi menagih biaya provider apa adanya sudah menghasilkan margin
+30% penuh.
+
+Kalau harga token di tabel ini dinaikkan 30% "supaya untung 30%", yang terjadi
+adalah margin ~46% — untung dua kali dari satu margin yang sama. Aturannya:
+**tabel ini diisi biaya, bukan harga jual. Margin tinggal di kurs.**
 
 ### Yang terukur bukan aksi `write`, tapi `chat()`
 
@@ -200,14 +220,20 @@ kebocoran yang tidak akan ada yang menemukan.
 **Melihat volumenya:** Settings → Tim & Kursi, kolom **Penulis AI** (per orang,
 jumlah panggilan + biaya).
 
-**Menyalakan harganya:** Settings → Lanjutan → **Harga penulis AI**, dua kolom
-USD per 1.000 token (masuk dan keluar, dipisah karena semua provider teks
-menagih begitu — token keluar biasanya 3–4× lebih mahal). Begitu salah satunya
-di atas 0:
+**Mengubah harganya:** Settings → Lanjutan → **Harga penulis AI**, dua kolom
+USD per 1.000 token. Masuk dan keluar dipisah karena semua provider teks
+menagih begitu — token keluar biasanya 3× lebih mahal. Isi ulang kalau tarif
+provider berubah, atau kalau kamu berpindah model (mis. dari `qwen-plus` ke
+`qwen3.5-plus`, yang token keluarnya dua kali lipat).
+
+Selama angkanya di atas 0:
 
 - biayanya masuk ke ledger dan mengurangi jatah anggota yang menulis;
-- `text_precheck` mulai menolak kalau jatahnya habis atau langganan tidak aktif;
-- workspace operator tetap dikecualikan — harganya adalah biayanya sendiri.
+- `text_precheck` menolak kalau jatahnya habis atau langganan tidak aktif;
+- workspace operator dikecualikan — harganya adalah biayanya sendiri.
+
+Mengosongkan kedua kolom mengembalikannya jadi gratis, tanpa efek samping lain:
+pencatatan ke `text_usage` tetap jalan.
 
 ---
 
@@ -284,7 +310,7 @@ menumpang di jalur yang ramai.
 | | |
 |---|---|
 | **Doku** | URL notifikasi `https://kheibvzbvnmhdeokokrw.supabase.co/functions/v1/pay` belum didaftarkan di Back Office, dan `doku_secret_key` / `doku_client_id` / `doku_notification_path` masih kosong. Sampai itu diisi, pembayaran masuk **tidak** mengaktifkan langganan otomatis — harus diaktifkan manual dari halaman Pelanggan. |
-| **Harga penulis AI** | masih 0. Tunggu datanya terkumpul, lalu putuskan. |
+| **Tarif provider teks** | Harga penulis AI diisi dari tarif `qwen-plus` yang dikutip publik ($0,40/$1,20 per 1jt token), bukan dari tagihan DashScope sungguhan — dokumentasi resminya tidak bisa dibuka dari lingkungan kerja. Cocokkan sekali dengan invoice, lalu perbaiki kalau meleset. |
 | **"Anggota tidak boleh menghapus karya orang lain"** | diputuskan, belum ditegakkan. Yang sudah ada baru pembatasan kursi. |
 | **Admin panel** | paket saldo + pencocokan Doku; upgrade kursi 1→3; kelola anggota pelanggan; suspend akses; rincian pemakaian per pelanggan; ringkasan bisnis (omzet, **saldo beredar sebagai kewajiban**, margin terealisasi). |
 | **Nomor migrasi ganda** | ada `0044_archive_error.sql` dan `0044_quota_reserved.sql`. Urutannya saat ini aman (dijalankan berdasarkan nama), tapi jangan tambah `0044` ketiga. |
