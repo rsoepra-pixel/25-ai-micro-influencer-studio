@@ -219,9 +219,20 @@ const TOOLS = [
         },
         content_item_id: str("Ide konten yang hasilnya ini (opsional)"),
         label: str("Nama terbaca untuk aset hasilnya (opsional)"),
+        prompt_template_id: str("Template/usulan pustaka yang jadi dasar prompt ini, dari list_prompt_templates (opsional — tercatat di jejak job)"),
       },
       required: ["task", "model_id"],
     },
+  },
+  {
+    name: "get_job_audit",
+    description:
+      "Jejak produksi satu job: dari jalur mana dikirim (studio/ugc/storyboard/mcp), model beserta knob-nya, " +
+      "prompt yang benar-benar disusun (termasuk identity prompt yang disuntikkan), acuan yang ikut (Identity Kit, " +
+      "foto awal, audio, produk), body yang dikirim ke provider, dan jawaban provider — termasuk `actual_prompt` " +
+      "DashScope, prompt yang benar-benar dirender. Pakai ini saat hasil sebuah job tidak sesuai harapan, sebelum " +
+      "menebak penyebabnya. Job sebelum 13 Sep 2026 tidak punya jejak.",
+    inputSchema: { type: "object", properties: { job_id: str("ID job dari list_jobs") }, required: ["job_id"] },
   },
   {
     name: "list_jobs",
@@ -633,13 +644,23 @@ async function runTool(name: string, args: Record<string, unknown>, ctx: Ctx) {
         action: "submit",
         task: need("task"),
         model_id: need("model_id"),
-        ...pick(["influencer_id", "prompt", "text", "duration", "source_image_url", "audio_url", "extra_ref_urls", "content_item_id", "label"]),
+        ...pick(["influencer_id", "prompt", "text", "duration", "source_image_url", "audio_url", "extra_ref_urls", "content_item_id", "label", "prompt_template_id"]),
+        origin: "mcp",
       });
       return ok(out);
     }
+    case "get_job_audit": {
+      const { data, error } = await admin.from("production_jobs")
+        .select("id,task,model_key,status,label,origin,cost_estimate_usd,cost_actual_usd,output_url,error,archive_error,influencer_id,content_item_id,created_by,created_at,audit")
+        .eq("id", need("job_id")).eq("workspace_id", ws).maybeSingle();
+      if (error) throw new Error(error.message);
+      if (!data) throw new Error("Job tidak ditemukan di workspace ini.");
+      const hasTrail = data.audit && typeof data.audit === "object" && Object.keys(data.audit as object).length > 0;
+      return ok({ ...data, has_trail: hasTrail, note: hasTrail ? null : "Job ini dibuat sebelum jejak produksi ada (migrasi 0048)." });
+    }
     case "list_jobs": {
       let q = admin.from("production_jobs")
-        .select("id,task,model_key,status,label,cost_estimate_usd,cost_actual_usd,output_url,error,content_item_id,created_at")
+        .select("id,task,model_key,status,label,origin,cost_estimate_usd,cost_actual_usd,output_url,error,content_item_id,created_at")
         .eq("workspace_id", ws).order("created_at", { ascending: false })
         .limit(Math.min(Number(args.limit) || 20, 100));
       if (typeof args.status === "string") q = q.eq("status", args.status);

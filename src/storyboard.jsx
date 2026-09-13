@@ -971,7 +971,7 @@ function StepProduksi({ board, shots, inf, refCount, models, mode, frameReady, p
         let jobId = first.image_job_id;
         if (!jobId) {
           const res = await callGenerate({
-            action: "submit", task: "image", model_id: imgModel.id,
+            action: "submit", origin: "storyboard", task: "image", model_id: imgModel.id,
             influencer_id: board.influencer_id, content_item_id: board.content_item_id || null,
             prompt: shotPrompt(first, board.continuity),
             label: `${board.title} — frame pembuka`,

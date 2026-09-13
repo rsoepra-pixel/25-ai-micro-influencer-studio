@@ -472,6 +472,65 @@ function archiveReason(e: unknown): string {
   return `${gone || tooLarge ? ARCHIVE_GONE + ": " : ""}${msg}`.slice(0, 500);
 }
 
+// ---------- Jejak produksi (audit) ----------
+//
+// KENAPA INI ADA
+//
+// 13 Sep 2026: sebuah video 5 detik dari Wan 2.2 keluar "tidak ada artinya",
+// dan tidak ada yang bisa menjawab KENAPA dari data yang tersimpan: kolom
+// `prompt` terpotong 500 karakter, model hanya tercatat sebagai model_key,
+// dan tidak ada jejak soal dari layar mana job itu dikirim, foto referensi
+// mana yang ikut, durasi apa yang benar-benar dipilih, atau apa yang provider
+// kirimkan balik. Padahal jawabannya ada di semua hal itu: model text-to-video
+// 480p tanpa acuan wajah, identity prompt 70 kata ditempel di depan prompt
+// adegan, dan DashScope menulis ulang prompt-nya sendiri sebelum merender.
+//
+// Jejak ini disimpan di `production_jobs.audit`, satu objek per job, dan
+// `origin` menyebut jalur yang mengirimnya (migrasi 0048). Tidak ada kunci
+// provider di dalamnya — hanya prompt, URL media, dan knob model.
+const ORIGINS = ["studio", "character_sheet", "ugc", "storyboard", "mcp"];
+function pickOrigin(raw: unknown): string {
+  const o = String(raw || "").trim();
+  return ORIGINS.includes(o) ? o : "unknown";
+}
+function modelAudit(model: Record<string, unknown>) {
+  return {
+    id: model.id, model_key: model.model_key, label: model.label, provider: model.provider, task: model.task,
+    unit: model.unit, est_price_usd: Number(model.est_price_usd) || 0,
+    keeps_identity: !!model.keeps_identity, accepts_init_image: !!model.accepts_init_image,
+    init_image_field: model.init_image_field ?? null, ref_image_field: model.ref_image_field ?? null,
+    duration_field: model.duration_field ?? null, extra_input: model.extra_input ?? null,
+  };
+}
+// Bagian jawaban provider yang layak disimpan: skalar tingkat atas, dan
+// beberapa field `output` DashScope — terutama `actual_prompt`, prompt yang
+// BENAR-BENAR dirender, yang sering berbeda dari yang kita kirim. URL media
+// dilewati (sudah ada di output_url), struktur besar juga.
+function resultAudit(res: unknown): Record<string, unknown> {
+  const out: Record<string, unknown> = {};
+  if (!res || typeof res !== "object") return out;
+  for (const [k, v] of Object.entries(res as Record<string, unknown>)) {
+    if (typeof v === "string" && /^https?:\/\//.test(v)) continue;
+    if (typeof v === "string") out[k] = v.slice(0, 2000);
+    else if (typeof v === "number" || typeof v === "boolean") out[k] = v;
+  }
+  const o = (res as Record<string, unknown>).output;
+  if (o && typeof o === "object") {
+    for (const k of ["task_status", "orig_prompt", "actual_prompt", "submit_time", "scheduled_time", "end_time"]) {
+      const v = (o as Record<string, unknown>)[k];
+      if (typeof v === "string") out[k] = v.slice(0, 2000);
+    }
+  }
+  return out;
+}
+// Tambahkan ke jejak yang sudah ada, bukan menimpa. Dipakai setelah job
+// dibuat: body ke provider baru tersusun sesudah baris job-nya ada.
+async function mergeAudit(jobId: string, patch: Record<string, unknown>) {
+  const { data } = await admin.from("production_jobs").select("audit").eq("id", jobId).maybeSingle();
+  const cur = data?.audit && typeof data.audit === "object" ? (data.audit as Record<string, unknown>) : {};
+  await admin.from("production_jobs").update({ audit: { ...cur, ...patch } }).eq("id", jobId);
+}
+
 // Unduh hasil dari URL provider dan simpan permanen di bucket media. Dipakai
 // untuk gambar, video, maupun audio — dari DashScope (URL-nya kedaluwarsa 24
 // jam) dan dari fal.ai (URL-nya awet, tapi tetap milik server orang lain).
@@ -1910,6 +1969,19 @@ Deno.serve(async (req) => {
           status: "queued", cost_estimate_usd: est,
           label: `Lembar storyboard — ${board.title}`,
           content_item_id: board.content_item_id ?? null,
+          origin: "storyboard",
+          audit: {
+            v: 1, origin: "storyboard", action: "submit_sheet", mode, actor,
+            model: modelAudit(model),
+            request: { storyboard_id: board.id, title: board.title, panels: n, grid: `${cols}x${rows}` },
+            composed: {
+              final_prompt: String(input.prompt), ref_photos: refPhotos,
+              identity_prompt_injected: !!identity && !(model.keeps_identity && model.ref_image_field),
+              estimate_usd: est,
+            },
+            provider_input: input,
+            submitted_at: new Date().toISOString(),
+          },
         }).select("*").single();
         if (jobErr) throw new Error(jobErr.message);
 
@@ -2145,6 +2217,18 @@ Deno.serve(async (req) => {
           status: "queued", cost_estimate_usd: est,
           label: `${board.title} — video ${fitted.total} detik`,
           content_item_id: board.content_item_id ?? null,
+          origin: "storyboard",
+          audit: {
+            v: 1, origin: "storyboard", action: "submit_multishot", mode, actor,
+            model: modelAudit(model),
+            request: { storyboard_id: board.id, title: board.title, shots: shots.length, max_seconds: Number(body.max_seconds) || 15 },
+            composed: {
+              shot_seconds: fitted.each, total_seconds: fitted.total, ref_photos: refPhotos,
+              voice_locked: !!voiceId, multishot_mode: promptMultishot ? "prompt" : "multi_prompt", estimate_usd: est,
+            },
+            provider_input: input,
+            submitted_at: new Date().toISOString(),
+          },
         }).select("*").single();
         if (jobErr) throw new Error(jobErr.message);
 
@@ -2258,6 +2342,38 @@ Deno.serve(async (req) => {
         }
         const finalPrompt = [identity, prompt].filter(Boolean).join(", ");
 
+        // Jejak produksi — lihat komentar di atas modelAudit(). Template
+        // dicatat bersama tanda apakah prompt-nya diubah sebelum dikirim,
+        // supaya "usulan AI-nya yang buruk" dan "editannya yang buruk" bisa
+        // dibedakan nanti.
+        const origin = pickOrigin(body.origin);
+        let promptTemplate: Record<string, unknown> | null = null;
+        if (body.prompt_template_id) {
+          const { data: t } = await admin.from("prompt_templates").select("id,title,prompt,source,category")
+            .eq("id", String(body.prompt_template_id)).maybeSingle();
+          if (t) {
+            promptTemplate = {
+              id: t.id, title: t.title, source: t.source, category: t.category,
+              prompt_changed: String(t.prompt || "").trim() !== String(prompt).trim(),
+            };
+          }
+        }
+        const audit: Record<string, unknown> = {
+          v: 1, origin, action: "submit", mode, actor,
+          model: modelAudit(model),
+          request: {
+            task, prompt: String(prompt), text_chars: String(text).length, duration_requested: duration,
+            source_image_url: source_image_url || null, audio_url: audio_url || null, extra_ref_urls: extraRefs,
+            content_item_id: contentItemId, label, prompt_template: promptTemplate,
+          },
+          composed: {
+            identity_prompt_injected: !!identity, identity_prompt_chars: identity.length,
+            final_prompt: finalPrompt, ref_photos: refPhotos, voice_locked: !!voiceId,
+            duration_picked: picked, billed_seconds: billedSeconds, estimate_usd: est,
+          },
+          submitted_at: new Date().toISOString(),
+        };
+
         // Gerbang biaya. Dua mode, dua pagar yang berbeda sifatnya:
         //
         //   credit  — saldo. Ini pagar sebenarnya: uangnya uang platform, dan
@@ -2295,6 +2411,7 @@ Deno.serve(async (req) => {
           workspace_id: ws, created_by: actor, influencer_id: influencer_id || null, task,
           model_key: model.model_key, prompt: finalPrompt || String(text).slice(0, 500) || null,
           status: "queued", cost_estimate_usd: est, label, content_item_id: contentItemId,
+          origin, audit,
         }).select("*").single();
         if (jobErr) throw new Error(jobErr.message);
 
@@ -2329,6 +2446,7 @@ Deno.serve(async (req) => {
 
         if (model.provider === "hf") {
           try {
+            await mergeAudit(job.id, { provider_input: { prompt: finalPrompt || "portrait photo" } });
             const url = await hfImage(ws, model.model_key, finalPrompt || "portrait photo", job.id);
             await finish(url, 0);
             return json({ ok: true, job_id: job.id, status: "succeeded", mode, provider: "hf" });
@@ -2382,6 +2500,10 @@ Deno.serve(async (req) => {
               const outContent = out?.output?.choices?.[0]?.message?.content;
               const rawUrl = Array.isArray(outContent) ? outContent.find((c: Record<string, unknown>) => c?.image)?.image : null;
               if (!rawUrl) throw new Error("DashScope tidak mengembalikan gambar.");
+              await mergeAudit(job.id, {
+                provider_input: { model: model.model_key, content, parameters: { n: 1 } },
+                result: resultAudit(out), finished_at: new Date().toISOString(),
+              });
               // URL hasil kedaluwarsa — pindahkan ke storage sendiri.
               const url = await storeRemote(ws, String(rawUrl), job.id, "image/png");
               await finish(url, est);
@@ -2411,6 +2533,10 @@ Deno.serve(async (req) => {
             await fail(errMsg);
             throw new Error(`Gagal submit ke DashScope: ${errMsg}`);
           }
+          await mergeAudit(job.id, {
+            provider_input: { model: model.model_key, input: { prompt: finalPrompt }, parameters },
+            receipt: resultAudit(qr),
+          });
           await admin.from("production_jobs").update({ status: "running", external_id: `ds:${taskId}` }).eq("id", job.id);
           return json({ ok: true, job_id: job.id, status: "running", mode, provider: "dashscope" });
         }
@@ -2579,6 +2705,7 @@ Deno.serve(async (req) => {
           await fail(errMsg);
           throw new Error(`Gagal submit ke fal.ai: ${errMsg}`);
         }
+        await mergeAudit(job.id, { provider_input: input, receipt: resultAudit(qr) });
         // Simpan URL antrean apa adanya dari fal. `status_url` fal persis sama
         // dengan `response_url` + "/status", jadi satu kolom cukup untuk dua-duanya.
         await admin.from("production_jobs").update({
@@ -2627,6 +2754,10 @@ Deno.serve(async (req) => {
                 const cost = Number(jb.cost_estimate_usd) || 0;
                 await admin.from("production_jobs").update({
                   status: "succeeded", output_url: url, cost_actual_usd: cost, archive_error: archiveError,
+                  // Jawaban akhir DashScope memuat actual_prompt — prompt yang
+                  // benar-benar dirender. Ini bukti terkuat saat hasilnya
+                  // tidak sesuai dengan yang diminta.
+                  audit: { ...((jb.audit as Record<string, unknown>) || {}), result: resultAudit(tj), finished_at: new Date().toISOString() },
                 }).eq("id", jb.id);
                 await admin.from("assets").insert({
                   workspace_id: ws, created_by: jb.created_by ?? null, influencer_id: jb.influencer_id,
@@ -2699,6 +2830,7 @@ Deno.serve(async (req) => {
               const cost = Number(jb.cost_estimate_usd) || 0;
               await admin.from("production_jobs").update({
                 status: "succeeded", output_url: url, cost_actual_usd: cost, archive_error: archiveError,
+                audit: { ...((jb.audit as Record<string, unknown>) || {}), result: resultAudit(result), finished_at: new Date().toISOString() },
               }).eq("id", jb.id);
               if (url) {
                 await admin.from("assets").insert({
