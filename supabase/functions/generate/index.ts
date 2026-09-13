@@ -489,6 +489,15 @@ async function storeRemote(ws: string, url: string, jobId: string, fallbackCtype
     method: "POST",
     headers: {
       Authorization: `Bearer ${SB_SERVICE_KEY}`,
+      // `apikey` WAJIB ikut. supabase-js selalu mengirim keduanya; panggilan
+      // REST mentah di sini dulu hanya mengirim Authorization, dan itu cukup
+      // selama kuncinya JWT. Begitu kunci service role yang disuntikkan bukan
+      // JWT lagi (format sb_secret_...), Storage membaca Bearer-nya sebagai
+      // JWT dan menjawab 403 "Invalid Compact JWS" — SEMUA arsip hasil gagal,
+      // dan job DashScope menggantung di "running" tanpa satu pun error
+      // (job 8450f2eb, 13 Sep 2026: selesai di DashScope dalam 32 detik,
+      // lima jam kemudian masih "running").
+      apikey: SB_SERVICE_KEY,
       "content-type": ctype,
       "cache-control": "max-age=3600",
       "x-upsert": "true",
@@ -2587,9 +2596,27 @@ Deno.serve(async (req) => {
                 const rawUrl = tj?.output?.video_url || tj?.output?.results?.[0]?.url || null;
                 if (!rawUrl) throw new Error("Task selesai tapi tidak ada URL hasil.");
                 // URL DashScope kedaluwarsa 24 jam — pindahkan ke storage sendiri.
-                const url = await storeRemote(ws, String(rawUrl), jb.id, jb.task === "video" ? "video/mp4" : "image/png");
+                //
+                // Tapi gagal memindahkan TIDAK boleh membuat job menggantung.
+                // Versi sebelumnya melempar dari sini, ditangkap oleh catch di
+                // bawah yang diam, dan job tetap "running" selamanya — sementara
+                // videonya sudah jadi dan sudah dibayar. Perlakuannya disamakan
+                // dengan cabang fal: job selesai dengan URL provider apa adanya,
+                // alasan arsipnya dicatat, dan sapuan arsip di bawah yang
+                // mencoba lagi. Bedanya dengan fal: URL ini mati dalam 24 jam,
+                // jadi sapuan itu benar-benar berpacu dengan waktu.
+                let url = String(rawUrl);
+                let archiveError: string | null = null;
+                try {
+                  url = await storeRemote(ws, String(rawUrl), jb.id, jb.task === "video" ? "video/mp4" : "image/png");
+                } catch (e) {
+                  archiveError = archiveReason(e);
+                  console.error(`arsip gagal untuk job ${jb.id}: ${archiveError}`);
+                }
                 const cost = Number(jb.cost_estimate_usd) || 0;
-                await admin.from("production_jobs").update({ status: "succeeded", output_url: url, cost_actual_usd: cost }).eq("id", jb.id);
+                await admin.from("production_jobs").update({
+                  status: "succeeded", output_url: url, cost_actual_usd: cost, archive_error: archiveError,
+                }).eq("id", jb.id);
                 await admin.from("assets").insert({
                   workspace_id: ws, created_by: jb.created_by ?? null, influencer_id: jb.influencer_id,
                   content_item_id: jb.content_item_id ?? null,
