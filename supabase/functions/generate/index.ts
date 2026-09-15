@@ -2843,6 +2843,27 @@ Deno.serve(async (req) => {
                   console.error(`arsip gagal untuk job ${jb.id}: ${archiveError}`);
                 }
               }
+              // SELESAI TANPA MEDIA BUKAN KEBERHASILAN.
+              //
+              // fal kadang menandai task COMPLETED tanpa satu pun URL hasil —
+              // paling sering saat prompt shot melebihi batas 512 karakter.
+              // Versi sebelumnya tetap menandainya 'succeeded' dengan
+              // output_url kosong DAN tetap menagih, jadi orangnya membayar
+              // untuk video yang tidak pernah ada. Terukur di produksi:
+              // 3 job, $3,92, ketiganya Kling v3 pro multi-shot.
+              //
+              // Cabang DashScope di atas sudah benar sejak awal (ia melempar
+              // sebelum sempat menagih); yang bolong hanya jalur fal ini.
+              if (!raw) {
+                await admin.from("production_jobs").update({
+                  status: "failed",
+                  error: "Provider menandai selesai tapi tidak mengirim URL hasil, jadi tidak ada yang bisa ditagihkan. " +
+                    "Coba lagi — kalau ini video multi-shot, pendekkan tiap prompt shot (batas fal 512 karakter).",
+                  audit: { ...((jb.audit as Record<string, unknown>) || {}), result: resultAudit(result), finished_at: new Date().toISOString() },
+                }).eq("id", jb.id).eq("status", "running");
+                continue;
+              }
+
               const cost = Number(jb.cost_estimate_usd) || 0;
               // Sama seperti cabang DashScope di atas: syarat `status=running`
               // inilah yang memastikan hanya satu pemanggil `poll` yang
