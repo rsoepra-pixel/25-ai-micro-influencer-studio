@@ -21,7 +21,7 @@
 // mengikat suara ke karakternya lewat voice_id. Tidak ada penjahitan klip.
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { supa, callGenerate } from "./supa.js";
-import { ModelPicker, byPrice, priceLabel, Badge, useQuery, unwrap } from "./views.jsx";
+import { ModelPicker, byPrice, priceLabel, Badge, useQuery, unwrap, recordBadge} from "./views.jsx";
 import { LibraryPicker } from "./library.jsx";
 
 const PLATFORMS = [
@@ -289,7 +289,7 @@ export function Storyboard({ ws, refresh, tick, mode }) {
   // yang menyamar jadi "memang belum ada datanya" adalah yang paling mahal
   // dicari, jadi ini dicatat di sini supaya tidak terulang.
   const [models] = useQuery(async () =>
-    unwrap(await supa.from("provider_models").select("*").eq("active", true).order("task")), [ws.id, tick]);
+    unwrap(await supa.from("provider_models_ranked").select("*").eq("active", true).order("task")), [ws.id, tick]);
   const [influencers] = useQuery(async () =>
     unwrap(await supa.from("influencers").select("id,name,language").order("name")), [ws.id, tick]);
   const [boards, , error] = useQuery(async () =>
@@ -1178,7 +1178,7 @@ function SheetPanel({ board, shots, imgModels, refCount, mode, onDone }) {
       <div className="row mb2" style={{ justifyContent: "space-between" }}>
         <div className="tiny muted">{model?.label} · {shots.length} panel</div>
         <select className="input" style={{ maxWidth: 320 }} value={model?.id || ""} onChange={(e) => setModelId(e.target.value)}>
-          {imgModels.map((m) => <option key={m.id} value={m.id}>{m.label} · {priceLabel(Number(m.est_price_usd) || 0)}</option>)}
+          {imgModels.map((m) => <option key={m.id} value={m.id}>{m.label} · {priceLabel(Number(m.est_price_usd) || 0)}{recordBadge(m)}</option>)}
         </select>
       </div>
       {mode === "mock" && <p className="tiny muted mb2">Mode mock — hasilnya contoh, tidak ditagih.</p>}

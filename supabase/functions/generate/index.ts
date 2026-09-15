@@ -747,6 +747,57 @@ function mergeExtra(input: Record<string, unknown>, extra: unknown) {
   for (const [k, v] of Object.entries(extra as Record<string, unknown>)) input[k] = v;
 }
 
+// Periksa dulu apakah berkas yang akan kita SERAHKAN ke provider benar-benar
+// bisa diunduh — sebelum job berbayar berangkat.
+//
+// KENAPA
+//
+// Job lipsync 8 Sep (kling-video/ai-avatar, $0.28) gagal dengan
+// "file_download_error: Failed to download the file" — fal tidak bisa mengambil
+// URL storage yang kita berikan. Bentuk URL-nya sempurna; isinya yang tidak ada.
+// Tidak ada pemeriksaan bentuk yang bisa menangkap itu, tapi satu HEAD bisa,
+// dan HEAD-nya gratis sementara job video/lipsync-nya $0,28–$8,79.
+//
+// Ini menjaga task yang paling mahal: lipsync selalu memakai foto + audio, dan
+// video image-to-video selalu memakai foto awal. Job termahal yang pernah ada
+// di sistem ini ($8,79) adalah lipsync.
+//
+// GAGALNYA MEMBIARKAN LEWAT, BUKAN MENOLAK
+//
+// Kalau HEAD-nya sendiri yang bermasalah — timeout, jaringan, atau server yang
+// memang tidak melayani HEAD — job TETAP dikirim. Pemeriksaan ini hanya boleh
+// mencegah job yang sudah pasti gagal; ia tidak boleh jadi alasan baru job yang
+// sebenarnya baik-baik saja ikut ditolak. Yang dihitung salah hanya jawaban
+// tegas dari servernya: 404, 403, dan sejenisnya.
+async function unreachableAsset(url: string): Promise<string | null> {
+  let parsed: URL;
+  try {
+    parsed = new URL(url);
+  } catch {
+    return "bukan URL yang sah";
+  }
+  // fal hanya mengambil dari https. http:// akan ditolak di sana, jadi lebih
+  // baik dijawab di sini dengan kalimat yang bisa ditindaklanjuti.
+  if (parsed.protocol !== "https:") return "bukan alamat https";
+  const ac = new AbortController();
+  const timer = setTimeout(() => ac.abort(), 4000);
+  try {
+    const res = await fetch(url, { method: "HEAD", signal: ac.signal, redirect: "follow" });
+    // Sebagian storage menolak HEAD (405/501) tapi melayani GET dengan baik.
+    // Itu bukan bukti berkasnya hilang, jadi jangan dihitung.
+    if (res.status === 405 || res.status === 501) return null;
+    if (res.status === 404 || res.status === 410) return "berkasnya tidak ada di alamat itu";
+    if (res.status === 401 || res.status === 403) return "berkasnya ada tapi tidak boleh diakses publik";
+    if (res.status >= 400) return `servernya menjawab ${res.status}`;
+    return null;
+  } catch {
+    // Timeout / jaringan / DNS — lihat komentar di atas: biarkan lewat.
+    return null;
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
 // Jalankan satu endpoint fal sampai selesai, di dalam satu request.
 //
 // Dipakai untuk operasi PENDEK yang bukan job produksi — sejauh ini cuma
@@ -2695,6 +2746,24 @@ Deno.serve(async (req) => {
         // maupun TikTok, jadi setiap gambar harus dipotong sebelum tayang, dan
         // yang paling sering terpotong adalah bagian atas kepala.
         mergeExtra(input, model.extra_input);
+
+        // Berkas yang kita serahkan ke fal diperiksa dulu — lihat komentar di
+        // atas unreachableAsset(). Hanya dijalankan kalau memang ada berkas
+        // yang diserahkan, jadi text-to-image tidak ikut menunggu apa pun.
+        for (const [labelBerkas, urlBerkas] of [
+          ["Foto sumber", source_image_url],
+          ["Audio", audio_url],
+        ] as [string, string | undefined][]) {
+          if (!urlBerkas) continue;
+          const sebab = await unreachableAsset(String(urlBerkas));
+          if (sebab) {
+            await abort(
+              `${labelBerkas} tidak bisa diambil providernya: ${sebab}. ` +
+              `Job dihentikan sebelum dikirim, jadi tidak ada biaya yang keluar. ` +
+              `Pilih ulang berkasnya dari Aset, atau unggah lagi kalau sudah terlanjur terhapus.`,
+            );
+          }
+        }
 
         const res = await fetch(`https://queue.fal.run/${model.model_key}`, {
           method: "POST",
