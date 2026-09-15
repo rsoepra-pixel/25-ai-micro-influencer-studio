@@ -94,7 +94,13 @@ Build produksi:
 
 ```bash
 npm run build     # vite build + menulis dist/_redirects
+npm test          # aturan pemilihan model (src/routing.js) — tanpa DOM, tanpa database
 ```
+
+`npm test` menjalankan `src/*.test.mjs` lewat test runner bawaan Node, jadi
+tidak ada dependensi uji yang perlu dipasang. Yang diuji adalah `src/routing.js`
+— aturan yang memutuskan job berbayar dikirim ke model mana. Bagian itu sengaja
+dipisah dari JSX supaya bisa diuji sendiri.
 
 ---
 
