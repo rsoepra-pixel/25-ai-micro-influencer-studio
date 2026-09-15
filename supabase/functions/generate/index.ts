@@ -2424,7 +2424,9 @@ Deno.serve(async (req) => {
             name: `${label || `${task}-${job.id.slice(0, 8)}`}${mode === "mock" ? " (mock)" : model.provider === "hf" ? " (HF)" : ""}`,
           });
           if (cost > 0) {
-            await admin.from("credits_ledger").insert({ workspace_id: ws, kind: "usage", delta_usd: -cost, note: `job ${job.id}` });
+            await admin.from("credits_ledger").insert({
+              workspace_id: ws, kind: "usage", delta_usd: -cost, note: `job ${job.id}`, job_id: job.id,
+            });
           }
         };
         const fail = async (msg: string) => {
@@ -2752,20 +2754,34 @@ Deno.serve(async (req) => {
                   console.error(`arsip gagal untuk job ${jb.id}: ${archiveError}`);
                 }
                 const cost = Number(jb.cost_estimate_usd) || 0;
-                await admin.from("production_jobs").update({
+                // `eq("status", "running")` bukan hiasan: ia yang memutuskan
+                // siapa yang menang balapan. Cron dan browser sama-sama
+                // memanggil `poll`, dan keduanya bisa membaca job 'running'
+                // yang sama sebelum salah satunya sempat menulis 'succeeded'.
+                // Tanpa syarat ini keduanya melanjutkan, dan hasilnya tercatat
+                // dua kali — saldo terpotong dua kali, aset muncul dua kali di
+                // Drive. Terukur di produksi sebelum perbaikan ini: 10 job
+                // tertagih ganda, 9 baris aset berlebih.
+                //
+                // Dengan syarat ini hanya SATU pemanggil yang mendapat barisnya
+                // kembali; yang lain mendapat kosong dan berhenti di sini.
+                const { data: klaim } = await admin.from("production_jobs").update({
                   status: "succeeded", output_url: url, cost_actual_usd: cost, archive_error: archiveError,
                   // Jawaban akhir DashScope memuat actual_prompt — prompt yang
                   // benar-benar dirender. Ini bukti terkuat saat hasilnya
                   // tidak sesuai dengan yang diminta.
                   audit: { ...((jb.audit as Record<string, unknown>) || {}), result: resultAudit(tj), finished_at: new Date().toISOString() },
-                }).eq("id", jb.id);
+                }).eq("id", jb.id).eq("status", "running").select("id").maybeSingle();
+                if (!klaim) continue;  // pemanggil lain sudah menyelesaikannya
                 await admin.from("assets").insert({
                   workspace_id: ws, created_by: jb.created_by ?? null, influencer_id: jb.influencer_id,
                   content_item_id: jb.content_item_id ?? null,
                   kind: assetKind(jb.task), url, name: jb.label || `${jb.task}-${jb.id.slice(0, 8)}`,
                 });
                 if (cost > 0) {
-                  await admin.from("credits_ledger").insert({ workspace_id: ws, kind: "usage", delta_usd: -cost, note: `job ${jb.id}` });
+                  await admin.from("credits_ledger").insert({
+                    workspace_id: ws, kind: "usage", delta_usd: -cost, note: `job ${jb.id}`, job_id: jb.id,
+                  });
                 }
                 updated++;
               } else if (st === "FAILED" || st === "CANCELED" || st === "UNKNOWN") {
@@ -2827,11 +2843,36 @@ Deno.serve(async (req) => {
                   console.error(`arsip gagal untuk job ${jb.id}: ${archiveError}`);
                 }
               }
+              // SELESAI TANPA MEDIA BUKAN KEBERHASILAN.
+              //
+              // fal kadang menandai task COMPLETED tanpa satu pun URL hasil —
+              // paling sering saat prompt shot melebihi batas 512 karakter.
+              // Versi sebelumnya tetap menandainya 'succeeded' dengan
+              // output_url kosong DAN tetap menagih, jadi orangnya membayar
+              // untuk video yang tidak pernah ada. Terukur di produksi:
+              // 3 job, $3,92, ketiganya Kling v3 pro multi-shot.
+              //
+              // Cabang DashScope di atas sudah benar sejak awal (ia melempar
+              // sebelum sempat menagih); yang bolong hanya jalur fal ini.
+              if (!raw) {
+                await admin.from("production_jobs").update({
+                  status: "failed",
+                  error: "Provider menandai selesai tapi tidak mengirim URL hasil, jadi tidak ada yang bisa ditagihkan. " +
+                    "Coba lagi — kalau ini video multi-shot, pendekkan tiap prompt shot (batas fal 512 karakter).",
+                  audit: { ...((jb.audit as Record<string, unknown>) || {}), result: resultAudit(result), finished_at: new Date().toISOString() },
+                }).eq("id", jb.id).eq("status", "running");
+                continue;
+              }
+
               const cost = Number(jb.cost_estimate_usd) || 0;
-              await admin.from("production_jobs").update({
+              // Sama seperti cabang DashScope di atas: syarat `status=running`
+              // inilah yang memastikan hanya satu pemanggil `poll` yang
+              // melanjutkan. Lihat komentar panjang di sana.
+              const { data: klaim } = await admin.from("production_jobs").update({
                 status: "succeeded", output_url: url, cost_actual_usd: cost, archive_error: archiveError,
                 audit: { ...((jb.audit as Record<string, unknown>) || {}), result: resultAudit(result), finished_at: new Date().toISOString() },
-              }).eq("id", jb.id);
+              }).eq("id", jb.id).eq("status", "running").select("id").maybeSingle();
+              if (!klaim) continue;  // pemanggil lain sudah menyelesaikannya
               if (url) {
                 await admin.from("assets").insert({
                   workspace_id: ws, created_by: jb.created_by ?? null, influencer_id: jb.influencer_id,
@@ -2840,7 +2881,9 @@ Deno.serve(async (req) => {
                 });
               }
               if (cost > 0) {
-                await admin.from("credits_ledger").insert({ workspace_id: ws, kind: "usage", delta_usd: -cost, note: `job ${jb.id}` });
+                await admin.from("credits_ledger").insert({
+                  workspace_id: ws, kind: "usage", delta_usd: -cost, note: `job ${jb.id}`, job_id: jb.id,
+                });
               }
               updated++;
             } else if (st.status === "ERROR" || sres.status >= 400) {
