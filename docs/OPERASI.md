@@ -84,9 +84,34 @@ satu jalur berarti dua jalur lain lolos.
 | Trigger | Tabel | Menolak |
 |---|---|---|
 | `production_jobs_subscription_gate` | `production_jobs` | job berbayar tanpa langganan aktif, tanpa pelaku (di workspace berbagi), atau melebihi jatah |
+| `production_jobs_throttle_repeat_failure` | `production_jobs` | job berbayar ke model yang baru saja menolak permintaan kita berturut-turut (migrasi `0050`) |
 | `app_secrets_central_api` | `app_secrets` | kunci provider milik pelanggan, dan mode mock |
 | `workspace_members_alloc_budget` | `workspace_members` | jatah yang totalnya melebihi saldo |
 | `workspace_members_guard_quota` | `workspace_members` | perubahan jatah yang tidak lewat `set_member_quota()` |
+
+### Rem job gagal berulang (migrasi `0050`)
+
+Kalau model yang sama menolak permintaan kita **3 kali berturut-turut dalam 60
+menit** karena bentuk permintaannya (`job_failure_kind = 'input'`), job berbayar
+berikutnya ke model itu ditolak sebelum uangnya keluar. Model gratis tidak
+pernah direm, dan kegagalan jenis `policy` atau `config` tidak dihitung —
+mengganti foto memang bisa menolong, jadi memblokirnya menghukum orang yang
+sedang memperbaiki.
+
+Angkanya diukur, bukan ditebak: disimulasikan ke seluruh 156 job pertama, 3/60
+menyelamatkan $4,03 tanpa satu pun job yang sebenarnya berhasil ikut terblokir.
+Pilihan yang lebih galak (1 kegagalan) menghemat lebih banyak tapi membunuh 3
+job yang baik. Tabel lengkapnya ada di komentar migrasinya.
+
+**Mematikannya**, kalau suatu hari ia lebih mengganggu daripada menolong:
+
+```sql
+update public.service_config set value = '0' where key = 'repeat_fail_streak';
+```
+
+Berlaku seketika, tanpa deploy. Menyetel ulang ambang atau jendelanya lewat dua
+kunci yang sama (`repeat_fail_streak`, `repeat_fail_window_mins`). Ujinya ada di
+`supabase/tests/0050_repeat_failure_gate.sql`, aman dijalankan di produksi.
 
 Penulis AI tidak lewat `production_jobs`, jadi ia punya pasangannya sendiri di
 `generate/index.ts` → `chat()`: `text_precheck()` sebelum provider dihubungi,
@@ -334,6 +359,7 @@ menumpang di jalur yang ramai.
 | `0047` | pencari prompt video per industri (`prompt_templates`) |
 | `0048` | jejak produksi per job (`origin`, `audit`); satu job ditagih sekali |
 | `0049` | rapor model: `job_failure_kind()`, `model_scorecard`, `provider_models_ranked` |
+| `0050` | rem job gagal berulang: `repeat_failure_lock()` + trigger di `production_jobs` |
 
 ### Nama migrasi: repo vs ledger produksi
 
