@@ -30,7 +30,7 @@
 // dihitung dari jumlah kata naskah — bukan dari angka yang diminta.
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { supa, callGenerate } from "./supa.js";
-import { useQuery, unwrap, Badge, byPrice, priceLabel } from "./views.jsx";
+import { useQuery, unwrap, Badge, byPrice, priceLabel, recordBadge} from "./views.jsx";
 import { LibraryPicker } from "./library.jsx";
 import { useProducts, NewProduct } from "./products.jsx";
 import { waitForJob } from "./storyboard.jsx";
@@ -75,7 +75,7 @@ export function Ugc({ ws, refresh, tick, mode, query }) {
   const bump = useCallback(() => setLocalTick((t) => t + 1), []);
 
   const [models] = useQuery(async () =>
-    unwrap(await supa.from("provider_models").select("*").eq("active", true).order("task")), [ws.id, tick]);
+    unwrap(await supa.from("provider_models_ranked").select("*").eq("active", true).order("task")), [ws.id, tick]);
   // `voice` ikut dibaca: kesiapan suara diputuskan di sini, bukan di ujung.
   const [influencers] = useQuery(async () =>
     unwrap(await supa.from("influencers").select("id,name,language,voice").order("name")), [ws.id, tick]);
@@ -801,20 +801,20 @@ function StepProduksi({ project, inf, product, refCount, models, mode, pending, 
             <div>
               <label className="label">Gambar kunci</label>
               <select className="input" value={imgModel?.id || ""} onChange={(e) => setImgId(e.target.value)}>
-                {r.imgModels.map((m) => <option key={m.id} value={m.id}>{m.label} · {priceLabel(m.est_price_usd)}{m.ref_image_multi ? "" : " (1 foto, tanpa produk)"}</option>)}
+                {r.imgModels.map((m) => <option key={m.id} value={m.id}>{m.label} · {priceLabel(m.est_price_usd)}{recordBadge(m)}{m.ref_image_multi ? "" : " (1 foto, tanpa produk)"}</option>)}
               </select>
             </div>
             <div>
               <label className="label">Suara</label>
               <select className="input" value={ttsModel?.id || ""} onChange={(e) => setTtsId(e.target.value)}>
-                {r.ttsModels.map((m) => <option key={m.id} value={m.id}>{m.label} · {priceLabel(m.est_price_usd)}/1k</option>)}
+                {r.ttsModels.map((m) => <option key={m.id} value={m.id}>{m.label} · {priceLabel(m.est_price_usd)}/1k{recordBadge(m)}</option>)}
               </select>
               <p className="tiny muted" style={{ marginTop: 4 }}>Hanya model yang {inf?.name} sudah punya suaranya.</p>
             </div>
             <div>
               <label className="label">Avatar</label>
               <select className="input" value={avatarModel?.id || ""} onChange={(e) => setAvId(e.target.value)}>
-                {r.avatarModels.map((m) => <option key={m.id} value={m.id}>{m.label} · {priceLabel(m.est_price_usd)}{m.unit === "per_second" ? "/dtk" : ""}</option>)}
+                {r.avatarModels.map((m) => <option key={m.id} value={m.id}>{m.label} · {priceLabel(m.est_price_usd)}{m.unit === "per_second" ? "/dtk" : ""}{recordBadge(m)}</option>)}
               </select>
             </div>
           </div>

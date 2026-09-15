@@ -593,7 +593,7 @@ export function Influencers({ ws, refresh, tick, mode }) {
   // Katalog model dibutuhkan karena pembuatan influencer berlanjut ke langkah
   // character sheet di halaman ini juga — bukan cuma di Production Studio.
   const [models] = useQuery(async () =>
-    unwrap(await supa.from("provider_models").select("*").eq("active", true).order("task")), [ws.id, tick]);
+    unwrap(await supa.from("provider_models_ranked").select("*").eq("active", true).order("task")), [ws.id, tick]);
   // Siapa yang sudah punya character sheet. Ditandai lewat nama asetnya, bukan
   // kolom tersendiri: sheet dibuat sebagai job biasa, jadi tidak ada status yang
   // bisa ikut basi kalau asetnya dihapus.
@@ -1044,7 +1044,7 @@ export function InfluencerDetail({ id, ws, refresh, tick, mode }) {
     const [inf, refs, models, assets] = await Promise.all([
       supa.from("influencers").select("*").eq("id", id).maybeSingle(),
       supa.from("character_assets").select("*").eq("influencer_id", id).order("created_at"),
-      supa.from("provider_models").select("*").eq("active", true).order("task"),
+      supa.from("provider_models_ranked").select("*").eq("active", true).order("task"),
       supa.from("assets").select("*").eq("influencer_id", id).order("created_at", { ascending: false }).limit(8),
     ]);
     return { inf: unwrap(inf, null), refs: unwrap(refs), models: unwrap(models), assets: unwrap(assets) };
@@ -1610,11 +1610,94 @@ export const priceLabel = (n) => {
 };
 export const byPrice = (a, b) => Number(a.est_price_usd) - Number(b.est_price_usd);
 
+// ---------- Rekaman nyata tiap model ----------
+//
+// Katalog cuma tahu harga SATU PANGGILAN. Yang dibayar orang adalah harga satu
+// HASIL JADI, dan dua angka itu pernah berbeda 30 kali lipat di data kita
+// sendiri: Kling v3 Pro menghabiskan $10,64 untuk satu video yang benar-benar
+// ada (8 kali dikirim, 1 jadi), sementara Kling 2.5-turbo menghasilkan video
+// tiap kali diminta dengan $0,35. Diurutkan per harga panggilan, keduanya
+// duduk berdekatan di kelompok premium dan tidak ada apa pun di layar yang
+// memberi tahu bedanya.
+//
+// Angkanya datang dari view `model_scorecard` (migrasi 0049), dihitung dari
+// production_jobs yang sudah selesai — bukan tebakan, bukan tarif brosur.
+//
+// KENAPA PENGALI, BUKAN "BIAYA PER HASIL"
+//
+// View juga menyediakan `usd_per_result`, dan itu TIDAK dipakai di sini.
+// Model per_second ditagih per detik, jadi $0,20 per hasil milik Wan (klip 5
+// detik) dan $1,97 milik Kling Avatar (audio 34 detik) bukan angka sejenis —
+// yang satu lebih murah, yang lain cuma lebih pendek. Membandingkannya
+// langsung akan menyuruh orang memilih model karena klip contohnya kebetulan
+// pendek. Pengali percobaan bebas satuan: estimasi yang sudah dihitung layar
+// untuk durasi yang DIA pilih tinggal dikalikan.
+//
+// `tries_per_result_fair`, bukan `tries_per_result`: yang kedua menghitung
+// kegagalan yang berasal dari bentuk permintaan kita sendiri (batas 512
+// karakter di multi_prompt, `prompt` + `multi_prompt` terkirim bersamaan) —
+// semuanya sudah diperbaiki, jadi memakainya untuk menebak biaya BESOK berarti
+// menagih model untuk bug yang sudah tidak ada. Rekaman apa adanya tetap
+// ditampilkan di teksnya; yang dipakai berhitung hanya yang bersih.
+export const triesPerResult = (m) => {
+  const t = Number(m?.tries_per_result_fair);
+  return Number.isFinite(t) && t > 0 ? t : 1;
+};
+
+// Estimasi yang sudah dihitung layar (sudah dikali durasi / jumlah shot),
+// dikali berapa kali rata-rata harus dicoba sampai jadi.
+export const effectiveCost = (m, estimate) => Number(estimate || 0) * triesPerResult(m);
+
+// Ringkasan sependek mungkin — ini masuk ke <option>, yang tidak bisa diberi
+// gaya apa pun dan terpotong diam-diam kalau kepanjangan.
+export const recordBadge = (m) => {
+  const tries = Number(m?.attempts) || 0;
+  if (!tries) return "";
+  const ok = Number(m?.succeeded) || 0;
+  // Pernah dicoba, belum pernah jadi. Ini yang paling penting muncul: tanpa
+  // penyebut, "belum ada data" dan "selalu gagal" terlihat sama persis.
+  if (!ok) return ` · ⚠ ${tries}× dicoba, belum pernah jadi`;
+  const mult = triesPerResult(m);
+  if (mult >= 1.5) return ` · ${mult.toFixed(1)}× coba per hasil`;
+  return ` · ${ok}/${tries} jadi`;
+};
+
+// Kalimat panjang untuk baris "Terpilih", tempat yang muat menjelaskan.
+export const recordSentence = (m) => {
+  const tries = Number(m?.attempts) || 0;
+  if (!tries) return "Belum pernah dipakai di platform ini — belum ada rekamannya.";
+  const ok = Number(m?.succeeded) || 0;
+  const bad = { input: Number(m?.failed_input) || 0, policy: Number(m?.failed_policy) || 0, config: Number(m?.failed_config) || 0, provider: Number(m?.failed_provider) || 0 };
+  const sebab = [];
+  // Urutan sengaja: sebab yang BUKAN salah modelnya disebut lebih dulu, supaya
+  // orang tidak menyimpulkan "model ini jelek" dari kegagalan yang sebenarnya
+  // milik kita atau milik fotonya.
+  if (bad.input) sebab.push(`${bad.input} karena bentuk permintaan kami sendiri (sudah diperbaiki)`);
+  if (bad.config) sebab.push(`${bad.config} karena kunci/katalog belum benar`);
+  if (bad.policy) sebab.push(`${bad.policy} ditolak provider karena isinya`);
+  if (bad.provider) sebab.push(`${bad.provider} karena modelnya sendiri gagal`);
+  const ekor = sebab.length ? ` Yang gagal: ${sebab.join(", ")}.` : "";
+  if (!ok) return `${tries}× dicoba, belum pernah jadi.${ekor}`;
+  const mult = triesPerResult(m);
+  const awal = `${ok} jadi dari ${tries}× dicoba.`;
+  if (mult >= 1.5) return `${awal} Rata-rata ${mult.toFixed(1)}× percobaan per hasil, jadi biaya sebenarnya sekitar ${mult.toFixed(1)}× estimasi di layar.${ekor}`;
+  return `${awal}${ekor}`;
+};
+
+// Urutan dalam satu kelompok: harga panggilan DIKALI pengali percobaan.
+// Model yang selalu jadi naik, model yang sering harus diulang turun.
+export const byEffectivePrice = (a, b) =>
+  effectiveCost(a, a.est_price_usd) - effectiveCost(b, b.est_price_usd);
+
 // `models` yang masuk ke sini WAJIB sudah tersaring per task oleh pemanggilnya.
 export function ModelPicker({ models, value, onChange, keyReady = () => true, label = "Model" }) {
+  // Pengelompokan tetap memakai harga PANGGILAN: "berapa yang keluar sekali
+  // tekan" adalah keputusan yang diambil lebih dulu, dan itu tidak berubah.
+  // Yang berubah urutan DI DALAM kelompok — memakai harga panggilan dikali
+  // pengali percobaan, jadi model yang selalu jadi naik ke atas.
   const groups = [
-    { key: "murah", pendek: `yang murah (di bawah ${priceLabel(CHEAP_MAX_USD)})`, list: models.filter(isCheapModel).sort(byPrice) },
-    { key: "mahal", pendek: `yang premium (${priceLabel(CHEAP_MAX_USD)} ke atas)`, list: models.filter((m) => !isCheapModel(m)).sort(byPrice) },
+    { key: "murah", pendek: `yang murah (di bawah ${priceLabel(CHEAP_MAX_USD)})`, list: models.filter(isCheapModel).sort(byEffectivePrice) },
+    { key: "mahal", pendek: `yang premium (${priceLabel(CHEAP_MAX_USD)} ke atas)`, list: models.filter((m) => !isCheapModel(m)).sort(byEffectivePrice) },
   ];
   const chosen = models.find((m) => m.id === value) || null;
   return (
@@ -1650,6 +1733,7 @@ export function ModelPicker({ models, value, onChange, keyReady = () => true, la
             {g.list.map((m) => (
               <option key={m.id} value={m.id} disabled={!keyReady(m)}>
                 {m.label} · {priceLabel(m.est_price_usd)}{UNIT_SUFFIX[m.unit] || ""}
+                {recordBadge(m)}
                 {keyReady(m) ? "" : ` — butuh key ${m.requires_key}`}
               </option>
             ))}
@@ -1659,9 +1743,16 @@ export function ModelPicker({ models, value, onChange, keyReady = () => true, la
       {/* Satu kalimat yang menyebut model yang BENAR-BENAR akan dijalankan.
           Dua dropdown selalu bisa disalahbaca; satu baris pernyataan tidak. */}
       {chosen ? (
-        <p className="tiny" style={{ marginTop: 4, color: "var(--brand)", fontWeight: 600 }}>
-          Terpilih: {chosen.label} · {priceLabel(chosen.est_price_usd)}{UNIT_SUFFIX[chosen.unit] || ""}
-        </p>
+        <>
+          <p className="tiny" style={{ marginTop: 4, color: "var(--brand)", fontWeight: 600 }}>
+            Terpilih: {chosen.label} · {priceLabel(chosen.est_price_usd)}{UNIT_SUFFIX[chosen.unit] || ""}
+          </p>
+          {/* Rekaman disebut sebagai KALIMAT, bukan angka telanjang. "1.4×"
+              sendirian tidak memberi tahu apa pun; "3 jadi dari 4× dicoba"
+              bisa dinilai orang sendiri, termasuk menilai bahwa 4 percobaan
+              terlalu sedikit untuk dipercaya. */}
+          <p className="tiny muted" style={{ marginTop: 2 }}>{recordSentence(chosen)}</p>
+        </>
       ) : (
         <p className="tiny muted" style={{ marginTop: 4 }}>Belum ada model terpilih.</p>
       )}
@@ -1981,7 +2072,7 @@ function JobTrail({ job }) {
 export function Studio({ ws, refresh, tick, mode }) {
   const [d, reload, loadError] = useQuery(async () => {
     const [models, inf, jobs] = await Promise.all([
-      supa.from("provider_models").select("*").eq("active", true).order("task"),
+      supa.from("provider_models_ranked").select("*").eq("active", true).order("task"),
       supa.from("influencers").select("id,name,identity_prompt,persona").order("name"),
       supa.from("production_jobs").select("*, influencers(name)").order("created_at", { ascending: false }).limit(20),
     ]);
@@ -4180,7 +4271,7 @@ function SettingsTabs({ current, onGo, tabs }) {
 
 export function Settings({ ws, refresh, tick, spend, spendError, query }) {
   const [models, reload, modelsError] = useQuery(async () =>
-    unwrap(await supa.from("provider_models").select("*").order("task").order("est_price_usd")), [ws.id, tick]);
+    unwrap(await supa.from("provider_models_ranked").select("*").order("task").order("est_price_usd")), [ws.id, tick]);
   const [budget] = useQuery(async () =>
     unwrap(await supa.from("budget_settings").select("*").eq("workspace_id", ws.id).maybeSingle(), null), [ws.id, tick]);
   const [keyState, setKeyState] = useState(null);
@@ -4371,8 +4462,17 @@ export function Settings({ ws, refresh, tick, spend, spendError, query }) {
       <div className="card p6">
         <div className="bold mb1">Katalog Model</div>
         <p className="tiny muted mb3">Harga indikatif (riset Jul 2026) untuk estimasi + budget guard. Verifikasi dengan harga resmi provider, lalu perbarui di sini.</p>
+        {/* Kolom "Rekaman" dan "Terbuang" datang dari view model_scorecard
+            (migrasi 0049), dihitung dari job yang sudah selesai. Ditaruh persis
+            di sebelah kolom harga karena di sinilah keputusan "model ini masih
+            layak dipakai?" diambil, dan harga panggilan sendirian tidak pernah
+            cukup untuk menjawabnya: Kling v3 Pro $0,168/detik terlihat wajar
+            sampai terbaca bahwa 7 dari 8 job-nya tidak menghasilkan apa-apa.
+            Kolom "Terbuang" adalah estimasi job GAGAL — sebagian besar tidak
+            pernah ditagih fal (job yang ditolak 422 tidak pernah dirender),
+            jadi bacalah sebagai "uang yang nyaris keluar", bukan tagihan. */}
         <table>
-          <thead><tr><th>Model</th><th>Task</th><th>Provider</th><th>Tier</th><th>Harga (USD/unit)</th></tr></thead>
+          <thead><tr><th>Model</th><th>Task</th><th>Provider</th><th>Tier</th><th>Harga (USD/unit)</th><th>Rekaman</th><th>Terbuang</th></tr></thead>
           <tbody>
             {models.map((m) => (
               <tr key={m.id}>
@@ -4387,6 +4487,13 @@ export function Settings({ ws, refresh, tick, spend, spendError, query }) {
                     <span className="tiny muted">{m.unit}</span>
                   </span>
                 </td>
+                <td className="tiny">
+                  {!Number(m.attempts) ? <span className="muted">belum dipakai</span>
+                    : <span style={!Number(m.succeeded) ? { color: "var(--danger, #b91c1c)", fontWeight: 600 } : undefined}>
+                        {Number(m.succeeded)}/{Number(m.attempts)} jadi
+                      </span>}
+                </td>
+                <td className="tiny muted">{Number(m.wasted_usd) > 0 ? usd(Number(m.wasted_usd)) : "—"}</td>
               </tr>
             ))}
           </tbody>

@@ -628,13 +628,40 @@ async function runTool(name: string, args: Record<string, unknown>, ctx: Ctx) {
       return ok(data || []);
     }
     case "list_models": {
-      let q = admin.from("provider_models")
-        .select("id,model_key,label,task,provider,est_price_usd,unit,description,keeps_identity,init_image_field,audio_field,prompt_field,voice_field,requires_key")
+      // Dibaca dari `provider_models_ranked` (migrasi 0049), bukan dari tabel
+      // katalog: `est_price_usd` hanya harga SATU PANGGILAN, dan instruksi
+      // server ini menyuruh klien MCP menyebutkan perkiraan biaya sebelum
+      // menjalankan generate_media. Perkiraan yang memakai harga panggilan
+      // saja pernah meleset 8 kali lipat — Kling v3 Pro butuh 8 job untuk
+      // menghasilkan 1 video, dan yang disebut ke user cuma biaya job pertama.
+      let q = admin.from("provider_models_ranked")
+        .select("id,model_key,label,task,provider,est_price_usd,unit,description,keeps_identity,init_image_field,audio_field,prompt_field,voice_field,requires_key,attempts,succeeded,failed_input,failed_policy,failed_config,failed_provider,tries_per_result_fair,usd_per_result,last_success_at")
         .eq("active", true).order("task").order("est_price_usd");
       if (typeof args.task === "string") q = q.eq("task", args.task);
       const { data, error } = await q;
       if (error) throw new Error(error.message);
-      return ok(data || []);
+      // Rekaman mentah tetap ikut, tapi kesimpulannya ditulis sebagai kalimat.
+      // Angka `tries_per_result_fair: 1.33` gampang dibaca sekilas sebagai
+      // "bagus" — kalimat yang menyebut penyebutnya tidak bisa.
+      const rows = (data || []).map((m) => {
+        const tries = Number(m.attempts) || 0;
+        const okJobs = Number(m.succeeded) || 0;
+        const mult = Number(m.tries_per_result_fair);
+        const usable = Number.isFinite(mult) && mult > 0 ? mult : 1;
+        return {
+          ...m,
+          // Pengali untuk estimasi: biaya satu panggilan × ini = perkiraan
+          // biaya sampai benar-benar ada hasilnya.
+          cost_multiplier: usable,
+          track_record: !tries
+            ? "Belum pernah dipakai — belum ada rekamannya."
+            : !okJobs
+              ? `${tries}x dicoba, belum pernah menghasilkan apa pun.`
+              : `${okJobs} jadi dari ${tries}x dicoba` +
+                (usable >= 1.5 ? `; rata-rata ${usable.toFixed(1)}x percobaan per hasil.` : "."),
+        };
+      });
+      return ok(rows);
     }
     case "generate_media": {
       // Biaya keluar di sini, jadi jangan menebak apa pun: task dan model

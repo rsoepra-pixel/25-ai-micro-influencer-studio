@@ -332,6 +332,8 @@ menumpang di jalur yang ramai.
 | `0045` | `quota_changes` + `set_member_quota()` sebagai satu-satunya pintu |
 | `0046` | pengukuran penulis AI; `credits_ledger.actor_user_id` |
 | `0047` | pencari prompt video per industri (`prompt_templates`) |
+| `0048` | jejak produksi per job (`origin`, `audit`); satu job ditagih sekali |
+| `0049` | rapor model: `job_failure_kind()`, `model_scorecard`, `provider_models_ranked` |
 
 ### Nama migrasi: repo vs ledger produksi
 
