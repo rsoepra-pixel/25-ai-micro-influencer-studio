@@ -3,6 +3,7 @@ import { LibraryPicker, LibraryCard, PromptFinder } from "./library.jsx";
 import { CustomersAdmin, SubscriptionCard } from "./customers.jsx";
 import { MembersCard } from "./members.jsx";
 import { supa, callGenerate, callSocial, callCalendar, callApp, callLinks, callMedia, STATUS_LABELS, TYPE_LABELS, usd } from "./supa.js";
+import { recordBadge, recordSentence, byEffectivePrice, estimateFor, nextTierUp } from "./routing.js";
 
 const linkBtn = { background: "none", border: "none", padding: 0, cursor: "pointer", fontWeight: 700, fontSize: 11 };
 
@@ -1610,84 +1611,13 @@ export const priceLabel = (n) => {
 };
 export const byPrice = (a, b) => Number(a.est_price_usd) - Number(b.est_price_usd);
 
-// ---------- Rekaman nyata tiap model ----------
-//
-// Katalog cuma tahu harga SATU PANGGILAN. Yang dibayar orang adalah harga satu
-// HASIL JADI, dan dua angka itu pernah berbeda 30 kali lipat di data kita
-// sendiri: Kling v3 Pro menghabiskan $10,64 untuk satu video yang benar-benar
-// ada (8 kali dikirim, 1 jadi), sementara Kling 2.5-turbo menghasilkan video
-// tiap kali diminta dengan $0,35. Diurutkan per harga panggilan, keduanya
-// duduk berdekatan di kelompok premium dan tidak ada apa pun di layar yang
-// memberi tahu bedanya.
-//
-// Angkanya datang dari view `model_scorecard` (migrasi 0049), dihitung dari
-// production_jobs yang sudah selesai — bukan tebakan, bukan tarif brosur.
-//
-// KENAPA PENGALI, BUKAN "BIAYA PER HASIL"
-//
-// View juga menyediakan `usd_per_result`, dan itu TIDAK dipakai di sini.
-// Model per_second ditagih per detik, jadi $0,20 per hasil milik Wan (klip 5
-// detik) dan $1,97 milik Kling Avatar (audio 34 detik) bukan angka sejenis —
-// yang satu lebih murah, yang lain cuma lebih pendek. Membandingkannya
-// langsung akan menyuruh orang memilih model karena klip contohnya kebetulan
-// pendek. Pengali percobaan bebas satuan: estimasi yang sudah dihitung layar
-// untuk durasi yang DIA pilih tinggal dikalikan.
-//
-// `tries_per_result_fair`, bukan `tries_per_result`: yang kedua menghitung
-// kegagalan yang berasal dari bentuk permintaan kita sendiri (batas 512
-// karakter di multi_prompt, `prompt` + `multi_prompt` terkirim bersamaan) —
-// semuanya sudah diperbaiki, jadi memakainya untuk menebak biaya BESOK berarti
-// menagih model untuk bug yang sudah tidak ada. Rekaman apa adanya tetap
-// ditampilkan di teksnya; yang dipakai berhitung hanya yang bersih.
-export const triesPerResult = (m) => {
-  const t = Number(m?.tries_per_result_fair);
-  return Number.isFinite(t) && t > 0 ? t : 1;
-};
-
-// Estimasi yang sudah dihitung layar (sudah dikali durasi / jumlah shot),
-// dikali berapa kali rata-rata harus dicoba sampai jadi.
-export const effectiveCost = (m, estimate) => Number(estimate || 0) * triesPerResult(m);
-
-// Ringkasan sependek mungkin — ini masuk ke <option>, yang tidak bisa diberi
-// gaya apa pun dan terpotong diam-diam kalau kepanjangan.
-export const recordBadge = (m) => {
-  const tries = Number(m?.attempts) || 0;
-  if (!tries) return "";
-  const ok = Number(m?.succeeded) || 0;
-  // Pernah dicoba, belum pernah jadi. Ini yang paling penting muncul: tanpa
-  // penyebut, "belum ada data" dan "selalu gagal" terlihat sama persis.
-  if (!ok) return ` · ⚠ ${tries}× dicoba, belum pernah jadi`;
-  const mult = triesPerResult(m);
-  if (mult >= 1.5) return ` · ${mult.toFixed(1)}× coba per hasil`;
-  return ` · ${ok}/${tries} jadi`;
-};
-
-// Kalimat panjang untuk baris "Terpilih", tempat yang muat menjelaskan.
-export const recordSentence = (m) => {
-  const tries = Number(m?.attempts) || 0;
-  if (!tries) return "Belum pernah dipakai di platform ini — belum ada rekamannya.";
-  const ok = Number(m?.succeeded) || 0;
-  const bad = { input: Number(m?.failed_input) || 0, policy: Number(m?.failed_policy) || 0, config: Number(m?.failed_config) || 0, provider: Number(m?.failed_provider) || 0 };
-  const sebab = [];
-  // Urutan sengaja: sebab yang BUKAN salah modelnya disebut lebih dulu, supaya
-  // orang tidak menyimpulkan "model ini jelek" dari kegagalan yang sebenarnya
-  // milik kita atau milik fotonya.
-  if (bad.input) sebab.push(`${bad.input} karena bentuk permintaan kami sendiri (sudah diperbaiki)`);
-  if (bad.config) sebab.push(`${bad.config} karena kunci/katalog belum benar`);
-  if (bad.policy) sebab.push(`${bad.policy} ditolak provider karena isinya`);
-  if (bad.provider) sebab.push(`${bad.provider} karena modelnya sendiri gagal`);
-  const ekor = sebab.length ? ` Yang gagal: ${sebab.join(", ")}.` : "";
-  if (!ok) return `${tries}× dicoba, belum pernah jadi.${ekor}`;
-  const mult = triesPerResult(m);
-  const awal = `${ok} jadi dari ${tries}× dicoba.`;
-  if (mult >= 1.5) return `${awal} Rata-rata ${mult.toFixed(1)}× percobaan per hasil, jadi biaya sebenarnya sekitar ${mult.toFixed(1)}× estimasi di layar.${ekor}`;
-  return `${awal}${ekor}`;
-};
-
-// Urutan dalam satu kelompok: harga panggilan DIKALI pengali percobaan.
-// Model yang selalu jadi naik, model yang sering harus diulang turun.
-export const byEffectivePrice = (a, b) =>
-  effectiveCost(a, a.est_price_usd) - effectiveCost(b, b.est_price_usd);
+// Aturan pemilihan model hidup di src/routing.js (tanpa React, supaya bisa
+// diuji sendiri). Di-export ulang dari sini karena ugc.jsx dan storyboard.jsx
+// sudah mengimpornya lewat views.jsx.
+export {
+  triesPerResult, effectiveCost, recordBadge, recordSentence,
+  byEffectivePrice, estimateFor, nextTierUp,
+} from "./routing.js";
 
 // `models` yang masuk ke sini WAJIB sudah tersaring per task oleh pemanggilnya.
 export function ModelPicker({ models, value, onChange, keyReady = () => true, label = "Model" }) {
@@ -1974,6 +1904,97 @@ function TrailRow({ label, children }) {
   );
 }
 
+// Tombol "naik kelas" di riwayat job — lihat nextTierUp() untuk alasannya.
+//
+// Masukannya diambil dari JEJAK job (audit, migrasi 0048), bukan disusun ulang
+// dari layar. Itu yang membuat tombol ini bisa muncul di baris job mana pun,
+// termasuk yang dikirim dari wizard UGC, Storyboard, atau Claude lewat MCP —
+// halaman ini tidak perlu tahu apa-apa tentang tiga alur itu.
+//
+// Job lama (sebelum 13 Sep) tidak punya jejak, jadi tombolnya tidak muncul di
+// sana. Itu jujur: masukannya memang tidak tersimpan, dan menebaknya berarti
+// mengirim job berbayar dengan prompt yang belum tentu sama.
+function Escalate({ job, models, onDone }) {
+  const [state, setState] = useState("idle"); // idle | confirm | busy
+  const [err, setErr] = useState(null);
+
+  const audit = job.audit && typeof job.audit === "object" ? job.audit : {};
+  const rq = audit.request || {};
+  if (job.status !== "succeeded") return null;
+
+  // Sisanya — jejak kosong, aksi selain `submit`, kemampuan model tujuan —
+  // diputuskan nextTierUp(). Aturan yang sama ditulis dua kali cepat atau
+  // lambat jadi dua aturan yang berbeda, dan yang di sini akan jadi yang
+  // ketinggalan. Tidak ada tujuan berarti tidak ada tombol.
+  const target = nextTierUp(models, job, audit);
+  if (!target) return null;
+
+  const detik = Number(rq.duration_requested) || 5;
+  const est = estimateFor(target, { seconds: detik, chars: Number(rq.text_chars) || 0 });
+
+  async function kirim() {
+    setState("busy"); setErr(null);
+    try {
+      await callGenerate({
+        action: "submit",
+        origin: audit.origin || job.origin || "studio",
+        task: rq.task,
+        model_id: target.id,
+        influencer_id: job.influencer_id || null,
+        prompt: rq.prompt || "",
+        duration: detik,
+        source_image_url: rq.source_image_url || null,
+        audio_url: rq.audio_url || null,
+        extra_ref_urls: Array.isArray(rq.extra_ref_urls) ? rq.extra_ref_urls : [],
+        content_item_id: rq.content_item_id || null,
+        label: rq.label || null,
+        prompt_template_id: rq.prompt_template?.id || null,
+      });
+      setState("idle");
+      onDone?.();
+    } catch (e) {
+      setErr(e.message);
+      setState("idle");
+    }
+  }
+
+  if (state === "confirm" || state === "busy") {
+    return (
+      <div className="tiny" style={{ marginTop: 4, maxWidth: 260 }}>
+        <div className="mb1">
+          Buat ulang dengan <b>{target.label.split(" —")[0]}</b>, memakai prompt dan acuan yang sama.
+        </div>
+        {/* Rekaman model tujuan ikut disebut. Model yang lebih mahal belum
+            tentu lebih terbukti — sebagian tier atas di katalog ini belum
+            pernah dipakai sama sekali, dan orang berhak tahu itu sebelum
+            membayar, bukan sesudah. */}
+        <div className="mb1 muted">{recordSentence(target)}</div>
+        {/* Biayanya disebut SEBELUM tombolnya ditekan, bukan sesudah. Mode mock
+            bukan milik pelanggan, jadi tidak ada cara mencoba tanpa membayar. */}
+        <div className="mb2 muted">
+          Perkiraan ≈ {usd(est)}{target.unit === "per_second" ? ` (${detik} detik)` : ""}. Job lama tetap ada.
+        </div>
+        <button type="button" className="btn tiny" disabled={state === "busy"} onClick={kirim}
+          style={{ padding: "4px 9px", marginRight: 6 }}>
+          {state === "busy" ? "Mengirim…" : `Kirim · ≈${usd(est)}`}
+        </button>
+        <button type="button" className="btn btn2 tiny" disabled={state === "busy"}
+          style={{ padding: "4px 9px" }} onClick={() => { setState("idle"); setErr(null); }}>Batal</button>
+        {err && <div className="msg-err tiny mt2" style={{ whiteSpace: "pre-wrap" }}>{err}</div>}
+      </div>
+    );
+  }
+
+  return (
+    <>
+      <button type="button" className="btn btn2 tiny" style={{ padding: "4px 9px", marginRight: 6 }}
+        title={`Hasilnya kurang? Buat ulang dengan ${target.label.split(" —")[0]} — prompt dan acuan sama, ≈${usd(est)}`}
+        onClick={() => setState("confirm")}>Naik kelas</button>
+      {err && <div className="msg-err tiny mt1" style={{ maxWidth: 240, whiteSpace: "pre-wrap" }}>{err}</div>}
+    </>
+  );
+}
+
 function JobTrail({ job }) {
   const a = job.audit && typeof job.audit === "object" ? job.audit : {};
   if (!Object.keys(a).length) {
@@ -2141,6 +2162,11 @@ export function Studio({ ws, refresh, tick, mode }) {
                   <td style={{ whiteSpace: "nowrap" }}>
                     <button type="button" className="btn btn2 tiny" style={{ padding: "4px 9px", marginRight: 6 }}
                       onClick={() => setTrail(trail === j.id ? null : j.id)}>{trail === j.id ? "Tutup" : "Jejak"}</button>
+                    {/* Tombol ini sengaja duduk di RIWAYAT, bukan di formulir
+                        generate: keputusan "kurang bagus" baru bisa diambil
+                        setelah hasilnya kelihatan, dan di sinilah hasilnya
+                        kelihatan. */}
+                    <Escalate job={j} models={d.models} onDone={() => { reload(); refresh(); }} />
                     <DeleteMedia kind="job" id={j.id} onDeleted={reload} />
                   </td>
                 </tr>
