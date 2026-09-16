@@ -3,7 +3,8 @@
 Dokumen ini menjelaskan bagian sistem yang mengatur **siapa boleh memakai apa,
 siapa membayarnya, dan bagaimana kode sampai ke produksi**. Bukan panduan
 memakai aplikasi — ini untuk operator platform dan siapa pun yang nanti
-mengubah bagian ini.
+mengubah bagian ini. Panduan memakainya, menu per menu, ada di
+[`PANDUAN-APLIKASI.md`](PANDUAN-APLIKASI.md).
 
 Ditulis karena aturannya sekarang tersebar di belasan trigger dan fungsi SQL.
 Masing-masing punya komentar panjang di tempatnya, tapi tidak ada satu pun

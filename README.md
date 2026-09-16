@@ -70,6 +70,9 @@ permintaannya diteruskan (proxy status 200) ke edge function. Aturannya ada di
 Dashboard · Influencers · Product Kit · Production Studio · Storyboard ·
 Video UGC · Content Planner · Laporan · Tasks · Drive · Settings
 
+Apa guna tiap menu dan tiap fitur di dalamnya — termasuk mana yang memakai
+saldo — ada di [`docs/PANDUAN-APLIKASI.md`](docs/PANDUAN-APLIKASI.md).
+
 ---
 
 ## Menjalankan secara lokal

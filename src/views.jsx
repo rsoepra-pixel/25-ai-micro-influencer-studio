@@ -143,6 +143,51 @@ const statusTone = (s) =>
   : s === "running" || s === "queued" || s === "producing" || s === "in_progress" ? "amber"
   : "zinc";
 
+// ---------- Baris tab ----------
+// Dipakai Settings DAN Production Studio. Dua halaman yang tabnya terlihat
+// berbeda akan terbaca sebagai dua aplikasi yang berbeda, jadi bentuknya
+// satu dan tinggal satu di sini.
+function TabStrip({ current, onGo, tabs }) {
+  return (
+    <div
+      className="row mb4"
+      role="tablist"
+      style={{
+        gap: 4, overflowX: "auto", paddingBottom: 2,
+        borderBottom: "1px solid var(--border)", flexWrap: "nowrap",
+      }}
+    >
+      {tabs.map(([key, label]) => {
+        const active = key === current;
+        return (
+          <button
+            key={key}
+            type="button"
+            role="tab"
+            aria-selected={active}
+            onClick={() => onGo(key)}
+            style={{
+              flex: "0 0 auto", whiteSpace: "nowrap", cursor: "pointer",
+              padding: "9px 14px", fontSize: 14, fontWeight: active ? 700 : 500,
+              color: active ? "var(--brand-strong)" : "var(--ink-2)",
+              background: active ? "var(--brand-soft)" : "transparent",
+              border: "none",
+              // Garis bawah tebal, bukan kotak folder: mana yang aktif harus
+              // terbaca dalam sekali lihat, termasuk saat baris tabnya digeser
+              // ke samping di layar sempit.
+              borderBottom: "2px solid " + (active ? "var(--brand)" : "transparent"),
+              borderRadius: "8px 8px 0 0",
+              marginBottom: -1,
+            }}
+          >
+            {label}
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
 // ---------- Dashboard ----------
 export function Dashboard({ ws, tick }) {
   const [d, reload, error] = useQuery(async () => {
@@ -2089,8 +2134,34 @@ function JobTrail({ job }) {
   );
 }
 
-// ---------- Studio ----------
-export function Studio({ ws, refresh, tick, mode }) {
+// ---------- Production Studio ----------
+// Tiga pekerjaan yang berbeda hidup di satu layar ini, dan hanya satu yang
+// sedang dikerjakan orang pada satu waktu: mengirim job baru, memotret satu
+// karakter dari banyak sudut, atau melihat hasil yang sudah ada. Ditumpuk
+// vertikal, riwayat job terdorong jauh ke bawah oleh dua formulir panjang —
+// padahal di situlah tombol "naik kelas" dan kolom biaya berada.
+//
+// YANG SENGAJA TIDAK DIPISAH: pemilih Task (gambar / video / suara / talking)
+// di dalam formulir Generate. Itu terlihat seperti empat tab, tapi bukan:
+// mengisi "Naskah yang diucapkan" pada task Talking membuat satu submit
+// mengerjakan TTS lalu lipsync sekaligus. Memberi TTS tabnya sendiri
+// mengajarkan hal yang justru sudah kita hilangkan — bikin suara dulu, salin
+// URL-nya, baru bikin videonya.
+const STUDIO_TABS = [
+  ["generate", "Generate"],
+  ["sheet", "🎭 Character sheet"],
+  ["riwayat", "Riwayat job"],
+];
+
+// Tab dibaca dari URL supaya bisa ditautkan: layar lain menyuruh orang
+// "generate dulu di Production Studio", dan tautan itu harus mendarat di
+// formulirnya, bukan di tab mana pun yang terakhir dibuka.
+function studioTabFromQuery(query) {
+  const t = new URLSearchParams(query || "").get("tab");
+  return STUDIO_TABS.some(([k]) => k === t) ? t : "generate";
+}
+
+export function Studio({ ws, refresh, tick, mode, query }) {
   const [d, reload, loadError] = useQuery(async () => {
     const [models, inf, jobs] = await Promise.all([
       supa.from("provider_models_ranked").select("*").eq("active", true).order("task"),
@@ -2101,8 +2172,22 @@ export function Studio({ ws, refresh, tick, mode }) {
   }, [ws.id, tick]);
   // Job yang jejaknya sedang dibuka di riwayat.
   const [trail, setTrail] = useState(null);
+  // Tab tidak disimpan di state komponen: URL-nya yang menentukan, titik.
+  //
+  // Settings memakai cara lain (state lokal + replaceState) dan karena itu
+  // punya satu kelakuan yang tidak enak: menekan menu sidebar-nya saat tab
+  // selain yang pertama terbuka tidak melakukan apa pun, karena hash yang
+  // ditulis replaceState tidak pernah sampai ke state route. Di sini hash-nya
+  // benar-benar diganti, jadi "🎬 Production Studio" di sidebar selalu
+  // mengembalikan orang ke formulir Generate. Ongkosnya: tombol Back
+  // memundurkan tab satu per satu — wajar untuk tab yang bisa ditautkan.
+  const tab = studioTabFromQuery(query);
+  const goTab = useCallback((key) => { window.location.hash = `/studio?tab=${key}`; }, []);
 
-  // Poll job berjalan tiap 8 detik
+  // Poll job berjalan tiap 8 detik. Sengaja di sini, BUKAN di dalam tab
+  // Riwayat: server tidak punya worker latar, jadi job hanya maju kalau `poll`
+  // dipanggil. Ditaruh di dalam tab, job yang dikirim lalu ditinggal di tab
+  // Generate akan menggantung sampai ada yang membuka tab riwayatnya.
   useEffect(() => {
     const t = setInterval(async () => {
       try {
@@ -2114,18 +2199,42 @@ export function Studio({ ws, refresh, tick, mode }) {
   }, [reload, refresh]);
 
   if (!d) return loadError ? <div className="msg-err">Gagal memuat studio: {loadError}</div> : <div className="muted">Memuat…</div>;
+
+  // Job yang masih berjalan dihitung untuk label tab. Tanpa angka ini,
+  // memisahkan riwayat ke tab lain berarti menyembunyikan satu-satunya tanda
+  // bahwa sesuatu yang sudah dibayar sedang dikerjakan — orang menekan
+  // Generate lagi karena mengira yang pertama tidak terkirim.
+  const berjalan = d.jobs.filter((j) => j.status === "queued" || j.status === "running").length;
+  const tabs = STUDIO_TABS.map(([k, label]) =>
+    k === "riwayat" && berjalan ? [k, `${label} · ${berjalan} jalan`] : [k, label]);
+
   return (
     <div>
       <h1 style={{ fontSize: 24, fontWeight: 800 }}>Production Studio</h1>
       <p className="muted small mb4">Pipeline produksi: script → suara → visual → talking video. Pilih influencer agar identity kit-nya dipakai otomatis.</p>
+      <TabStrip current={tab} onGo={goTab} tabs={tabs} />
+      {tab === "generate" && (
       <div className="card p6 mb4">
         <div className="bold mb3">Generate baru</div>
         <GenerateForm models={d.models} influencers={d.inf} refresh={() => { reload(); refresh(); }} mode={mode} />
+        {/* Kalimat sukses di dalam formulir menyebut "riwayat job", dan sejak
+            riwayat pindah ke tab lain kalimat itu jadi tanpa alamat. Jalannya
+            ditaruh di sini, satu klik, tanpa mengubah formulir yang juga
+            dipakai halaman influencer. */}
+        <p className="tiny muted" style={{ marginTop: 10 }}>
+          Hasil dan biaya sebenarnya muncul di{" "}
+          <button type="button" className="btn btn2 tiny" style={{ padding: "2px 8px" }}
+            onClick={() => goTab("riwayat")}>Riwayat job{berjalan ? ` · ${berjalan} jalan` : ""}</button>
+        </p>
       </div>
+      )}
+      {tab === "sheet" && (
       <div className="card p6 mb4">
         <div className="bold mb3">🎭 Character sheet (gambar)</div>
         <CharacterSheetPanel models={d.models} influencers={d.inf} refresh={() => { reload(); refresh(); }} mode={mode} />
       </div>
+      )}
+      {tab === "riwayat" && (
       <div className="card p6">
         <div className="bold mb3">Riwayat job</div>
         {d.jobs.length ? (
@@ -2179,6 +2288,7 @@ export function Studio({ ws, refresh, tick, mode }) {
           </table>
         ) : <div className="small muted">Belum ada job.</div>}
       </div>
+      )}
     </div>
   );
 }
@@ -4254,47 +4364,6 @@ function safeTab(tab, isPlatformAdmin) {
   return tab;
 }
 
-function SettingsTabs({ current, onGo, tabs }) {
-  return (
-    <div
-      className="row mb4"
-      role="tablist"
-      style={{
-        gap: 4, overflowX: "auto", paddingBottom: 2,
-        borderBottom: "1px solid var(--border)", flexWrap: "nowrap",
-      }}
-    >
-      {tabs.map(([key, label]) => {
-        const active = key === current;
-        return (
-          <button
-            key={key}
-            type="button"
-            role="tab"
-            aria-selected={active}
-            onClick={() => onGo(key)}
-            style={{
-              flex: "0 0 auto", whiteSpace: "nowrap", cursor: "pointer",
-              padding: "9px 14px", fontSize: 14, fontWeight: active ? 700 : 500,
-              color: active ? "var(--brand-strong)" : "var(--ink-2)",
-              background: active ? "var(--brand-soft)" : "transparent",
-              border: "none",
-              // Garis bawah tebal, bukan kotak folder: mana yang aktif harus
-              // terbaca dalam sekali lihat, termasuk saat baris tabnya digeser
-              // ke samping di layar sempit.
-              borderBottom: "2px solid " + (active ? "var(--brand)" : "transparent"),
-              borderRadius: "8px 8px 0 0",
-              marginBottom: -1,
-            }}
-          >
-            {label}
-          </button>
-        );
-      })}
-    </div>
-  );
-}
-
 export function Settings({ ws, refresh, tick, spend, spendError, query }) {
   const [models, reload, modelsError] = useQuery(async () =>
     unwrap(await supa.from("provider_models_ranked").select("*").order("task").order("est_price_usd")), [ws.id, tick]);
@@ -4370,7 +4439,7 @@ export function Settings({ ws, refresh, tick, spend, spendError, query }) {
   return (
     <div>
       <h1 style={{ fontSize: 24, fontWeight: 800 }} className="mb4">Settings</h1>
-      <SettingsTabs current={shownTab} onGo={goTab} tabs={visibleTabs} />
+      <TabStrip current={shownTab} onGo={goTab} tabs={visibleTabs} />
 
       {shownTab === "akun" && (<>
         <AccountAdmin ws={ws} tick={tick} />
