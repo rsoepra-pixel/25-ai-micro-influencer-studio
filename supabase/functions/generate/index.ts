@@ -963,6 +963,49 @@ async function requireSubscription(
   );
 }
 
+// ---------- Pagar bahasa untuk prompt gambar ----------
+//
+// `scene` dan `delivery` TIDAK pernah dibaca penonton. Keduanya dikirim apa
+// adanya sebagai prompt ke model gambar dan model avatar, yang dilatih dominan
+// dengan caption bahasa Inggris. Prompt berbahasa Indonesia tetap menghasilkan
+// gambar — tapi kepatuhannya turun: detail diabaikan, komposisi meleset, dan
+// tidak ada error apa pun yang memberi tahu. Yang terlihat cuma hasil yang
+// "kurang pas" tanpa sebab yang jelas.
+//
+// Memintanya lewat prompt saja TIDAK CUKUP, dan itu bukan dugaan. Prompt-nya
+// tidak berubah sejak ditulis, tapi hasilnya berubah: baris ugc_projects 10 dan
+// 13 September berbahasa Inggris, yang dibuat 16 September berbahasa Indonesia.
+// qwen-plus menyeragamkan seluruh jawabannya ke bahasa Indonesia dan melewati
+// dua aturan yang terselip di antara instruksi berbahasa Indonesia — tidak
+// selalu, tapi cukup sering untuk merusak diam-diam.
+//
+// Deteksinya sengaja kasar dan konservatif: kata fungsi Indonesia yang hampir
+// mustahil muncul di deskripsi visual bahasa Inggris, dan baru dianggap
+// Indonesia setelah TIGA kecocokan. Yang dicari bukan kepastian bahasa,
+// melainkan sinyal yang cukup kuat untuk memicu satu kali minta ulang.
+const ID_MARKERS =
+  /\b(yang|dengan|dan|dari|untuk|pada|memakai|mengenakan|sambil|cahaya|ruangan|kamera|tangan|wajah|sebuah|sedang|sebelah|alami|lembut|polos|duduk|berdiri)\b/gi;
+
+function looksIndonesian(t: unknown): boolean {
+  const str = String(t || "");
+  if (str.length < 20) return false;
+  const hits = str.match(ID_MARKERS);
+  return !!hits && hits.length >= 3;
+}
+
+// Cadangan terakhir kalau model tetap menolak bahasa Inggris. Latar default
+// yang benar lebih baik daripada prompt Indonesia yang melemahkan gambarnya —
+// generik, tapi tetap menghasilkan foto selfie yang masuk akal. Sama persis
+// dengan DEFAULT_SCENE di src/ugc.jsx, supaya hasilnya tidak berubah tergantung
+// sisi mana yang mengisi.
+const UGC_FALLBACK_SCENE =
+  "candid selfie taken with a phone front camera at arm's length, face and shoulders clearly visible, " +
+  "holding the product at chest height with its label facing the camera, soft natural window light, " +
+  "cozy home background slightly out of focus, real skin texture, authentic phone-camera look, vertical 9:16";
+const UGC_FALLBACK_DELIVERY =
+  "talking casually to the phone camera like a friend recommending a product, relaxed and natural, " +
+  "small hand gestures, briefly lifting the product into frame, genuine smiles between sentences";
+
 // Tulis nilai ke jalur bertitik, membuat objek antara kalau belum ada.
 // Dipakai untuk voice id: ElevenLabs menaruhnya di "voice", MiniMax di
 // "voice_setting.voice_id". Jalurnya dari katalog (provider_models.voice_field),
@@ -1209,11 +1252,32 @@ Deno.serve(async (req) => {
           const platformLabel = platform === "instagram" ? "Instagram Reels" : platform === "youtube" ? "YouTube Shorts" : "TikTok";
           const angle = String(body.idea || "").slice(0, 400);
 
+          // Latar yang SUDAH dipakai orang ini. Tanpa ini tiap generate buta
+          // terhadap yang sebelumnya, dan model jatuh ke jawaban paling mungkin
+          // secara statistik — "home office, cahaya lembut dari jendela kiri,
+          // kaos polos" — berulang kali untuk influencer yang sama. Dipotong 90
+          // karakter: yang perlu dihindari adalah TEMPAT dan CAHAYANYA, bukan
+          // seluruh kalimatnya, dan prompt yang kepanjangan justru menenggelamkan
+          // aturan lain.
+          let avoidScenes: string[] = [];
+          if (body.influencer_id) {
+            const { data: prev } = await admin.from("ugc_projects")
+              .select("scene").eq("workspace_id", ws).eq("influencer_id", body.influencer_id)
+              .not("scene", "is", null).order("created_at", { ascending: false }).limit(5);
+            avoidScenes = (prev || []).map((r) => String(r.scene || "").slice(0, 90).trim()).filter(Boolean);
+          }
+
           const system =
             `Kamu penulis konten UGC (user-generated content) untuk ${platformLabel}, pasar Indonesia. ` +
             `UGC berarti seseorang bicara ke kamera ponselnya sendiri seperti ke teman — bukan iklan, bukan presenter. ` +
             `Talent-nya ${iname}${iniche ? `, niche ${iniche}` : ""}. ` +
             (ibio ? `Persona: ${ibio} ` : "") +
+            // Dinaikkan ke sini dengan sengaja. Sebelumnya syarat bahasa Inggris
+            // hanya muncul di aturan nomor 5 dan 6, terkubur di antara belasan
+            // baris instruksi berbahasa Indonesia — dan memang diabaikan.
+            `DUA field output, "scene_en" dan "delivery_en", WAJIB ditulis dalam BAHASA INGGRIS. ` +
+            `Keduanya bukan untuk dibaca manusia: keduanya dikirim langsung ke model gambar yang hanya ` +
+            `memahami bahasa Inggris dengan baik. Field lainnya bahasa ${ilang}. ` +
             `Jawab HANYA dengan JSON valid, tanpa penjelasan lain.`;
 
           const user =
@@ -1231,17 +1295,79 @@ Deno.serve(async (req) => {
             `2. "hook": kalimat pertama script itu, disalin apa adanya.\n` +
             `3. "caption": maksimal 150 karakter, bahasa ${ilang}, BUKAN salinan script — satu kalimat yang bikin orang menonton.\n` +
             `4. "hashtags": 4-6 tag tanpa tanda #, relevan dengan produk dan niche.\n` +
-            `5. "scene": bahasa Inggris, 30-50 kata, latar untuk SATU foto selfie kamera depan: ruangan, cahaya, pakaian, ` +
-            `cara produk dipegang/dipakai dengan labelnya menghadap kamera. DILARANG mendeskripsikan wajah, usia, kulit, ` +
-            `atau rambut (wajahnya dari foto), dan DILARANG mendeskripsikan kemasan/warna produk (produknya dari foto).\n` +
-            `6. "delivery": bahasa Inggris, 15-30 kata, gaya penyampaian ke kamera: energi, ekspresi, gerak tangan, kapan produk diangkat.\n` +
+            `5. "scene_en": TULIS DALAM BAHASA INGGRIS, 30-50 kata. Latar untuk SATU foto selfie kamera depan: ` +
+            `ruangan, cahaya, pakaian, cara produk dipegang/dipakai dengan labelnya menghadap kamera.\n` +
+            `   RUANGANNYA DITENTUKAN PRODUK, bukan dipilih bebas: skincare di kamar mandi, alat dapur di dapur, ` +
+            `pakaian di kamar, perlengkapan olahraga di gym atau taman.\n` +
+            `   Kalau produknya tidak terikat tempat (ebook, kursus, aplikasi, jasa), DILARANG memakai home office, ` +
+            `meja kerja, ruang kerja, atau sudut rumah yang rapi — itu jawaban paling klise dan sudah terlalu sering dipakai. ` +
+            `Pilih tempat sehari-hari yang lebih hidup: dapur, teras, mobil, taman, kafe, ruang tamu, halte, kamar tidur.\n` +
+            `   Variasikan arah cahaya dan waktu. JANGAN otomatis menulis "soft natural light from the left window" — ` +
+            `itu default yang keluar berulang-ulang.\n` +
+            (avoidScenes.length
+              ? `   Latar berikut SUDAH dipakai orang ini; jangan diulang dan jangan dibuat mirip: ` +
+                `${avoidScenes.join(" / ")}.\n`
+              : "") +
+            `   DILARANG mendeskripsikan wajah, usia, kulit, atau rambut (wajahnya dari foto), ` +
+            `dan DILARANG mendeskripsikan kemasan/warna produk (produknya dari foto).\n` +
+            `6. "delivery_en": TULIS DALAM BAHASA INGGRIS, 15-30 kata, gaya penyampaian ke kamera: ` +
+            `energi, ekspresi, gerak tangan, kapan produk diangkat.\n` +
             `7. Hindari klaim medis, kesehatan, atau finansial yang spesifik, dan klaim yang dilarang di atas.\n` +
-            `\nFormat JSON: {"hook": "...", "script": "...", "caption": "...", "hashtags": ["..."], "scene": "...", "delivery": "..."}`;
+            `\nFormat JSON: {"hook": "...", "script": "...", "caption": "...", "hashtags": ["..."], "scene_en": "...", "delivery_en": "..."}`;
 
           const parsed = parseJsonLoose(await chat(ws, penulis, system, user, undefined, 1500)) as Record<string, unknown>;
           const script = String(parsed.script || "").trim();
           if (!script) throw new Error("Penulis AI tidak mengembalikan naskah. Coba lagi.");
           const words = script.split(/\s+/).filter(Boolean).length;
+
+          // Nama lama ikut dibaca: draft yang sudah terlanjur dibuat dengan
+          // versi sebelumnya tidak boleh kehilangan latarnya hanya karena
+          // fieldnya berganti nama.
+          let sceneEn = String(parsed.scene_en || parsed.scene || "").trim();
+          let deliveryEn = String(parsed.delivery_en || parsed.delivery || "").trim();
+
+          // Minta ulang HANYA dua field itu, dengan instruksi yang seluruhnya
+          // berbahasa Inggris. Panggilan pertama gagal justru KARENA dua
+          // aturannya terkubur di antara instruksi Indonesia — mengulanginya
+          // dengan cara yang sama tidak akan mengubah apa pun. Panggilan ini
+          // pendek (maks 400 token) dan hanya terjadi saat ada yang meleset.
+          if (!sceneEn || !deliveryEn || looksIndonesian(sceneEn) || looksIndonesian(deliveryEn)) {
+            try {
+              const fix = parseJsonLoose(await chat(
+                ws, { actor, purpose: "ugc:scene_en" },
+                "You write prompt fragments for an image model. Reply in English only, " +
+                "with valid JSON and nothing else.",
+                `Write two English prompt fragments for one vertical 9:16 UGC selfie video.\n` +
+                `Product: ${product.name}${product.description ? ` — ${product.description}` : ""}\n` +
+                (angle ? `Story angle: ${angle}\n` : "") +
+                (avoidScenes.length
+                  ? `Already used by this creator, do not reuse or imitate: ${avoidScenes.join(" / ")}\n`
+                  : "") +
+                `\n"scene_en": 30-50 words. One front-camera selfie frame: the room, the light, the clothing, ` +
+                `how the product is held with its label facing the camera. Put the person in the room the PRODUCT ` +
+                `belongs in. If the product has no natural room (ebook, course, app, service), do NOT use a home ` +
+                `office or a desk — pick a livelier everyday place. Vary the light direction and time of day. ` +
+                `Never describe the face, age, skin or hair. Never describe the product packaging or its colours.\n` +
+                `"delivery_en": 15-30 words. How the person talks to the camera: energy, expression, hand gestures.\n` +
+                `\nJSON: {"scene_en": "...", "delivery_en": "..."}`,
+                undefined, 400,
+              )) as Record<string, unknown>;
+              const s2 = String(fix.scene_en || "").trim();
+              const d2 = String(fix.delivery_en || "").trim();
+              if (s2 && !looksIndonesian(s2)) sceneEn = s2;
+              if (d2 && !looksIndonesian(d2)) deliveryEn = d2;
+            } catch (_e) {
+              // Naskahnya sudah jadi dan itu bagian yang mahal. Gagal memperbaiki
+              // latar tidak boleh menggagalkan seluruh permintaan — jatuh ke
+              // cadangan di bawah.
+            }
+          }
+
+          // Cadangan terakhir. Latar default berbahasa Inggris yang generik
+          // menghasilkan gambar yang jauh lebih patuh daripada latar Indonesia
+          // yang spesifik tapi setengah dimengerti model.
+          if (!sceneEn || looksIndonesian(sceneEn)) sceneEn = UGC_FALLBACK_SCENE;
+          if (!deliveryEn || looksIndonesian(deliveryEn)) deliveryEn = UGC_FALLBACK_DELIVERY;
           return json({
             ok: true,
             ugc: {
@@ -1251,8 +1377,8 @@ Deno.serve(async (req) => {
               hashtags: Array.isArray(parsed.hashtags)
                 ? (parsed.hashtags as unknown[]).map((h) => String(h).trim().replace(/^#+/, "")).filter(Boolean).slice(0, 8)
                 : [],
-              scene: String(parsed.scene || "").slice(0, 800),
-              delivery: String(parsed.delivery || "").slice(0, 400),
+              scene: sceneEn.slice(0, 800),
+              delivery: deliveryEn.slice(0, 400),
               words,
               // Perkiraan detik dari jumlah kata, dengan rasio yang sama dengan
               // anggarannya. Yang mengikat tetap audio sungguhan nanti.
