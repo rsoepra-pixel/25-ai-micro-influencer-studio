@@ -439,7 +439,17 @@ kartunya.
 ## 📁 Drive
 
 **Untuk apa.** Semua hasil produksi di satu tempat — gambar, video, audio.
-Menampilkan 60 berkas terbaru.
+Menampilkan 60 berkas terbaru per jenis.
+
+**Filter jenis media.** Empat tombol di atas daftar: Semua, Gambar, Video, dan
+Suara, masing-masing membawa jumlah sebenarnya. Angka itu dihitung dari seluruh
+aset, bukan dari yang sedang tampil, jadi ia menjawab "ada berapa" dan bukan
+"ada berapa yang kebetulan termuat".
+
+Penyaringannya dikerjakan di query, bukan di browser. Bedanya terasa saat
+asetmu sudah lebih dari 60: menyaring di browser akan menampilkan video yang
+kebetulan masuk 60 terbaru lalu berhenti, tanpa tanda apa pun bahwa sisanya
+ada. Dengan filter di query, menekan Video berarti 60 video terbaru.
 
 **Fitur yang mudah terlewat:** foto terbaik bisa **ditandai sebagai referensi
 Identity Kit** seorang influencer langsung dari sini. Kalau influencer itu belum
