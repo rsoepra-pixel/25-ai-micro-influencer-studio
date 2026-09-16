@@ -879,6 +879,56 @@ function Notice({ tone, items }) {
   );
 }
 
+// Perkiraan pemangkasan, ditampilkan SEBELUM job dikirim.
+//
+// Kling membatasi panjang tiap prompt shot, dan yang dikorbankan lebih dulu
+// adalah kontinuitas — visual dan narasi dipertahankan. Tanpa peringatan ini
+// orang baru tahu kontinuitasnya hilang setelah videonya jadi dan terlihat
+// kurang nyambung, itu pun kalau ia membuka jejak job.
+//
+// SENGAJA DISEBUT "PERKIRAAN". Angka 400 di sini menyalin MULTI_BUDGET di
+// `generate`, dan salinan bisa menyimpang kalau yang di sana berubah. Yang
+// mengikat tetap server; ini cuma memberi tahu lebih awal. Karena itu kalimatnya
+// "akan dipangkas", bukan "akan ditolak" — job-nya tetap jalan.
+const PANGKAS_BUDGET = 400;
+const byteLen = (t) => new TextEncoder().encode(String(t || "")).length;
+
+function perkiraanPangkas(shots, continuity) {
+  const cont = String(continuity || "").trim();
+  let visualDipotong = 0, kontinuitasHilang = 0, kontinuitasDipangkas = 0;
+  for (const s of shots) {
+    const spoken = String(s.narration || "").trim();
+    const visual = `@Element1 ${String(s.visual_prompt || "").trim()}`;
+    const speak = spoken ? `, speaking in Indonesian: "${spoken}"` : "";
+    if (byteLen(visual + speak) > PANGKAS_BUDGET) {
+      visualDipotong++;
+      continue;
+    }
+    if (!cont) continue;
+    const room = PANGKAS_BUDGET - byteLen(visual + speak) - 2;
+    if (room < 24) kontinuitasHilang++;
+    else if (byteLen(cont) > room) kontinuitasDipangkas++;
+  }
+  return { visualDipotong, kontinuitasHilang, kontinuitasDipangkas, total: shots.length };
+}
+
+function PeringatanPangkas({ shots, continuity }) {
+  const p = perkiraanPangkas(shots, continuity);
+  const kena = p.visualDipotong + p.kontinuitasHilang + p.kontinuitasDipangkas;
+  if (!kena) return null;
+  const berat = p.visualDipotong > 0 || p.kontinuitasHilang > 0;
+  return (
+    <div className={berat ? "msg-warn mt2" : "tiny muted mt2"} style={berat ? undefined : { lineHeight: 1.5 }}>
+      <b>Perkiraan: akan dipangkas otomatis di {kena} dari {p.total} shot.</b>{" "}
+      {p.visualDipotong > 0 && <>Deskripsi adegan terpotong di {p.visualDipotong} shot — ini yang paling memengaruhi hasil; pendekkan visual prompt shot itu. </>}
+      {p.kontinuitasHilang > 0 && <>Kontinuitas tidak muat sama sekali di {p.kontinuitasHilang} shot. </>}
+      {p.kontinuitasDipangkas > 0 && <>Kontinuitas dipangkas sebagian di {p.kontinuitasDipangkas} shot. </>}
+      Video tetap dibuat — visual dan kalimat yang diucapkan tidak pernah dikorbankan lebih dulu.
+      Mempersingkat kontinuitas biasanya cukup.
+    </div>
+  );
+}
+
 function StepNaskah({ board, shots, inf, refCount, models, patchShot, patchBoard, setStep }) {
   const r = readiness({ board, shots, inf, refCount, models });
   return (
@@ -891,6 +941,7 @@ function StepNaskah({ board, shots, inf, refCount, models, patchShot, patchBoard
           Baju, lokasi, waktu, cahaya, warna. Ini yang membuat potongan-potongan terasa satu video.
           Mengubahnya di sini berlaku untuk semua shot sekaligus.
         </p>
+        <PeringatanPangkas shots={shots} continuity={board.continuity} />
       </div>
 
       <div className="card p4 mb4">

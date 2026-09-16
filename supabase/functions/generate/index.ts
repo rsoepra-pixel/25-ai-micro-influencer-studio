@@ -2177,6 +2177,13 @@ Deno.serve(async (req) => {
         // dikorbankan untuk kontinuitas; kontinuitas dipangkas dulu, dan kalau
         // tetap tidak muat, dihilangkan dari shot itu. Tidak ada tempat lain
         // untuknya: `prompt` tingkat atas ditolak Kling kalau `multi_prompt` ada.
+        // Pemangkasan di bawah ini dulu terjadi DIAM-DIAM: orang menulis
+        // kontinuitas yang bagus, sistem membuangnya dari sebagian shot karena
+        // tidak muat, videonya jadi kurang konsisten — dan tidak ada satu pun
+        // tempat yang memberi tahu kenapa. Jadi tiap keputusannya dicatat ke
+        // jejak job, lalu ditampilkan di layar. Yang dipangkas boleh dipangkas;
+        // yang tidak boleh adalah orangnya tidak pernah tahu.
+        const trim: { shot: number; apa: string; sisa_byte?: number }[] = [];
         const multi = shots.map((s, i) => {
           const spoken = String(s.narration || "").trim();
           const visual = `@Element1 ${String(s.visual_prompt || "").trim()}`;
@@ -2184,11 +2191,22 @@ Deno.serve(async (req) => {
           let prompt: string;
           if (blen(visual + speak) > MULTI_BUDGET) {
             prompt = cutBytes(visual, Math.max(MULTI_BUDGET - blen(speak), 40)) + speak;
+            // Yang paling perlu diketahui: deskripsi adegannya sendiri terpotong.
+            trim.push({ shot: i + 1, apa: "visual_dipotong" });
           } else {
             prompt = visual + speak;
             if (continuity) {
               const room = MULTI_BUDGET - blen(prompt) - 2;
-              if (room >= 24) prompt = `${visual}, ${cutBytes(continuity, room)}${speak}`;
+              if (room >= 24) {
+                const potong = cutBytes(continuity, room);
+                prompt = `${visual}, ${potong}${speak}`;
+                if (potong !== continuity) {
+                  trim.push({ shot: i + 1, apa: "kontinuitas_dipangkas", sisa_byte: room });
+                }
+              } else {
+                // Tidak ada tempat sama sekali untuk kontinuitas di shot ini.
+                trim.push({ shot: i + 1, apa: "kontinuitas_hilang", sisa_byte: Math.max(room, 0) });
+              }
             }
           }
           return { prompt, duration: String(fitted.each[i]) };
@@ -2276,6 +2294,10 @@ Deno.serve(async (req) => {
             composed: {
               shot_seconds: fitted.each, total_seconds: fitted.total, ref_photos: refPhotos,
               voice_locked: !!voiceId, multishot_mode: promptMultishot ? "prompt" : "multi_prompt", estimate_usd: est,
+              // Hanya diisi di jalur multi_prompt — jalur `prompt` naratif tidak
+              // punya batas per shot, jadi tidak ada yang dipangkas per shot.
+              trim_budget_byte: promptMultishot ? null : MULTI_BUDGET,
+              trim: promptMultishot ? [] : trim,
             },
             provider_input: input,
             submitted_at: new Date().toISOString(),
