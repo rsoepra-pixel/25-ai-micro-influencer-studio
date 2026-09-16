@@ -327,6 +327,17 @@ dipakai penulis naskah untuk memaskan jumlah kata (≈ 2,3 kata per detik), dan
 estimasi biayanya dihitung dari jumlah kata naskah — bukan dari angka yang
 diminta.
 
+**Batas 30 detik, ditegakkan server.** Naskah yang lebih panjang ditolak sebelum
+job berbayar berangkat, dan wizard menahannya lebih dulu supaya penolakannya
+tidak terjadi setelah gambar kuncinya sudah dibayar. Tiga puluh detik kira-kira
+69 kata.
+
+Kenapa **ditolak** dan bukan dipotong diam-diam: panjang video avatar ditentukan
+audionya, bukan angka yang dikirim aplikasi. Memotong angkanya hanya akan
+memperkecil estimasi di layar sementara provider tetap membuat dan menagih video
+penuh — pagar yang menyembunyikan tagihannya sendiri. Kalau videonya memang
+harus lebih panjang, bagi jadi beberapa video.
+
 **Yang perlu diketahui.** Influencer tanpa voice id akan ditolak di langkah
 audio. Siapkan suaranya dulu lewat kartu klon suara MiniMax di halaman detail
 influencer.
