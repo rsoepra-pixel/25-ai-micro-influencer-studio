@@ -3207,17 +3207,59 @@ export function Tasks({ ws, refresh, tick }) {
 }
 
 // ---------- Drive ----------
+// Jenis media yang benar-benar ditulis ke `assets`: image, video, audio.
+// Label pakai kata yang dipakai orang di layar lain ("Suara", bukan "Audio"),
+// supaya satu berkas tidak punya dua nama di dua halaman.
+const DRIVE_KINDS = [
+  ["all", "Semua"],
+  ["image", "🖼️ Gambar"],
+  ["video", "🎬 Video"],
+  ["audio", "🎧 Suara"],
+];
+
 export function Drive({ ws, refresh, tick }) {
+  // Filternya ikut ke QUERY, bukan menyaring larik yang sudah sampai di
+  // browser — dan itu bukan soal rapi-rapian.
+  //
+  // Halaman ini hanya mengambil 60 aset terbaru. Saat ditulis, workspace ini
+  // punya 106 aset, dan di dalam 60 teratas cuma ada 39 dari 78 gambar serta
+  // 14 dari 21 video. Menyaring di browser berarti tombol "Video" menampilkan
+  // 14 lalu berhenti, tanpa satu pun tanda bahwa tujuh sisanya ada. Kegagalan
+  // yang menyamar jadi "memang segitu isinya" adalah yang paling mahal dicari
+  // — persis jebakan yang pernah memakan halaman Storyboard.
+  const [kind, setKind] = useState("all");
   const [d, reload, loadError] = useQuery(async () => {
+    let q = supa.from("assets").select("*, influencers(name)")
+      .order("created_at", { ascending: false }).limit(60);
+    if (kind !== "all") q = q.eq("kind", kind);
     const [assets, inf] = await Promise.all([
-      supa.from("assets").select("*, influencers(name)").order("created_at", { ascending: false }).limit(60),
+      q,
       supa.from("influencers").select("id,name").order("name"),
     ]);
     return { assets: unwrap(assets), inf: unwrap(inf) };
+  }, [ws.id, tick, kind]);
+
+  // Hitungan per jenis: query SENDIRI, dan sengaja TANPA `kind` di dep-nya.
+  //
+  // Dua alasan, dan yang kedua yang terlihat user. Pertama, angkanya dihitung
+  // dari SELURUH aset — bukan dari 60 yang tampil — karena angka yang menjawab
+  // "ada berapa yang kebetulan termuat" diam-diam mengajari orang bahwa isinya
+  // lebih sedikit daripada yang sebenarnya. Kedua, `useQuery` mengosongkan
+  // datanya tiap kali dep berubah; ikut menumpang query di atas berarti angka
+  // di semua tombol berkedip hilang lalu muncul lagi setiap kali satu filter
+  // ditekan — gerakan yang menarik mata ke tempat yang tidak sedang berubah.
+  //
+  // Menghapus aset memanggil refresh(), yang menaikkan `tick`, jadi angkanya
+  // tetap ikut turun tanpa perlu dep tambahan.
+  const [jumlah] = useQuery(async () => {
+    const rows = unwrap(await supa.from("assets").select("kind"));
+    const j = { all: rows.length };
+    for (const r of rows) j[r.kind] = (j[r.kind] || 0) + 1;
+    return j;
   }, [ws.id, tick]);
+
   const [marking, setMarking] = useState(null);
   const [err, setErr] = useState(null);
-  if (!d) return loadError ? <div className="msg-err">Gagal memuat drive: {loadError}</div> : <div className="muted">Memuat…</div>;
 
   async function markRef(asset, infId) {
     setErr(null);
@@ -3231,9 +3273,34 @@ export function Drive({ ws, refresh, tick }) {
   return (
     <div>
       <h1 style={{ fontSize: 24, fontWeight: 800 }}>Drive</h1>
-      <p className="muted small mb4">Semua hasil produksi. Foto terbaik bisa dijadikan referensi identity kit influencer.</p>
+      <p className="muted small mb3">Semua hasil produksi. Foto terbaik bisa dijadikan referensi identity kit influencer.</p>
+      {/* Bentuknya tombol btn/btn2, sama dengan penyaring periode di Laporan
+          dan pengalih Papan/Kalender di Planner. Ini penyaring, bukan
+          perpindahan halaman, jadi sengaja TIDAK memakai TabStrip — tab
+          mengubah halaman, chip mempersempit daftar yang sama. */}
+      <div className="row mb4" style={{ gap: 6, flexWrap: "wrap" }}>
+        {DRIVE_KINDS.map(([k, label]) => (
+          <button key={k} type="button" onClick={() => setKind(k)}
+            className={`btn ${kind === k ? "" : "btn2"}`} style={{ fontSize: 12, padding: "6px 12px" }}>
+            {label}
+            {/* Jenis yang belum punya satu berkas pun tetap ditampilkan, dengan
+                angka 0. Menyembunyikannya membuat orang mengira aplikasinya
+                tidak bisa menghasilkan jenis itu sama sekali. Sebelum hitungan
+                pertama sampai, angkanya belum ditulis apa pun — menulis 0 di
+                situ adalah berbohong tentang sesuatu yang belum kita tahu. */}
+            {jumlah && <span className="tiny muted" style={{ marginLeft: 6 }}>{jumlah[k] || 0}</span>}
+          </button>
+        ))}
+      </div>
       {err && <div className="msg-err mb3">{err}</div>}
-      {d.assets.length ? (
+      {/* Judul dan baris filter di atas sengaja dirender lebih dulu dan TIDAK
+          ikut hilang saat memuat: filter yang lenyap sesaat setelah ditekan
+          membuat orang menekannya dua kali. Yang berganti hanya isi di bawah. */}
+      {loadError ? (
+        <div className="msg-err">Gagal memuat drive: {loadError}</div>
+      ) : !d ? (
+        <div className="muted">Memuat…</div>
+      ) : d.assets.length ? (
         <div className="grid" style={{ gridTemplateColumns: "repeat(auto-fill,minmax(160px,1fr))" }}>
           {d.assets.map((a) => (
             <div key={a.id} className="card" style={{ overflow: "hidden" }}>
@@ -3266,7 +3333,20 @@ export function Drive({ ws, refresh, tick }) {
         </div>
       ) : (
         <div className="card p6" style={{ textAlign: "center" }}>
-          <span className="small muted">Belum ada aset. Generate lewat Production Studio.</span>
+          {/* Kosong karena filter dan kosong karena belum pernah produksi adalah
+              dua keadaan berbeda, dan menyamakannya membuat orang mencari-cari
+              aset yang sebetulnya ada satu klik di sebelahnya. */}
+          {kind === "all" ? (
+            <span className="small muted">Belum ada aset. Generate lewat Production Studio.</span>
+          ) : (
+            <span className="small muted">
+              Belum ada {DRIVE_KINDS.find(([k]) => k === kind)?.[1].replace(/^\S+\s/, "").toLowerCase()} di workspace ini.{" "}
+              <button type="button" onClick={() => setKind("all")}
+                style={{ background: "none", border: "none", padding: 0, cursor: "pointer", color: "var(--blue-strong)", fontWeight: 600 }}>
+                Lihat semua aset
+              </button>
+            </span>
+          )}
         </div>
       )}
     </div>
