@@ -1940,6 +1940,62 @@ const ORIGIN_LABELS = {
   storyboard: "Storyboard", mcp: "Claude (MCP)", unknown: "tidak tercatat",
 };
 
+// Apa yang dipangkas supaya muat di batas provider.
+//
+// Kling memeriksa panjang tiap prompt shot SETELAH mengganti @Element1 dengan
+// sesuatu yang lebih panjang, jadi anggarannya dibuat longgar dan sebagian
+// tulisan orang memang harus dibuang. Yang tidak boleh adalah pembuangan itu
+// terjadi tanpa sepengetahuannya: kontinuitas hilang dari satu shot, videonya
+// jadi kurang nyambung, dan tidak ada satu pun tempat yang menjelaskan kenapa.
+//
+// Urutan pengorbanannya sengaja: visual dan kalimat yang diucapkan dipertahankan
+// lebih dulu, kontinuitas dipangkas duluan. Jadi "visual dipotong" adalah kabar
+// yang paling perlu dilihat — itu berarti anggarannya benar-benar mepet.
+const TRIM_LABEL = {
+  visual_dipotong: ["Deskripsi adegan terpotong", "var(--warn-strong)"],
+  kontinuitas_dipangkas: ["Kontinuitas dipangkas", "var(--ink-2)"],
+  kontinuitas_hilang: ["Kontinuitas tidak muat sama sekali", "var(--warn-strong)"],
+};
+
+function TrimRow({ composed }) {
+  const trim = Array.isArray(composed?.trim) ? composed.trim : null;
+  if (!trim) return null;  // job lama, atau jalur prompt naratif yang tanpa batas per shot
+  const budget = composed.trim_budget_byte;
+
+  if (!trim.length) {
+    return (
+      <TrailRow label="Pemangkasan">
+        <span className="muted">Tidak ada. Semua shot muat utuh{budget ? ` dalam anggaran ${budget} byte` : ""}.</span>
+      </TrailRow>
+    );
+  }
+
+  const perShot = new Map();
+  for (const t of trim) {
+    if (!perShot.has(t.shot)) perShot.set(t.shot, []);
+    perShot.get(t.shot).push(t.apa);
+  }
+
+  return (
+    <TrailRow label="Pemangkasan">
+      {[...perShot.entries()].sort((a, b) => a[0] - b[0]).map(([shot, apa]) => (
+        <div key={shot} className="tiny" style={{ marginBottom: 3 }}>
+          <b>Shot {shot}</b>
+          {apa.map((k) => {
+            const [teks, warna] = TRIM_LABEL[k] || [k, "var(--ink-2)"];
+            return <span key={k} style={{ color: warna }}> · {teks}</span>;
+          })}
+        </div>
+      ))}
+      <div className="tiny muted mt1">
+        Prompt tiap shot dibatasi {budget || 400} byte oleh Kling, dan batas itu dihitung setelah provider
+        mengganti acuan wajah — jadi anggarannya sengaja dibuat longgar. Kalau kontinuitas sering hilang,
+        pendekkan deskripsi kontinuitas di storyboard; visual dan narasi tidak pernah dikorbankan lebih dulu.
+      </div>
+    </TrailRow>
+  );
+}
+
 function TrailRow({ label, children }) {
   return (
     <div className="row mb2" style={{ alignItems: "flex-start", gap: 10 }}>
@@ -2114,6 +2170,7 @@ function JobTrail({ job }) {
                 : `model tidak punya knob durasi; ditagih ${c.billed_seconds} detik, panjang klip ditentukan model`}</>}
         </TrailRow>
       ) : null}
+      <TrimRow composed={c} />
       {(r.task_status || r.seed !== undefined || r.request_id) ? (
         <TrailRow label="Provider">
           {r.task_status ? `status ${r.task_status}` : ""}
