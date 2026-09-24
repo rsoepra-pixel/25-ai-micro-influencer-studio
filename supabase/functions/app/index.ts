@@ -824,6 +824,20 @@ Deno.serve(async (req) => {
         if (!email) throw new Error("Email wajib diisi.");
         const { data, error } = await admin.auth.admin.generateLink({
           type: "recovery", email,
+          // Tujuannya disebut EKSPLISIT, tidak dibiarkan jatuh ke Site URL
+          // project. Site URL bawaan project Supabase baru adalah
+          // http://localhost:3000, dan itulah yang terkirim ke pelanggan
+          // pertama: linknya mengarah ke laptopnya sendiri, yang tidak
+          // menjalankan apa pun. Gagalnya pun menyesatkan — yang muncul
+          // "Email link is invalid or has expired", seolah linknya kedaluwarsa,
+          // padahal alamat tujuannya yang salah.
+          //
+          // Menulisnya di sini membuat jalur masuk pelanggan tidak lagi
+          // bergantung pada satu setelan di dashboard yang tidak terlihat dari
+          // kode mana pun. Setelan itu TETAP harus memuat origin ini di daftar
+          // Redirect URLs — Supabase menolak redirectTo yang tidak terdaftar —
+          // tapi sekali terdaftar, link ini tidak bisa lagi nyasar diam-diam.
+          options: { redirectTo: APP_ORIGIN },
         });
         if (error) throw new Error(error.message);
         return json({ ok: true, link: data?.properties?.action_link || null });
