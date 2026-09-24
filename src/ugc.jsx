@@ -43,6 +43,10 @@ const PLATFORMS = [
 
 // Rasio yang sama dengan penulis naskah di server (write kind=ugc).
 const WORDS_PER_SEC = 2.3;
+// Sama dengan MAX_DURATION_SECONDS di supabase/functions/generate/index.ts.
+// Server yang menegakkannya — angka di sini hanya supaya penolakannya terjadi
+// SEBELUM orang menulis naskah dua menit, bukan sesudahnya.
+const MAX_SECONDS = 30;
 const wordCount = (s) => String(s || "").split(/\s+/).filter(Boolean).length;
 const estSeconds = (script) => Math.max(3, Math.round(wordCount(script) / WORDS_PER_SEC));
 
@@ -279,8 +283,8 @@ function NewProject({ ws, influencers, products, onProductCreated, onCreated }) 
         </div>
         <div>
           <label className="label">Target durasi (detik)</label>
-          <input className="input" type="number" min={5} max={60} value={seconds}
-            onChange={(e) => setSeconds(Math.min(Math.max(Number(e.target.value) || 12, 5), 60))} />
+          <input className="input" type="number" min={5} max={MAX_SECONDS} value={seconds}
+            onChange={(e) => setSeconds(Math.min(Math.max(Number(e.target.value) || 12, 5), MAX_SECONDS))} />
           <p className="tiny muted" style={{ marginTop: 4 }}>≈ {Math.round(seconds * WORDS_PER_SEC)} kata.</p>
         </div>
       </div>
@@ -435,7 +439,16 @@ function plan({ project, inf, product, refCount, models }) {
   } else if (imgModel && !imgModel.ref_image_multi) {
     warnings.push({ text: `${imgModel.label.split(" —")[0]} hanya menerima satu foto referensi, jadi foto produk tidak ikut dikirim. Pilih Seedream 4 Edit atau Nano Banana Edit di pengaturan model.` });
   }
-  if (seconds > 30) warnings.push({ text: `Naskah ≈ ${seconds} detik. Kling Avatar dan Fabric belum diuji di atas 30 detik; OmniHuman menerima audio sampai 60 detik di 720p.` });
+  // Penghalang, bukan peringatan: sejak batas durasi dipasang, server MENOLAK
+  // job lipsync di atas ini. Meninggalkannya sebagai peringatan lunak berarti
+  // layar mempersilakan sesuatu yang pasti ditolak beberapa klik kemudian,
+  // setelah gambar kuncinya sudah dibayar.
+  if (seconds > MAX_SECONDS) {
+    blockers.push({
+      text: `Naskah ≈ ${seconds} detik, batasnya ${MAX_SECONDS} detik. Videonya sepanjang naskah, `
+        + `jadi potong sampai kira-kira ${Math.round(MAX_SECONDS * WORDS_PER_SEC)} kata — atau bagi jadi beberapa video.`,
+    });
+  }
   if (Math.abs(seconds - project.target_seconds) > 4) {
     warnings.push({ text: `Naskah ≈ ${seconds} detik, target ${project.target_seconds}. Videonya mengikuti naskah; biaya dihitung dari ${seconds} detik.` });
   }

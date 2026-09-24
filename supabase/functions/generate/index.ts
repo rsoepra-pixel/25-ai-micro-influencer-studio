@@ -737,6 +737,57 @@ function pickDuration(
   return fit || opts[0];
 }
 
+// ---------- Batas durasi satu job berbayar ----------
+//
+// 30 detik. Angka KEBIJAKAN milik pemilik, bukan batas teknis provider —
+// sebagian model sanggup lebih panjang.
+//
+// Kenapa ada: job lipsync a1d0e5fe (10 Sep 2026) menghasilkan video 157 detik
+// seharga $8,79. Itu 30% dari seluruh pemakaian workspace tersebut sejak awal,
+// dan lebih mahal daripada 100 gambar yang berhasil DIJUMLAHKAN. Tidak ada apa
+// pun yang menahannya: `duration` dibaca apa adanya dari body, dan satu-satunya
+// pagar adalah batas bulanan. Satu nol kelebihan saat mengetik sudah cukup.
+const MAX_DURATION_SECONDS = 30;
+
+// Sekitar berapa kata yang muat dalam sedetik ucapan. Sama dengan WORDS_PER_SEC
+// di src/ugc.jsx dan dengan rasio yang dipakai penulis naskah (write kind=ugc).
+// Dipakai HANYA untuk menyusun pesan error yang bisa ditindaklanjuti, tidak
+// untuk berhitung biaya.
+const WORDS_PER_SEC = 2.3;
+
+// Dijepit ATAU ditolak — tergantung apakah kita benar-benar bisa memaksakannya.
+//
+// INI BUKAN KERAPIAN, DAN BEDANYA MENENTUKAN.
+//
+// Untuk task `video`, angka ini benar-benar sampai ke provider lewat
+// `duration_field`, jadi menjepitnya memang memperpendek videonya dan
+// memperkecil tagihannya.
+//
+// Untuk `lipsync` TIDAK. Kelima model avatar di katalog punya duration_field
+// NULL, dan cabang lipsync hanya mengirim foto + audio (+ prompt). Panjang
+// videonya ditentukan AUDIO-nya. Menjepit angkanya di sana cuma memperkecil
+// ESTIMASI di layar sementara provider tetap membuat — dan menagih — 157 detik.
+// Pagar yang menyembunyikan tagihannya sendiri lebih buruk daripada tidak ada
+// pagar sama sekali. Jadi untuk lipsync kita MENOLAK, dan menyebut apa yang
+// harus dipendekkan.
+//
+// Dipanggil sebelum baris job dibuat, jadi melempar biasa — bukan abort(),
+// yang gunanya menandai job yang sudah terlanjur ada sebagai gagal.
+function capDuration(task: string, wanted: number): number {
+  const n = Number.isFinite(wanted) && wanted > 0 ? wanted : 5;
+  if (n <= MAX_DURATION_SECONDS) return n;
+  if (task === "lipsync") {
+    const kata = Math.round(MAX_DURATION_SECONDS * WORDS_PER_SEC);
+    throw new Error(
+      `Audionya sekitar ${Math.round(n)} detik, sedangkan batas satu video di sini ` +
+      `${MAX_DURATION_SECONDS} detik. Model avatar membuat video sepanjang audionya, jadi ini ` +
+      `tidak bisa dipendekkan dari sisi kami — yang harus dipotong naskahnya, sampai kira-kira ` +
+      `${kata} kata. Kalau memang harus sepanjang itu, bagi jadi beberapa video.`,
+    );
+  }
+  return MAX_DURATION_SECONDS;
+}
+
 // Gabungkan knob tetap milik model (resolusi, rasio aspek, audio) ke body.
 //
 // Ditulis TERAKHIR dan menimpa: kalau katalog menyebut satu field secara
@@ -2275,7 +2326,12 @@ Deno.serve(async (req) => {
         // Durasi tiap shot dipaskan supaya jumlahnya persis durasi videonya.
         const fitted = fitShotDurations(
           shots.map((s) => Number(s.seconds) || 5),
-          Number(body.max_seconds) || 15,
+          // Dijepit di sini juga. `max_seconds` datang dari body, jalur MCP bisa
+          // mengirim angka berapa pun, dan fitShotDurations sendiri tidak punya
+          // langit-langit — default 15 cuma default. Di sini angkanya MEMANG
+          // sampai ke provider (duration_field), jadi menjepit sudah cukup;
+          // tidak perlu menolak seperti pada lipsync.
+          Math.min(Number(body.max_seconds) || 15, MAX_DURATION_SECONDS),
         );
 
         // BATAS fal 512, tapi Kling menolak prompt 506 karakter / 510 byte
@@ -2491,7 +2547,11 @@ Deno.serve(async (req) => {
         // `label` opsional: nama yang terbaca manusia untuk asset hasilnya
         // (dipakai character sheet: "Ronny — front view", dst).
         const label = body.label ? String(body.label).slice(0, 120) : null;
-        const duration = Number(body.duration || 5);
+        // Dijepit (atau ditolak untuk lipsync) SEBELUM apa pun dihitung, supaya
+        // estimasi, gerbang saldo, dan body ke provider semuanya memakai angka
+        // yang sama. Menjepitnya belakangan berarti salah satu dari ketiganya
+        // memakai angka yang sudah tidak berlaku.
+        const duration = capDuration(String(task), Number(body.duration || 5));
         const { data: model } = await admin.from("provider_models").select("*")
           .eq("id", model_id).eq("active", true).maybeSingle();
         if (!model) throw new Error("Model tidak ditemukan / tidak aktif.");
