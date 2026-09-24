@@ -4422,6 +4422,95 @@ function PlatformConfig({ st, reload }) {
 // di mode byo_key saldonya selalu nol dan menampilkannya cuma bikin user
 // mengira ada tagihan yang belum dibayar, padahal yang menagih adalah
 // fal/DashScope langsung ke kartunya sendiri.
+// ---------- Batas belanja bulanan ----------
+//
+// Rem yang dipasang owner sendiri, di atas saldo. Saldo menjawab "boleh
+// belanja berapa pun selama uangnya ada"; batas ini menjawab "jangan lebih
+// dari segini sebulan, walau saldonya cukup" — berguna saat saldo besar
+// dibagi beberapa orang, atau saat Claude lewat MCP ikut menjalankan job.
+//
+// Yang menegakkan adalah trigger production_jobs_spend_cap (migrasi 0053),
+// bukan kartu ini: kartu ini cuma menulis angkanya. Karena itu batasnya
+// berlaku juga untuk job dari Claude dan dari cron.
+//
+// Kosong = tanpa batas, dan itu nilai awal setiap workspace. Aplikasi ini
+// tidak memilihkan angka untuk siapa pun.
+function SpendCapCard({ ws, tick }) {
+  const [d, reload, err] = useQuery(async () => {
+    const { data: u } = await supa.auth.getUser();
+    const [bud, spent, me] = await Promise.all([
+      supa.from("budget_settings").select("spend_cap_usd").eq("workspace_id", ws.id).maybeSingle(),
+      supa.rpc("my_month_spent_usd", { ws: ws.id }),
+      supa.from("workspace_members").select("role").eq("workspace_id", ws.id).eq("user_id", u?.user?.id || "").maybeSingle(),
+    ]);
+    if (bud.error) throw new Error(bud.error.message);
+    if (spent.error) throw new Error(spent.error.message);
+    return {
+      cap: bud.data?.spend_cap_usd == null ? null : Number(bud.data.spend_cap_usd),
+      spent: Number(spent.data || 0),
+      owner: me.data?.role === "owner",
+    };
+  }, [ws.id, tick]);
+  const [val, setVal] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [msg, setMsg] = useState(null);
+
+  async function simpan(cap) {
+    setBusy(true); setMsg(null);
+    const { error } = await supa.from("budget_settings")
+      .upsert({ workspace_id: ws.id, spend_cap_usd: cap }, { onConflict: "workspace_id" });
+    setBusy(false);
+    if (error) { setMsg({ err: true, text: error.message }); return; }
+    setVal("");
+    setMsg({ err: false, text: cap == null ? "Batas dihapus — belanja bulanan tidak dibatasi." : `Batas disimpan: ${usd(cap)} per bulan.` });
+    reload();
+  }
+  function submit(e) {
+    e.preventDefault();
+    const n = Number(String(val).replace(",", "."));
+    if (!Number.isFinite(n) || n < 0) { setMsg({ err: true, text: "Isi angka dalam USD, 0 atau lebih. Contoh: 25" }); return; }
+    simpan(n);
+  }
+
+  if (!d) return err ? <div className="msg-err mb4">Gagal memuat batas belanja: {err}</div> : null;
+  const pct = d.cap ? Math.min(100, Math.round((d.spent / d.cap) * 100)) : 0;
+  return (
+    <div className="card p6 mb4">
+      <div className="row mb2" style={{ justifyContent: "space-between" }}>
+        <div className="bold">
+          Batas belanja bulanan
+          <Info tip="Rem tambahan di atas saldo: job berbayar ditolak kalau pemakaian bulan ini akan melewati angka ini, walau saldonya masih cukup. Berlaku juga untuk job yang dijalankan Claude lewat MCP." />
+        </div>
+        <Badge tone={d.cap == null ? "zinc" : pct >= 90 ? "amber" : "green"}>
+          {d.cap == null ? "tanpa batas" : `${usd(d.spent)} dari ${usd(d.cap)}`}
+        </Badge>
+      </div>
+      <p className="tiny muted mb3">
+        Terpakai bulan ini (WIB): <b>{usd(d.spent)}</b>, termasuk job yang masih berjalan dan penulis AI.
+        {d.cap != null && " Penulis AI (✨) ikut dihitung tapi tidak dihentikan oleh batas ini."}
+      </p>
+      {d.cap != null && (
+        <div className="mb3" style={{ height: 6, borderRadius: 999, background: "var(--subtle-2)", overflow: "hidden" }}>
+          <div style={{ width: `${pct}%`, height: "100%", background: pct >= 90 ? "var(--warn)" : "var(--ok)" }} />
+        </div>
+      )}
+      {d.owner ? (
+        <form onSubmit={submit} className="row" style={{ gap: 8, flexWrap: "wrap" }}>
+          <input className="input" style={{ maxWidth: 160 }} inputMode="decimal" placeholder="USD per bulan"
+            value={val} onChange={(e) => setVal(e.target.value)} />
+          <button className="btn" disabled={busy || !String(val).trim()}>{d.cap == null ? "Pasang batas" : "Ubah batas"}</button>
+          {d.cap != null && (
+            <button type="button" className="btn btn2" disabled={busy} onClick={() => simpan(null)}>Hapus batas</button>
+          )}
+        </form>
+      ) : (
+        <p className="tiny muted">Hanya owner workspace yang bisa mengubah batas ini.</p>
+      )}
+      {msg && <div className={`${msg.err ? "msg-err" : "msg-ok"} mt3`}>{msg.text}</div>}
+    </div>
+  );
+}
+
 function BillingCard({ ws, tick }) {
   const [bill] = useQuery(async () => callApp({ action: "billing_status" }), [ws.id, tick]);
   // Penawaran ditampilkan di sini, bukan lewat email: belum ada infrastruktur
@@ -4596,10 +4685,17 @@ const SETTINGS_TABS = [
   // ingin tahu apakah workspace-nya bisa dibagi, dan tab yang muncul-hilang
   // tergantung paket membuat pertanyaan itu tidak punya alamat.
   ["tim", "Tim & Kursi"],
-  ["provider", "Provider & Biaya"],
+  // Isinya setelan operator (penulis AI, mode live/mock) dan Budget Guard lama
+  // yang hanya berlaku di byo_key. Pelanggan kredit tidak boleh memasang key
+  // sendiri, jadi tab ini hanya kebingungan bagi mereka. Batas belanja milik
+  // pelanggan ada di Akun.
+  ["provider", "Provider & Biaya", "byo"],
   ["koneksi", "Koneksi"],
   ["pustaka", "Pustaka Prompt"],
-  ["katalog", "Katalog Model"],
+  // Kolom harganya MENGUBAH tagihan semua pelanggan (lihat migrasi 0052), jadi
+  // hanya operator. Database menolak perubahan dari yang lain; menyembunyikan
+  // tabnya menghindarkan pelanggan dari kolom yang tidak bisa disimpan.
+  ["katalog", "Katalog Model", "platform"],
   // Hanya muncul untuk operator platform. Tabnya disaring di render, dan
   // server tetap memeriksa sendiri di setiap aksi — tab yang disembunyikan
   // adalah kerapian, bukan pengamanan.
@@ -4611,12 +4707,12 @@ const SETTINGS_TABS = [
 ];
 
 const SETTINGS_HINTS = {
-  akun: "Password, langganan, dan saldo.",
+  akun: "Password, langganan, saldo, dan batas belanja bulanan.",
   tim: "Undang anggota, lihat pemakaian per orang, atur jatah kredit.",
   provider: "Penulis AI dan batas biaya bulanan.",
   koneksi: "Instagram/TikTok, Google Calendar, Claude (MCP), dan link pendek.",
   pustaka: "Contoh prompt siap pakai per kategori. Gratis — tidak memanggil AI.",
-  katalog: "Model yang aktif dan harga perkiraannya.",
+  katalog: "Operator: harga model. Harga ini yang ditagih ke semua pelanggan.",
   pelanggan: "Operator platform: akses, saldo, dan webhook pembayaran pelanggan.",
   lanjutan: "Konfigurasi platform dan promosi (operator).",
 };
@@ -4641,10 +4737,20 @@ function tabFromQuery(query) {
 // Pengecualian: `lanjutan` dulu rumah kartu Claude (MCP), dan tautan lama ke
 // sana masih beredar. Pelanggan yang membukanya sedang mencari kartu itu, jadi
 // diantar ke tempat barunya, bukan ke Akun.
-function safeTab(tab, isPlatformAdmin) {
-  const def = SETTINGS_TABS.find(([k]) => k === tab);
-  if (def && def[2] === "platform" && !isPlatformAdmin) return tab === "lanjutan" ? "koneksi" : "akun";
-  return tab;
+function safeTab(tab, visible) {
+  if (visible.some(([k]) => k === tab)) return tab;
+  return tab === "lanjutan" ? "koneksi" : "akun";
+}
+
+// "platform" = operator saja. "byo" = operator, atau workspace byo_key yang
+// memang memasang key sendiri. Selama status billing belum termuat, tab
+// "byo" disembunyikan: lebih baik muncul sebentar kemudian daripada muncul
+// lalu hilang di depan pelanggan kredit.
+function tabVisible(gate, isPlatformAdmin, billingMode) {
+  if (!gate) return true;
+  if (isPlatformAdmin) return true;
+  if (gate === "byo") return billingMode === "byo_key";
+  return false;
 }
 
 export function Settings({ ws, refresh, tick, spend, spendError, query }) {
@@ -4666,8 +4772,8 @@ export function Settings({ ws, refresh, tick, spend, spendError, query }) {
   // Nilai awal dibaca dari query SEKALI saat mount, sebelum kartu koneksi
   // membersihkan query-nya sendiri lewat replaceState.
   const [tab, setTab] = useState(() => tabFromQuery(query));
-  const visibleTabs = SETTINGS_TABS.filter(([, , gate]) => gate !== "platform" || platform?.is_platform_admin);
-  const shownTab = safeTab(tab, platform?.is_platform_admin);
+  const visibleTabs = SETTINGS_TABS.filter(([, , gate]) => tabVisible(gate, platform?.is_platform_admin, keyState?.billing_mode));
+  const shownTab = safeTab(tab, visibleTabs);
   const goTab = useCallback((key) => {
     setTab(key);
     window.history.replaceState(null, "", `#/settings?tab=${key}`);
@@ -4728,6 +4834,7 @@ export function Settings({ ws, refresh, tick, spend, spendError, query }) {
         <AccountAdmin ws={ws} tick={tick} />
         <SubscriptionCard tick={tick} />
         <BillingCard ws={ws} tick={tick} />
+        <SpendCapCard ws={ws} tick={tick} />
       </>)}
 
       {shownTab === "tim" && <MembersCard tick={tick} />}

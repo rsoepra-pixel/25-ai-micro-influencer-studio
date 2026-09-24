@@ -86,6 +86,9 @@ satu jalur berarti dua jalur lain lolos.
 |---|---|---|
 | `production_jobs_subscription_gate` | `production_jobs` | job berbayar tanpa langganan aktif, tanpa pelaku (di workspace berbagi), atau melebihi jatah |
 | `production_jobs_throttle_repeat_failure` | `production_jobs` | job berbayar ke model yang baru saja menolak permintaan kita berturut-turut (migrasi `0050`) |
+| `production_jobs_spend_cap` | `production_jobs` | job berbayar yang membuat pemakaian bulan ini melewati batas belanja yang dipasang owner (migrasi `0053`) |
+| `budget_settings_guard_spend_cap` | `budget_settings` | perubahan batas belanja oleh yang bukan owner |
+| policy `pm_update` | `provider_models` | perubahan harga katalog oleh yang bukan operator (migrasi `0052`) |
 | `app_secrets_central_api` | `app_secrets` | kunci provider milik pelanggan, dan mode mock |
 | `workspace_members_alloc_budget` | `workspace_members` | jatah yang totalnya melebihi saldo |
 | `workspace_members_guard_quota` | `workspace_members` | perubahan jatah yang tidak lewat `set_member_quota()` |
@@ -113,6 +116,33 @@ update public.service_config set value = '0' where key = 'repeat_fail_streak';
 Berlaku seketika, tanpa deploy. Menyetel ulang ambang atau jendelanya lewat dua
 kunci yang sama (`repeat_fail_streak`, `repeat_fail_window_mins`). Ujinya ada di
 `supabase/tests/0050_repeat_failure_gate.sql`, aman dijalankan di produksi.
+
+### Harga katalog hanya milik operator (migrasi `0052`)
+
+Sampai 24 Sep 2026, policy `pm_update` di `provider_models` adalah `using (true)`:
+setiap pelanggan yang login bisa mengubah harga model untuk **seluruh
+platform**, dan tab Katalog Model menampilkan kolom harganya di layar mereka.
+Harga itu yang ditagih (biaya job = harga × durasi), dan model berharga 0
+melewati gerbang langganan dan saldo. Sekarang hanya `is_platform_admin()` yang
+boleh mengubahnya, dan tab Katalog Model hanya muncul untuk operator.
+
+### Batas belanja bulanan milik pelanggan (migrasi `0053`)
+
+`budget_settings.spend_cap_usd`, diisi owner di Settings → Akun. **Kosong =
+tanpa batas**, dan itu nilai awal semua workspace — platform tidak memilihkan
+angka untuk siapa pun.
+
+Kenapa bukan Budget Guard lama (`monthly_cap_usd`): kolom itu hanya ditegakkan
+di jalur `byo_key` dan hanya di TypeScript. Di mode kredit tidak ada yang
+menegakkannya, dan setiap workspace sudah membawa nilai 200 sejak dibuat —
+menegakkannya berarti membatasi semua pelanggan $200 tanpa ada yang memilih.
+
+- "Bulan" mengikuti **WIB**. Job yang masih berjalan dihitung dengan
+  estimasinya.
+- Penulis AI **ikut dihitung** ke pemakaian bulan ini, tapi **tidak
+  dihentikan** oleh batas ini — gerbangnya tetap `text_precheck()`.
+- Dua job yang dikirim di detik yang sama bisa sama-sama lolos; selisihnya
+  paling banyak satu job. Ini rem, bukan akuntansi.
 
 Penulis AI tidak lewat `production_jobs`, jadi ia punya pasangannya sendiri di
 `generate/index.ts` → `chat()`: `text_precheck()` sebelum provider dihubungi,
@@ -361,6 +391,9 @@ menumpang di jalur yang ramai.
 | `0048` | jejak produksi per job (`origin`, `audit`); satu job ditagih sekali |
 | `0049` | rapor model: `job_failure_kind()`, `model_scorecard`, `provider_models_ranked` |
 | `0050` | rem job gagal berulang: `repeat_failure_lock()` + trigger di `production_jobs` |
+| `0051` | workspace baru langsung mode live |
+| `0052` | harga katalog (`provider_models`) hanya bisa diubah operator |
+| `0053` | batas belanja bulanan milik owner: `spend_cap_usd` + trigger di `production_jobs` |
 
 ### Nama migrasi: repo vs ledger produksi
 
