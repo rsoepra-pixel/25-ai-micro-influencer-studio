@@ -23,6 +23,7 @@ import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { supa, callGenerate } from "./supa.js";
 import { ModelPicker, byPrice, priceLabel, Badge, useQuery, unwrap, recordBadge} from "./views.jsx";
 import { LibraryPicker } from "./library.jsx";
+import { Info } from "./tips.jsx";
 
 const PLATFORMS = [
   ["tiktok", "TikTok"],
@@ -313,8 +314,8 @@ export function Storyboard({ ws, refresh, tick, mode }) {
     <div>
       <h1 className="mb1">🎞️ Storyboard</h1>
       <p className="muted mb4">
-        Satu ide dipecah jadi beberapa shot, tiap shot dibuatkan gambar kuncinya dulu, baru videonya.
-        Gambar murah dan bisa diulang sampai wajahnya benar; video mahal, jadi baru dijalankan setelah gambarnya disetujui.
+        Satu ide dipecah jadi beberapa shot, lalu jadi satu video multi-shot. Satu persetujuan menjalankan dua job:
+        frame pembuka (gambar, murah) dulu, lalu videonya. Untuk orang bicara ke kamera, pakai <a href="#/ugc">Video UGC</a>.
       </p>
 
       <NewBoard ws={ws} influencers={influencers} onCreated={(id) => { bump(); setOpenId(id); }} />
@@ -934,7 +935,7 @@ function StepNaskah({ board, shots, inf, refCount, models, patchShot, patchBoard
   return (
     <div>
       <div className="card p4 mb4">
-        <label className="label">Kontinuitas — ditempelkan ke prompt SETIAP shot</label>
+        <label className="label">Kontinuitas — ditempelkan ke prompt SETIAP shot<Info tip="Hal yang harus sama di semua shot (pakaian, lokasi, cahaya). Ubah sekali di sini, tidak perlu disisir per shot." /></label>
         <textarea className="input" rows={2} defaultValue={board.continuity || ""}
           onBlur={(e) => patchBoard({ continuity: e.target.value })} />
         <p className="tiny muted" style={{ marginTop: 4 }}>

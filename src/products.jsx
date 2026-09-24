@@ -19,6 +19,7 @@
 import React, { useEffect, useState } from "react";
 import { supa, callGenerate } from "./supa.js";
 import { useQuery, unwrap, downscaleToDataUri } from "./views.jsx";
+import { Info } from "./tips.jsx";
 
 // Produk + fotonya dalam satu bentuk yang enak dipakai UI dan wizard.
 export function useProducts(ws, tick) {
@@ -162,7 +163,7 @@ export function NewProduct({ ws, onCreated, className = "card p6", title = "Tamb
         </div>
       </div>
       <div className="mb3">
-        <label className="label">Foto produk asli (1–6 foto)</label>
+        <label className="label">Foto produk asli (1–6 foto)<Info tip="Harus foto asli kemasannya. Tanpa foto, model gambar mengarang label dan bentuk kemasan." /></label>
         <input type="file" accept="image/*" multiple className="input"
           onChange={(e) => setFiles(Array.from(e.target.files || []))} />
         <p className="tiny muted" style={{ marginTop: 4 }}>

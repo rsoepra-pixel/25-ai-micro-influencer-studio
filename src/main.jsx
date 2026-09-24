@@ -8,6 +8,7 @@ import { Reports } from "./reports.jsx";
 import { Storyboard } from "./storyboard.jsx";
 import { Products } from "./products.jsx";
 import { Ugc } from "./ugc.jsx";
+import { TipLayer, Info } from "./tips.jsx";
 
 // Token undangan dibaca SEKALI saat modul dimuat, sebelum apa pun sempat
 // membersihkan query string. Link-nya berbentuk `/?invite=...` (query, bukan
@@ -43,20 +44,31 @@ const legalHref = (page) => {
   return `${base}/${page}`;
 };
 
+// Elemen ketiga adalah petunjuk hover. Pertanyaan pertama orang baru hampir
+// selalu "Studio, Storyboard, atau UGC — yang mana?", dan nama menunya saja
+// tidak menjawabnya; petunjuknya menyebut hasil tiap menu, bukan fiturnya.
 const NAV = [
-  ["/", "🏠 Dashboard"],
+  ["/", "🏠 Dashboard", "Ringkasan workspace dan langkah awal kalau kamu baru mulai."],
   // Dua aset yang dipakai ulang (siapa, apa) di atas; alat produksi di bawahnya.
-  ["/influencers", "👥 Influencers"],
-  ["/products", "📦 Product Kit"],
-  ["/studio", "🎬 Production Studio"],
-  ["/storyboard", "🎞️ Storyboard"],
-  ["/ugc", "🎤 Video UGC"],
-  ["/planner", "🗓️ Content Planner"],
-  ["/reports", "📊 Laporan"],
-  ["/tasks", "✅ Tasks"],
-  ["/drive", "📁 Drive"],
-  ["/settings", "⚙️ Settings"],
+  ["/influencers", "👥 Influencers", "Karakter AI-mu: wajah, suara, kepribadian. Mulai dari sini."],
+  ["/products", "📦 Product Kit", "Foto produk asli, disimpan sekali untuk dipakai di semua video UGC."],
+  ["/studio", "🎬 Production Studio", "Alat satuan: satu gambar, video, atau suara per kirim."],
+  ["/storyboard", "🎞️ Storyboard", "Satu ide jadi satu video multi-shot. Bukan untuk bicara ke kamera."],
+  ["/ugc", "🎤 Video UGC", "Influencer bicara ke kamera tentang produk. Jalur untuk endorse."],
+  ["/planner", "🗓️ Content Planner", "Rencana dan jadwal konten — satu-satunya tempat untuk posting ke sosial."],
+  ["/reports", "📊 Laporan", "Apa yang sudah tayang, dan uangnya ke mana."],
+  ["/tasks", "✅ Tasks", "Daftar kerja tim. Tidak terhubung ke produksi maupun saldo."],
+  ["/drive", "📁 Drive", "Semua hasil produksi: gambar, video, dan suara."],
+  ["/settings", "⚙️ Settings", "Akun, tim, koneksi sosial, Claude (MCP), dan pustaka prompt."],
 ];
+
+// Lencana mode di kartu saldo. "live"/"mock" adalah istilah operator; bagi
+// pelanggan, yang perlu dia tahu cuma satu: apakah mencoba sesuatu memakai
+// uang sungguhan.
+const MODE_TIP = {
+  live: "live: setiap generate dikirim ke provider sungguhan dan memakai saldo.",
+  mock: "mock: generate memakai berkas contoh, gratis. Mode ini diatur operator platform.",
+};
 
 function Login() {
   // Yang datang lewat link undangan hampir pasti belum punya akun, jadi
@@ -415,20 +427,27 @@ function App() {
           <div className="tiny muted mt1">{ws.name}</div>
         </div>
         <nav style={{ padding: 12, flex: 1 }}>
-          {NAV.map(([href, label]) => (
-            <a key={href} href={`#${href}`} className={`nav ${routePath === href ? "active" : ""}`}>{label}</a>
+          {NAV.map(([href, label, tip]) => (
+            <a key={href} href={`#${href}`} className={`nav ${routePath === href ? "active" : ""}`}
+              data-tip={tip} data-tip-side="right">{label}</a>
           ))}
         </nav>
         <div style={{ padding: 14, borderTop: "1px solid var(--border)" }}>
           <div className="card p4" style={{ background: "var(--subtle)" }}>
-            <span className="label">{spend.billing === "credit" ? "Saldo kredit" : "Biaya bulan ini"}</span>
+            <span className="label">
+              {spend.billing === "credit" ? "Saldo kredit" : "Biaya bulan ini"}
+              <Info tip={spend.billing === "credit"
+                ? "Saldo yang membayar model gambar, video, suara, dan penulis AI (tombol ✨). Job ditolak kalau saldo habis."
+                : "Total biaya generate bulan ini, dibandingkan batas bulanan di Settings → Provider & Biaya."} />
+            </span>
             {spendError ? (
               <div className="msg-err tiny mt1">Gagal memuat biaya: {spendError}</div>
             ) : spend.billing === "credit" ? (
               <>
                 <div style={{ fontSize: 20, fontWeight: 800, color: spend.balance < 1 ? "var(--warn)" : "var(--ok)" }}>{usd(spend.balance)}</div>
                 <div className="tiny muted">terpakai {usd(spend.spent)} bulan ini</div>
-                <span className={`badge mt2`} style={spend.mode === "live" ? { background: "var(--ok-line)", color: "var(--ok)" } : { background: "var(--border)", color: "var(--ink-3)" }}>
+                <span className={`badge mt2`} style={spend.mode === "live" ? { background: "var(--ok-line)", color: "var(--ok)" } : { background: "var(--border)", color: "var(--ink-3)" }}
+                  tabIndex={0} data-tip={MODE_TIP[spend.mode] || MODE_TIP.mock}>
                   mode: {spend.mode}
                 </span>
               </>
@@ -436,7 +455,8 @@ function App() {
               <>
                 <div style={{ fontSize: 20, fontWeight: 800, color: "var(--warn)" }}>{usd(spend.spent)}</div>
                 <div className="tiny muted">dari batas {usd(spend.cap)}</div>
-                <span className={`badge mt2`} style={spend.mode === "live" ? { background: "var(--ok-line)", color: "var(--ok)" } : { background: "var(--border)", color: "var(--ink-3)" }}>
+                <span className={`badge mt2`} style={spend.mode === "live" ? { background: "var(--ok-line)", color: "var(--ok)" } : { background: "var(--border)", color: "var(--ink-3)" }}
+                  tabIndex={0} data-tip={MODE_TIP[spend.mode] || MODE_TIP.mock}>
                   mode: {spend.mode}
                 </span>
               </>
@@ -452,6 +472,7 @@ function App() {
       <main style={{ flex: 1, padding: 32, overflow: "auto" }}>
         <ViewBoundary resetKey={routePath}>{view}</ViewBoundary>
       </main>
+      <TipLayer />
     </div>
   );
 }

@@ -4,6 +4,7 @@ import { CustomersAdmin, SubscriptionCard } from "./customers.jsx";
 import { MembersCard } from "./members.jsx";
 import { supa, callGenerate, callSocial, callCalendar, callApp, callLinks, callMedia, STATUS_LABELS, TYPE_LABELS, usd } from "./supa.js";
 import { recordBadge, recordSentence, byEffectivePrice, estimateFor, nextTierUp } from "./routing.js";
+import { Info, TIP_PENULIS_AI, TIP_BERBAYAR } from "./tips.jsx";
 
 const linkBtn = { background: "none", border: "none", padding: 0, cursor: "pointer", fontWeight: 700, fontSize: 11 };
 
@@ -147,7 +148,11 @@ const statusTone = (s) =>
 // Dipakai Settings DAN Production Studio. Dua halaman yang tabnya terlihat
 // berbeda akan terbaca sebagai dua aplikasi yang berbeda, jadi bentuknya
 // satu dan tinggal satu di sini.
-function TabStrip({ current, onGo, tabs }) {
+//
+// `hints` (opsional) memetakan kunci tab ke petunjuk hover. Terpisah dari
+// larik tab karena elemen ketiga larik Settings sudah dipakai untuk gerbang
+// operator.
+function TabStrip({ current, onGo, tabs, hints }) {
   return (
     <div
       className="row mb4"
@@ -165,6 +170,7 @@ function TabStrip({ current, onGo, tabs }) {
             type="button"
             role="tab"
             aria-selected={active}
+            data-tip={hints?.[key]}
             onClick={() => onGo(key)}
             style={{
               flex: "0 0 auto", whiteSpace: "nowrap", cursor: "pointer",
@@ -188,17 +194,99 @@ function TabStrip({ current, onGo, tabs }) {
   );
 }
 
+// ---------- Mulai dari sini ----------
+//
+// Urutan menu di sidebar mengikuti alur kerja, tapi orang baru tidak tahu itu,
+// dan beberapa langkah yang terlewat baru berbunyi jauh kemudian: influencer
+// tanpa suara ditolak di langkah audio Video UGC — setelah gambar kuncinya
+// dibayar — dan tanpa foto Identity Kit wajahnya berganti tiap generate.
+//
+// Setiap langkah dihitung dari data workspace, bukan dicentang manual, jadi
+// daftar ini tidak bisa berbohong dan menghilang sendiri begitu semuanya
+// beres. Langkah yang statusnya tidak bisa diketahui (null) disembunyikan.
+function StartHere({ d }) {
+  const s = d.start;
+  const pertama = d.inf[0];
+  // `kling_voice_id` tidak dihitung: suara itu hanya dikenal video Kling di
+  // Storyboard, dan Video UGC tetap menolak influencer yang cuma punya itu.
+  const adaSuara = d.inf.some((i) => Object.entries(i.voice || {})
+    .some(([k, v]) => k !== "kling_voice_id" && String(v || "").trim()));
+  const langkah = [
+    {
+      ok: d.inf.length > 0, href: "/influencers", judul: "Buat influencer pertama",
+      tip: "Karakter AI-mu. Bisa dibantu AI dari beberapa pertanyaan pendek atau dari foto.",
+    },
+    {
+      ok: s.refs > 0, href: pertama ? `/influencers/${pertama.id}` : "/influencers", judul: "Tambah foto Identity Kit",
+      tip: "Foto acuan wajah. Tanpa ini, wajah influencer berganti di setiap gambar dan video.",
+    },
+    {
+      ok: adaSuara, href: pertama ? `/influencers/${pertama.id}` : "/influencers", judul: "Siapkan suara influencer",
+      tip: "Tanpa suara, Video UGC ditolak di langkah audio. Klon suara dari rekaman di halaman detail influencer.",
+    },
+    {
+      ok: s.products > 0, href: "/products", judul: "Simpan produk di Product Kit",
+      tip: "Perlu kalau kamu membuat video endorse (Video UGC). Foto produk asli, bukan hasil AI.",
+    },
+    {
+      ok: s.done > 0, href: "/ugc", judul: "Buat video pertama",
+      tip: "Video UGC: bicara ke kamera tentang produk. Storyboard: satu ide, beberapa shot. Keduanya memakai saldo.",
+    },
+    s.social === null ? null : {
+      ok: s.social.length > 0, href: "/settings?tab=koneksi", judul: "Hubungkan akun Instagram/TikTok",
+      tip: "Supaya konten bisa diposting dari Content Planner. Posting selalu atas perintahmu, tidak otomatis.",
+    },
+  ].filter(Boolean);
+  const selesai = langkah.filter((l) => l.ok).length;
+  if (selesai === langkah.length) return null;
+  return (
+    <div className="card p4 mb4" style={{ borderColor: "var(--brand-line)" }}>
+      <div className="row mb2" style={{ justifyContent: "space-between" }}>
+        <div className="bold">Mulai dari sini</div>
+        <span className="tiny muted">{selesai} dari {langkah.length} selesai</span>
+      </div>
+      <div className="grid" style={{ gridTemplateColumns: "repeat(auto-fill,minmax(220px,1fr))", gap: 8 }}>
+        {langkah.map((l, i) => (
+          <a key={l.judul} href={`#${l.href}`} data-tip={l.tip} className="row small"
+            style={{
+              gap: 8, border: "1px solid var(--border)", borderRadius: 10, padding: "8px 10px",
+              background: l.ok ? "var(--ok-soft)" : "#fff", color: l.ok ? "var(--ok)" : "var(--text)",
+            }}>
+            <span className="bold">{l.ok ? "✓" : `${i + 1}.`}</span>
+            <span style={{ textDecoration: l.ok ? "line-through" : "none" }}>{l.judul}</span>
+          </a>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 // ---------- Dashboard ----------
 export function Dashboard({ ws, tick }) {
   const [d, reload, error] = useQuery(async () => {
-    const [inf, jobs, items, assets, tasks] = await Promise.all([
-      supa.from("influencers").select("id,name,status,avatar_url").order("created_at").limit(25),
+    const [inf, jobs, items, assets, tasks, refs, products, done, social] = await Promise.all([
+      supa.from("influencers").select("id,name,status,avatar_url,voice").order("created_at").limit(25),
       supa.from("production_jobs").select("*").order("created_at", { ascending: false }).limit(5),
       supa.from("content_items").select("id,title,status").order("created_at", { ascending: false }).limit(5),
       supa.from("assets").select("id,kind,url,name").order("created_at", { ascending: false }).limit(4),
       supa.from("tasks").select("id,title,status").neq("status", "done").limit(5),
+      // Tiga hitungan di bawah ini cuma untuk daftar "Mulai dari sini".
+      supa.from("character_assets").select("id", { count: "exact", head: true }).eq("kind", "reference"),
+      supa.from("products").select("id", { count: "exact", head: true }),
+      // Hanya video: gambar kunci UGC atau character sheet juga "berhasil",
+      // tapi langkahnya berbunyi "buat video pertama".
+      supa.from("production_jobs").select("id", { count: "exact", head: true })
+        .eq("status", "succeeded").in("task", ["video", "lipsync"]),
+      // Token akun sosial ada di tabelnya, jadi dibaca lewat edge function,
+      // bukan langsung. Kalau gagal, langkahnya disembunyikan — "belum" yang
+      // sebenarnya "tidak tahu" akan menyuruh orang menghubungkan ulang akun
+      // yang sudah terhubung.
+      callSocial({ action: "list_connections" }).then((r) => r.connections || []).catch(() => null),
     ]);
-    return { inf: unwrap(inf), jobs: unwrap(jobs), items: unwrap(items), assets: unwrap(assets), tasks: unwrap(tasks) };
+    return {
+      inf: unwrap(inf), jobs: unwrap(jobs), items: unwrap(items), assets: unwrap(assets), tasks: unwrap(tasks),
+      start: { refs: refs.count || 0, products: products.count || 0, done: done.count || 0, social },
+    };
   }, [ws.id, tick]);
   if (!d) return error ? <div className="msg-err">Gagal memuat dashboard: {error}</div> : <div className="muted">Memuat…</div>;
 
@@ -213,9 +301,10 @@ export function Dashboard({ ws, tick }) {
     <div>
       <div className="mb6">
         <div className="small muted">✨ AI Workspace</div>
-        <h1 style={{ fontSize: 30, fontWeight: 800 }} className="gradient-title">Project Workspace</h1>
+        <h1 style={{ fontSize: 30, fontWeight: 800 }} className="gradient-title">Ruang Kerja</h1>
         <p className="muted small mt1">Semua yang tim AI influencer kamu butuhkan — karakter, produksi, planning, dan biaya dalam satu tempat.</p>
       </div>
+      <StartHere d={d} />
       <div className="grid" style={{ gridTemplateColumns: "repeat(auto-fill,minmax(300px,1fr))" }}>
         <Card title="Influencers" sub={`${d.inf.length} dari 25 slot`} href="/influencers">
           {d.inf.length ? (
@@ -229,7 +318,7 @@ export function Dashboard({ ws, tick }) {
             </div>
           ) : <Empty text="Belum ada influencer." cta="Buat sekarang" href="/influencers" />}
         </Card>
-        <Card title="Tasks" sub="Work items" href="/tasks">
+        <Card title="Tasks" sub="Pekerjaan tim yang belum selesai" href="/tasks">
           {d.tasks.length ? d.tasks.map((t) => (
             <div key={t.id} className="row mb2" style={{ justifyContent: "space-between", border: "1px solid var(--border)", borderRadius: 10, padding: "6px 10px" }}>
               <span className="small" style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{t.title}</span>
@@ -237,7 +326,7 @@ export function Dashboard({ ws, tick }) {
             </div>
           )) : <Empty text="Belum ada task." cta="Tambah" href="/tasks" />}
         </Card>
-        <Card title="Produksi Terbaru" sub="Generation jobs" href="/studio">
+        <Card title="Produksi Terbaru" sub="Job generate terakhir dan biayanya" href="/studio?tab=riwayat">
           {d.jobs.length ? d.jobs.map((j) => (
             <div key={j.id} className="row mb2" style={{ justifyContent: "space-between", border: "1px solid var(--border)", borderRadius: 10, padding: "6px 10px" }}>
               <span className="small">{j.status === "failed" ? "✕ " : j.status === "succeeded" ? "✓ " : "● "}{TYPE_LABELS[j.task]}</span>
@@ -271,6 +360,16 @@ export function Dashboard({ ws, tick }) {
               ))}
             </div>
           ) : <Empty text="Belum ada aset." cta="Buka Drive" href="/drive" />}
+        </Card>
+        {/* Satu-satunya pintu masuk ke Claude (MCP) di luar Settings. Tanpa
+            ini fiturnya hanya ditemukan orang yang kebetulan membuka tab
+            Koneksi. */}
+        <Card title="🤖 Kelola lewat Claude" sub="Opsional — lewat percakapan" href="/settings?tab=koneksi">
+          <p className="small muted mb2">
+            Hubungkan workspace ini ke Claude, lalu minta dalam bahasa biasa: “buat 5 ide konten minggu depan”,
+            “tulis script untuk konten Jumat”, “laporan 30 hari terakhir”.
+          </p>
+          <a href="#/settings?tab=koneksi" className="btn btn2" style={{ fontSize: 12 }}>Cara menghubungkan →</a>
         </Card>
       </div>
     </div>
@@ -477,7 +576,7 @@ function PersonaWizard({ onApply, onClose, initialAnswers, refine, notice }) {
             </div>
             {err && <div className="msg-err mb3">{err}</div>}
             <div className="row" style={{ gap: 8 }}>
-              <button type="button" className="btn" disabled={busy} onClick={generate}>
+              <button type="button" className="btn" disabled={busy} onClick={generate} data-tip={TIP_PENULIS_AI}>
                 {busy ? (photos.length ? "Membaca foto…" : "Menulis…")
                   : photos.length ? `Buat dari ${photos.length} foto` : refine ? "Perbaiki deskripsi" : "Buatkan deskripsi"}
               </button>
@@ -513,7 +612,7 @@ function PersonaWizard({ onApply, onClose, initialAnswers, refine, notice }) {
             <input className="input mb3" value={out.niche} onChange={(e) => setOut({ ...out, niche: e.target.value })} />
             <label className="label">Bio / persona (Indonesia)</label>
             <textarea className="input mb3" rows={4} value={out.bio} onChange={(e) => setOut({ ...out, bio: e.target.value })} />
-            <label className="label">Identity prompt (Inggris — kunci konsistensi wajah)</label>
+            <label className="label">Identity prompt (Inggris — kunci konsistensi wajah)<Info tip="Ciri fisik tetap saja, dalam bahasa Inggris. Latar, pose, dan pakaian ditulis di prompt tiap gambar — kalau dikunci di sini, ikut muncul di semua gambar." /></label>
             <textarea className="input mb1" rows={5} value={out.identity_prompt}
               onChange={(e) => setOut({ ...out, identity_prompt: e.target.value })} />
             <p className="tiny muted mb3">
@@ -819,7 +918,7 @@ export function Influencers({ ws, refresh, tick, mode }) {
           <input name="platforms" className="input mb3" defaultValue="tiktok, instagram" />
           <label className="label">Bio / persona</label>
           <textarea name="bio" className="input mb3" rows={2} placeholder="Kepribadian, gaya bicara, backstory…" value={bioHint} onChange={(e) => setBioHint(e.target.value)} />
-          <label className="label">Identity prompt (deskripsi fisik terkunci)</label>
+          <label className="label">Identity prompt (deskripsi fisik terkunci)<Info tip="Ciri fisik tetap saja, dalam bahasa Inggris. Latar, pose, dan pakaian ditulis di prompt tiap gambar — kalau dikunci di sini, ikut muncul di semua gambar." /></label>
           <textarea name="identity_prompt" className="input mb1" rows={3}
             value={identityHint} onChange={(e) => setIdentityHint(e.target.value)}
             placeholder="mis. Indonesian woman, 24yo, oval face, small mole under left eye, shoulder-length wavy black hair…" />
@@ -891,7 +990,7 @@ function VoiceCard({ inf, models, onSaved }) {
   return (
     <div className="card p6 mb4">
       <div className="row mb1" style={{ justifyContent: "space-between" }}>
-        <div className="bold">Suara</div>
+        <div className="bold">Suara<Info tip="Voice id untuk suara (TTS) di Production Studio. Satu id per model — id milik satu provider tidak bisa dipakai di provider lain." /></div>
         {/* "terkunci" dulu dipakai di sini, dan itu keliru: yang dimaksud
             adalah "sudah ditetapkan", tapi yang terbaca adalah gembok yang
             harus dibuka. Satu orang benar-benar berhenti di situ dan mencari
@@ -999,7 +1098,7 @@ function MiniMaxCloneCard({ inf, models, onSaved }) {
   return (
     <div className="card p6 mb4">
       <div className="row mb1" style={{ justifyContent: "space-between" }}>
-        <div className="bold">Suara untuk video UGC (klon MiniMax)</div>
+        <div className="bold">Suara untuk video UGC (klon MiniMax)<Info tip="Yang dipakai wizard Video UGC. Tanpa ini, Video UGC menolak influencer ini di langkah audio." /></div>
         <Badge tone={voiceId ? "green" : "amber"}>{voiceId ? "sudah diklon" : "belum ada"}</Badge>
       </div>
       <p className="tiny muted mb3">
@@ -1054,7 +1153,7 @@ function KlingVoiceCard({ inf, models, onSaved }) {
   return (
     <div className="card p6 mb4">
       <div className="row mb1" style={{ justifyContent: "space-between" }}>
-        <div className="bold">Suara di dalam video (Kling)</div>
+        <div className="bold">Suara di dalam video (Kling)<Info tip="Hanya dikenal video Kling di Storyboard. Tidak dipakai Video UGC — untuk itu, pakai kartu klon MiniMax." /></div>
         <Badge tone={voiceId ? "green" : "amber"}>{voiceId ? "sudah diklon" : "belum ada"}</Badge>
       </div>
       <p className="tiny muted mb3">
@@ -1160,7 +1259,7 @@ export function InfluencerDetail({ id, ws, refresh, tick, mode }) {
           <label className="label">Bio / persona</label>
           <textarea name="bio" className="input mb3" rows={3} value={bioVal} onChange={(e) => setBio(e.target.value)} />
           <div className="row" style={{ justifyContent: "space-between", alignItems: "center", marginBottom: 4 }}>
-            <label className="label" style={{ margin: 0 }}>Identity prompt (kunci konsistensi)</label>
+            <label className="label" style={{ margin: 0 }}>Identity prompt (kunci konsistensi)<Info tip="Ciri fisik tetap saja, dalam bahasa Inggris. Latar, pose, dan pakaian ditulis di prompt tiap gambar — kalau dikunci di sini, ikut muncul di semua gambar." /></label>
             <button type="button" className="btn btn2" style={{ fontSize: 11, padding: "3px 10px" }}
               title={lockedVal ? "Buka kunci untuk mengedit" : "Kunci agar tidak ikut terubah"}
               onClick={() => setIdentityLocked(!lockedVal)}>
@@ -1224,7 +1323,7 @@ export function InfluencerDetail({ id, ws, refresh, tick, mode }) {
         )}
         <div>
           <div className="card p6 mb4">
-            <div className="bold">Identity Kit</div>
+            <div className="bold">Identity Kit<Info tip="Foto acuan wajah yang dikirim ke model penjaga wajah. Tanpa foto di sini, wajah influencer berganti di setiap generate." /></div>
             <p className="tiny muted mb3">Foto referensi multi-angle — dipakai sebagai reference saat generate agar wajah konsisten. Tandai foto dari Drive sebagai referensi.</p>
             {d.refs.length ? (
               <div className="grid" style={{ gridTemplateColumns: "repeat(4,1fr)", gap: 8 }}>
@@ -1613,7 +1712,7 @@ export function GenerateForm({ models, influencers, influencerId, refresh, mode,
           </p></div>
       )}
       <div className="row mb2">
-        <button className="btn" disabled={busy || !selected}>{busy ? (step || "Generating…") : "Generate"}</button>
+        <button className="btn" disabled={busy || !selected} data-tip={mode === "mock" ? undefined : TIP_BERBAYAR}>{busy ? (step || "Generating…") : "Generate"}</button>
         <span className="tiny muted">Estimasi: <b style={{ color: "var(--orange)" }}>${est.toFixed(3)}</b>{mode === "mock" ? " (mock — gratis)" : " (indikatif)"}</span>
       </div>
       {err && <div className="msg-err mb2">{err}</div>}
@@ -1909,7 +2008,8 @@ function CharacterSheetPanel({ models, influencers, refresh, mode, lockInfluence
       </div>
       {backdrop === "persona" && <p className="tiny muted mb3">Dipakai: {styleNotes}</p>}
       <div className="row mb2">
-        <button type="button" className="btn" disabled={busy || !infId || !shots.length || !model} onClick={run}>
+        <button type="button" className="btn" disabled={busy || !infId || !shots.length || !model} onClick={run}
+          data-tip={mode === "mock" ? undefined : "Satu job gambar per sudut yang dicentang, semuanya memakai saldo. Perkiraan totalnya tertulis di samping."}>
           {busy ? `Mengirim ${(progress?.done ?? 0) + 1}/${progress?.total ?? shots.length}…` : `Buat character sheet (${shots.length} gambar)`}
         </button>
         <span className="tiny muted">
@@ -2089,7 +2189,7 @@ function Escalate({ job, models, onDone }) {
   return (
     <>
       <button type="button" className="btn btn2 tiny" style={{ padding: "4px 9px", marginRight: 6 }}
-        title={`Hasilnya kurang? Buat ulang dengan ${target.label.split(" —")[0]} — prompt dan acuan sama, ≈${usd(est)}`}
+        data-tip={`Hasilnya kurang? Buat ulang dengan ${target.label.split(" —")[0]} — prompt dan acuan sama. Memakai saldo, ≈${usd(est)}.`}
         onClick={() => setState("confirm")}>Naik kelas</button>
       {err && <div className="msg-err tiny mt1" style={{ maxWidth: 240, whiteSpace: "pre-wrap" }}>{err}</div>}
     </>
@@ -2209,6 +2309,11 @@ const STUDIO_TABS = [
   ["sheet", "🎭 Character sheet"],
   ["riwayat", "Riwayat job"],
 ];
+const STUDIO_HINTS = {
+  generate: "Kirim satu job: gambar, video b-roll, suara, atau orang bicara (lipsync).",
+  sheet: "Beberapa gambar sekaligus, satu per sudut wajah. Biaya = harga satu gambar × sudut yang dicentang.",
+  riwayat: "20 job terakhir: hasil, biaya sebenarnya, jejak, dan naik kelas.",
+};
 
 // Tab dibaca dari URL supaya bisa ditautkan: layar lain menyuruh orang
 // "generate dulu di Production Studio", dan tautan itu harus mendarat di
@@ -2268,8 +2373,12 @@ export function Studio({ ws, refresh, tick, mode, query }) {
   return (
     <div>
       <h1 style={{ fontSize: 24, fontWeight: 800 }}>Production Studio</h1>
-      <p className="muted small mb4">Pipeline produksi: script → suara → visual → talking video. Pilih influencer agar identity kit-nya dipakai otomatis.</p>
-      <TabStrip current={tab} onGo={goTab} tabs={tabs} />
+      <p className="muted small mb4">
+        Alat satuan: satu gambar, video, atau suara per kirim. Pilih influencer agar Identity Kit-nya dipakai otomatis.
+        Untuk video yang dipandu langkah demi langkah, pakai <a href="#/ugc">Video UGC</a> (bicara ke kamera)
+        atau <a href="#/storyboard">Storyboard</a> (multi-shot).
+      </p>
+      <TabStrip current={tab} onGo={goTab} tabs={tabs} hints={STUDIO_HINTS} />
       {tab === "generate" && (
       <div className="card p6 mb4">
         <div className="bold mb3">Generate baru</div>
@@ -2327,6 +2436,7 @@ export function Studio({ ws, refresh, tick, mode, query }) {
                   <td>{j.output_url ? <a href={j.output_url} target="_blank" rel="noreferrer" style={{ color: "var(--blue-strong)", fontWeight: 600 }}>Buka →</a> : "—"}</td>
                   <td style={{ whiteSpace: "nowrap" }}>
                     <button type="button" className="btn btn2 tiny" style={{ padding: "4px 9px", marginRight: 6 }}
+                      data-tip="Apa yang sebenarnya dikirim ke provider: prompt akhir, foto acuan, model, dan pesan error. Gratis."
                       onClick={() => setTrail(trail === j.id ? null : j.id)}>{trail === j.id ? "Tutup" : "Jejak"}</button>
                     {/* Tombol ini sengaja duduk di RIWAYAT, bukan di formulir
                         generate: keputusan "kurang bagus" baru bisa diambil
@@ -2957,8 +3067,16 @@ export function Planner({ ws, refresh, tick }) {
         <div>
           <h1 style={{ fontSize: 24, fontWeight: 800 }}>Content Planner</h1>
           <p className="muted small mt1">Content pillars → ide → produksi → publish. Konten AI wajib berlabel disclosure saat diunggah.</p>
+          {/* Jalur yang menulis naskah tanpa memotong saldo: server MCP tidak
+              pernah memanggil chat() — Claude menulis sendiri lalu menyimpan
+              lewat update_content (lihat supabase/functions/mcp/index.ts). */}
+          <p className="tiny muted mt1">
+            Punya Claude? Ia bisa menulis ide dan naskah lalu menyimpannya langsung ke sini, tanpa memotong saldo
+            penulis AI — <a href="#/settings?tab=koneksi">hubungkan di Settings → Koneksi</a>.
+          </p>
         </div>
-        <button type="button" className="btn" style={{ flexShrink: 0 }} onClick={() => setPlanOpen(true)}>
+        <button type="button" className="btn" style={{ flexShrink: 0 }} onClick={() => setPlanOpen(true)}
+          data-tip={`Isi brief sekali, AI menyusun jadwal beberapa minggu; kamu memilih ide mana yang disimpan. ${TIP_PENULIS_AI}`}>
           ✨ Rencanakan sebulan dengan AI
         </button>
       </div>
@@ -2987,7 +3105,7 @@ export function Planner({ ws, refresh, tick }) {
       )}
 
       <div className="card p6 mb4">
-        <div className="bold mb2">Content Pillars</div>
+        <div className="bold mb2">Content Pillars<Info tip="Tema besar konten beserta target persen. Laporan membandingkan porsi nyata dengan target ini." /></div>
         <div className="row mb3" style={{ flexWrap: "wrap", gap: 8 }}>
           {d.pillars.map((p) => (
             <span key={p.id} className="badge" style={{ background: `${p.color}22`, color: p.color }}>
@@ -3025,9 +3143,9 @@ export function Planner({ ws, refresh, tick }) {
             <select name="platform" className="input">
               <option value="tiktok">TikTok</option><option value="instagram">Instagram</option><option value="youtube">YouTube Shorts</option></select></div>
           <div><label className="label">Tanggal</label><input name="scheduled_date" type="date" className="input" /></div>
-          <div style={{ gridColumn: "span 2" }}><label className="label">Hook</label><input name="hook" className="input" placeholder="Kalimat pembuka 1-3 detik pertama" /></div>
+          <div style={{ gridColumn: "span 2" }}><label className="label">Hook<Info tip="Kalimat pembuka, 1–3 detik pertama. Penentu orang berhenti menggulir atau tidak." /></label><input name="hook" className="input" placeholder="Kalimat pembuka 1-3 detik pertama" /></div>
           <div style={{ gridColumn: "span 2" }}><label className="label">Script <span className="tiny muted">— yang dibacakan di video</span></label><textarea name="script" className="input" rows={2} /></div>
-          <div style={{ gridColumn: "span 2" }}><label className="label">Caption <span className="tiny muted">— yang tampil di bawah video saat diposting</span></label><textarea name="caption" className="input" rows={2} /></div>
+          <div style={{ gridColumn: "span 2" }}><label className="label">Caption <span className="tiny muted">— yang tampil di bawah video saat diposting</span><Info tip="Tulis pendek, jangan salin script. Caption berisi naskah lengkap adalah tanda paling jelas akun ini bukan dijalankan manusia." /></label><textarea name="caption" className="input" rows={2} /></div>
           <div style={{ alignSelf: "end" }}><button className="btn" style={{ width: "100%", justifyContent: "center" }}>Tambah</button></div>
         </form>
       </div>
@@ -3054,6 +3172,7 @@ export function Planner({ ws, refresh, tick }) {
                     {BOARD.map((s) => <option key={s} value={s}>{STATUS_LABELS[s]}</option>)}
                   </select>
                   <button type="button" className="tiny mt2" style={{ background: "none", border: "none", color: "var(--brand)", fontWeight: 700, cursor: "pointer", padding: 0, display: "block" }}
+                    data-tip={`Langsung menulis draf hook, script, dan caption. ${TIP_PENULIS_AI}`}
                     onClick={() => setAiDraftId(c.id)}>✨ Tulis dengan AI</button>
                   {aiDraftId === c.id && (
                     <AiDraftPanel item={c} onClose={() => setAiDraftId(null)}
@@ -3112,6 +3231,7 @@ export function Planner({ ws, refresh, tick }) {
                       </form>
                     ) : (
                       <button type="button" className="tiny mt2" style={{ background: "none", border: "none", color: "var(--brand)", fontWeight: 700, cursor: "pointer", padding: 0, display: "block" }}
+                        data-tip="Membuka formulir posting. Belum memposting apa pun — kamu memilih akun dan berkas dulu. Posting ke akun live tidak bisa dibatalkan."
                         onClick={() => setPublishOpenId(c.id)}>📤 Publish ke sosial</button>
                     )
                   )}
@@ -3175,7 +3295,7 @@ export function Tasks({ ws, refresh, tick }) {
   return (
     <div>
       <h1 style={{ fontSize: 24, fontWeight: 800 }}>Tasks</h1>
-      <p className="muted small mb4">Work items untuk operasional workspace.</p>
+      <p className="muted small mb4">Pekerjaan tim yang dikerjakan orang, bukan mesin. Tidak terhubung ke produksi maupun saldo.</p>
       {err && <div className="msg-err mb3">{err}</div>}
       <form onSubmit={add} className="card p6 mb4 row" style={{ flexWrap: "wrap", alignItems: "flex-end", gap: 10 }}>
         <div style={{ flex: 2, minWidth: 220 }}><label className="label">Task *</label><input name="title" className="input" required placeholder="mis. Review 5 video minggu ini" /></div>
@@ -3322,6 +3442,7 @@ export function Drive({ ws, refresh, tick }) {
                   </select>
                 ) : (
                   <button className="tiny" style={{ background: "none", border: "none", color: "var(--brand)", fontWeight: 700, cursor: "pointer", padding: 0 }}
+                    data-tip="Jadikan foto ini acuan wajah (Identity Kit) seorang influencer, supaya generate berikutnya memakai wajah ini."
                     onClick={() => setMarking(a.id)}>+ jadikan referensi</button>
                 ))}
                 <div className="mt1">
@@ -3933,10 +4054,17 @@ function McpSettings({ ws, tick }) {
         </table>
       )}
 
-      <p className="tiny muted mt3">
-        Akses ini baca–tulis ke data workspace (influencer, konten, task, laporan), tapi tidak bisa mengubah
-        password, billing, atau API key. Cabut kapan saja dari sini.
-      </p>
+      {/* Kalimat lamanya cuma menyebut "baca–tulis data", padahal Claude juga
+          bisa menjalankan generate (memakai saldo) dan memposting (tidak bisa
+          dibatalkan). Dua hal itu yang perlu diketahui SEBELUM menghubungkan,
+          jadi disebut terlihat, bukan di balik hover. */}
+      <div className="msg-warn mt3 tiny">
+        Akses ini baca–tulis ke data workspace (influencer, konten, task, laporan), dan Claude juga bisa
+        <b> menjalankan generate</b> — memakai saldo seperti dari aplikasi — serta <b>memposting</b> ke akun sosial
+        yang terhubung, yang tidak bisa dibatalkan. Claude diminta menyebut perkiraan biaya dan meminta
+        persetujuanmu sebelum melakukan keduanya. Akses ini tidak bisa mengubah password, billing, atau API key.
+        Cabut kapan saja dari sini.
+      </div>
     </div>
   );
 }
@@ -4476,8 +4604,22 @@ const SETTINGS_TABS = [
   // server tetap memeriksa sendiri di setiap aksi — tab yang disembunyikan
   // adalah kerapian, bukan pengamanan.
   ["pelanggan", "Pelanggan", "platform"],
-  ["lanjutan", "Lanjutan"],
+  // Isinya tinggal kartu operator sejak kartu Claude (MCP) pindah ke Koneksi,
+  // jadi ikut disaring — tab kosong di depan pelanggan lebih membingungkan
+  // daripada tab yang tidak ada.
+  ["lanjutan", "Lanjutan", "platform"],
 ];
+
+const SETTINGS_HINTS = {
+  akun: "Password, langganan, dan saldo.",
+  tim: "Undang anggota, lihat pemakaian per orang, atur jatah kredit.",
+  provider: "Penulis AI dan batas biaya bulanan.",
+  koneksi: "Instagram/TikTok, Google Calendar, Claude (MCP), dan link pendek.",
+  pustaka: "Contoh prompt siap pakai per kategori. Gratis — tidak memanggil AI.",
+  katalog: "Model yang aktif dan harga perkiraannya.",
+  pelanggan: "Operator platform: akses, saldo, dan webhook pembayaran pelanggan.",
+  lanjutan: "Konfigurasi platform dan promosi (operator).",
+};
 
 // Tab mana yang terbuka disimpan di URL (#/settings?tab=koneksi), BUKAN di
 // state saja. Alasannya bukan kerapian: OAuth Instagram/TikTok/Calendar
@@ -4495,9 +4637,13 @@ function tabFromQuery(query) {
 // Tab operator yang dibuka lewat URL oleh yang bukan operator akan
 // menghasilkan panel kosong — jadi dikembalikan ke Akun. Ini kenyamanan,
 // bukan pengamanan: server menolak aksinya sendiri.
+//
+// Pengecualian: `lanjutan` dulu rumah kartu Claude (MCP), dan tautan lama ke
+// sana masih beredar. Pelanggan yang membukanya sedang mencari kartu itu, jadi
+// diantar ke tempat barunya, bukan ke Akun.
 function safeTab(tab, isPlatformAdmin) {
   const def = SETTINGS_TABS.find(([k]) => k === tab);
-  if (def && def[2] === "platform" && !isPlatformAdmin) return "akun";
+  if (def && def[2] === "platform" && !isPlatformAdmin) return tab === "lanjutan" ? "koneksi" : "akun";
   return tab;
 }
 
@@ -4576,7 +4722,7 @@ export function Settings({ ws, refresh, tick, spend, spendError, query }) {
   return (
     <div>
       <h1 style={{ fontSize: 24, fontWeight: 800 }} className="mb4">Settings</h1>
-      <TabStrip current={shownTab} onGo={goTab} tabs={visibleTabs} />
+      <TabStrip current={shownTab} onGo={goTab} tabs={visibleTabs} hints={SETTINGS_HINTS} />
 
       {shownTab === "akun" && (<>
         <AccountAdmin ws={ws} tick={tick} />
@@ -4588,7 +4734,13 @@ export function Settings({ ws, refresh, tick, spend, spendError, query }) {
 
       {shownTab === "pelanggan" && platform?.is_platform_admin && <CustomersAdmin tick={tick} />}
 
+      {/* Claude (MCP) ada di sini, bukan di Lanjutan: ia koneksi ke aplikasi
+          luar seperti Instagram dan Calendar, lengkap dengan daftar "aplikasi
+          terhubung" dan tombol cabut. Di tab Lanjutan ia duduk di samping
+          kartu operator, dan nama tab itu sendiri menyuruh pelanggan untuk
+          tidak membukanya. */}
       {shownTab === "koneksi" && (<>
+        <McpSettings ws={ws} tick={tick} />
         <SocialConnections ws={ws} tick={tick} query={query} />
         <CalendarConnection ws={ws} tick={tick} query={query} />
         <LinksCard ws={ws} tick={tick} />
@@ -4597,7 +4749,6 @@ export function Settings({ ws, refresh, tick, spend, spendError, query }) {
       {shownTab === "pustaka" && <LibraryCard ws={ws} tick={tick} />}
 
       {shownTab === "lanjutan" && (<>
-        <McpSettings ws={ws} tick={tick} />
         <PlatformConfig st={platform} reload={reloadPlatform} />
         {platform?.is_platform_admin && <PromotionsCard tick={tick} />}
       </>)}

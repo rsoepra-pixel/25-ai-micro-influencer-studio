@@ -34,6 +34,7 @@ import { useQuery, unwrap, Badge, byPrice, priceLabel, recordBadge} from "./view
 import { LibraryPicker } from "./library.jsx";
 import { useProducts, NewProduct } from "./products.jsx";
 import { waitForJob } from "./storyboard.jsx";
+import { Info } from "./tips.jsx";
 
 const PLATFORMS = [
   ["tiktok", "TikTok"],
@@ -282,7 +283,7 @@ function NewProject({ ws, influencers, products, onProductCreated, onCreated }) 
             placeholder="mis. review jujur setelah 2 minggu pakai" />
         </div>
         <div>
-          <label className="label">Target durasi (detik)</label>
+          <label className="label">Target durasi (detik)<Info tip="Target untuk penulis naskah, bukan kenop. Panjang video mengikuti naskah (≈ 2,3 kata per detik), dan biayanya dihitung dari naskah itu." /></label>
           <input className="input" type="number" min={5} max={MAX_SECONDS} value={seconds}
             onChange={(e) => setSeconds(Math.min(Math.max(Number(e.target.value) || 12, 5), MAX_SECONDS))} />
           <p className="tiny muted" style={{ marginTop: 4 }}>≈ {Math.round(seconds * WORDS_PER_SEC)} kata.</p>

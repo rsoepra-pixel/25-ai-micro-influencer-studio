@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import { supa, usd, TYPE_LABELS } from "./supa.js";
 import { unwrap, useQuery } from "./views.jsx";
+import { Info } from "./tips.jsx";
 
 // Warna chart tervalidasi (kontras & colorblind-safe di atas kartu putih):
 // biru = seri utama, biru muda = tahap "belum published" (ramp satu hue),
@@ -38,10 +39,10 @@ const mondayOf = (d) => {
   return x;
 };
 
-function StatTile({ label, value, sub }) {
+function StatTile({ label, value, sub, tip }) {
   return (
     <div className="card p4">
-      <span className="label">{label}</span>
+      <span className="label">{label}{tip && <Info tip={tip} />}</span>
       <div style={{ fontSize: 26, fontWeight: 700, marginTop: 2 }}>{value}</div>
       {sub && <div className="tiny muted mt1">{sub}</div>}
     </div>
@@ -270,8 +271,10 @@ export function Reports({ ws, tick }) {
       ) : (
         <>
           <div className="grid mb4" style={{ gridTemplateColumns: "repeat(auto-fit,minmax(180px,1fr))" }}>
-            <StatTile label="Konten published" value={published} sub={`dari ${totalItems} konten di periode ini`} />
-            <StatTile label="Biaya produksi" value={usd(spend)} sub={`${okJobs.length} job berhasil`} />
+            <StatTile label="Konten published" value={published} sub={`dari ${totalItems} konten di periode ini`}
+              tip="Konten yang benar-benar tayang, dari semua konten di Content Planner pada periode ini." />
+            <StatTile label="Biaya produksi" value={usd(spend)} sub={`${okJobs.length} job berhasil`}
+              tip="Hanya job yang berhasil. Job yang gagal bisa tetap ditagih provider, jadi ini biaya hasil, bukan seluruh pengeluaran." />
             <StatTile label="Publish sukses" value={pubRate == null ? "—" : `${pubRate}%`} sub={pubRate == null ? "belum ada percobaan publish" : `${pubOk} sukses · ${pubFail} gagal`} />
             <StatTile label="Job produksi sukses" value={jobOkRate == null ? "—" : `${jobOkRate}%`} sub={pJobs.length ? `${okJobs.length} dari ${pJobs.length} job` : "belum ada job"} />
           </div>

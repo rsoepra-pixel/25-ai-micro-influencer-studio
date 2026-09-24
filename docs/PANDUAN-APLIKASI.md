@@ -64,6 +64,13 @@ anggap setiap percobaan di aplikasi ini memakai saldo sungguhan.
 
 Ikon ⏻ di samping alamat emailmu.
 
+### Petunjuk hover
+
+Setiap menu, tab, dan tombol yang memakai saldo punya petunjuk singkat saat
+disorot. Label yang bukan tombol memakai ikon ⓘ kecil, yang di ponsel cukup
+diketuk. Petunjuk hanya menjelaskan **apa** sesuatu itu; peringatan yang penting
+sebelum uang keluar tetap tertulis terlihat di halaman.
+
 ---
 
 ## 🏠 Dashboard
@@ -71,7 +78,14 @@ Ikon ⏻ di samping alamat emailmu.
 **Untuk apa.** Satu layar untuk menjawab "apa yang terjadi belakangan ini"
 tanpa membuka lima halaman. Isinya ringkasan, bukan tempat bekerja.
 
-**Isinya lima kartu**, masing-masing tautan ke halaman lengkapnya:
+**Mulai dari sini.** Selama workspace belum lengkap, kartu paling atas berisi
+enam langkah awal: buat influencer, tambah foto Identity Kit, siapkan suara,
+simpan produk, buat video pertama, dan hubungkan akun sosial. Tiap langkah
+dicentang **otomatis dari datanya**, bukan manual, dan kartunya hilang sendiri
+begitu semuanya beres. Suara Kling tidak dihitung sebagai "suara siap", karena
+Video UGC tetap menolak influencer yang hanya punya itu.
+
+**Isinya enam kartu**, masing-masing tautan ke halaman lengkapnya:
 
 - **Influencers** — sampai 8 karakter teratas beserta foto profilnya, dan
   hitungan slot terpakai dari 25.
@@ -81,6 +95,8 @@ tanpa membuka lima halaman. Isinya ringkasan, bukan tempat bekerja.
 - **Content Planner** — 5 ide konten terbaru beserta statusnya.
 - **Drive** — 4 berkas hasil produksi terakhir. Thumbnail-nya bisa diklik untuk
   membuka berkasnya.
+- **🤖 Kelola lewat Claude** — pintu masuk ke kartu Claude (MCP) di
+  Settings → Koneksi.
 
 **Yang perlu diketahui.** Kartu Drive punya tombol hapus di tiap thumbnail, dan
 menghapus media di sini **permanen** — sama seperti di halaman Drive. Lihat
@@ -472,7 +488,8 @@ punya foto profil, foto ini sekalian dipakai.
 
 ## ⚙️ Settings
 
-Delapan tab. Tujuh untuk semua orang, satu hanya untuk operator platform.
+Delapan tab. Enam untuk semua orang, dua (Pelanggan dan Lanjutan) hanya untuk
+operator platform.
 
 ### Akun
 
@@ -523,6 +540,11 @@ ke browser**.
 
 ### Koneksi
 
+- **Kontrol lewat Claude (MCP)** — menghubungkan workspace ini ke Claude, lewat
+  dua jalur berbeda: claude.ai memakai OAuth (tempel URL connector, login di
+  halaman consent), Claude Code di terminal memakai token statik lewat header.
+  Lihat [Lewat Claude](#lewat-claude-mcp) di bawah. Dulu kartu ini ada di tab
+  Lanjutan; tautan lama `?tab=lanjutan` dari pelanggan diantar ke sini.
 - **Akun sosial** — menghubungkan Instagram dan TikTok untuk publish.
 - **Google Calendar** — pengingat jadwal konten.
 - **Link pendek** — membuat link terlacak dan membaca kliknya.
@@ -565,13 +587,9 @@ bawahnya: daftar pelanggan menjawab "siapa yang aktif", dan daftar event webhook
 menjawab "kenapa pembayaran si A tidak masuk" — pertanyaan yang tanpa jejaknya
 hanya bisa dijawab dengan tebakan.
 
-### Lanjutan
+### Lanjutan *(operator platform saja)*
 
-- **Kontrol lewat Claude (MCP)** — menghubungkan workspace ini ke Claude, lewat
-  dua jalur berbeda: claude.ai memakai OAuth (tempel URL connector, login di
-  halaman consent), Claude Code di terminal memakai token statik lewat header.
-  Lihat [Lewat Claude](#lewat-claude-mcp) di bawah.
-- **Konfigurasi platform** dan **Promosi** — milik operator.
+- **Konfigurasi platform** dan **Promosi**.
 
 ---
 
@@ -624,7 +642,14 @@ memposting**.
 
 Karena dua hal terakhir punya konsekuensi nyata (generate mengeluarkan biaya,
 publish ke koneksi mode `live` tidak bisa dibatalkan), Claude diminta menyebutkan
-perkiraan biaya dan meminta persetujuan sebelum menjalankan keduanya.
+perkiraan biaya dan meminta persetujuan sebelum menjalankan keduanya. Dua hal itu
+juga disebut di halaman persetujuan OAuth dan di kartu MCP, supaya orang tahu
+sebelum menghubungkan, bukan sesudahnya.
+
+**Menulis lewat Claude tidak memotong saldo penulis AI.** Server MCP tidak
+pernah memanggil provider teks: Claude menulis naskahnya sendiri lalu
+menyimpannya lewat `update_content`. Generate media lewat Claude tetap memakai
+saldo seperti dari aplikasi.
 
 **Semua jalur submit bermuara ke satu tempat yang sama** (`production_jobs`),
 jadi pemeriksaan saldo, jatah, dan langganan berlaku sama untuk browser, cron,
