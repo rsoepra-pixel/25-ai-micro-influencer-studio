@@ -50,7 +50,14 @@
           <ul>
             <li>membaca &amp; mengubah influencer, konten, pillar, dan task</li>
             <li>melihat laporan dan daftar aset</li>
+            <!-- Dua baris di bawah ini dulu tidak ada, padahal server MCP
+                 memang punya generate_media dan publish_content. Halaman
+                 persetujuan yang tidak menyebut "memakai saldo" dan "memposting"
+                 meminta izin untuk sesuatu yang lebih kecil dari yang diberikan. -->
+            <li><b>menjalankan generate</b> gambar/video/suara — memakai saldo workspace</li>
+            <li><b>memposting</b> ke akun sosial yang terhubung — tidak bisa dibatalkan</li>
           </ul>
+          <div class="tiny muted mt2">Claude diminta menyebut perkiraan biaya dan meminta persetujuanmu sebelum generate atau posting.</div>
           <div class="tiny muted mt2">Tidak bisa mengubah password, billing, atau API key.</div>
         </div>
 
@@ -70,7 +77,7 @@
           <button type="submit" class="btn" id="allow">Izinkan</button>
         </div>
         <p class="tiny muted mt4">
-          Akses bisa dicabut kapan saja di Settings → Kontrol lewat Claude (MCP).
+          Akses bisa dicabut kapan saja di Settings → Koneksi → Kontrol lewat Claude (MCP).
         </p>
       </form>
     </div>
