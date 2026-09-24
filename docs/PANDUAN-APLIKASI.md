@@ -488,8 +488,10 @@ punya foto profil, foto ini sekalian dipakai.
 
 ## ⚙️ Settings
 
-Delapan tab. Enam untuk semua orang, dua (Pelanggan dan Lanjutan) hanya untuk
-operator platform.
+Pelanggan melihat **empat tab**: Akun, Tim & Kursi, Koneksi, dan Pustaka
+Prompt. Empat lainnya — Provider & Biaya, Katalog Model, Pelanggan, dan
+Lanjutan — hanya untuk operator platform (Provider & Biaya juga muncul di
+workspace `byo_key` yang memasang key sendiri).
 
 ### Akun
 
@@ -503,6 +505,11 @@ operator platform.
 - **Saldo** — hanya muncul kalau workspace ini memakai kredit. Di mode `byo_key`
   saldonya selalu nol, dan menampilkannya hanya membuat orang mengira ada
   tagihan yang belum dibayar.
+- **Batas belanja bulanan** — rem tambahan di atas saldo. Kalau diisi, job
+  berbayar ditolak begitu pemakaian bulan ini (WIB) akan melewatinya, walau
+  saldonya masih cukup — termasuk job yang dijalankan Claude lewat MCP. Kosong
+  berarti tanpa batas, dan itu nilai awalnya. Hanya owner yang bisa
+  mengubahnya. Penulis AI ikut dihitung tapi tidak dihentikan olehnya.
 
 ### Tim & Kursi
 
@@ -526,7 +533,7 @@ per anggota.
 itu**. Yang tersimpan di server cuma hash-nya. Begitu halaman ditutup, link itu
 hilang untuk selamanya dan harus diterbitkan ulang.
 
-### Provider & Biaya
+### Provider & Biaya *(operator, dan workspace `byo_key`)*
 
 - **Penulis AI** — provider teks (Qwen / Kimi / custom) untuk semua fitur ✨.
 - **Mode Generate & Provider Gambar** — mode `mock` vs `live`, dan kolom API key
@@ -563,14 +570,15 @@ menentukan hasil: pakaian, lokasi, cahaya, kamera.
 
 Tiga jenis template: **gambar**, **video**, dan **storyboard**.
 
-### Katalog Model
+### Katalog Model *(operator platform saja)*
 
 Daftar model yang aktif beserta harga indikatifnya. Harga di sini dipakai untuk
 estimasi dan Budget Guard.
 
 **Yang perlu diketahui.** Harganya **indikatif hasil riset, bukan tarif resmi
 yang ditarik otomatis dari provider**. Verifikasi dengan halaman harga provider
-lalu perbarui di sini kalau sudah berubah.
+lalu perbarui di sini kalau sudah berubah. Harga ini juga yang **ditagih** ke
+pelanggan, jadi database menolak perubahan dari siapa pun selain operator.
 
 ### Pelanggan *(operator platform saja)*
 
