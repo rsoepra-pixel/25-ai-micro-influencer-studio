@@ -729,6 +729,17 @@ Deno.serve(async (req) => {
                 .map((n) => "abcdefghijkmnpqrstuvwxyzABCDEFGHJKLMNPQRSTUVWXYZ23456789!@#$%"[n % 60]).join("");
               const { data: made, error: mkErr } = await admin.auth.admin.createUser({
                 email, password: pw, email_confirm: true,
+                // Password di atas acak dan langsung dibuang — tidak ada yang
+                // mengetahuinya, termasuk operator. Penanda ini yang membuat
+                // aplikasi menahan orangnya di layar "pasang password" saat ia
+                // masuk pertama kali lewat link akses.
+                //
+                // Tanpa penanda, satu-satunya sinyal adalah peristiwa
+                // PASSWORD_RECOVERY yang lewat SEKALI saja: orang yang menutup
+                // tab sebelum sempat memasang password akan kembali tanpa
+                // diminta apa-apa, lalu terkunci di luar begitu sesinya habis —
+                // karena link akses sudah hangus dipakai.
+                user_metadata: { must_set_password: true },
               });
               if (mkErr) { results.push({ email, ok: false, error: mkErr.message }); continue; }
               userId = made.user!.id;
