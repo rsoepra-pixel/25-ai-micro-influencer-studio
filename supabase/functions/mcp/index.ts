@@ -37,6 +37,19 @@ const STATUSES = ["idea", "scripting", "producing", "review", "scheduled", "publ
 
 type Ctx = { ws: string };
 
+// Jenis file yang boleh diunggah lewat create_upload_url, beserta ekstensinya.
+// Sengaja sempit: hanya yang benar-benar dipakai generate_media sebagai acuan
+// (foto awal, foto produk, audio untuk lipsync). Bucket `media` publik untuk
+// dibaca, jadi daftar terbuka berarti hosting file gratis untuk apa saja.
+const UPLOAD_TYPES: Record<string, { ext: string; kind: string }> = {
+  "image/jpeg": { ext: "jpg", kind: "image" },
+  "image/png": { ext: "png", kind: "image" },
+  "image/webp": { ext: "webp", kind: "image" },
+  "audio/mpeg": { ext: "mp3", kind: "audio" },
+  "audio/wav": { ext: "wav", kind: "audio" },
+  "audio/mp4": { ext: "m4a", kind: "audio" },
+};
+
 // ---------- Definisi tool ----------
 const str = (description: string) => ({ type: "string", description });
 const TOOLS = [
@@ -182,6 +195,28 @@ const TOOLS = [
     inputSchema: { type: "object", properties: { limit: { type: "number", description: "Maks. baris (default 20)" } } },
   },
   {
+    name: "create_upload_url",
+    description:
+      "Siapkan tempat unggah untuk foto/audio yang dilampirkan user di chat, lalu kembalikan URL publiknya. " +
+      "generate_media hanya menerima URL (source_image_url, audio_url, extra_ref_urls), bukan file — jadi " +
+      "kalau user mengirim foto langsung, panggil ini dulu, unggah filenya ke upload_url dengan HTTP PUT " +
+      "(lihat curl_example; butuh akses shell/jaringan di sisimu), lalu pakai public_url-nya di generate_media. " +
+      "JANGAN menempelkan isi file sebagai base64 ke argumen tool mana pun. Tidak mengeluarkan biaya.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        content_type: {
+          type: "string", enum: Object.keys(UPLOAD_TYPES),
+          description: "Jenis file yang akan diunggah",
+        },
+        filename: str("Nama file asli (opsional) — hanya untuk nama aset yang terbaca di Drive"),
+        influencer_id: str("Influencer yang fotonya ini (opsional)"),
+        content_item_id: str("Ide konten yang memakai file ini (opsional)"),
+      },
+      required: ["content_type"],
+    },
+  },
+  {
     name: "list_models",
     description:
       "Katalog model produksi yang aktif beserta harga per satuan. Panggil ini dulu sebelum generate_media " +
@@ -211,7 +246,7 @@ const TOOLS = [
         prompt: str("Prompt gambar/video"),
         text: str("Naskah yang diucapkan, untuk task tts"),
         duration: { type: "number", description: "Durasi detik untuk video/lipsync (default 5)" },
-        source_image_url: str("URL foto awal — WAJIB untuk model video yang init_image_field-nya terisi"),
+        source_image_url: str("URL foto awal — WAJIB untuk model video yang init_image_field-nya terisi. Foto yang dilampirkan di chat: dapatkan URL-nya dulu lewat create_upload_url"),
         audio_url: str("URL audio (hasil TTS) — WAJIB untuk task lipsync, bersama source_image_url fotonya"),
         extra_ref_urls: {
           type: "array", items: { type: "string" },
@@ -627,6 +662,70 @@ async function runTool(name: string, args: Record<string, unknown>, ctx: Ctx) {
       if (error) throw new Error(error.message);
       return ok(data || []);
     }
+    case "create_upload_url": {
+      // KENAPA UNGGAH LEWAT URL BERTANDA, BUKAN BASE64 DI ARGUMEN TOOL
+      //
+      // Foto yang dilampirkan user di chat Claude (Cowork, claude.ai) sampai ke
+      // model sebagai file/gambar, bukan URL — sementara generate_media hanya
+      // menerima URL. Menerima base64 di argumen tool kelihatannya jalan
+      // pintas, tapi model harus MENULIS ulang seluruh isi file sebagai teks:
+      // foto 2 MB jadi ±2,7 juta karakter, jauh melewati batas keluaran satu
+      // giliran, dan kalaupun muat, sangat mahal. Jadi yang dikirim lewat MCP
+      // cuma "izin unggah"; byte-nya dikirim klien langsung ke Storage (curl
+      // dari sandbox Cowork), tanpa lewat model maupun fungsi ini.
+      const ctype = need("content_type").toLowerCase();
+      const t = UPLOAD_TYPES[ctype];
+      if (!t) {
+        throw new Error(`Jenis file "${ctype}" tidak didukung. Pakai salah satu: ${Object.keys(UPLOAD_TYPES).join(", ")}.`);
+      }
+      // Id yang dirujuk harus milik workspace ini — kalau tidak, aset
+      // workspace ini bisa ditautkan ke influencer/konten workspace lain.
+      const infId = typeof args.influencer_id === "string" && args.influencer_id.trim() ? args.influencer_id.trim() : null;
+      if (infId) {
+        const { data: inf } = await admin.from("influencers").select("id").eq("id", infId).eq("workspace_id", ws).maybeSingle();
+        if (!inf) throw new Error("Influencer tidak ditemukan di workspace ini — cek id-nya lewat list_influencers.");
+      }
+      const itemId = typeof args.content_item_id === "string" && args.content_item_id.trim() ? args.content_item_id.trim() : null;
+      if (itemId) {
+        const { data: ci } = await admin.from("content_items").select("id").eq("id", itemId).eq("workspace_id", ws).maybeSingle();
+        if (!ci) throw new Error("Ide konten tidak ditemukan di workspace ini — cek id-nya lewat list_content.");
+      }
+
+      const path = `${ws}/uploads/${crypto.randomUUID()}.${t.ext}`;
+      const { data: signed, error: signErr } = await admin.storage.from("media").createSignedUploadUrl(path);
+      if (signErr || !signed?.signedUrl) {
+        throw new Error(`Tempat unggah gagal disiapkan: ${signErr?.message || "tanpa keterangan"}. Coba lagi sebentar lagi.`);
+      }
+      const publicUrl = admin.storage.from("media").getPublicUrl(path).data.publicUrl;
+
+      // Baris aset dicatat SEKARANG, sebelum filenya ada. Kalau unggahannya
+      // tidak pernah terjadi, yang tersisa baris berisi URL mati di Drive —
+      // kelihatan dan bisa dihapus. Kebalikannya (mencatat setelah unggah)
+      // butuh panggilan kedua yang gampang terlupa, dan file yang terunggah
+      // tanpa baris jadi yatim: memakan kuota, terbuka untuk siapa pun yang
+      // punya URL-nya, dan tidak tampil di mana pun (lihat `media/index.ts`).
+      const rawName = typeof args.filename === "string" ? args.filename.trim().slice(0, 120) : "";
+      const { data: asset, error: aErr } = await admin.from("assets").insert({
+        workspace_id: ws, kind: t.kind, url: publicUrl,
+        influencer_id: infId, content_item_id: itemId,
+        name: `Unggahan Claude${rawName ? `: ${rawName}` : ""}`,
+      }).select("id").single();
+      if (aErr) throw new Error(`Tempat unggah gagal dicatat di Drive: ${aErr.message}`);
+
+      return ok({
+        asset_id: asset.id,
+        upload_url: signed.signedUrl,
+        method: "PUT",
+        headers: { "content-type": ctype },
+        public_url: publicUrl,
+        curl_example: `curl -sS -X PUT -H "content-type: ${ctype}" --data-binary @<path-file-lokal> "${signed.signedUrl}"`,
+        note:
+          "Unggah filenya dulu ke upload_url (URL ini hanya berlaku sementara dan untuk satu file), lalu pakai " +
+          "public_url di generate_media. Kalau kamu tidak punya shell atau akses jaringan untuk mengunggah, " +
+          "katakan terus terang ke user dan minta ia mengunggah fotonya lewat app (Product Kit atau Identity Kit), " +
+          "lalu ambil URL-nya dari list_assets.",
+      });
+    }
     case "list_models": {
       // Dibaca dari `provider_models_ranked` (migrasi 0049), bukan dari tabel
       // katalog: `est_price_usd` hanya harga SATU PANGGILAN, dan instruksi
@@ -975,6 +1074,9 @@ async function handleRpc(msg: Record<string, unknown>, ctx: Ctx): Promise<unknow
         "sebelum menjalankan keduanya. Untuk wajah yang konsisten pilih model dengan keeps_identity=true dan " +
         "sertakan influencer_id. Job fal selesai secara asinkron — pantau lewat list_jobs, jangan diulang " +
         "kirim hanya karena statusnya masih 'running'.\n\n" +
+        "generate_media hanya menerima URL, bukan file. Kalau user melampirkan foto/audio di chat, panggil " +
+        "create_upload_url, unggah filenya ke upload_url yang dikembalikan, lalu pakai public_url-nya — jangan " +
+        "menolak dengan alasan tool hanya menerima URL, dan jangan menempelkan base64.\n\n" +
         "Dua hal yang paling sering tertukar, dan dua-duanya baru ketahuan setelah konten tayang:\n" +
         "1) `script` DIBACAKAN di video; `caption` DIBACA di bawah postingan. Caption yang berisi naskah " +
         "lengkap adalah penanda paling jelas bahwa akun ini bukan dijalankan manusia. Tulis caption pendek " +
