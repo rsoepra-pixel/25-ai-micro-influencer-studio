@@ -151,6 +151,77 @@ class ViewBoundary extends React.Component {
   }
 }
 
+// Layar wajib pasang password.
+//
+// KENAPA MENAHAN, BUKAN POPUP
+//
+// Pelanggan yang dibuatkan operator masuk lewat link sekali pakai; akunnya
+// memang tidak punya password yang diketahui siapa pun — yang acak saat
+// pembuatan langsung dibuang. Selama ia belum memasang password sendiri, link
+// itulah satu-satunya kunci, dan link itu HANGUS begitu dipakai.
+//
+// Jadi orang yang menutup popup lalu menutup tab akan terkunci di luar
+// akunnya sendiri, dan harus meminta operator menerbitkan link baru. Popup
+// yang bisa ditutup adalah jebakan yang menunggu ditutup. Layar ini menahan
+// sampai passwordnya ada.
+//
+// Yang TIDAK dilakukan di sini: logout paksa atau menyembunyikan tombol
+// keluar. Orang harus selalu bisa pergi — yang ditahan aksesnya ke aplikasi,
+// bukan orangnya.
+function AturPassword({ email, onSelesai }) {
+  const [pw, setPw] = useState("");
+  const [pw2, setPw2] = useState("");
+  const [err, setErr] = useState(null);
+  const [busy, setBusy] = useState(false);
+
+  async function submit(e) {
+    e.preventDefault();
+    if (pw !== pw2) { setErr("Dua kolom passwordnya belum sama."); return; }
+    setBusy(true); setErr(null);
+    try {
+      // `data` ikut dikirim supaya penandanya hilang bersamaan dengan
+      // passwordnya dipasang — satu panggilan, tidak mungkin setengah jadi.
+      const { error } = await supa.auth.updateUser({
+        password: pw,
+        data: { must_set_password: false },
+      });
+      if (error) throw new Error(error.message);
+      onSelesai();
+    } catch (e2) {
+      setErr(e2.message);
+      setBusy(false);
+    }
+  }
+
+  return (
+    <div style={{ minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center", padding: 24 }}>
+      <div className="card p6" style={{ width: "100%", maxWidth: 440 }}>
+        <div style={{ fontSize: 22, fontWeight: 800 }} className="gradient-title">Pasang password dulu</div>
+        <p className="muted small mt2 mb4">
+          Kamu masuk lewat link sekali pakai, dan link itu sudah terpakai. Supaya bisa masuk lagi
+          lain kali, akunmu <b>{email}</b> perlu password sendiri sekarang.
+        </p>
+        <form onSubmit={submit}>
+          <label className="label">Password baru (min. 8 karakter)</label>
+          <input className="input mb3" type="password" minLength={8} value={pw}
+            onChange={(e) => setPw(e.target.value)} required autoFocus />
+          <label className="label">Ketik ulang</label>
+          <input className="input mb3" type="password" minLength={8} value={pw2}
+            onChange={(e) => setPw2(e.target.value)} required />
+          {err && <div className="msg-err mb3">{err}</div>}
+          <button className="btn" style={{ width: "100%", justifyContent: "center" }} disabled={busy}>
+            {busy ? "Menyimpan…" : "Simpan password"}
+          </button>
+        </form>
+        <p className="tiny muted mt3">
+          Simpan di tempat yang aman. Operator tidak pernah tahu passwordmu dan tidak bisa
+          melihatnya — kalau hilang, satu-satunya jalan adalah minta link baru.
+        </p>
+      </div>
+    </div>
+  );
+}
+
 function App() {
   const route = useRoute();
   const [session, setSession] = useState(undefined);
@@ -159,11 +230,18 @@ function App() {
   const [spendError, setSpendError] = useState(null);
   const [tick, setTick] = useState(0);
   const [invite, setInvite] = useState(null);
+  // Sesi yang lahir dari link pemulihan. Peristiwanya hanya lewat SEKALI, saat
+  // fragmen URL-nya dibaca, jadi nilainya disimpan — kalau tidak, satu render
+  // ulang membuat layar password menghilang sebelum sempat diisi.
+  const [recovery, setRecovery] = useState(false);
   const refresh = useCallback(() => setTick((t) => t + 1), []);
 
   useEffect(() => {
     supa.auth.getSession().then(({ data }) => setSession(data.session));
-    const { data: sub } = supa.auth.onAuthStateChange((_e, s) => setSession(s));
+    const { data: sub } = supa.auth.onAuthStateChange((e, s) => {
+      setSession(s);
+      if (e === "PASSWORD_RECOVERY") setRecovery(true);
+    });
     return () => sub.subscription.unsubscribe();
   }, []);
 
@@ -275,6 +353,27 @@ function App() {
           </>}
         </div>
       </div>
+    );
+  }
+
+  // Password wajib dipasang SEBELUM aplikasi terbuka.
+  //
+  // Dua pemicunya, dan keduanya perlu:
+  //   - penanda `must_set_password` dari akun yang dibuatkan operator; ia
+  //     bertahan lintas muat ulang, jadi orang yang menutup tab lalu kembali
+  //     tetap diminta;
+  //   - peristiwa PASSWORD_RECOVERY, untuk siapa pun yang datang lewat link
+  //     pemulihan — termasuk pelanggan lama yang lupa passwordnya.
+  //
+  // Ditaruh SESUDAH layar undangan supaya undangan (yang berumur 24 jam dan
+  // sekali pakai) selesai diterima lebih dulu; password tidak ke mana-mana.
+  const perluPassword = recovery || session.user?.user_metadata?.must_set_password === true;
+  if (perluPassword) {
+    return (
+      <AturPassword
+        email={session.user?.email}
+        onSelesai={() => { setRecovery(false); refresh(); }}
+      />
     );
   }
 
