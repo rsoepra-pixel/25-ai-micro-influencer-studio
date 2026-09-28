@@ -83,7 +83,13 @@ export async function callMedia(body) {
     body: JSON.stringify(body),
   });
   const json = await res.json().catch(() => ({}));
-  if (!res.ok) throw new Error(json.error || `Error ${res.status}`);
+  if (!res.ok) {
+    // `changed` = pemakaian file berubah sejak layar konfirmasi dibuka;
+    // DeleteMedia memakainya untuk memeriksa ulang, bukan sekadar menampilkan error.
+    const e = new Error(json.error || `Error ${res.status}`);
+    e.changed = !!json.changed;
+    throw e;
+  }
   return json;
 }
 

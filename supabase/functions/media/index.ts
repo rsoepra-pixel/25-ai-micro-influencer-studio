@@ -21,6 +21,16 @@
 // dibuka siapa saja yang punya URL-nya, dan tidak ada satu pun tempat di app
 // ini yang akan menampilkannya lagi. Kegagalan yang tak terlihat selalu lebih
 // mahal daripada kegagalan yang berisik.
+//
+// SATU FILE, BANYAK PEMAKAI
+//
+// URL yang sama bisa dirujuk aset di Drive, foto Identity Kit, foto profil,
+// storyboard, proyek UGC, dan foto produk (lihat migrasi 0054, media_refs).
+// Filenya hanya dibuang kalau tidak ada lagi yang memakainya; kalau masih
+// ada, yang dihapus cuma baris yang diminta dan layar hapus sudah menyebut
+// di mana file itu tetap dipakai. Versi sebelumnya membuang file begitu satu
+// baris dihapus, dan storyboard yang tidak disentuh siapa pun ikut kehilangan
+// frame-nya.
 import { createClient } from "npm:@supabase/supabase-js@2";
 
 const SB_URL = Deno.env.get("SUPABASE_URL")!;
@@ -55,6 +65,71 @@ function storagePath(url: unknown): string | null {
   if (!s.startsWith(PUBLIC_PREFIX)) return null;
   const path = s.slice(PUBLIC_PREFIX.length).split("?")[0];
   return path || null;
+}
+
+// Tanda yang membuat sapuan arsip di `generate` berhenti mengambil sebuah job.
+// Harus sama dengan ARCHIVE_GONE di generate/index.ts — sapuannya menyaring
+// `archive_error not like 'PERMANEN%'`.
+const ARCHIVE_GONE = "PERMANEN";
+
+type Ref = { source: string; id: string; label: string };
+
+// Siapa lagi yang memakai URL ini, di luar baris yang sedang dihapus.
+//
+// Gagal memeriksa = tidak menghapus. Menebak "tidak ada pemakai" saat
+// pemeriksaannya error justru membuang file yang mungkin masih dipakai.
+async function otherRefs(ws: string, url: unknown, kind: string, id: string): Promise<Ref[]> {
+  if (!url) return [];
+  const { data, error } = await admin.rpc("media_refs", { ws, target: String(url) });
+  if (error) {
+    throw new Error(
+      `Pemakaian file ini tidak bisa diperiksa, jadi belum ada yang dihapus. Coba lagi sebentar lagi. (${error.message})`,
+    );
+  }
+  return ((data || []) as Ref[]).filter((r) => !(r.source === kind && r.id === id));
+}
+
+// Apa yang akan terjadi kalau baris ini dihapus SEKARANG. Dihitung dengan cara
+// yang sama untuk `usage` (yang ditampilkan) dan `delete` (yang dikerjakan),
+// supaya keduanya tidak pernah berbeda pendapat.
+async function planDelete(kind: string, row: Record<string, unknown>, ws: string, id: string) {
+  const url = row.url ? String(row.url) : "";
+  const path = storagePath(url);
+  const refs = await otherRefs(ws, url, kind, id);
+
+  // Media hasil fal yang belum sempat dipindahkan ke bucket kita: URL-nya
+  // masih milik provider dan job-nya masih ditandai archive_error. Kalau
+  // barisnya dihapus begitu saja, sapuan arsip di `poll` tetap menyalin file
+  // itu ke bucket — dan salinannya tidak dirujuk apa pun: file yatim dari
+  // media yang justru diminta dihapus. Job itu ditandai PERMANEN supaya
+  // sapuannya berhenti. Pengecualian: kalau masih ada ASET lain dengan URL
+  // yang sama, biarkan — sapuan itulah yang akan memindahkan aset tersebut.
+  let archiveJobs: string[] = [];
+  if (url && !path && !refs.some((r) => r.source === "asset")) {
+    const { data } = await admin.from("production_jobs")
+      .select("id").eq("workspace_id", ws).eq("output_url", url)
+      .not("archive_error", "is", null)
+      .not("archive_error", "like", `${ARCHIVE_GONE}%`);
+    archiveJobs = (data || []).map((j) => j.id as string);
+  }
+
+  // Riwayat job yang menunjuk file ini. Tidak menghalangi apa pun (lihat
+  // migrasi 0054), tapi disebut di layar: tautannya di riwayat akan mati.
+  let jobHistory = false;
+  if (url && path && refs.length === 0) {
+    const { count } = await admin.from("production_jobs")
+      .select("id", { count: "exact", head: true }).eq("workspace_id", ws).eq("output_url", url);
+    jobHistory = (count ?? 0) > 0;
+  }
+
+  return {
+    path,
+    refs,
+    external: !!url && !path,
+    removeFile: !!path && refs.length === 0,
+    archiveJobs,
+    jobHistory,
+  };
 }
 
 // Ambil baris + pastikan miliknya workspace ini.
@@ -132,6 +207,14 @@ Deno.serve(async (req) => {
           out.asset = a || null;
         }
       }
+      if (kind !== "job") {
+        const plan = await planDelete(kind, row as Record<string, unknown>, ws, id);
+        out.refs = plan.refs.map((r) => ({ source: r.source, label: r.label }));
+        out.external = plan.external;
+        out.will_remove_file = plan.removeFile;
+        out.archive_pending = plan.archiveJobs.length > 0;
+        out.job_history = plan.jobHistory;
+      }
       if (kind === "character_asset") {
         const inf = (row as Record<string, unknown>).influencers as { name?: string } | null;
         out.influencer_name = inf?.name || null;
@@ -160,11 +243,37 @@ Deno.serve(async (req) => {
       return json({ ok: true, deleted: id, file_removed: false, kept_media: true });
     }
 
+    const plan = await planDelete(kind, row as Record<string, unknown>, ws, id);
+
+    // Layar konfirmasi menjanjikan satu hal — "filenya ikut dihapus" atau
+    // "filenya tetap disimpan" — berdasarkan pemeriksaan saat layar dibuka.
+    // Kalau pemakaiannya berubah sejak itu (storyboard baru memakai file ini,
+    // atau pemakai terakhirnya baru dihapus), janji itu tidak lagi benar. Lebih
+    // baik menolak dan menampilkan ulang daripada mengerjakan hal yang tidak
+    // disetujui orangnya — terutama ke arah "ternyata filenya ikut dibuang".
+    const expect = String(body.expect || "");
+    if ((expect === "remove" || expect === "keep") && (expect === "remove") !== plan.removeFile) {
+      return json({
+        error: "Pemakaian file ini baru saja berubah — periksa lagi sebelum menghapus.",
+        changed: true,
+      }, 409);
+    }
+
+    // ---- Hentikan sapuan arsip dulu ----
+    // Sebelum baris dihapus: kalau penandaan ini gagal, belum ada yang hilang
+    // dan orangnya bisa mencoba lagi. Urutan terbalik meninggalkan job yang
+    // tetap diarsipkan untuk aset yang sudah tidak ada.
+    if (plan.archiveJobs.length) {
+      const { error } = await admin.from("production_jobs")
+        .update({ archive_error: `${ARCHIVE_GONE}: media dihapus pengguna` })
+        .in("id", plan.archiveJobs).eq("workspace_id", ws);
+      if (error) throw new Error(`Gagal menghentikan pemindahan media ini, jadi belum ada yang dihapus: ${error.message}`);
+    }
+
     // ---- File dulu ----
-    const path = storagePath(row.url);
     let file_removed = false;
-    if (path) {
-      const { error } = await admin.storage.from(BUCKET).remove([path]);
+    if (plan.removeFile && plan.path) {
+      const { error } = await admin.storage.from(BUCKET).remove([plan.path]);
       // Berhenti di sini kalau gagal. Membiarkan baris terhapus setelah ini
       // gagal justru menciptakan file yatim — persis yang mau dicegah.
       if (error) throw new Error(`Gagal menghapus file dari storage: ${error.message}`);
@@ -176,12 +285,17 @@ Deno.serve(async (req) => {
     const { error: delErr } = await admin.from(table).delete().eq("id", id);
     if (delErr) {
       throw new Error(
-        `File sudah terhapus, tapi barisnya gagal dihapus: ${delErr.message}. ` +
-        `Coba hapus lagi — media ini sekarang menunjuk file yang tidak ada.`,
+        file_removed
+          ? `File sudah terhapus, tapi barisnya gagal dihapus: ${delErr.message}. ` +
+            `Coba hapus lagi — media ini sekarang menunjuk file yang tidak ada.`
+          : `Gagal menghapus media ini: ${delErr.message}. Filenya tidak disentuh; coba lagi.`,
       );
     }
 
-    return json({ ok: true, deleted: id, file_removed, external_url: !path });
+    return json({
+      ok: true, deleted: id, file_removed, external_url: plan.external,
+      kept_because: plan.refs.map((r) => r.label),
+    });
   } catch (e) {
     return json({ error: e instanceof Error ? e.message : String(e) }, 400);
   }

@@ -10,14 +10,26 @@ const linkBtn = { background: "none", border: "none", padding: 0, cursor: "point
 
 // ---------- Hapus media ----------
 //
-// Menghapus media itu permanen: filenya ikut dibuang dari storage, bukan cuma
-// barisnya. Jadi konfirmasinya tidak boleh sekadar "yakin?" — kalimat seperti
-// itu ditekan orang secara refleks dan tidak menambah informasi apa pun.
+// Menghapus media bisa berakhir dengan tiga cara, dan orangnya harus tahu yang
+// mana SEBELUM menekan tombol:
+//   - filenya ikut dibuang permanen (tidak ada lagi yang memakainya);
+//   - hanya entrinya yang dihapus, filenya tetap disimpan karena masih dipakai
+//     storyboard, proyek UGC, foto profil, dan seterusnya (migrasi 0054);
+//   - filenya memang tidak ada di penyimpanan kita (masih di server provider),
+//     jadi yang bisa dihapus hanya entrinya.
+// Konfirmasinya tidak boleh sekadar "yakin?" — kalimat seperti itu ditekan
+// orang secara refleks dan tidak menambah informasi apa pun.
 //
 // Sebelum bertanya, komponen ini menanyakan dulu ke server APA yang akan
-// hilang: konten yang memakainya, apakah sudah pernah terbit, dan untuk foto
-// Identity Kit — berapa foto acuan yang tersisa setelahnya. Yang membuat orang
-// benar-benar berhenti sejenak adalah kalimat yang menyebut hal spesifik.
+// terjadi: konten yang memakainya, apakah sudah pernah terbit, di mana saja
+// filenya masih dipakai, dan untuk foto Identity Kit — berapa foto acuan yang
+// tersisa setelahnya. Yang membuat orang benar-benar berhenti sejenak adalah
+// kalimat yang menyebut hal spesifik.
+//
+// Janji di layar ikut dikirim saat menghapus (`expect`). Kalau pemakaiannya
+// berubah sejak layar dibuka, server menolak dan layar ini memeriksa ulang —
+// lebih baik bertanya dua kali daripada membuang file yang dijanjikan tetap
+// disimpan.
 function DeleteMedia({ kind, id, onDeleted, compact }) {
   const [state, setState] = useState("idle"); // idle | checking | confirm | busy
   const [usage, setUsage] = useState(null);
@@ -38,9 +50,16 @@ function DeleteMedia({ kind, id, onDeleted, compact }) {
   async function confirm() {
     setState("busy");
     try {
-      await callMedia({ action: "delete", kind, id });
+      const body = { action: "delete", kind, id };
+      // Server lama tidak mengirim will_remove_file — jangan kirim janji
+      // yang tidak pernah ditampilkan.
+      if (typeof usage?.will_remove_file === "boolean") body.expect = usage.will_remove_file ? "remove" : "keep";
+      await callMedia(body);
       onDeleted?.();
     } catch (e) {
+      if (e.changed) {
+        try { setUsage(await callMedia({ action: "usage", kind, id })); } catch { /* pesan di bawah tetap tampil */ }
+      }
       setErr(e.message);
       setState("confirm");
     }
@@ -50,11 +69,18 @@ function DeleteMedia({ kind, id, onDeleted, compact }) {
     return <div className="msg-err tiny mt1">{err} <button type="button" className="tiny" style={linkBtn} onClick={ask}>coba lagi</button></div>;
   }
 
-  if (state === "confirm") {
+  if (state === "confirm" || state === "busy") {
     const pub = usage?.published?.length || 0;
+    const place = kind === "character_asset" ? "Identity Kit" : "Drive";
+    // Server lama (tanpa will_remove_file) selalu membuang filenya.
+    const removes = kind !== "job" && usage?.will_remove_file !== false;
+    const refs = usage?.refs || [];
+    const shown = refs.slice(0, 3).map((r) => r.label);
+    const title = kind === "job" ? "Hapus baris riwayat ini?" : removes ? "Hapus permanen?" : `Hapus dari ${place} saja?`;
+    const label = removes || kind === "job" ? "Ya, hapus" : `Hapus dari ${place}`;
     return (
       <div className="card p3 mt1" style={{ background: "var(--stop-soft, #fadfdf)", border: "1px solid var(--warn, #a02a2a)" }}>
-        <div className="tiny bold">{kind === "job" ? "Hapus baris riwayat ini?" : "Hapus permanen?"}</div>
+        <div className="tiny bold">{title}</div>
         <div className="tiny muted mt1">
           {kind === "job" ? (
             <>
@@ -76,7 +102,27 @@ function DeleteMedia({ kind, id, onDeleted, compact }) {
             tersisa <b>{usage?.photos_left_after ?? 0}</b>
             {usage?.photos_left_after === 0 ? " — wajahnya tidak lagi punya acuan saat generate. " : ". "}</>
           )}
-          Filenya ikut dihapus dan tidak bisa dikembalikan.
+          {removes ? (
+            <>
+              Filenya ikut dihapus dan tidak bisa dikembalikan.
+              {usage?.job_history && <> Riwayat produksinya tetap ada, tapi tautan medianya tidak akan bisa dibuka lagi.</>}
+            </>
+          ) : usage?.external ? (
+            <>
+              {usage?.archive_pending
+                ? <>Media ini belum dipindahkan ke penyimpanan kita — filenya masih di server provider. Yang dihapus hanya entri di {place}, dan kita berhenti mencoba memindahkannya. </>
+                : <>Filenya tidak disimpan di penyimpanan kita, jadi yang dihapus hanya entri di {place}. </>}
+              Salinan di luar sana di luar kendali aplikasi ini.
+            </>
+          ) : (
+            <>
+              File ini masih dipakai di:{" "}
+              {shown.map((l, i) => <React.Fragment key={i}>{i > 0 && ", "}<b>{l}</b></React.Fragment>)}
+              {refs.length > shown.length && <> dan {refs.length - shown.length} lainnya</>}.
+              {" "}Supaya itu tidak rusak, filenya tetap disimpan — yang dihapus hanya entri di {place}.
+              {" "}Kalau ingin filenya ikut terhapus, lepaskan dulu dari tempat-tempat itu, lalu hapus lagi di sini.
+            </>
+          )}
             </>
           )}
         </div>
@@ -84,7 +130,7 @@ function DeleteMedia({ kind, id, onDeleted, compact }) {
         <div className="row mt2" style={{ gap: 6 }}>
           <button type="button" className="btn" style={{ fontSize: 11, padding: "3px 8px" }}
             disabled={state === "busy"} onClick={confirm}>
-            {state === "busy" ? "Menghapus…" : "Ya, hapus"}
+            {state === "busy" ? "Menghapus…" : label}
           </button>
           <button type="button" className="btn btn2" style={{ fontSize: 11, padding: "3px 8px" }}
             disabled={state === "busy"} onClick={() => { setState("idle"); setErr(null); }}>Batal</button>
@@ -94,7 +140,7 @@ function DeleteMedia({ kind, id, onDeleted, compact }) {
   }
 
   return (
-    <button type="button" title="Hapus media ini beserta filenya"
+    <button type="button" title="Hapus media ini"
       onClick={ask} disabled={state === "checking"}
       style={compact
         ? { position: "absolute", top: 4, right: 4, border: "none", borderRadius: 6, cursor: "pointer",

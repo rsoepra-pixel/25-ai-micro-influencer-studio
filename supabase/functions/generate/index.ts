@@ -3196,7 +3196,31 @@ Deno.serve(async (req) => {
           const from = String(jb.output_url);
           try {
             const url = await storeRemote(ws, from, jb.id, defaultCtype(jb.task));
-            await admin.from("production_jobs").update({ output_url: url, archive_error: null }).eq("id", jb.id);
+            // Mengunduh video bisa makan puluhan detik. Selama itu orangnya bisa
+            // menghapus asetnya — edge function `media` lalu menandai job ini
+            // PERMANEN supaya tidak diarsipkan. Update tanpa syarat akan
+            // menimpa tanda itu dan meninggalkan salinan yang tidak dirujuk
+            // apa pun. Jadi update hanya berlaku kalau job-nya masih persis
+            // seperti saat diambil.
+            const { data: masih } = await admin.from("production_jobs")
+              .update({ output_url: url, archive_error: null })
+              .eq("id", jb.id).eq("output_url", from)
+              .not("archive_error", "like", `${ARCHIVE_GONE}%`)
+              .select("id").maybeSingle();
+            if (!masih) {
+              // Dua kemungkinan, dan hanya satu yang boleh membuang file:
+              // - poll lain sudah mengarsipkannya lebih dulu ke path yang SAMA
+              //   (`${ws}/${jobId}.ext`) — output_url-nya sekarang URL kita,
+              //   dan file itu sedang dipakai. Jangan disentuh.
+              // - medianya dihapus orang di tengah jalan — salinan ini yatim.
+              const { data: kini } = await admin.from("production_jobs")
+                .select("output_url, archive_error").eq("id", jb.id).maybeSingle();
+              if (kini?.output_url !== url && String(kini?.archive_error || "").startsWith(ARCHIVE_GONE)) {
+                const path = url.split("/storage/v1/object/public/media/")[1]?.split("?")[0];
+                if (path) await admin.storage.from("media").remove([path]);
+              }
+              continue;
+            }
             // Asetnya masih menunjuk URL lama. Ikut dipindahkan, kalau tidak
             // Drive tetap memutar dari CDN provider padahal salinannya sudah
             // aman — dan tautan itu yang nanti mati.
