@@ -2522,7 +2522,7 @@ Deno.serve(async (req) => {
         });
       }
       case "submit": {
-        const { task, model_id, influencer_id, prompt = "", text = "", source_image_url, audio_url } = body;
+        const { task, model_id, influencer_id, prompt = "", text = "", source_image_url, source_video_url, audio_url } = body;
         // Foto referensi tambahan di luar Identity Kit — foto produk dari
         // Product Kit (wizard UGC). Hanya https, maksimal 4. Hanya model yang
         // menerima banyak referensi (ref_image_multi) yang bisa memakainya;
@@ -2622,7 +2622,8 @@ Deno.serve(async (req) => {
           model: modelAudit(model),
           request: {
             task, prompt: String(prompt), text_chars: String(text).length, duration_requested: duration,
-            source_image_url: source_image_url || null, audio_url: audio_url || null, extra_ref_urls: extraRefs,
+            source_image_url: source_image_url || null, source_video_url: source_video_url || null,
+            audio_url: audio_url || null, extra_ref_urls: extraRefs,
             content_item_id: contentItemId, label, prompt_template: promptTemplate,
           },
           composed: {
@@ -2889,6 +2890,16 @@ Deno.serve(async (req) => {
           if (model.keeps_identity && model.ref_image_field && refPhotos.length) {
             input[String(model.ref_image_field)] = model.ref_image_multi ? refPhotos : refPhotos[0];
             input.prompt = `The same person as in the reference images, face and hairstyle unchanged. ${finalPrompt}`;
+          }
+          // Video sumber untuk multi-angle (Seedance 2.x reference-to-video,
+          // lihat migration 0051). Field dan bentuknya ikut katalog, sama
+          // seperti ref_image_field di atas. BELUM diuji langsung ke fal —
+          // nama field `video_urls` diambil dari dokumentasi publik, bukan
+          // dari respons fal yang sudah dicocokkan. Tanpa ini model tetap
+          // jalan (prompt teks saja sudah sah), tapi hasilnya video baru dari
+          // nol, bukan sudut kamera baru dari video yang dimaksud.
+          if (model.ref_video_field && source_video_url) {
+            input[String(model.ref_video_field)] = model.ref_video_multi ? [source_video_url] : source_video_url;
           }
         } else if (task === "tts") {
           input.text = String(text);
