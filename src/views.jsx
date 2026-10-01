@@ -1291,6 +1291,7 @@ export function GenerateForm({ models, influencers, influencerId, refresh, mode,
   const [ok, setOk] = useState(false);
   const [busy, setBusy] = useState(false);
   const [sourceUrl, setSourceUrl] = useState("");
+  const [sourceVideoUrl, setSourceVideoUrl] = useState("");
   const [ttsText, setTtsText] = useState("");
   const [step, setStep] = useState(null);
   const [formInfId, setFormInfId] = useState("");
@@ -1448,6 +1449,7 @@ export function GenerateForm({ models, influencers, influencerId, refresh, mode,
         text: f.get("text") || "",
         duration: Number(f.get("duration") || 5),
         source_image_url: f.get("source_image_url") || null,
+        source_video_url: task === "video" ? (sourceVideoUrl || null) : null,
         audio_url: audioUrl,
         content_item_id: contentItemId || null,
       });
@@ -1610,6 +1612,16 @@ export function GenerateForm({ models, influencers, influencerId, refresh, mode,
             {selected?.accepts_init_image
               ? "Kosong = text-to-video, wajahnya akan acak. Isi dengan foto karakter supaya videonya bergerak dari wajah yang benar."
               : "Model yang dipilih sekarang tidak menerima gambar awal — kolom ini akan diabaikan."}
+          </p></div>
+      )}
+      {task === "video" && selected?.ref_video_field && (
+        <div className="mb3"><label className="label">URL video sumber (multi-angle, opsional)</label>
+          <input name="source_video_url" className="input" value={sourceVideoUrl}
+            onChange={(e) => setSourceVideoUrl(e.target.value)} placeholder="https://… (video yang mau dirender ulang dari sudut lain)" />
+          <p className="tiny muted mt1">
+            Sebut videonya di prompt sebagai <code>@Video1</code>, misal "sudut atas, orang dan
+            gerakan sama seperti di @Video1". Fitur baru, belum pernah diuji ke provider — coba
+            dulu dengan job murah sebelum dipakai untuk konten yang dikejar tayang.
           </p></div>
       )}
       <div className="row mb2">
