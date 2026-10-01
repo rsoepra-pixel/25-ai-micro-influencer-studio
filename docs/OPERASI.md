@@ -394,6 +394,7 @@ menumpang di jalur yang ramai.
 | `0051` | workspace baru langsung mode live |
 | `0052` | harga katalog (`provider_models`) hanya bisa diubah operator |
 | `0053` | batas belanja bulanan milik owner: `spend_cap_usd` + trigger di `production_jobs` |
+| `0054` | `media_refs()` — siapa saja yang masih memakai satu URL media; dipakai `media` sebelum membuang file. **Jalankan sebelum merge** perubahan `media` yang memakainya, kalau tidak setiap hapus media ditolak. |
 
 ### Nama migrasi: repo vs ledger produksi
 
