@@ -247,6 +247,7 @@ const TOOLS = [
         text: str("Naskah yang diucapkan, untuk task tts"),
         duration: { type: "number", description: "Durasi detik untuk video/lipsync (default 5)" },
         source_image_url: str("URL foto awal — WAJIB untuk model video yang init_image_field-nya terisi. Foto yang dilampirkan di chat: dapatkan URL-nya dulu lewat create_upload_url"),
+        source_video_url: str("URL video sumber untuk multi-angle — hanya dipakai model yang ref_video_field-nya terisi (Seedance reference-to-video). Model lain mengabaikannya."),
         audio_url: str("URL audio (hasil TTS) — WAJIB untuk task lipsync, bersama source_image_url fotonya"),
         extra_ref_urls: {
           type: "array", items: { type: "string" },
@@ -770,7 +771,7 @@ async function runTool(name: string, args: Record<string, unknown>, ctx: Ctx) {
         action: "submit",
         task: need("task"),
         model_id: need("model_id"),
-        ...pick(["influencer_id", "prompt", "text", "duration", "source_image_url", "audio_url", "extra_ref_urls", "content_item_id", "label", "prompt_template_id"]),
+        ...pick(["influencer_id", "prompt", "text", "duration", "source_image_url", "source_video_url", "audio_url", "extra_ref_urls", "content_item_id", "label", "prompt_template_id"]),
         origin: "mcp",
       });
       return ok(out);
