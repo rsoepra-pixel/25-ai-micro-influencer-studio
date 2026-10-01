@@ -55,10 +55,12 @@ Isinya berbeda tergantung cara workspace ini membayar:
 | `credit` (kredit) | Saldo kredit, lalu "terpakai $X bulan ini" | **Saldo.** Job ditolak saat saldo habis |
 | `byo_key` | Biaya bulan ini dari batas bulanan | Batas bulanan di Budget Guard |
 
-Di bawahnya ada lencana **mode**: `live` berarti job benar-benar dikirim ke
-provider dan dibayar, `mock` berarti memakai berkas contoh dan gratis. **Mode
-`mock` milik operator platform, bukan pelanggan.** Untuk pelanggan biasa,
-anggap setiap percobaan di aplikasi ini memakai saldo sungguhan.
+Lencana **mode: mock** hanya muncul kalau workspace sedang di mode mock (job
+memakai berkas contoh dan tidak ditagih). Mode itu milik operator platform;
+workspace pelanggan selalu `live`, jadi lencananya tidak pernah muncul di
+sana. **Untuk pelanggan, setiap percobaan di aplikasi ini memakai saldo
+sungguhan.** Operator melihat mode yang sedang berlaku di Settings → Provider
+& Biaya.
 
 ### Tombol keluar
 

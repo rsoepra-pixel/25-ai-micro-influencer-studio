@@ -65,10 +65,22 @@ const NAV = [
 // Lencana mode di kartu saldo. "live"/"mock" adalah istilah operator; bagi
 // pelanggan, yang perlu dia tahu cuma satu: apakah mencoba sesuatu memakai
 // uang sungguhan.
-const MODE_TIP = {
-  live: "live: setiap generate dikirim ke provider sungguhan dan memakai saldo.",
-  mock: "mock: generate memakai berkas contoh, gratis. Mode ini diatur operator platform.",
-};
+//
+// Karena itu lencananya hanya muncul untuk keadaan yang TIDAK biasa: mock.
+// "live" adalah keadaan normal semua workspace sejak 0051, dan pelanggan tidak
+// bisa mengubahnya — lencana "mode: live" yang selalu ada cuma istilah teknis
+// yang tidak memberi tahu apa-apa. Yang perlu dia tahu (generate memakai
+// saldo) sudah dikatakan petunjuk di kartu saldo dan di tiap tombol berbayar.
+// Operator melihat mode yang sedang berlaku di Settings → Provider & Biaya.
+function ModeBadge({ mode }) {
+  if (mode !== "mock") return null;
+  return (
+    <span className="badge mt2" style={{ background: "var(--border)", color: "var(--ink-3)" }} tabIndex={0}
+      data-tip="mock: generate memakai berkas contoh dan tidak ditagih. Mode ini diatur operator platform.">
+      mode: mock
+    </span>
+  );
+}
 
 function Login() {
   // Yang datang lewat link undangan hampir pasti belum punya akun, jadi
@@ -238,7 +250,11 @@ function App() {
   const route = useRoute();
   const [session, setSession] = useState(undefined);
   const [ws, setWs] = useState(null);
-  const [spend, setSpend] = useState({ spent: 0, cap: 200, mode: "mock", billing: "byo_key", balance: 0 });
+  // `mode: null` sampai status termuat, BUKAN "mock". Dulu nilai awalnya
+  // "mock", jadi setiap halaman sempat menulis "mock — gratis" di samping
+  // tombol berbayar selama sepersekian detik — klaim "gratis" yang tidak
+  // benar bagi pelanggan, yang selalu live. Tidak tahu = anggap berbayar.
+  const [spend, setSpend] = useState({ spent: 0, cap: 200, mode: null, billing: "byo_key", balance: 0 });
   const [spendError, setSpendError] = useState(null);
   const [tick, setTick] = useState(0);
   const [invite, setInvite] = useState(null);
@@ -446,19 +462,13 @@ function App() {
               <>
                 <div style={{ fontSize: 20, fontWeight: 800, color: spend.balance < 1 ? "var(--warn)" : "var(--ok)" }}>{usd(spend.balance)}</div>
                 <div className="tiny muted">terpakai {usd(spend.spent)} bulan ini</div>
-                <span className={`badge mt2`} style={spend.mode === "live" ? { background: "var(--ok-line)", color: "var(--ok)" } : { background: "var(--border)", color: "var(--ink-3)" }}
-                  tabIndex={0} data-tip={MODE_TIP[spend.mode] || MODE_TIP.mock}>
-                  mode: {spend.mode}
-                </span>
+                <ModeBadge mode={spend.mode} />
               </>
             ) : (
               <>
                 <div style={{ fontSize: 20, fontWeight: 800, color: "var(--warn)" }}>{usd(spend.spent)}</div>
                 <div className="tiny muted">dari batas {usd(spend.cap)}</div>
-                <span className={`badge mt2`} style={spend.mode === "live" ? { background: "var(--ok-line)", color: "var(--ok)" } : { background: "var(--border)", color: "var(--ink-3)" }}
-                  tabIndex={0} data-tip={MODE_TIP[spend.mode] || MODE_TIP.mock}>
-                  mode: {spend.mode}
-                </span>
+                <ModeBadge mode={spend.mode} />
               </>
             )}
           </div>
