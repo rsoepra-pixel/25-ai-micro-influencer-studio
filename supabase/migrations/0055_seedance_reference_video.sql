@@ -39,13 +39,18 @@ update public.provider_models
 -- `list_models` MCP tidak pernah melihatnya — `selected?.ref_video_field` di
 -- frontend selalu undefined, dan input video sumber tidak pernah muncul,
 -- tanpa error apa pun yang bilang kenapa.
+-- CREATE OR REPLACE VIEW only allows new columns to be APPENDED — inserting
+-- them mid-list makes Postgres think existing positional columns are being
+-- renamed (42P16 "cannot change name of view column"). So the two new
+-- columns go at the end, not grouped next to ref_image_field/ref_image_multi
+-- where they'd read better. Confirmed against the actual production error
+-- before this file was corrected to match what was really applied.
 create or replace view public.provider_models_ranked as
 select
   pm.id, pm.model_key, pm.label, pm.task, pm.provider, pm.quality_tier,
   pm.est_price_usd, pm.unit, pm.active, pm.description,
   pm.keeps_identity, pm.accepts_init_image, pm.requires_key,
   pm.init_image_field, pm.voice_field, pm.ref_image_field, pm.ref_image_multi,
-  pm.ref_video_field, pm.ref_video_multi,
   pm.duration_field, pm.duration_values, pm.extra_input,
   pm.multishot_field, pm.audio_field, pm.prompt_field, pm.created_at,
   coalesce(s.attempts, 0)        as attempts,
@@ -62,7 +67,8 @@ select
   s.success_pct,
   s.tries_per_result,
   s.tries_per_result_fair,
-  s.last_success_at
+  s.last_success_at,
+  pm.ref_video_field, pm.ref_video_multi
 from public.provider_models pm
 left join public.model_scorecard s
   on s.model_key = pm.model_key and s.task = pm.task;

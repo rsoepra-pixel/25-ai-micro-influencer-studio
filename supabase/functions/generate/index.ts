@@ -2892,7 +2892,7 @@ Deno.serve(async (req) => {
             input.prompt = `The same person as in the reference images, face and hairstyle unchanged. ${finalPrompt}`;
           }
           // Video sumber untuk multi-angle (Seedance 2.x reference-to-video,
-          // lihat migration 0051). Field dan bentuknya ikut katalog, sama
+          // lihat migration 0055). Field dan bentuknya ikut katalog, sama
           // seperti ref_image_field di atas. BELUM diuji langsung ke fal —
           // nama field `video_urls` diambil dari dokumentasi publik, bukan
           // dari respons fal yang sudah dicocokkan. Tanpa ini model tetap
