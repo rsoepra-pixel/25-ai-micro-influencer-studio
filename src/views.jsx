@@ -4039,6 +4039,26 @@ function McpSettings({ ws, tick }) {
         <button type="button" className="btn" style={{ fontSize: 12 }} onClick={() => copy("url", connectorUrl)}>
           {copied === "url" ? "✓ Tersalin" : "📋 Salin URL connector"}
         </button>
+        {/* Langkah sesudah Connect sering terlewat: connector yang sudah
+            terpasang tetap mati di chat sampai dinyalakan, dan orang mengira
+            koneksinya gagal. Dilipat supaya kartu tetap pendek bagi yang sudah
+            terbiasa. */}
+        <details className="mt3">
+          <summary className="tiny bold" style={{ cursor: "pointer" }}>Sesudah terhubung: tes &amp; kalau tidak jalan</summary>
+          <ol className="tiny muted mt2" style={{ paddingLeft: 18, lineHeight: 1.6 }}>
+            <li>Connector tersimpan di akun claude.ai-mu, jadi ikut muncul di Claude Desktop dan aplikasi HP.</li>
+            <li>Di chat baru, buka menu <span className="bold">+ → Connectors</span> dan pastikan connector ini menyala.</li>
+            <li>Tes dengan bertanya: <i>“influencer apa saja yang aktif?”</i> — kalau Claude menyebut influencer dari workspace ini, berarti sudah tersambung.</li>
+          </ol>
+          <div className="tiny bold mt2 mb1">Kalau tidak jalan</div>
+          <ul className="tiny muted" style={{ paddingLeft: 18, lineHeight: 1.6 }}>
+            <li><span className="bold">Claude tidak memakai data studio</span> — connector belum dinyalakan di chat itu (langkah 2).</li>
+            <li><span className="bold">Diminta login terus / ditolak</span> — cabut koneksinya di daftar “Aplikasi terhubung” di bawah, lalu di claude.ai klik Connect lagi.</li>
+            <li><span className="bold">Datanya bukan workspace ini</span> — saat login di halaman persetujuan, pakai email akun studio yang memiliki workspace ini.</li>
+            <li><span className="bold">Tidak ada tombol Add custom connector</span> — di paket Team/Enterprise, owner organisasi claude.ai yang perlu menambahkannya dulu.</li>
+            <li><span className="bold">Generate ditolak</span> — cek saldo dan “Batas belanja bulanan” di Settings; aturannya sama dengan generate dari aplikasi.</li>
+          </ul>
+        </details>
       </div>
 
       {/* ---- Jalur 2: Claude Code ---- */}

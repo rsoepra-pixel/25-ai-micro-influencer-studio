@@ -656,6 +656,11 @@ perkiraan biaya dan meminta persetujuan sebelum menjalankan keduanya. Dua hal it
 juga disebut di halaman persetujuan OAuth dan di kartu MCP, supaya orang tahu
 sebelum menghubungkan, bukan sesudahnya.
 
+**Cara menghubungkan** ada di Settings → Koneksi → kartu Claude (MCP). Bagian
+lipat *Sesudah terhubung* di kartu itu memuat langkah yang paling sering
+terlewat — menyalakan connector di menu **+ → Connectors** pada chat — serta
+pertanyaan tes dan daftar masalah umum.
+
 **Menulis lewat Claude tidak memotong saldo penulis AI.** Server MCP tidak
 pernah memanggil provider teks: Claude menulis naskahnya sendiri lalu
 menyimpannya lewat `update_content`. Generate media lewat Claude tetap memakai
