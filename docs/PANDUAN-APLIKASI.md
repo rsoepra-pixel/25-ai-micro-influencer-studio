@@ -597,6 +597,37 @@ bawahnya: daftar pelanggan menjawab "siapa yang aktif", dan daftar event webhook
 menjawab "kenapa pembayaran si A tidak masuk" — pertanyaan yang tanpa jejaknya
 hanya bisa dijawab dengan tebakan.
 
+#### Link akses
+
+Akun yang dibuat dari halaman ini (webhook, tambah manual, unggah massal)
+punya password acak yang tidak diketahui siapa pun. Pelanggan masuk pertama
+kali lewat **🔗 Link akses** di baris email-nya: tombolnya menyalin link ke
+clipboard, operator mengirimnya (biasanya lewat WhatsApp), lalu pelanggan:
+
+1. membuka link → layar **"Lanjutkan & buat password"**;
+2. menekan tombol itu → layar pasang password;
+3. sesudahnya masuk biasa dengan email & password tersebut.
+
+Link yang sama dipakai untuk pelanggan yang **lupa password** — terbitkan
+link baru, kirim, selesai.
+
+Link-nya berbentuk `https://25-ai-microinfluencer.netlify.app/?pulih=…` dan
+**sekali pakai**. Token baru dipakai saat tombol ditekan, bukan saat link
+dibuka, karena pratinjau link WhatsApp dan pemindai email ikut "membuka" link
+sebelum pelanggan sempat mengkliknya. Sebelum Okt 2026 link-nya langsung
+menunjuk ke Supabase, dan pratinjau itulah yang menghabiskan token: pelanggan
+cuma melihat form login kosong, bahkan dengan link yang baru dibuat semenit
+sebelumnya.
+
+Kalau link ditolak, halaman login sekarang menyebut alasannya ("sudah
+kedaluwarsa atau sudah pernah dipakai"). Jalan keluarnya selalu sama:
+terbitkan link baru. Link lama tidak bisa dipulihkan.
+
+> **Jangan pakai "Send password recovery" di dashboard Supabase** untuk
+> pelanggan. Email itu masih memakai template bawaan yang langsung menunjuk ke
+> Supabase, jadi rentan dengan masalah yang sama — lihat
+> [OPERASI.md § Yang belum selesai](OPERASI.md#8-yang-belum-selesai).
+
 ### Lanjutan *(operator platform saja)*
 
 - **Konfigurasi platform** dan **Promosi**.
