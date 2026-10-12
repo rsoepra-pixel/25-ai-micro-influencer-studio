@@ -13,7 +13,7 @@ Tulis komentar, pesan error, dan antarmuka dalam **bahasa Indonesia**.
 
 ## Jebakan yang sudah pernah memakan korban
 
-Lima hal di bawah ini kelihatan aman saat dikerjakan dan baru berbunyi jauh
+Enam hal di bawah ini kelihatan aman saat dikerjakan dan baru berbunyi jauh
 kemudian — biasanya di tempat lain, dalam bentuk yang tidak menunjuk ke
 penyebabnya.
 
@@ -46,6 +46,15 @@ unik, dan sudah ada dua ketidakcocokan yang terlanjur: dua berkas `0044`
 produksi terlanjur bernama `0045_prompt_suggestions`. Keduanya tidak berbahaya
 (lihat `docs/OPERASI.md`), tapi jangan menambah yang ketiga — cek berkas yang
 ada dulu sebelum memilih nomor.
+
+**6. Jangan kirim `action_link` Supabase ke orang.** Link itu menunjuk
+langsung ke `/auth/v1/verify` dan tokennya sekali pakai — pratinjau link
+WhatsApp atau pemindai email yang membukanya duluan menghabiskannya. Gejalanya
+menyesatkan: pelanggan cuma melihat form login kosong, dengan link yang baru
+dibuat semenit sebelumnya. Link apa pun yang dikirim ke orang harus menunjuk
+ke aplikasi dengan `token_hash` (`/?pulih=…`) dan baru ditukar lewat
+`verifyOtp` saat orangnya menekan tombol — contohnya `customer_access_link`
+di `app/index.ts` dan `lanjutPulih` di `main.jsx`.
 
 ---
 
