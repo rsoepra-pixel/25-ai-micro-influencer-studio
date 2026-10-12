@@ -370,7 +370,6 @@ menumpang di jalur yang ramai.
 | **"Anggota tidak boleh menghapus karya orang lain"** | diputuskan, belum ditegakkan. Yang sudah ada baru pembatasan kursi. |
 | **Admin panel** | paket saldo + pencocokan Doku; upgrade kursi 1→3; kelola anggota pelanggan; suspend akses; rincian pemakaian per pelanggan; ringkasan bisnis (omzet, **saldo beredar sebagai kewajiban**, margin terealisasi). |
 | **Email reset password dari dashboard Supabase** | Template bawaan (Authentication → Emails → Reset Password) menunjuk langsung ke `/auth/v1/verify`, jadi token sekali-pakainya bisa habis oleh pemindai link di email sebelum pelanggan mengklik — pelanggan cuma melihat form login. Link akses dari halaman Pelanggan sudah aman (`?pulih=`, sejak #78). Untuk menyamakan, ganti link di template menjadi `{{ .SiteURL }}/?pulih={{ .TokenHash }}`; sampai itu dilakukan, pakai Link akses, bukan tombol "Send password recovery". |
-| **Masuk dengan Google** | Kodenya ada di branch `claude/login-google`, belum di-merge. Menunggu: OAuth Client di Google Cloud (redirect URI `https://kheibvzbvnmhdeokokrw.supabase.co/auth/v1/callback`, consent screen *In production*), provider Google diaktifkan di Supabase, dan `https://25-ai-microinfluencer.netlify.app/**` ditambahkan ke Redirect URLs. Cek aktif: `GET /auth/v1/settings` → `external.google` harus `true`. |
 | **Nomor migrasi ganda** | ada `0044_archive_error.sql` dan `0044_quota_reserved.sql`. Urutannya saat ini aman (dijalankan berdasarkan nama), tapi jangan tambah `0044` ketiga. |
 
 ---
