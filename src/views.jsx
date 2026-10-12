@@ -4033,6 +4033,14 @@ function McpSettings({ ws, tick }) {
           Di claude.ai: <span className="bold">Settings → Connectors → Add custom connector</span>, tempel URL di bawah,
           lalu klik Connect. Kamu akan diminta login pakai email &amp; password akun studio ini — tanpa token, tanpa terminal.
         </p>
+        {/* Halaman persetujuan OAuth (public/oauth-authorize.html) hanya
+            menerima password. Akun yang lahir lewat "Masuk dengan Google"
+            tidak punya password sama sekali, dan tanpa kalimat ini orangnya
+            terhenti di halaman login yang tidak bisa ia lewati. */}
+        <p className="tiny muted mb3">
+          Biasa masuk dengan Google? Pasang password dulu di <span className="bold">Settings → Akun → Ganti password saya</span>,
+          lalu pakai email Google-mu dan password itu di halaman login connector.
+        </p>
         <div className="card p3 mb2" style={{ background: "#fff" }}>
           <code className="tiny" style={{ wordBreak: "break-all" }}>{connectorUrl}</code>
         </div>
