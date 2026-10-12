@@ -851,7 +851,21 @@ Deno.serve(async (req) => {
           options: { redirectTo: APP_ORIGIN },
         });
         if (error) throw new Error(error.message);
-        return json({ ok: true, link: data?.properties?.action_link || null });
+        // Yang dikirim ke pelanggan BUKAN action_link. action_link menunjuk
+        // langsung ke /auth/v1/verify, dan token sekali-pakainya habis oleh
+        // siapa pun yang membukanya pertama kali — termasuk pembuat pratinjau
+        // link di WhatsApp dan pemindai link di email. Pelanggan yang
+        // mengklik sesudahnya mendarat di halaman login dengan
+        // "otp_expired", padahal link-nya baru dibuat semenit sebelumnya.
+        //
+        // Link ke aplikasi dengan token_hash di query tahan terhadap itu:
+        // pratinjau hanya memuat HTML, dan token baru dipakai (verifyOtp)
+        // saat orangnya sendiri menekan tombol di halaman tersebut.
+        const hashed = data?.properties?.hashed_token;
+        const link = hashed
+          ? `${APP_ORIGIN}/?pulih=${encodeURIComponent(hashed)}`
+          : data?.properties?.action_link || null;
+        return json({ ok: true, link });
       }
       if (body.action === "payment_events") {
         await requirePlatformAdmin(req);

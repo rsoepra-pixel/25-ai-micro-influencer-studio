@@ -26,6 +26,35 @@ function bersihkanUrlUndangan() {
   window.history.replaceState(null, "", u.toString());
 }
 
+// Link akses pelanggan: `/?pulih=<token_hash>`. Token-nya baru ditukar dengan
+// sesi saat orangnya menekan tombol di layar login — bukan saat halaman
+// dimuat — karena pembuat pratinjau link (WhatsApp, pemindai email) juga
+// memuat halaman ini, dan token sekali-pakai yang dipakai olehnya membuat
+// pelanggan sungguhan terkunci di luar.
+const PULIH_TOKEN = new URLSearchParams(window.location.search).get("pulih");
+
+function bersihkanUrlPulih() {
+  const u = new URL(window.location.href);
+  u.searchParams.delete("pulih");
+  window.history.replaceState(null, "", u.toString());
+}
+
+// Link pemulihan yang ditolak Supabase kembali ke sini dengan alasannya di
+// fragmen URL (`#error_code=otp_expired&...`). Dulu fragmen itu diabaikan dan
+// orangnya cuma melihat form login kosong — tanpa petunjuk bahwa link-nya yang
+// bermasalah, bukan dia. Dibaca sekali saat modul dimuat, lalu dibuang supaya
+// tidak terbaca sebagai rute.
+const LINK_ERROR = (() => {
+  const h = new URLSearchParams(window.location.hash.replace(/^#\/?/, ""));
+  const code = h.get("error_code");
+  if (!code && !h.get("error")) return null;
+  window.history.replaceState(null, "", window.location.pathname + window.location.search);
+  if (code === "otp_expired") {
+    return "Link ini sudah kedaluwarsa atau sudah pernah dipakai. Minta link baru ke admin, lalu buka sekali saja.";
+  }
+  return `Link tidak bisa dipakai: ${h.get("error_description") || code}. Minta link baru ke admin.`;
+})();
+
 // ---------- Hash router sederhana ----------
 function useRoute() {
   const [route, setRoute] = useState(window.location.hash.slice(1) || "/");
@@ -89,8 +118,40 @@ function Login() {
   const [mode, setMode] = useState(INVITE_TOKEN ? "signup" : "signin");
   const [email, setEmail] = useState("");
   const [pw, setPw] = useState("");
-  const [err, setErr] = useState(null);
+  const [err, setErr] = useState(LINK_ERROR);
   const [busy, setBusy] = useState(false);
+  const [pulih, setPulih] = useState(PULIH_TOKEN);
+
+  // Menukar token link akses dengan sesi. Berhasil → onAuthStateChange di App
+  // menerima PASSWORD_RECOVERY dan langsung membuka layar pasang password.
+  async function lanjutPulih() {
+    setErr(null); setBusy(true);
+    const { error } = await supa.auth.verifyOtp({ token_hash: pulih, type: "recovery" });
+    bersihkanUrlPulih();
+    if (error) {
+      setErr("Link ini sudah kedaluwarsa atau sudah pernah dipakai. Minta link baru ke admin.");
+      setPulih(null);
+      setBusy(false);
+    }
+  }
+
+  if (pulih) {
+    return (
+      <div style={{ minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center", padding: 24 }}>
+        <div className="card p6" style={{ width: "100%", maxWidth: 420 }}>
+          <div style={{ fontSize: 24, fontWeight: 800 }} className="gradient-title">AI Micro Influencer Studio</div>
+          <p className="muted small mt1 mb4">
+            Link akses akunmu sudah siap. Tekan tombol di bawah untuk membuat password — setelah itu
+            kamu bisa masuk kapan saja dengan email dan password tersebut.
+          </p>
+          {err && <div className="msg-err mb3">{err}</div>}
+          <button className="btn" style={{ width: "100%", justifyContent: "center" }} disabled={busy} onClick={lanjutPulih}>
+            {busy ? "Memproses…" : "Lanjutkan & buat password"}
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   async function submit(e) {
     e.preventDefault();
