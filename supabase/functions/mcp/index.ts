@@ -1085,6 +1085,19 @@ async function handleRpc(msg: Record<string, unknown>, ctx: Ctx): Promise<unknow
         "2) Suara TTS terkunci per influencer lewat update_influencer field `voice`, dipetakan per model_key " +
         "(voice id milik provider, tidak bisa dipindah antar provider — lihat voice_field di list_models). " +
         "Tanpa itu semua influencer bersuara sama, jadi generate_media task 'tts' atas nama influencer akan ditolak.\n\n" +
+        // Tiga aturan di bawah lahir dari satu sesi (14 Okt 2026) yang membayar
+        // video $0.84 lalu ditolak karena suaranya: voice preset berbahasa
+        // Inggris membacakan naskah Indonesia, audio tidak didengar dulu, dan
+        // foto avatar dipakai sebagai frame lalu ditolak Kling karena rasionya.
+        "Urutan video bicara (lipsync) — jangan dilompati:\n" +
+        "a) Naskah ditulis untuk DIDENGAR: partikel percakapan (sih, deh, kan), kata sehari-hari (nggak, udah), " +
+        "kalimat pendek atau terpotong, \"...\" untuk jeda. Naskah gaya tulisan dibacakan TTS seperti pengumuman.\n" +
+        "b) Untuk naskah bahasa Indonesia pakai voice id MiniMax berawalan `Indonesian_` (mis. Indonesian_GentleGirl, " +
+        "Indonesian_CalmWoman). Preset lain (Calm_Woman, Laura, dst.) penutur bahasa Inggris — intonasinya tetap Inggris.\n" +
+        "c) Buat audio dulu (task 'tts'), berikan output_url-nya ke user untuk DIDENGARKAN, dan tunggu persetujuannya " +
+        "sebelum menjalankan task 'lipsync'. Audio ≈ $0.01, video $0.5-2.\n" +
+        "d) Jangan pakai avatar_url influencer sebagai source_image_url lipsync — rasionya sering ditolak model avatar. " +
+        "Buat frame vertikal 9:16 dulu dengan model gambar keeps_identity=true, tunjukkan ke user, baru dipakai.\n\n" +
         "Kalau sebuah konten mengajak orang mengunjungi sesuatu, buatkan create_short_link dengan " +
         "content_item_id-nya dan pakai URL itu di caption — bukan URL aslinya. Instagram dan TikTok tidak " +
         "pernah memberi tahu link mana yang diklik dari post mana; tanpa link ini pertanyaan \"konten mana " +
