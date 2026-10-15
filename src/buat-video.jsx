@@ -24,7 +24,7 @@ import { useProducts, NewProduct } from "./products.jsx";
 import { isAvatarModel, estSeconds, WORDS_PER_SEC, MAX_SECONDS, DEFAULT_SCENE, DEFAULT_DELIVERY } from "./ugc.jsx";
 import { catalogMaxSeconds, fitShotDurations } from "./storyboard.jsx";
 import { Info, TIP_PENULIS_AI } from "./tips.jsx";
-import { hargaLabel, biayaNaskahLabel, bagiAdegan } from "./harga.js";
+import { hargaLabel, biayaNaskahLabel, bagiAdegan, POLA_CERITA } from "./harga.js";
 
 const KUNCI_PROFIL = "profil_influencer_id";
 const TTS_KEY = "fal-ai/minimax/speech-02-hd";
@@ -71,6 +71,7 @@ export function BuatVideo({ ws, refresh, tick }) {
   const [langkah, setLangkah] = useState("apa");
   const [jenis, setJenis] = useState("ugc");          // ugc | storyboard
   const [ide, setIde] = useState("");
+  const [pola, setPola] = useState("masalah_produk_hasil");
   const [detik, setDetik] = useState(15);
   const [infId, setInfId] = useState(() => { try { return localStorage.getItem(KUNCI_PROFIL) || ""; } catch { return ""; } });
   const [productId, setProductId] = useState("");
@@ -96,7 +97,12 @@ export function BuatVideo({ ws, refresh, tick }) {
 
   const md = useMemo(() => modelDefault(models, inf), [models, inf]);
   const maxSb = useMemo(() => catalogMaxSeconds(models || []), [models]);
-  const fit = useMemo(() => fitShotDurations(bagiAdegan(detik), maxSb), [detik, maxSb]);
+  // Sebelum naskah ada: adegan 5 detik rata hanya untuk PERKIRAAN harga.
+  // Sesudah penulis AI menjawab (mode pola), ritme adegannya yang dipakai.
+  const fitAwal = useMemo(() => fitShotDurations(bagiAdegan(detik), maxSb), [detik, maxSb]);
+  const fit = useMemo(() => draft?.storyboard?.shots?.length
+    ? fitShotDurations(draft.storyboard.shots.map((s) => s.seconds), maxSb)
+    : fitAwal, [draft, fitAwal, maxSb]);
   const hargaUntuk = (s) => perkiraanUsd(jenis, md, { seconds: s, shots: fitShotDurations(bagiAdegan(s), maxSb).each });
 
   // Penghalang disebut di langkah "Siapa", bukan setelah naskah ditulis dan
@@ -131,8 +137,11 @@ export function BuatVideo({ ws, refresh, tick }) {
         setDraft({ ugc: r.ugc });
       } else {
         setBusy("Menyusun adegan…");
+        // Mode pola: jumlah dan ritme adegan diputuskan penulis, bukan angka
+        // dari formulir. Total detik dan daftar durasi model ikut supaya
+        // hasilnya langsung muat.
         const r = await callGenerate({ action: "write", kind: "storyboard", influencer_id: inf.id, idea: ide.trim(),
-          platform: "tiktok", shots: fit.each.length, seconds_per_shot: fit.each[0] || 5 });
+          platform: "tiktok", pattern: pola, total_seconds: detik });
         setDraft({ storyboard: r.storyboard });
       }
       setLangkah("tinjau");
@@ -212,6 +221,20 @@ export function BuatVideo({ ws, refresh, tick }) {
               </button>
             ))}
           </div>
+          {jenis === "storyboard" && (
+            <>
+              <label className="label">Bentuk ceritanya<Info tip="Pola menentukan urutan adegan dan ritmenya; penulis AI yang membagi detiknya — pembuka pendek, inti lebih panjang. Kamu tidak perlu menghitung jumlah adegan." /></label>
+              <div className="grid mb3" style={{ gridTemplateColumns: "repeat(auto-fit,minmax(150px,1fr))", gap: 8 }}>
+                {POLA_CERITA.map((p) => (
+                  <button key={p.key} type="button" onClick={() => { setPola(p.key); setDraft(null); }} data-tip={p.ket}
+                    style={{ textAlign: "left", padding: "10px 12px", borderRadius: 10, cursor: "pointer",
+                      border: `2px solid ${pola === p.key ? "var(--brand)" : "var(--border)"}`, background: pola === p.key ? "var(--brand-soft)" : "var(--card)" }}>
+                    <div className="small bold">{p.ikon} {p.label}</div>
+                  </button>
+                ))}
+              </div>
+            </>
+          )}
           <label className="label">Ceritakan videonya<Info tip="Satu dua kalimat cukup. Penulis AI menyusun naskah lengkapnya, dan kamu membacanya dulu sebelum apa pun dibuat." /></label>
           <textarea className="input mb2" rows={3} value={ide} onChange={(e) => setIde(e.target.value)}
             placeholder={jenis === "ugc" ? "mis. keripik singkong saya, renyah dan tidak berminyak, untuk camilan keluarga" : "mis. pagi di dapur, menggoreng keripik, dikemas, sampai ke tangan pembeli"} />
@@ -280,11 +303,11 @@ export function BuatVideo({ ws, refresh, tick }) {
 
       {langkah === "panjang" && (
         <div className="card p6">
-          <label className="label">Berapa lama videonya?<Info tip="Target untuk penulis naskah (≈ 2,3 kata per detik). Video bicara mengikuti panjang naskah yang dibacakan; video cerita dibagi jadi adegan 5 detik. Maksimal 30 detik per video — pagar yang dipasang supaya satu salah ketik tidak menghabiskan saldo." /></label>
+          <label className="label">Berapa lama videonya?<Info tip="Target untuk penulis naskah (≈ 2,3 kata per detik). Video bicara mengikuti panjang naskah yang dibacakan; video cerita dibagi penulis AI jadi 3–6 adegan mengikuti bentuk cerita yang kamu pilih. Maksimal 30 detik per video — pagar yang dipasang supaya satu salah ketik tidak menghabiskan saldo." /></label>
           <div className="row mb2" style={{ gap: 8, flexWrap: "wrap" }}>
             {PILIHAN_DETIK.map((s) => (
               <button key={s} type="button" className={detik === s ? "btn" : "btn btn2"} onClick={() => { setDetik(s); setDraft(null); }}
-                data-tip={jenis === "ugc" ? `Sekitar ${Math.round(s * WORDS_PER_SEC)} kata diucapkan. Harga di tombol adalah perkiraan total untuk durasi ini.` : `${bagiAdegan(s).length} adegan × 5 detik. Harga di tombol adalah perkiraan total.`}>
+                data-tip={jenis === "ugc" ? `Sekitar ${Math.round(s * WORDS_PER_SEC)} kata diucapkan. Harga di tombol adalah perkiraan total untuk durasi ini.` : `${s} detik dibagi penulis AI jadi 3–6 adegan. Harga di tombol adalah perkiraan total.`}>
                 {s} detik · {models ? hargaLabel(hargaUntuk(s)) : "…"}
               </button>
             ))}
@@ -292,7 +315,7 @@ export function BuatVideo({ ws, refresh, tick }) {
           <p className="tiny muted mb3">
             {jenis === "ugc"
               ? `Kira-kira ${Math.round(detik * WORDS_PER_SEC)} kata. Panjang video mengikuti naskah yang dibacakan, jadi harganya dihitung dari naskah itu.`
-              : `${fit.each.length} adegan (${fit.each.join(" + ")} detik${fit.raw > fit.total ? `, dipangkas ke ${fit.total} karena batas model video` : ""}).`}
+              : `Pola "${(POLA_CERITA.find((p) => p.key === pola) || {}).label}": penulis AI membagi ${detik} detik jadi 3–6 adegan dengan ritme sendiri${fitAwal.raw > fitAwal.total ? ` (dipangkas ke ${fitAwal.total} karena batas model video)` : ""}.`}
             {" "}Video lebih dari {MAX_SECONDS} detik menyusul — untuk sekarang buat beberapa video pendek.
           </p>
           {err && <div className="msg-err mb3">{err}</div>}
@@ -315,8 +338,9 @@ export function BuatVideo({ ws, refresh, tick }) {
             </>
           ) : (
             <>
-              <div className="bold mb1">{draft.storyboard.title}<Info tip="Judul dan ringkasan cerita dari penulis AI. Daftar di bawah: tiap baris satu adegan dengan narasinya; detail gambarnya bisa diubah di layar produksi." /></div>
-              <p className="tiny muted mb3">{draft.storyboard.logline}</p>
+              <div className="bold mb1">{draft.storyboard.title}<Info tip="Judul dan ringkasan cerita dari penulis AI. Daftar di bawah: tiap baris satu adegan dengan narasinya dan detiknya (diputuskan penulis mengikuti pola); detail gambarnya bisa diubah di layar produksi." /></div>
+              <p className="tiny muted mb1">{draft.storyboard.logline}</p>
+              <p className="tiny muted mb3">{fit.each.length} adegan · {fit.each.join(" + ")} = {fit.total} detik{fit.raw > fit.total ? ` (dipangkas dari ${fit.raw} karena batas model video)` : ""}</p>
               {(draft.storyboard.shots || []).map((s, i) => (
                 <div key={i} className="row mb1" style={{ gap: 8, alignItems: "flex-start" }}>
                   <span className="tiny bold muted" style={{ minWidth: 48 }}>{i + 1} · {s.seconds} dtk</span>

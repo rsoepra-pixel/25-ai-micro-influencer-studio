@@ -180,7 +180,11 @@ dalam rupiah, **sebelum** apa pun berbayar berangkat.
 
 1. **Apa** — pilih "saya bicara ke kamera" (jalur UGC) atau "cerita beberapa
    adegan" (jalur Storyboard), lalu ceritakan videonya satu dua kalimat.
-   Perkiraan harga 15 dan 30 detik sudah tertulis di sini.
+   Untuk jalur cerita ada **bentuk cerita** yang dipilih dari kartu: Masalah →
+   Produk → Hasil · Proses · Sebelum/Sesudah · 3 Tips · Bebas. Penulis AI yang
+   memutuskan jumlah adegan dan detik tiap adegan (pembuka pendek, inti lebih
+   panjang); tidak ada angka yang ditanya. Perkiraan harga 15 dan 30 detik
+   sudah tertulis di sini.
 2. **Siapa** — profil dari halaman Profil saya (pemilih muncul kalau ada
    lebih dari satu), dan untuk jalur UGC: produknya (bisa membuat produk baru
    di tempat). Yang belum siap — foto wajah, suara, produk — disebut di sini
@@ -431,6 +435,11 @@ provider dan hasilnya masuk saat ada yang membuka lagi.
 **Untuk apa.** Satu ide dipecah jadi beberapa shot, lalu jadi **satu video
 multi-shot**. Cocok untuk cerita yang butuh perpindahan sudut, bukan untuk orang
 bicara ke kamera (itu Video UGC).
+
+**Formulirnya** menanyakan bentuk cerita (pola yang sama dengan wizard Buat
+Video) dan total durasi; penulis AI membagi adegannya. Yang mau menentukan
+sendiri jumlah shot dan detik per shot memilih **Atur sendiri** di pemilih
+yang sama — cara lama tetap ada, hanya tidak lagi ditanya duluan.
 
 **Alurnya tiga langkah, dan urutannya dipaksakan:**
 

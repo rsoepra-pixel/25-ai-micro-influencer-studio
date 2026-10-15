@@ -2,7 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import {
   setHarga, setTampilan, tampilanAktif, hargaLabel, hargaLabelLain,
-  bulatkanRupiah, biayaNaskahLabel, biayaNaskahUsd, bagiAdegan,
+  bulatkanRupiah, biayaNaskahLabel, biayaNaskahUsd, bagiAdegan, POLA_CERITA,
 } from "./harga.js";
 
 test("tanpa kurs selalu dolar, apa pun pilihannya", () => {
@@ -54,4 +54,11 @@ test("bagiAdegan: total detik jadi adegan 5 detik, minimal satu adegan", () => {
   assert.deepEqual(bagiAdegan(30), [5, 5, 5, 5, 5, 5]);
   assert.deepEqual(bagiAdegan(3), [5]);
   assert.deepEqual(bagiAdegan(0), [5]);
+});
+
+test("POLA_CERITA: kunci unik, ada 'bebas', tiap pola punya label dan keterangan", () => {
+  const keys = POLA_CERITA.map((p) => p.key);
+  assert.equal(new Set(keys).size, keys.length);
+  assert.ok(keys.includes("bebas"));
+  for (const p of POLA_CERITA) { assert.ok(p.label && p.ket); }
 });

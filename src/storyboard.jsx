@@ -24,6 +24,7 @@ import { supa, callGenerate } from "./supa.js";
 import { ModelPicker, byPrice, priceLabel, Badge, useQuery, unwrap, recordBadge} from "./views.jsx";
 import { LibraryPicker } from "./library.jsx";
 import { Info } from "./tips.jsx";
+import { POLA_CERITA } from "./harga.js";
 
 const PLATFORMS = [
   ["tiktok", "TikTok"],
@@ -392,6 +393,10 @@ function NewBoard({ ws, influencers, onCreated }) {
   const [contentItemId, setContentItemId] = useState("");
   const [shotCount, setShotCount] = useState(5);
   const [perShot, setPerShot] = useState(5);
+  // Pola cerita (Okt 2026): penulis yang membagi adegan dan detiknya. "manual"
+  // mempertahankan dua angka lama untuk yang memang mau mengatur sendiri.
+  const [pola, setPola] = useState("masalah_produk_hasil");
+  const [totalDetik, setTotalDetik] = useState(15);
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState(null);
   const [draft, setDraft] = useState(null);
@@ -429,8 +434,9 @@ function NewBoard({ ws, influencers, onCreated }) {
         content_item_id: contentItemId || null,
         idea: idea.trim(),
         platform,
-        shots: shotCount,
-        seconds_per_shot: perShot,
+        ...(pola === "manual"
+          ? { shots: shotCount, seconds_per_shot: perShot }
+          : { pattern: pola, total_seconds: totalDetik }),
       });
       setDraft(r.storyboard);
     } catch (e) { setErr(e.message); }
@@ -525,18 +531,37 @@ function NewBoard({ ws, influencers, onCreated }) {
 
       <div className="grid mb3" style={{ gridTemplateColumns: "1fr 1fr" }}>
         <div>
-          <label className="label">Jumlah shot</label>
-          <input className="input" type="number" min={2} max={10} value={shotCount}
-            onChange={(e) => setShotCount(Math.min(Math.max(Number(e.target.value) || 5, 2), 10))} />
+          <label className="label">Bentuk cerita<Info tip="Pola menentukan urutan adegan dan ritmenya; penulis AI yang membagi detiknya. Pilih 'Atur sendiri' kalau mau menentukan jumlah shot dan durasinya." /></label>
+          <select className="input" value={pola} onChange={(e) => setPola(e.target.value)}>
+            {POLA_CERITA.map((p) => <option key={p.key} value={p.key}>{p.ikon} {p.label}</option>)}
+            <option value="manual">🔧 Atur sendiri (jumlah shot & durasi)</option>
+          </select>
+          <p className="tiny muted" style={{ marginTop: 4 }}>{(POLA_CERITA.find((p) => p.key === pola) || {}).ket || "Kamu menentukan jumlah shot dan detik per shot."}</p>
         </div>
-        <div>
-          <label className="label">Durasi per shot (detik)</label>
-          <input className="input" type="number" min={2} max={15} value={perShot}
-            onChange={(e) => setPerShot(Math.min(Math.max(Number(e.target.value) || 5, 2), 15))} />
-          <p className="tiny muted" style={{ marginTop: 4 }}>
-            Ini usulan. Tiap model video hanya menerima durasi tertentu, dan yang dipakai nanti adalah nilai terdekat yang diterimanya.
-          </p>
-        </div>
+        {pola === "manual" ? (
+          <div className="grid" style={{ gridTemplateColumns: "1fr 1fr", gap: 8 }}>
+            <div>
+              <label className="label">Jumlah shot</label>
+              <input className="input" type="number" min={2} max={10} value={shotCount}
+                onChange={(e) => setShotCount(Math.min(Math.max(Number(e.target.value) || 5, 2), 10))} />
+            </div>
+            <div>
+              <label className="label">Detik per shot</label>
+              <input className="input" type="number" min={2} max={15} value={perShot}
+                onChange={(e) => setPerShot(Math.min(Math.max(Number(e.target.value) || 5, 2), 15))} />
+            </div>
+          </div>
+        ) : (
+          <div>
+            <label className="label">Total durasi<Info tip="Penulis membagi total ini ke 3–6 adegan. Tiap model video hanya menerima durasi tertentu; kalau melebihi batas model, dipangkas di langkah Produksi dan diberi tahu." /></label>
+            <div className="row" style={{ gap: 6, flexWrap: "wrap" }}>
+              {[10, 15, 20, 30].map((s) => (
+                <button key={s} type="button" className={totalDetik === s ? "btn" : "btn btn2"} style={{ fontSize: 12, padding: "6px 10px" }}
+                  onClick={() => setTotalDetik(s)}>{s} detik</button>
+              ))}
+            </div>
+          </div>
+        )}
       </div>
 
       {err && <div className="msg-err mb3">{err}</div>}

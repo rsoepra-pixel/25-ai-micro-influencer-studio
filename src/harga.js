@@ -116,3 +116,23 @@ export function bagiAdegan(detik) {
   const n = Math.max(1, Math.round((Number(detik) || 0) / 5));
   return Array.from({ length: n }, () => 5);
 }
+
+// ---------- Pola cerita untuk video beberapa adegan ----------
+// Menggantikan dua angka ("jumlah shot", "durasi per shot") yang dulu ditanya
+// SEBELUM ceritanya ada. Orang memilih bentuk cerita; penulis AI yang
+// memutuskan jumlah adegan dan ritmenya (hook pendek, inti lebih panjang),
+// dijepit ke total detik yang diterima model. Daftar ini juga dikirim ke
+// server sebagai `pattern`; teks beat-nya hidup di prompt server, bukan di
+// sini, supaya satu sumber untuk kedua pintu (web dan Claude).
+export const POLA_CERITA = [
+  { key: "masalah_produk_hasil", label: "Masalah → Produk → Hasil", ikon: "💡",
+    ket: "Penonton merasakan masalahnya, produk muncul, hasilnya terlihat. Pola jualan paling umum." },
+  { key: "proses", label: "Proses: dari dapur ke pembeli", ikon: "🍳",
+    ket: "Bahan, dibuat, jadi, sampai ke tangan pembeli. Cocok untuk yang bangga dengan caranya." },
+  { key: "sebelum_sesudah", label: "Sebelum / Sesudah", ikon: "🔁",
+    ket: "Kontras yang jelas: suasana datar, titik balik, lalu perubahannya." },
+  { key: "tiga_tips", label: "3 Tips", ikon: "✅",
+    ket: "Satu janji di awal, tiga tips singkat, satu ajakan. Mudah ditonton sampai habis." },
+  { key: "bebas", label: "Bebas", ikon: "✍️",
+    ket: "Tanpa pola. Penulis AI menyusun sendiri dari ceritamu." },
+];

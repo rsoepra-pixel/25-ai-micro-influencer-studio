@@ -1177,8 +1177,33 @@ Deno.serve(async (req) => {
         // setiap prompt shot oleh klien. Satu sumber kebenaran, bukan lima
         // deskripsi baju yang mirip-mirip tapi tidak sama.
         if (kind === "storyboard") {
-          const shotCount = Math.min(Math.max(Number(body.shots) || 5, 2), 10);
-          const perShot = Math.min(Math.max(Number(body.seconds_per_shot) || 5, 2), 15);
+          // DUA MODE. Mode lama: user menyebut jumlah shot dan detik per shot
+          // (halaman Storyboard, pustaka prompt, MCP lama). Mode beat (Okt
+          // 2026, tinjauan animator): user memilih POLA CERITA dan total
+          // detik; penulis yang memutuskan jumlah shot dan ritmenya — hook
+          // 2–3 detik, inti lebih panjang. Dua angka yang ditanya sebelum
+          // ceritanya ada menghasilkan "slideshow bermetronom": semua shot
+          // 5 detik rata, apa pun isinya.
+          const POLA: Record<string, string> = {
+            masalah_produk_hasil:
+              "MASALAH → PRODUK → HASIL: (1) hook — masalah yang dirasakan penonton, 2–3 detik; " +
+              "(2) produk muncul sebagai jawaban, 3–5 detik; (3) hasil/perubahan yang terlihat, 3–5 detik; (4) ajakan, 2–3 detik.",
+            proses:
+              "PROSES, dari bahan ke pembeli: (1) bahan/awal, pendek; (2) proses dibuat — boleh 2 shot kalau totalnya cukup; " +
+              "(3) hasil jadi, close-up; (4) sampai ke tangan pembeli + ajakan.",
+            sebelum_sesudah:
+              "SEBELUM / SESUDAH: (1) sebelum — masalah, suasana datar; (2) titik balik, pendek; " +
+              "(3) sesudah — kontras yang jelas dengan shot 1, paling panjang; (4) ajakan.",
+            tiga_tips:
+              "3 TIPS: (1) hook berupa janji, 2 detik; (2) tips 1; (3) tips 2; (4) tips 3; (5) ajakan, pendek. " +
+              "Tiap tips satu kalimat yang bisa dipraktikkan.",
+          };
+          const pattern = typeof body.pattern === "string" && (POLA[body.pattern] || body.pattern === "bebas") ? String(body.pattern) : "";
+          const totalSeconds = Math.min(Math.max(Number(body.total_seconds) || 0, 0), MAX_DURATION_SECONDS);
+          const modeBeat = !body.shots && (pattern !== "" || totalSeconds > 0);
+          const total = totalSeconds || 15;
+          const shotCount = modeBeat ? 6 : Math.min(Math.max(Number(body.shots) || 5, 2), 10);
+          const perShot = modeBeat ? Math.max(2, Math.round(total / 4)) : Math.min(Math.max(Number(body.seconds_per_shot) || 5, 2), 15);
 
           let iname = "kreator", iniche = "", ibio = "", ilang = "Indonesia";
           if (body.influencer_id) {
@@ -1219,7 +1244,13 @@ Deno.serve(async (req) => {
           const user =
             `Ide video: "${idea}"\n` +
             (existingScript ? `Naskah yang sudah ada (pakai ini, jangan bikin cerita baru):\n${existingScript}\n` : "") +
-            `\nPecah jadi TEPAT ${shotCount} shot, masing-masing sekitar ${perShot} detik. Format vertikal 9:16.\n` +
+            (modeBeat
+              ? `\nPecah jadi 3 sampai 6 shot` +
+                (pattern && pattern !== "bebas" ? ` mengikuti pola ${POLA[pattern]}` : ", kamu yang menentukan beat-nya.") +
+                ` Total durasi TEPAT ${total} detik. Tentukan sendiri detik tiap shot: bilangan bulat, minimal 2, ` +
+                `hook pendek dan inti/payoff lebih panjang — jangan semua sama. Jumlah detik semua shot HARUS ${total}. ` +
+                `Format vertikal 9:16.\n`
+              : `\nPecah jadi TEPAT ${shotCount} shot, masing-masing sekitar ${perShot} detik. Format vertikal 9:16.\n`) +
             `\nAturan yang harus dipatuhi:\n` +
             `1. "continuity": satu deskripsi yang berlaku untuk SEMUA shot — pakaian, lokasi, waktu, ` +
             `pencahayaan, dan palet warna. Bahasa Inggris, 20-40 kata. Ini yang membuat potongan-potongan ` +
@@ -1231,7 +1262,9 @@ Deno.serve(async (req) => {
             `deskripsimu akan berkelahi dengan fotonya dan yang keluar orang lain.\n` +
             `3. Jangan ulang isi "continuity" di dalam "visual_prompt" — itu ditempelkan otomatis.\n` +
             `4. "narration" tiap shot: bahasa ${ilang}, kalimat yang benar-benar diucapkan, ` +
-            `panjangnya wajar untuk ${perShot} detik (kira-kira ${Math.round(perShot * 2.5)} kata). ` +
+            (modeBeat
+              ? `panjangnya mengikuti detik shot itu (kira-kira 2,5 kata per detik). `
+              : `panjangnya wajar untuk ${perShot} detik (kira-kira ${Math.round(perShot * 2.5)} kata). `) +
             `Boleh string kosong untuk shot tanpa suara.\n` +
             `5. Shot 1 adalah HOOK: harus menahan orang di 1-3 detik pertama. Jangan basa-basi, ` +
             `jangan "halo guys", langsung ke hal yang bikin penasaran.\n` +
@@ -1248,23 +1281,41 @@ Deno.serve(async (req) => {
           const rawShots = Array.isArray(parsed.shots) ? parsed.shots : [];
           if (!rawShots.length) throw new Error("Penulis AI tidak mengembalikan satu shot pun. Coba lagi.");
           const CAMERAS = ["close-up", "medium", "wide"];
+          const shotsOut = rawShots.slice(0, shotCount).map((s: Record<string, unknown>, i: number) => ({
+            position: i + 1,
+            beat: String(s?.beat || `Shot ${i + 1}`).slice(0, 120),
+            visual_prompt: String(s?.visual_prompt || "").slice(0, 800),
+            narration: String(s?.narration || "").slice(0, 600),
+            camera: CAMERAS.includes(String(s?.camera)) ? String(s?.camera) : "medium",
+            // Durasi dari model tidak dipercaya mentah-mentah: ia sering
+            // menulis angka yang tidak ada di daftar model video mana pun.
+            // Yang mengikat tetap pilihan user; ini cuma usulan.
+            seconds: Math.min(Math.max(Number(s?.seconds) || perShot, 2), 15),
+          })).filter((s) => s.visual_prompt);
+          if (modeBeat && shotsOut.length) {
+            // Penulis sering meleset satu-dua detik dari total. Dipaskan
+            // proporsional supaya yang ditampilkan ke orangnya = yang diminta;
+            // pemangkasan ke batas model tetap dikerjakan klien (fitShotDurations).
+            const sum = shotsOut.reduce((a, s) => a + s.seconds, 0);
+            if (sum !== total) {
+              const scaled = shotsOut.map((s) => Math.max(2, Math.round((s.seconds * total) / sum)));
+              let drift = total - scaled.reduce((a, b) => a + b, 0);
+              const order = scaled.map((_, i) => i).sort((a, b) => scaled[b] - scaled[a]);
+              for (let k = 0; drift > 0; k = (k + 1) % scaled.length) { scaled[order[k]]++; drift--; }
+              for (let k = 0, guard = 0; drift < 0 && guard < 100; k = (k + 1) % scaled.length, guard++) {
+                if (scaled[order[k]] > 2) { scaled[order[k]]--; drift++; }
+              }
+              shotsOut.forEach((s, i) => { s.seconds = scaled[i]; });
+            }
+          }
           return json({
             ok: true,
             storyboard: {
               title: String(parsed.title || idea).slice(0, 200),
               logline: String(parsed.logline || "").slice(0, 300),
               continuity: String(parsed.continuity || "").slice(0, 500),
-              shots: rawShots.slice(0, shotCount).map((s: Record<string, unknown>, i: number) => ({
-                position: i + 1,
-                beat: String(s?.beat || `Shot ${i + 1}`).slice(0, 120),
-                visual_prompt: String(s?.visual_prompt || "").slice(0, 800),
-                narration: String(s?.narration || "").slice(0, 600),
-                camera: CAMERAS.includes(String(s?.camera)) ? String(s?.camera) : "medium",
-                // Durasi dari model tidak dipercaya mentah-mentah: ia sering
-                // menulis angka yang tidak ada di daftar model video mana pun.
-                // Yang mengikat tetap pilihan user; ini cuma usulan.
-                seconds: Math.min(Math.max(Number(s?.seconds) || perShot, 2), 15),
-              })).filter((s) => s.visual_prompt),
+              pattern: modeBeat ? (pattern || "bebas") : null,
+              shots: shotsOut,
             },
           });
         }
