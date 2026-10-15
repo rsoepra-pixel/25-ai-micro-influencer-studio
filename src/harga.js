@@ -106,3 +106,13 @@ export function biayaNaskahLabel() {
   const usd = biayaNaskahUsd();
   return usd ? ` · ≈ ${hargaLabel(usd)}` : "";
 }
+
+// ---------- Pembagi adegan untuk wizard Buat Video ----------
+// Total detik → daftar durasi per adegan, 5 detik tiap adegan (nilai yang
+// diterima semua model multi-shot di katalog). fitShotDurations() di
+// storyboard.jsx menerima daftar ini, bukan totalnya. Ditaruh di sini, bukan
+// di buat-video.jsx, supaya bisa diuji tanpa DOM.
+export function bagiAdegan(detik) {
+  const n = Math.max(1, Math.round((Number(detik) || 0) / 5));
+  return Array.from({ length: n }, () => 5);
+}

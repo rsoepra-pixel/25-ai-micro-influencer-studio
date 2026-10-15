@@ -24,19 +24,11 @@ import { useProducts, NewProduct } from "./products.jsx";
 import { isAvatarModel, estSeconds, WORDS_PER_SEC, MAX_SECONDS, DEFAULT_SCENE, DEFAULT_DELIVERY } from "./ugc.jsx";
 import { catalogMaxSeconds, fitShotDurations } from "./storyboard.jsx";
 import { Info } from "./tips.jsx";
-import { hargaLabel, biayaNaskahLabel } from "./harga.js";
+import { hargaLabel, biayaNaskahLabel, bagiAdegan } from "./harga.js";
 
 const KUNCI_PROFIL = "profil_influencer_id";
 const TTS_KEY = "fal-ai/minimax/speech-02-hd";
 const PILIHAN_DETIK = [10, 15, 20, 30];
-
-// Total detik → daftar durasi per adegan, 5 detik tiap adegan (nilai yang
-// diterima semua model multi-shot di katalog). fitShotDurations() menerima
-// daftar ini, bukan totalnya, lalu memangkasnya ke batas model kalau perlu.
-export function bagiAdegan(detik) {
-  const n = Math.max(1, Math.round(detik / 5));
-  return Array.from({ length: n }, () => 5);
-}
 
 const LANGKAH = [
   { key: "apa", label: "Apa" },

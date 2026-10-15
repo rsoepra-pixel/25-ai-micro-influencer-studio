@@ -2,7 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import {
   setHarga, setTampilan, tampilanAktif, hargaLabel, hargaLabelLain,
-  bulatkanRupiah, biayaNaskahLabel, biayaNaskahUsd,
+  bulatkanRupiah, biayaNaskahLabel, biayaNaskahUsd, bagiAdegan,
 } from "./harga.js";
 
 test("tanpa kurs selalu dolar, apa pun pilihannya", () => {
@@ -49,9 +49,9 @@ test("biaya naskah dari tarif token: ≈ Rp 40 pada tarif qwen-plus", () => {
   assert.equal(biayaNaskahLabel(), "");
 });
 
-test("bagiAdegan: total detik jadi adegan 5 detik", async () => {
-  // Diimpor dinamis supaya berkas uji ini tetap jalan tanpa DOM untuk tes lain.
-  const { bagiAdegan } = await import("./buat-video.jsx").catch(() => ({ bagiAdegan: null }));
-  if (!bagiAdegan) return; // JSX tidak bisa dimuat Node tanpa transpiler; dilewati, bukan gagal
+test("bagiAdegan: total detik jadi adegan 5 detik, minimal satu adegan", () => {
   assert.deepEqual(bagiAdegan(15), [5, 5, 5]);
+  assert.deepEqual(bagiAdegan(30), [5, 5, 5, 5, 5, 5]);
+  assert.deepEqual(bagiAdegan(3), [5]);
+  assert.deepEqual(bagiAdegan(0), [5]);
 });
