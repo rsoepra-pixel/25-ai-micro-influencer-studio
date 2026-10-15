@@ -292,6 +292,8 @@ instruksi Project (`docs/SKILL-VIDEO-GAYA.md` §3).
 | Berkas | Perubahan |
 |---|---|
 | `views.jsx` → `StartHere` (baris 253) | Satu baris kecil di bawah daftar langkah — "Lebih suka lewat chat? Hubungkan Claude" — bukan langkah sejajar. Daftar langkah pengguna awam tidak bercabang. |
+| **Halaman "Cara mulai lewat Claude"** (`#/mulai-claude`, **sudah dikerjakan di branch ini**) | Padanan halaman Cara mulai untuk jalur chat, ditulis untuk orang awam yang didampingi sekali: syarat akun Claude yang mendukung connector, empat langkah penyambungan (password untuk pengguna Google, salin alamat, tambah di claude.ai, nyalakan di chat), alamat connector dengan tombol salin, tiga **kalimat pertama yang bisa disalin** (cek sambungan, video pertama dengan harga dulu, riset referensi), dan "kalau tidak jalan" dari kartu MCP. Jujur soal batas hari ini: foto acuan dan klon suara tetap di aplikasi sampai 2.1 dan 0.1a. Ditautkan dari Cara mulai dan dari kartu MCP di Pengaturan; diterbitkan juga sebagai halaman web terpisah untuk dibagikan. |
+| **Skill `mulai`** (menunggu 2.1 `attach_identity_kit`, utuh setelah 0.1a) | Padanan Profil saya di chat: satu prompt di `prompts/list` yang menanyakan tiga hal yang sama satu per satu — nama dan bahasa, foto (lewat `create_upload_url` → `attach_identity_kit`), suara (`clone_voice`) — lalu menutup dengan "sekarang kamu bisa bilang: buatkan video…". Tanpa tool 2.1, skill ini berhenti di tengah dan menyuruh membuka aplikasi; karena itu urutannya **setelah** 2.1, bukan sebelum. |
 | `McpSettings` | Tombol salin URL connector + langkah bergambar; pengguna Google diarahkan memasang password dulu (sudah ada, dipertegas). |
 
 ### 2.4 Skill baru
@@ -306,6 +308,7 @@ MCP yang dibundel bersama fungsi seperti pipeline, dan berubah lewat PR.
 | `ugc-endorse` | Cermin wizard Video UGC: produk + wajah + suara + naskah, audio didengar dulu, gambar kunci dilihat dulu. Lewat `plan_clips` bisa lebih dari 30 detik: beberapa klip avatar + `assemble`. | video, panjang bebas, orang asli, suara sendiri |
 | `storyboard-anime` | Jalur maskot (pipeline §7) untuk tokoh dari gambar; style pack animasi (bukan Vox). Intake menolak/memperingatkan tokoh berhak cipta sesuai 0.4. | remaja, tokoh pilihan |
 | `riset-viral` | `list_research` → riset web ≤ 3 pencarian → `save_research` dengan sumber → `get_post_metrics` akun sendiri (urut `follows`) → tiga sudut konten. Tidak memproduksi apa pun. | referensi viral |
+| `mulai` | Pemandu pertama kali lewat chat (lihat 2.3): nama, bahasa, foto, suara, lalu kalimat berikutnya. Alur kerja, bukan gaya — dibundel bersama fungsi. | pengguna yang didampingi sekali |
 
 Menambah gaya visual berikutnya (claymation, whiteboard, kinetic typography,
 pixel): isi formulir "Gaya video" di Pustaka Prompt atau panggil

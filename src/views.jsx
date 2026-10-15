@@ -4049,7 +4049,11 @@ function McpSettings({ ws, tick }) {
 
       {/* ---- Jalur 1: claude.ai ---- */}
       <div className="card p4 mb4" style={{ background: "var(--brand-soft)", borderColor: "var(--brand-soft)" }}>
-        <div className="bold small mb1">claude.ai — pasang sebagai connector</div>
+        <div className="row mb1" style={{ justifyContent: "space-between", gap: 8 }}>
+          <div className="bold small">claude.ai — pasang sebagai connector</div>
+          <a href="#/mulai-claude" className="tiny" style={{ color: "var(--brand-strong)", fontWeight: 700 }}
+            data-tip="Versi untuk pengguna awam: empat langkah bergambar dan kalimat pertama yang bisa disalin.">❓ Panduan 1 halaman</a>
+        </div>
         <p className="tiny muted mb3">
           Di claude.ai: <span className="bold">Settings → Connectors → Add custom connector</span>, tempel URL di bawah,
           lalu klik Connect. Kamu akan diminta login pakai email &amp; password akun studio ini — tanpa token, tanpa terminal.

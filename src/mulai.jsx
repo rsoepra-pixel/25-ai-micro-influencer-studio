@@ -123,13 +123,122 @@ export function Mulai() {
             ["ⓘ di setiap isian", "Ketuk ikonnya: ia menjelaskan isian itu apa, dan apa yang terjadi kalau ditekan."],
             ["Menu ringkas dulu", "Enam menu di kiri sudah cukup untuk video pertama. 'Semua menu' di bawahnya membuka pengaturan lengkap."],
             ["Tidak ada yang otomatis bayar", "Semua yang berbayar menyebut harganya di tombolnya, dan tidak jalan sebelum kamu menekannya."],
-            ["Lebih suka ngobrol?", "Pengaturan → Koneksi → Claude: kamu bisa memerintah lewat chat, dengan konfirmasi harga sebelum apa pun dibuat."],
+            ["Lebih suka ngobrol?", "Kamu bisa memerintah lewat chat Claude, dengan konfirmasi harga sebelum apa pun dibuat.", "#/mulai-claude", "Cara mulai lewat Claude →"],
+          ].map(([j, k, href, cta]) => (
+            <div key={j}><div className="small bold">{j}</div><div className="tiny muted">{k}</div>
+              {href && <a href={href} className="tiny" style={{ color: "var(--brand-strong)", fontWeight: 700 }} data-tip="Satu halaman: empat langkah penyambungan dan kalimat pertama yang bisa disalin.">{cta}</a>}</div>
+          ))}
+        </div>
+      </div>
+      <p className="tiny muted mt3 cetak-saja" style={{ display: "none" }}>25 AI Micro Influencer Studio · Cara mulai</p>
+    </div>
+  );
+}
+
+// ---------- Cara mulai lewat Claude ----------
+//
+// Jalur chat punya awal yang lebih teknis daripada aplikasi (password,
+// alamat connector, menyalakan connector di chat), dan sampai kini tidak ada
+// satu tempat pun yang menuliskannya untuk orang awam — kartu MCP di
+// Pengaturan ditulis untuk yang sudah tahu apa itu connector. Halaman ini
+// jujur soal batasnya hari ini: lewat chat, foto acuan wajah dan klon suara
+// BELUM bisa (lihat rencana fase 2.1 dan keputusan 0.1a), jadi langkah itu
+// tetap di aplikasi.
+const URL_CONNECTOR = "https://25-ai-microinfluencer.netlify.app/mcp";
+
+const KALIMAT = [
+  { judul: "Mengecek sambungan", teks: "Influencer apa saja yang aktif di workspace saya?",
+    tip: "Kalau Claude menyebut nama dari workspace-mu, sambungannya jalan. Kalau ia menjawab tanpa data, connector belum dinyalakan di chat itu." },
+  { judul: "Video pertama", teks: "Buatkan video 15 detik saya bicara tentang keripik singkong, bahasa Indonesia. Sebutkan harganya dalam rupiah dulu dan tunggu persetujuan saya.",
+    tip: "Claude menulis naskah, menyebut biaya, lalu berhenti sampai kamu bilang ya. Audio dibuat dulu untuk didengar, baru video." },
+  { judul: "Cari referensi", teks: "Cari video tentang keripik yang sedang ramai di TikTok, simpan temuannya lengkap dengan sumbernya, lalu usulkan tiga ide untuk saya.",
+    tip: "Hanya lewat chat ini riset tren bisa dilakukan. Claude meriset web sendiri dan menyimpan catatannya dengan tautan sumber." },
+];
+
+function TombolSalin({ teks }) {
+  const [ok, setOk] = React.useState(false);
+  async function salin() {
+    try { await navigator.clipboard.writeText(teks); setOk(true); setTimeout(() => setOk(false), 1500); }
+    catch { window.getSelection?.().selectAllChildren?.(document.getElementById(`k-${teks.length}`)); }
+  }
+  return <button type="button" className="btn btn2 tiny" onClick={salin} data-tip="Salin kalimat ini, lalu tempel di chat Claude.">{ok ? "✓ Tersalin" : "📋 Salin"}</button>;
+}
+
+export function MulaiClaude() {
+  const langkah = [
+    ["Pasang password (hanya kalau biasa masuk dengan Google)", "Pengaturan → Akun → Ganti password saya. Halaman login connector hanya menerima email dan password.",
+      "Akun yang lahir lewat Google tidak punya password. Tanpa ini kamu akan tertahan di halaman login connector."],
+    ["Salin alamat connector", "Pengaturan → Koneksi → kartu Claude → tombol Salin. Alamatnya ada juga di bawah ini.",
+      "Alamat ini yang memberi tahu Claude di mana workspace-mu. Sama untuk semua pelanggan; yang membedakan adalah login-mu."],
+    ["Tambahkan di claude.ai", "Settings → Connectors → Add custom connector → tempel alamat → Connect → masuk dengan email dan password Studio.",
+      "Dilakukan sekali. Connector tersimpan di akun claude.ai-mu, jadi ikut muncul di aplikasi HP dan desktop."],
+    ["Nyalakan di chat", "Di chat baru: menu + → Connectors → nyalakan AI Micro Influencer Studio.",
+      "Langkah yang paling sering terlewat. Connector yang terpasang tetap diam sampai dinyalakan di chat itu."],
+  ];
+  return (
+    <div style={{ maxWidth: 860 }} className="mulai">
+      <div className="row mb1" style={{ justifyContent: "space-between", alignItems: "flex-end", flexWrap: "wrap", gap: 8 }}>
+        <div>
+          <h1 style={{ fontSize: 26, fontWeight: 800 }}>Cara mulai lewat Claude</h1>
+          <p className="muted small mt1">Kalau kamu lebih nyaman mengetik seperti di WhatsApp. Penyambungan dilakukan sekali, sekitar 10 menit — minta bantuan kalau perlu. Sesudah itu kamu mengobrol sendiri.</p>
+        </div>
+        <div className="row" style={{ gap: 6 }}>
+          <a className="btn btn2 tiny" href="#/mulai" data-tip="Versi aplikasi: tiga langkah tanpa connector.">← Lewat aplikasi</a>
+          <button type="button" className="btn btn2 tiny" onClick={() => window.print()} data-tip="Cetak atau simpan sebagai PDF, satu halaman.">🖨 Cetak</button>
+        </div>
+      </div>
+
+      <div className="card p4 mb4 mt3" style={{ background: "var(--warn-soft)", borderColor: "var(--warn-line)" }}>
+        <div className="small bold">Syarat: akun Claude yang mendukung connector<Info tip="Fitur 'Add custom connector' di claude.ai ada di paket berbayar tertentu; di paket Team/Enterprise, pemilik organisasi yang menambahkannya. Cek di claude.ai → Settings → Connectors apakah tombolnya ada." /></div>
+        <div className="tiny muted mt1">Dan foto wajah serta suaramu <b>tetap diisi di aplikasi</b> (Profil saya) — lewat chat belum bisa, menyusul.</div>
+      </div>
+
+      <div className="card p4 mb4">
+        <div className="bold mb2">Sambungkan sekali<Info tip="Empat langkah ini dilakukan satu kali. Kalau ada yang mendampingi (anak, tim, operator), ini bagian yang perlu mereka bantu." /></div>
+        <ol style={{ margin: 0, padding: 0, listStyle: "none", display: "grid", gap: 10 }}>
+          {langkah.map(([j, k, tip], i) => (
+            <li key={j} className="row" style={{ gap: 12, alignItems: "flex-start" }} data-tip={tip}>
+              <span style={{ width: 30, height: 30, borderRadius: 99, background: "var(--brand)", color: "#fff", display: "inline-flex", alignItems: "center", justifyContent: "center", fontWeight: 800, flexShrink: 0 }}>{i + 1}</span>
+              <div><div className="small bold">{j}</div><div className="tiny muted">{k}</div></div>
+            </li>
+          ))}
+        </ol>
+        <div className="row mt3" style={{ gap: 8, alignItems: "center", flexWrap: "wrap" }}>
+          <code className="tiny" style={{ background: "var(--subtle)", padding: "6px 10px", borderRadius: 8, wordBreak: "break-all" }}>{URL_CONNECTOR}</code>
+          <TombolSalin teks={URL_CONNECTOR} />
+        </div>
+      </div>
+
+      <div className="card p4 mb4">
+        <div className="bold mb1">Kalimat pertama yang bisa kamu salin<Info tip="Tiga contoh, dari yang paling aman. Ketik dengan bahasamu sendiri juga boleh; Claude mengerti bahasa Indonesia sehari-hari." /></div>
+        <p className="tiny muted mb3">Claude diminta selalu menyebut harga dan menunggu "ya" sebelum membuat apa pun yang berbayar.</p>
+        <div style={{ display: "grid", gap: 10 }}>
+          {KALIMAT.map((k) => (
+            <div key={k.judul} className="card p3" style={{ background: "var(--subtle)" }} data-tip={k.tip}>
+              <div className="tiny bold muted mb1">{k.judul}</div>
+              <div className="row" style={{ gap: 8, alignItems: "flex-start" }}>
+                <div className="small" id={`k-${k.teks.length}`} style={{ flex: 1 }}>“{k.teks}”</div>
+                <TombolSalin teks={k.teks} />
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      <div className="card p4" style={{ background: "var(--subtle)" }}>
+        <div className="bold mb2">Kalau tidak jalan</div>
+        <div className="grid" style={{ gridTemplateColumns: "repeat(auto-fit,minmax(200px,1fr))", gap: 10 }}>
+          {[
+            ["Claude menjawab tanpa data studio", "Connector belum dinyalakan di chat itu: menu + → Connectors."],
+            ["Diminta login terus", "Cabut koneksi di Pengaturan → Koneksi → Aplikasi terhubung, lalu Connect lagi di claude.ai."],
+            ["Datanya bukan workspace saya", "Saat login di halaman persetujuan, pakai email akun Studio yang memiliki workspace ini."],
+            ["Generate ditolak", "Saldo atau batas belanja bulanan — aturannya sama dengan dari aplikasi. Cek di Pengaturan → Akun."],
           ].map(([j, k]) => (
             <div key={j}><div className="small bold">{j}</div><div className="tiny muted">{k}</div></div>
           ))}
         </div>
       </div>
-      <p className="tiny muted mt3 cetak-saja" style={{ display: "none" }}>25 AI Micro Influencer Studio · Cara mulai</p>
+      <p className="tiny muted mt3 cetak-saja" style={{ display: "none" }}>25 AI Micro Influencer Studio · Cara mulai lewat Claude</p>
     </div>
   );
 }

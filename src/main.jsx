@@ -11,7 +11,7 @@ import { Products } from "./products.jsx";
 import { Ugc } from "./ugc.jsx";
 import { Profil } from "./profil.jsx";
 import { BuatVideo } from "./buat-video.jsx";
-import { Mulai } from "./mulai.jsx";
+import { Mulai, MulaiClaude } from "./mulai.jsx";
 import { TipLayer, Info } from "./tips.jsx";
 
 // Token undangan dibaca SEKALI saat modul dimuat, sebelum apa pun sempat
@@ -555,6 +555,7 @@ function App() {
   else if (routePath === "/storyboard") view = <Storyboard {...props} query={routeQuery} />;
   else if (routePath === "/buat-video") view = <BuatVideo {...props} />;
   else if (routePath === "/mulai") view = <Mulai />;
+  else if (routePath === "/mulai-claude") view = <MulaiClaude />;
   else if (routePath === "/ugc") view = <Ugc {...props} query={routeQuery} />;
   else if (routePath === "/products") view = <Products {...props} />;
   else if (routePath === "/profil") view = <Profil {...props} />;

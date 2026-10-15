@@ -158,6 +158,18 @@ masing-masing, dihitung dari katalog hari itu. Satu-satunya pengecualian:
 biaya penulis AI disebut di tooltip batang "menulis naskah", karena dihitung
 langsung dari tarif yang berlaku.
 
+### Cara mulai lewat Claude
+
+Padanan halaman di atas untuk yang lebih nyaman mengetik seperti di
+WhatsApp: `#/mulai-claude`, ditautkan dari "Kalau bingung → Lebih suka
+ngobrol?" dan dari kartu Claude (MCP) di Pengaturan → Koneksi ("❓ Panduan
+1 halaman"). Isinya: syarat akun Claude yang mendukung connector, empat
+langkah penyambungan sekali jalan (password untuk pengguna Google, salin
+alamat connector, tambah di claude.ai, nyalakan di chat), alamat connector
+dengan tombol salin, tiga kalimat pertama yang bisa disalin, dan "kalau tidak
+jalan". **Jujur soal batas hari ini:** foto acuan wajah dan klon suara belum
+bisa lewat chat, jadi tetap diisi di Profil saya.
+
 ---
 
 ## 🎬 Buat Video
