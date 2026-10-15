@@ -15,6 +15,8 @@ benar.
 > takut pada harga dalam dolar, dan tertahan oleh batas 30 detik yang memaksa
 > mengedit sendiri di CapCut. Dari sepuluh tujuan pemilik, empat sudah jalan,
 > tiga hanya lewat Claude, tiga belum ada (brand kit, panjang bebas, Mandarin).
+> Menambah gaya video baru hari ini butuh berkas di repo dan deploy; Fase 1.7
+> menjadikannya data yang diisi pemilik.
 
 ---
 
@@ -39,7 +41,8 @@ benar.
 4. **Urutan fase = urutan manfaat.** Tiap fase berguna sendiri walau fase
    berikutnya tidak pernah dibangun.
 5. **Deploy lewat Actions, migrasi manual**, nomor migrasi dicek di `main`
-   terbaru sesaat sebelum merge (nomor bebas terakhir saat ini: `0056`).
+   terbaru sesaat sebelum merge (nomor bebas terakhir saat ini: `0056`;
+   rencana ini memakai `0056`–`0060`).
 
 ---
 
@@ -55,6 +58,7 @@ dibiarkan menggantung.
 | 0.3 | **Batas durasi total satu video rakitan** (bukan per job). 30 detik per job tetap; yang baru adalah berapa klip boleh dirakit sekali jalan. Diusulkan NULL = mengikuti saldo saja. | 1.1, 1.6 |
 | 0.4 | **Tokoh berhak cipta** (contoh dari pemilik: Chinmi / Kungfu Boy). Jalur "maskot dari gambar" di pipeline §7 secara teknis bisa, tapi provider boleh menolak kemiripan tokoh berlisensi dan pemakaiannya komersial. Perlu keputusan: ditolak di intake, atau dibiarkan dengan peringatan. | 2.5, 3.2 |
 | 0.5 | **Suara Mandarin.** MiniMax punya preset Mandarin, tapi id-nya **belum diverifikasi** dari repo ini; daftar `VOICE_SUGGESTIONS` di `src/views.jsx` baris 1017 hanya memuat `Indonesian_*` dan preset Inggris. Cocokkan dengan dokumentasi System Voice ID MiniMax sebelum diisi. | 1.3 |
+| 0.6 | **Siapa boleh membuat gaya video baru:** hanya operator, atau pelanggan juga. Blok gaya masuk ke setiap prompt berbayar (penulis AI dan model gambar/video), jadi gaya buatan pelanggan perlu batas panjang supaya tidak membengkakkan token dan tidak menyelundupkan instruksi yang merusak prompt. Usulan awal: operator saja, pelanggan menyusul kalau ada permintaan. | 1.7 |
 
 ---
 
@@ -133,6 +137,35 @@ siapa pun.
 | `.claude/skills/_shared/pipeline-video-studio.md` §5–6 | Diringkas menjadi "panggil `plan_clips`, tinjau, lalu lanjut" — aturan angkanya tidak lagi disalin di markdown. Style pack per skill tetap di skill. |
 | `mcp/index.ts` → `TOOLS` | Tool `plan_clips` yang memanggil `write` kind `clips`. |
 
+### 1.7 Gaya video sebagai data — menambah "skill" tanpa deploy
+
+Yang membuat tujuan "terus menambah skill video seperti Vox" jadi milik
+pemilik, bukan pengembang. Dasarnya kesimpulan `docs/SKILL-VIDEO-GAYA.md` §2:
+dari skill Vox asli, hanya **dua lapisan** yang benar-benar gaya — blok gaya
+dan tabel emosi → visual. Sisanya mesin dan proses, yang di Fase 1.6 sudah
+jadi aksi server. Dua lapisan itu muat dalam satu baris tabel.
+
+| Berkas | Perubahan |
+|---|---|
+| `supabase/migrations/0059_video_styles.sql` | Tabel `video_styles`: `slug`, `name`, `description` (satu kalimat + kata pemicu, dipakai sebagai deskripsi prompt MCP), `style_block text` (paragraf Inggris yang diulang di awal setiap prompt keyframe dan video), `presenter jsonb` (aturan faceless / maskot / influencer-komposit, tiga teks), `emotions jsonb` (daftar `{feeling, visual}`), `register text` (NULL = ikut default pipeline), `defaults jsonb` (presenter, kontinuitas, kedalaman prompt, rasio, panjang klip), `max_block_chars int` (pagar untuk 0.6), `workspace_id uuid` (NULL = gaya platform, terlihat semua workspace), `created_by`, `is_active`. RLS: gaya platform hanya ditulis `is_platform_admin()`; gaya workspace oleh anggotanya, kalau 0.6 mengizinkan. Baris pertama: `vox-explainer`, disalin dari lima bagian `.claude/skills/vox-explainer/SKILL.md`. |
+| `generate/index.ts` → `write` kind `clips` (1.6) | Menerima `style_id`. Blok gaya disuntikkan ke `keyframe_prompt` dan `video_prompt` tiap klip; tabel emosi dan register masuk ke prompt sistem penulis. Satu tempat untuk kedua pintu. Karena lewat `chat()`, biaya token blok gaya ikut tercatat di `text_usage` — alasan `max_block_chars` ada. |
+| `generate/index.ts` → `submit` task `image` / `video` | Menerima `style_id` opsional untuk job satuan (Studio, Claude tanpa `plan_clips`): blok gaya ditempel di depan prompt, dicatat di `audit`. Job yang membawa `style_id` **tidak** disuntik identity prompt kecuali `presenter` gaya itu menyebut komposit influencer — mengikuti pipeline §2 butir 3. |
+| `mcp/index.ts` → `prompts/list`, `prompts/get` | Satu prompt per baris `video_styles` aktif, **dibangkitkan dari tabel**, bukan dari berkas yang dibundel. Isinya: style pack dari baris itu + rujukan ke pipeline bersama (disajikan lewat `resources/list`). Tool baru `list_video_styles`; `generate_media` dan `plan_clips` menerima `style_id`. Fase 2.2 berubah: skrip sinkron berjalan **dari tabel ke `.claude/skills/`** untuk Claude Code, bukan sebaliknya. |
+| `src/library.jsx` → Pustaka Prompt | Tab ketiga **"Gaya video"**: formulir lima bagian yang sama dengan `docs/TEMPLATE-SKILL-VIDEO-GAYA.md` (blok gaya, presenter, tabel emosi, register, default), pratinjau prompt keyframe yang akan dihasilkan, dan tombol "Uji satu keyframe" yang mengirim job gambar termurah dengan `style_id` itu — langkah uji yang disarankan `SKILL-VIDEO-GAYA.md` §4. Tab ini terlihat operator; pelanggan sesuai 0.6. |
+| `src/buat-video.jsx` (Fase 3.2, langkah 1) | Pilihan gaya dibaca dari `video_styles`, bukan daftar tetap. Wizard web dan Claude melihat daftar yang sama. |
+| `docs/SKILL-VIDEO-GAYA.md` §3–4, `docs/TEMPLATE-SKILL-VIDEO-GAYA.md` | Diperbarui: cara menambah gaya = isi formulir atau `save_video_style`, bukan salin berkas. Berkas di `.claude/skills/` jadi turunan. |
+
+**Yang sengaja tidak jadi data:** proses, gerbang, urutan audio → keyframe →
+klip, pemanggilan tool, dan aturan uang. Itu tetap di `_shared/` dan di
+aksi server 1.6. Kalau katalog berubah (model dengan audio native, tool
+ekstrak frame), yang diubah mesinnya, bukan tiap gaya — prinsip yang sama
+dengan `SKILL-VIDEO-GAYA.md` §4 butir 5.
+
+**Uji:** tambah gaya "whiteboard" lewat formulir tanpa deploy → muncul di
+`prompts/list` claude.ai dan di pilihan wizard → satu keyframe FLUX schnell
+terlihat seperti whiteboard → `plan_clips` dengan `style_id` itu menghasilkan
+prompt yang semuanya diawali blok gaya.
+
 ---
 
 ## Fase 2 — Pintu B: Claude lewat MCP
@@ -154,6 +187,7 @@ Semua hanya pembungkus primitif Fase 1 — tidak ada logika uang di sini.
 | `clone_voice` | `generate` → `clone_voice_tts` / `clone_voice` | 1.4 (tergantung 0.1) |
 | `attach_identity_kit` | `generate` → `attach_refs` (baris 1922), supaya "ini foto saya" dari chat langsung jadi Identity Kit tanpa membuka aplikasi | — |
 | `list_voice_presets` | tabel `voice_presets` | 1.3 |
+| `list_video_styles`, `save_video_style` | tabel `video_styles`; `save` mengikuti RLS 0.6 | 1.7 |
 
 ### 2.2 Skill disajikan dari server, bukan ditempel
 
@@ -163,9 +197,9 @@ instruksi Project (`docs/SKILL-VIDEO-GAYA.md` §3).
 
 | Berkas | Perubahan |
 |---|---|
-| `supabase/functions/mcp/skills/*.md` | Salinan skill yang dibundel bersama fungsi (Deno bisa membaca berkas di sampingnya saat deploy). Sumber kebenaran tetap `.claude/skills/`; `scripts/sync-skills.mjs` menyalinnya saat build dan CI menolak kalau berbeda. |
-| `mcp/index.ts` → `prompts/list`, `prompts/get` | Satu prompt per skill (`vox-explainer`, dan yang baru di 2.4). `resources/list` menyajikan pipeline bersama. Klien MCP yang mendukung prompts (claude.ai, Claude Code) menampilkannya sebagai pilihan, tanpa tempel-menempel. |
-| `views.jsx` → `McpSettings` (baris 3983) | Bagian "Sesudah terhubung" menyebut skill yang tersedia dan kalimat pemicunya. |
+| `mcp/index.ts` → `prompts/list`, `prompts/get` | Satu prompt per baris `video_styles` aktif (1.7), dibangkitkan dari tabel. `resources/list` menyajikan pipeline bersama (`_shared/pipeline-video-studio.md`, dibundel bersama fungsi karena ia mesin, bukan gaya, dan berubah lewat PR). Klien MCP yang mendukung prompts (claude.ai, Claude Code) menampilkannya sebagai pilihan, tanpa tempel-menempel. |
+| `scripts/sync-skills.mjs` | Menulis `.claude/skills/<slug>/SKILL.md` **dari tabel** supaya Claude Code di repo tetap punya skill yang sama. Arahnya satu: tabel → berkas. CI tidak perlu menolak apa pun; berkas hanya turunan. |
+| `views.jsx` → `McpSettings` (baris 3983) | Bagian "Sesudah terhubung" menyebut gaya yang tersedia dan kalimat pemicunya, dibaca dari tabel yang sama. |
 
 ### 2.3 Pintu masuk yang hanya butuh satu kali bantuan
 
@@ -174,7 +208,12 @@ instruksi Project (`docs/SKILL-VIDEO-GAYA.md` §3).
 | `views.jsx` → `StartHere` (baris 253) | Langkah "Hubungkan Claude" ditambahkan sebagai alternatif sejajar dengan "Buat video pertama", dengan satu tautan yang membuka kartu MCP. |
 | `McpSettings` | Tombol salin URL connector + langkah bergambar; pengguna Google diarahkan memasang password dulu (sudah ada, dipertegas). |
 
-### 2.4 Skill gaya baru (menyalin `docs/TEMPLATE-SKILL-VIDEO-GAYA.md`)
+### 2.4 Skill baru
+
+Dua jenis. **Gaya visual** (`storyboard-anime`) adalah baris `video_styles`
+(1.7): diisi lewat formulir, tanpa deploy. **Alur kerja** (`ugc-endorse`,
+`riset-viral`) bukan gaya — isinya urutan tool dan gerbang, jadi tetap prompt
+MCP yang dibundel bersama fungsi seperti pipeline, dan berubah lewat PR.
 
 | Skill | Isi | Tujuan pemilik yang dilayani |
 |---|---|---|
@@ -182,8 +221,11 @@ instruksi Project (`docs/SKILL-VIDEO-GAYA.md` §3).
 | `storyboard-anime` | Jalur maskot (pipeline §7) untuk tokoh dari gambar; style pack animasi (bukan Vox). Intake menolak/memperingatkan tokoh berhak cipta sesuai 0.4. | remaja, tokoh pilihan |
 | `riset-viral` | `list_research` → riset web ≤ 3 pencarian → `save_research` dengan sumber → `get_post_metrics` akun sendiri (urut `follows`) → tiga sudut konten. Tidak memproduksi apa pun. | referensi viral |
 
-Menambah gaya berikutnya tetap seperti sekarang: salin template, isi lima
-bagian, sinkron ke bundel MCP.
+Menambah gaya visual berikutnya (claymation, whiteboard, kinetic typography,
+pixel): isi formulir "Gaya video" di Pustaka Prompt atau panggil
+`save_video_style` dari chat, uji satu keyframe, aktifkan. Tidak ada deploy.
+Menambah **alur kerja** baru tetap lewat PR, karena ia menyentuh urutan tool
+dan uang.
 
 ---
 
@@ -208,7 +250,7 @@ Menggantikan enam langkah `StartHere` bagi pelanggan baru dengan satu halaman:
 
 | Langkah | Isi | Memanggil |
 |---|---|---|
-| 1. Apa | Topik atau naskah; pilih "saya bicara" (UGC) / "cerita beberapa adegan" (Storyboard) / gaya animasi (skill yang tersedia) | — |
+| 1. Apa | Topik atau naskah; pilih "saya bicara" (UGC) / "cerita beberapa adegan" (Storyboard) / gaya animasi | `video_styles` (1.7), daftar yang sama dengan Claude |
 | 2. Siapa & suara | Profil saya (default) atau influencer lain; suara otomatis dari bahasa | `influencers`, `voice_presets` |
 | 3. Panjang | Detik bebas. Wizard menampilkan "akan dibuat N klip + dirakit", bukan menolak. | `write` kind `clips` (1.6) |
 | 4. Harga | Rincian per klip **dalam rupiah**, saldo sesudahnya, satu tombol "Ya, buat" | `estimateFor`, `idr()` (1.5) |
@@ -233,7 +275,7 @@ Kedua pintu "menampilkan harga sebelum bayar", tapi tidak ada yang menegakkan.
 Usulan: trigger di `production_jobs` yang menolak job berbayar tanpa
 `audit.quoted_idr` (harga yang benar-benar ditampilkan ke orangnya) ketika
 `origin` ∈ `browser`/`mcp`. Cron `poll` tidak terkena. Angka tidak diperiksa
-benar-salahnya — yang dijaga hanya "pernah ditampilkan". Migrasi `0059`,
+benar-salahnya — yang dijaga hanya "pernah ditampilkan". Migrasi `0060`,
 dan **tanya pemilik dulu**, karena ini menolak job dari klien MCP lama yang
 belum mengirim kolom itu.
 
@@ -250,8 +292,9 @@ belum mengirim kolom itu.
 | 1.2 brand kit | — | M | merek masuk prompt di semua jalur |
 | 1.3 suara per bahasa | 0.5 | S | Mandarin + pilihan suara yang tidak perlu dihafal |
 | 1.4 klon via MCP | 0.1 | S | setup suara dari chat |
+| 1.7 gaya sebagai data | 0.6, 1.6 | M | tambah gaya video tanpa deploy, dilihat kedua pintu |
 | 2.1–2.3 Pintu B | 1.x | S–M | alur chat utuh untuk persona |
-| 2.4 skill baru | 2.2 | S per skill | remaja, riset viral |
+| 2.4 skill baru | 2.2, 1.7 | S per skill (gaya visual: tanpa kode) | remaja, riset viral |
 | 3.1–3.3 Pintu A | 1.x | L | pelanggan awam bisa sendiri di web |
 | 3.4 gerbang DB | 3.2 | S | konsistensi kedua pintu |
 
@@ -272,6 +315,9 @@ S/M/L adalah ukuran relatif terhadap satu sama lain, bukan perkiraan jam.
   satu TTS Mandarin terdengar Mandarin.
 - **1.6:** naskah 120 detik → rencana klip yang semua `seconds`-nya ada di
   `duration_values` model dan total mendekati 120.
+- **1.7:** gaya baru lewat formulir, tanpa deploy, muncul di `prompts/list`
+  dan di wizard; `text_usage` menunjukkan kenaikan token sebesar blok gaya,
+  tidak lebih; gaya buatan workspace lain tidak terlihat.
 - **2.x:** dari claude.ai tanpa menempel apa pun: `prompts/list` menampilkan
   skill; alur `ugc-endorse` berjalan sampai `assemble` dengan konfirmasi biaya
   dalam rupiah.
@@ -293,6 +339,10 @@ keyframe FLUX schnell (≈ $0,003) dan klip 5 detik termurah.
   kit menambahnya. Tetap hanya bisa dipasang lewat Actions (CLAUDE.md jebakan
   #2). Pertimbangkan memecah `write` ke fungsi sendiri saat 1.6 dikerjakan —
   keputusan terpisah, bukan syarat.
+- **Gaya buatan pelanggan** (kalau 0.6 mengizinkan) adalah teks yang masuk
+  ke prompt berbayar. `max_block_chars` membatasi panjangnya, tetapi tidak
+  menilai isinya; kualitas hasil dan kepatuhan prompt pada aturan provider
+  jadi tanggung jawab pembuat gaya, dan itu perlu ditulis di formulirnya.
 - **Skill di claude.ai lewat `prompts/list`** bergantung pada dukungan klien
   terhadap MCP prompts; perilakunya di claude.ai per Okt 2026 perlu dicoba
   sekali sebelum 2.2 dianggap selesai.
