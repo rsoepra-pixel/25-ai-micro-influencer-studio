@@ -104,7 +104,17 @@ export function BuatVideo({ ws, refresh, tick }) {
   const penghalang = [];
   if (!inf) penghalang.push({ text: "Belum ada profil. Isi foto dan suaramu dulu.", href: "#/profil", cta: "Profil saya" });
   else {
-    if ((refCount || 0) < 1) penghalang.push({ text: `${inf.name} belum punya foto wajah.`, href: "#/profil", cta: "Tambah foto" });
+    // Angka yang sama dengan yang ditegakkan server: UGC minimal 1 foto,
+    // video multi-shot minimal 2 (generate/index.ts, submit_multishot) — kalau
+    // wizard meloloskan 1, orang membayar naskah lalu dihadang di halaman
+    // berikutnya.
+    const minFoto = jenis === "storyboard" ? 2 : 1;
+    if ((refCount || 0) < minFoto) penghalang.push({
+      text: jenis === "storyboard"
+        ? `${inf.name} punya ${refCount || 0} foto wajah; video cerita butuh minimal 2 (depan dan samping) supaya wajahnya terkunci.`
+        : `${inf.name} belum punya foto wajah.`,
+      href: "#/profil", cta: "Tambah foto",
+    });
     if (jenis === "ugc" && !md.ttsModel) penghalang.push({ text: `${inf.name} belum punya suara.`, href: "#/profil", cta: "Rekam suara" });
   }
   if (jenis === "ugc" && !productId) penghalang.push({ text: "Pilih produk yang dibicarakan, atau simpan produk baru." });
@@ -230,7 +240,9 @@ export function BuatVideo({ ws, refresh, tick }) {
                     {influencers.map((i) => <option key={i.id} value={i.id}>{i.name}</option>)}
                   </select>
                 : <div className="bold">{inf?.name}</div>}
-              <span data-tip="Minimal satu foto wajah tersimpan — tanpa itu wajah di video berganti-ganti. Tambah di Profil saya."><Badge tone={(refCount || 0) > 0 ? "green" : "amber"}>{(refCount || 0) > 0 ? "✓ wajah" : "wajah belum"}</Badge></span>
+              <span data-tip={jenis === "storyboard" ? "Video cerita butuh minimal 2 foto wajah (depan dan samping) supaya wajahnya terkunci di semua adegan." : "Minimal satu foto wajah tersimpan — tanpa itu wajah di video berganti-ganti. Tambah di Profil saya."}>
+                <Badge tone={(refCount || 0) >= (jenis === "storyboard" ? 2 : 1) ? "green" : "amber"}>{(refCount || 0) >= (jenis === "storyboard" ? 2 : 1) ? `✓ wajah (${refCount})` : `wajah: ${refCount || 0} foto`}</Badge>
+              </span>
               {jenis === "ugc" && <span data-tip="Suara tiruanmu untuk membaca naskah. Rekam di Profil saya."><Badge tone={md.ttsModel ? "green" : "amber"}>{md.ttsModel ? "✓ suara" : "suara belum"}</Badge></span>}
             </div>
           )}
@@ -317,7 +329,9 @@ export function BuatVideo({ ws, refresh, tick }) {
           {err && <div className="msg-err mb3">{err}</div>}
           <div className="row" style={{ gap: 8, flexWrap: "wrap" }}>
             <button type="button" className="btn" disabled={!!busy} onClick={buat}
-              data-tip="Menyimpan proyek ini dan membuka layar produksi. Di sana gambar pertama dibuat dulu (bagian termurah) dan kamu melihatnya sebelum suara dan video dibayar.">{busy || "Ya, buat video ini"}</button>
+              data-tip={jenis === "ugc"
+                ? "Menyimpan proyek ini dan membuka layar produksi. Di sana gambar pertama dibuat dulu (bagian termurah) dan kamu melihatnya sebelum suara dan video dibayar."
+                : "Menyimpan storyboard ini dan membuka layar produksi. Di sana gambar pembuka dibuat dulu (bagian termurah) dan kamu melihatnya sebelum videonya dibayar."}>{busy || "Ya, buat video ini"}</button>
             <button type="button" className="btn btn2" disabled={!!busy} onClick={susun}
               data-tip={`Minta naskah versi lain dari cerita yang sama. ${TIP_PENULIS_AI}`}>Tulis ulang{biayaNaskahLabel()}</button>
             <button type="button" className="btn btn2" disabled={!!busy} onClick={() => setLangkah("panjang")} data-tip="Ubah durasi. Naskah yang sudah ditulis dibuang.">← Kembali</button>

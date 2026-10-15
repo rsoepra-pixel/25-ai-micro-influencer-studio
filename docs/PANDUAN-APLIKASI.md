@@ -438,8 +438,14 @@ bicara ke kamera (itu Video UGC).
    visual dan sudut kamera (close-up / medium / wide). Ada kolom **kontinuitas**
    terpisah yang ditempelkan ke semua shot saat dikirim, jadi mengubah
    "ganti bajunya jadi jaket denim" cukup sekali, bukan disisir per shot.
-2. **Produksi** — satu persetujuan, dua job: **frame pembuka** dulu, lalu
-   videonya.
+2. **Produksi** — dua tahap, dua tombol (sejak Okt 2026): **gambar pembuka**
+   dulu, ditampilkan besar dengan pertanyaan "wajahnya mirip? latar dan
+   pakaiannya benar?", boleh **Coba lagi** seharga satu gambar — baru **Ya,
+   buat video**. Sebelumnya satu tombol mengerjakan keduanya berurutan, dan
+   video $0,5–2 dibayar tanpa pernah melihat frame yang menentukan wajah,
+   baju, dan latar seluruh videonya. Model yang mengunci wajah langsung dari
+   Identity Kit (Seedance reference-to-video) tidak memakai gambar pembuka
+   dan tetap satu tombol.
 3. **Hasil** — tonton dan bagikan.
 
 **Kenapa cuma dua gambar, bukan satu per shot.** Rancangan pertama membuat satu

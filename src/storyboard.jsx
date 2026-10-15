@@ -1020,10 +1020,43 @@ function StepProduksi({ board, shots, inf, refCount, models, mode, frameReady, p
   // Menunggunya diurus effect pengaman di BoardDetail.
   const videoPending = !board.video_url && !!board.video_job_id;
 
+  // Dua tahap, dua tombol. Dulu satu tombol mengerjakan frame lalu LANGSUNG
+  // video. Frame pembuka menentukan wajah, baju, dan latar seluruh video
+  // (Kling: start_image_url), dan ia bagian termurah; membayar video $0,5–2
+  // tanpa pernah melihat framenya adalah kesalahan termahal yang bisa
+  // dibuat halaman ini. Panduan dan wizard Buat Video sudah menjanjikan
+  // "gambar pertama dilihat dulu" — sekarang kodenya ikut.
+  async function buatFrame({ ulang = false } = {}) {
+    setErr(null);
+    try {
+      const first = shots[0];
+      if (ulang) await patchShot(first.id, { image_url: null, image_job_id: null });
+      setRunning({ stage: "frame", sec: 0 });
+      let jobId = ulang ? null : first.image_job_id;
+      if (!jobId) {
+        const res = await callGenerate({
+          action: "submit", origin: "storyboard", task: "image", model_id: imgModel.id,
+          influencer_id: board.influencer_id, content_item_id: board.content_item_id || null,
+          prompt: shotPrompt(first, board.continuity),
+          label: `${board.title} — frame pembuka`,
+        });
+        jobId = res.job_id;
+        await patchShot(first.id, { image_job_id: jobId });
+      }
+      const url = await waitForJob(jobId, { timeoutMs: 240000, onTick: (_, sec) => setRunning({ stage: "frame", sec }) });
+      await patchShot(first.id, { image_url: url });
+      await load();
+    } catch (e) {
+      setErr(e.message);
+      await load();
+    }
+    setRunning(null);
+  }
+
   async function produce() {
     setErr(null);
     try {
-      // ---- 1. Frame pembuka ----
+      // ---- 1. Frame pembuka (cadangan: kalau sampai di sini tanpa frame) ----
       const first = shots[0];
       if (needFrame && !first.image_url) {
         setRunning({ stage: "frame", sec: 0 });
@@ -1080,11 +1113,11 @@ function StepProduksi({ board, shots, inf, refCount, models, mode, frameReady, p
   return (
     <div>
       <div className="card p4 mb4">
-        <div className="bold mb1">Satu persetujuan, dua job berurutan</div>
+        <div className="bold mb1">{needFrame ? "Dua tahap: lihat gambar pembuka dulu, baru video" : "Satu tahap: video"}</div>
         <p className="tiny muted mb3">
-          Frame pembuka dibuat dulu (Kling mewajibkan sebuah foto sebagai frame pertama), lalu videonya
-          langsung diantre begitu framenya jadi. Kamu tidak perlu kembali ke halaman ini untuk menekan
-          tombol kedua.
+          {needFrame
+            ? "Gambar pembuka dibuat dulu (model video mewajibkannya sebagai frame pertama, dan ia menentukan wajah, baju, dan latar seluruh video). Kamu melihatnya, boleh mengulang yang murah ini, baru videonya dibayar."
+            : "Model ini mengunci wajah langsung dari foto Identity Kit, tanpa gambar pembuka."}
         </p>
 
         <table className="mb3" style={{ width: "100%", borderCollapse: "collapse" }}>
@@ -1145,8 +1178,34 @@ function StepProduksi({ board, shots, inf, refCount, models, mode, frameReady, p
             </div>
             <div className="tiny muted mt1">{stageLabel}. Boleh ditinggal — hasilnya tersimpan di storyboard ini.</div>
           </div>
+        ) : needFrame && !frameReady ? (
+          <button className="btn" disabled={blocked || videoPending} onClick={() => buatFrame()}
+            data-tip="Membuat satu gambar diam untuk adegan pertama — bagian termurah. Kamu melihatnya dulu sebelum video dibayar.">
+            Buat gambar pembuka — {priceLabel(frameCost)}
+          </button>
+        ) : needFrame ? (
+          <div className="card p4" style={{ background: "var(--subtle)" }}>
+            <div className="row" style={{ gap: 14, alignItems: "flex-start", flexWrap: "wrap" }}>
+              <img src={shots[0].image_url} alt="Gambar pembuka" style={{ width: 160, maxWidth: "40%", borderRadius: 10 }} />
+              <div style={{ flex: 1, minWidth: 200 }}>
+                <div className="bold mb1">Wajahnya mirip? Latar dan pakaiannya benar?<Info tip="Yang kamu lihat di sini adalah yang akan ada di seluruh video. Kalau meleset, ulangi gambar ini (murah), bukan videonya (mahal)." /></div>
+                <p className="tiny muted mb2">Ubah latar atau pakaian lewat kotak kontinuitas di langkah Naskah, lalu "Coba lagi".</p>
+                <div className="row" style={{ gap: 8, flexWrap: "wrap" }}>
+                  <button className="btn btn2" disabled={blocked || videoPending} onClick={() => buatFrame({ ulang: true })}
+                    data-tip="Membuat gambar pembuka baru dengan prompt yang sama. Dihitung lagi sebesar harga satu gambar.">
+                    Coba lagi — {priceLabel(Number(imgModel?.est_price_usd) || 0)}
+                  </button>
+                  <button className="btn" disabled={blocked || videoPending} onClick={produce}
+                    data-tip="Mengirim video multi-shot dari gambar ini. Bagian termahal; ditagih per detik yang dihasilkan.">
+                    {board.video_url ? `Ya, buat ulang video — ${priceLabel(videoCost)}` : `Ya, buat video — ${priceLabel(videoCost)}`}
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
         ) : (
-          <button className="btn" disabled={blocked || videoPending} onClick={produce}>
+          <button className="btn" disabled={blocked || videoPending} onClick={produce}
+            data-tip="Model ini tidak memakai gambar pembuka. Video dikirim langsung; ditagih per detik yang dihasilkan.">
             {board.video_url ? `Buat ulang video — ${priceLabel(total)}` : `Buat video — ${priceLabel(total)}`}
           </button>
         )}

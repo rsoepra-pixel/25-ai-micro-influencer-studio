@@ -379,6 +379,49 @@ Storyboard, Video UGC, Influencers, Product Kit, Tasks tetap ada di bawah saklar
 "Mode lanjutan" di Settings → Akun — bukan dihapus, karena pelanggan lama dan
 operator memakainya. Berkas: `src/main.jsx` (daftar menu) dan `views.jsx`.
 
+### 3.5 Storyboard: dari formulir shot ke cerita 4 layar (tinjauan animator, 15 Okt 2026)
+
+Seorang peninjau dengan sudut pandang animator/storyboard artist membaca
+alur Storyboard dari ujung ke ujung. Dua temuannya terbukti di kode dan
+**sudah diperbaiki di branch ini**:
+
+- `produce()` di `storyboard.jsx` membuat frame pembuka lalu **langsung**
+  mengirim video, padahal panduan dan wizard Buat Video menjanjikan "gambar
+  pertama dilihat dulu". Sekarang dua tahap, dua tombol: Buat gambar pembuka
+  → lihat besar, "Coba lagi" seharga satu gambar → Ya, buat video.
+- Wizard meloloskan satu foto wajah, server (`submit_multishot`) mewajibkan
+  dua. Orang membayar naskah lalu dihadang di halaman berikutnya. Wizard kini
+  memakai angka yang sama; Profil saya menganjurkan dua foto.
+
+Usulan yang **diterima** untuk dibangun, urut dampak (semuanya di jalur
+Storyboard dan cabang "cerita" wizard; tidak mengubah batas 30 detik, satu
+job multi-shot, atau aturan uang):
+
+| # | Usulan | Yang berubah | Ukuran | Catatan |
+|---|---|---|---|---|
+| S1 | **Pola cerita, bukan jumlah shot.** Kartu pilihan: Masalah → Produk → Hasil · Proses (dari dapur ke pembeli) · Sebelum/Sesudah · 3 Tips. Penulis AI menerima pola + `duration_values` model dan **ia** yang memutuskan jumlah shot dan detik tiap shot (hook pendek, payoff panjang), dijepit ke total yang diterima model. Kolom "jumlah shot" dan "durasi per shot" hilang dari wizard. | prompt `write` kind `storyboard`; UI wizard langkah 1 | M | Berbeda dari 1.6: ini di tingkat *beat bernama* untuk satu job multi-shot, bukan rencana klip. `bagiAdegan` (5 detik rata) menjadi cadangan saat penulis tidak memberi durasi. |
+| S2 | **"Ubah adegan ini" dalam bahasa Indonesia.** Sembunyikan dropdown kamera, detik, dan textarea Inggris di langkah Naskah; ganti dengan satu kalimat Indonesia ("bikin dia tertawa, bukan serius") yang meminta penulis menulis ulang satu shot. | aksi `write` kind `shot`; UI StepNaskah | S–M | Lewat `chat()`, jadi tercatat dan tertagih per ubahan. Prompt Inggris tetap tersimpan, hanya tidak dipaksa ditulis orangnya. |
+| S3 | **Versi lain dari video yang jadi.** Di Hasil: "Buat versi lain" — ganti narasi/ajakan/bahasa, **gambar pembuka dipakai ulang** (gratis), hanya video yang dibayar. Wajah tetap sama karena sumbernya sama. | UI StepHasil + salin baris `storyboards` dengan `image_url` shot 1 | S | Satu produk, tiga video seminggu, satu kali bayar frame. |
+| S4 | **Storyboard dari foto yang kamu punya.** Unggah 3–5 foto HP (dapur, keripik, kemasan, pembeli); penulis AI (yang sudah membaca foto wajah di Profil saya) mendeskripsikan tiap foto ke `visual_prompt` dan menulis narasi di sekelilingnya; foto kemasan masuk referensi frame pembuka. | `write` kind `storyboard` menerima `photo_urls`; UI | M | Jujur: Kling `multi_prompt` hanya menerima **satu** gambar awal, jadi foto-foto mengarahkan *tulisan*, bukan jadi frame per shot. Mitigasi kemasan bergeser: produk di shot pertama dan terakhir. |
+| S5 | **Gaya sebagai ubin bergambar.** Enam ubin (Nyata, Anime, Kartun 3D, Kolase kertas, Clay, Pixel) = baris `video_styles` (1.7) + satu gambar pratinjau yang dibuat operator sekali. Default Nyata; si ibu tidak pernah membuka daftarnya. | 1.7 + kolom `preview_url`; UI wizard "Gaya lain" | M | Tambahan ke 1.7: untuk Kling blok gaya harus **≤ ±80 byte** karena berebut anggaran 400 byte dengan kontinuitas dan visual (`generate/index.ts` ±2348–2384); gaya panjang hanya untuk Seedance. Tulis "no on-screen text" di blok gaya kolase/pixel — teks di layar rusak saat bergerak. |
+| S6 | **Tokoh dari gambar (jalur remaja).** Di Profil saya: saklar "Tokoh saya adalah gambar": unggah 2–4 gambar tokoh yang sama → influencer + referensi, sehingga kesiapan lolos tanpa pengecualian. | Profil saya; default model berbeda untuk tokoh gambar | L | Risiko tertinggi: **belum diverifikasi** apakah `elements` Kling menerima ilustrasi; Seedance reference-to-video (`image_urls`) lebih mungkin. Hak cipta tetap keputusan 0.4. Melengkapi 2.4 `storyboard-anime` (jalur chat) dengan jalur aplikasi — remaja tidak memakai Claude Code. |
+
+**Alur ideal 4 layar** (menggantikan rancangan cabang "cerita" di 3.2 saat
+S1–S3 selesai; uang keluar dan titik berhenti disebut tiap layar):
+
+1. **Ceritanya** — empat kartu pola, satu kolom "ceritakan sekalimat", pemilih tokoh (profil / tokoh gambar), ubin gaya (dilipat, default Nyata). Harga ≈ 15 & 30 detik tampil. Tombol "Susun adegan" (biaya penulis AI di tombol). Berhenti di sini: rugi nol.
+2. **Adegan** — daftar beat berbahasa Indonesia: nama beat, narasi, detik (otomatis), ikon kamera. Per baris "Ubah adegan ini"; geser urutan. Satu kotak "yang sama di semua adegan" (kontinuitas). Peringatan pangkas kalau ada, dalam bahasa sederhana. Tombol "Buat gambar pembuka". Berhenti: rugi biaya naskah.
+3. **Gambar pembuka** — gambar besar; "Wajahnya mirip? Kemasannya benar?"; "Coba lagi" / "Ya, buat video". **Sudah dikerjakan** di halaman Storyboard. Berhenti: rugi satu gambar.
+4. **Video** — tunggu (boleh ditinggal — 1.8), tonton, Bagikan, "Buat versi lain (hanya video)", "Buat ulang gambar pembuka".
+
+**Yang kelihatan rumit tapi dipertahankan** (dari peninjau yang sama, disetujui):
+syarat dua foto referensi dan tokoh terikat (mekanisme kunci wajah Kling;
+yang diperbaiki adalah wizard memeriksa angka yang sama, bukan menghapus
+syaratnya); pemangkasan 400 byte beserta peringatannya (pelajaran job 9 Sep —
+boleh dibahasakan sederhana, jangan dihilangkan); harga "≈" dan batas 30
+detik yang **menolak**, bukan memotong diam-diam; dan "simpan hanya setelah
+orangnya melihat draf" supaya daftar tidak penuh sampah percobaan.
+
 ### 3.4 Pengukuran harga, bukan gerbang
 
 Rancangan awal menolak job berbayar tanpa `audit.quoted_idr`. Itu gerbang
@@ -412,6 +455,8 @@ datang **setelah** garis dasar A1–A3 ada.
 | 9 | 1.7 gaya sebagai data | 0.6, 1.6 | M | A3 (pengguna yang kembali untuk gaya lain) |
 | 10 | 2.1–2.3 Pintu B, 2.4 skill baru | 6, 8, 9 | S–M | job `origin = mcp` per workspace |
 | 11 | 3.4 pengukuran harga | 6 | S | A5 |
+| 12 | 3.5 Storyboard S1–S3 (pola cerita, ubah adegan, versi lain) | 4 | S–M | A3 (video kedua dari produk yang sama) |
+| 13 | 3.5 S4–S6 (dari foto, ubin gaya, tokoh gambar) | 9, 0.4 | M–L | A3 |
 
 S/M/L adalah ukuran relatif terhadap satu sama lain, bukan perkiraan jam.
 

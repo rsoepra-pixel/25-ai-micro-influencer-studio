@@ -173,10 +173,11 @@ function KartuFoto({ ws, saya, refs, onDone }) {
     <div className="card p6 mb4">
       <div className="row mb1" style={{ justifyContent: "space-between" }}>
         <div className="bold">1 · Wajah saya<Info tip="Foto acuan supaya wajah di video tetap orang yang sama. Semakin banyak sudut (depan, samping, senyum), semakin konsisten." /></div>
-        <Badge tone={refs.length ? "green" : "amber"}>{refs.length ? `${refs.length} foto` : "belum ada"}</Badge>
+        <Badge tone={refs.length >= 2 ? "green" : refs.length ? "amber" : "amber"}>{refs.length >= 2 ? `✓ ${refs.length} foto` : refs.length ? `${refs.length} foto (tambah 1 lagi untuk video cerita)` : "belum ada"}</Badge>
       </div>
       <p className="tiny muted mb3">
-        Satu sampai empat foto wajah yang jelas, tanpa kacamata hitam atau filter. Foto diperkecil dulu di
+        Dua sampai empat foto wajah yang jelas — depan dan samping — tanpa kacamata hitam atau filter.
+        Satu foto cukup untuk video bicara; video cerita butuh minimal dua. Foto diperkecil dulu di
         ponselmu sebelum dikirim.
       </p>
 
