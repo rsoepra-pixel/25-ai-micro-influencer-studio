@@ -223,7 +223,9 @@ const TOOLS = [
       "untuk memilih model: yang keeps_identity=true memakai foto Identity Kit sebagai acuan wajah, " +
       "yang init_image_field terisi membuat video DARI sebuah foto (foto awalnya wajib). " +
       "Untuk UGC (orang bicara ke kamera) pilih task lipsync yang audio_field-nya terisi: foto + audio TTS " +
-      "dengan suara terkunci → video bicara; yang prompt_field terisi juga menerima prompt gaya penyampaian.",
+      "dengan suara terkunci → video bicara; yang prompt_field terisi juga menerima prompt gaya penyampaian. " +
+      "Untuk video, duration_values adalah daftar durasi yang benar-benar diterima model (generate memilihkan " +
+      "nilai terdekat ke bawah dari `duration` yang diminta) dan extra_input menunjukkan knob yang sudah dikunci katalog, mis. rasio 9:16.",
     inputSchema: {
       type: "object",
       properties: { task: { type: "string", enum: ["image", "video", "tts", "lipsync"], description: "Saring per jenis" } },
@@ -735,7 +737,15 @@ async function runTool(name: string, args: Record<string, unknown>, ctx: Ctx) {
       // saja pernah meleset 8 kali lipat — Kling v3 Pro butuh 8 job untuk
       // menghasilkan 1 video, dan yang disebut ke user cuma biaya job pertama.
       let q = admin.from("provider_models_ranked")
-        .select("id,model_key,label,task,provider,est_price_usd,unit,description,keeps_identity,init_image_field,audio_field,prompt_field,voice_field,requires_key,attempts,succeeded,failed_input,failed_policy,failed_config,failed_provider,tries_per_result_fair,usd_per_result,last_success_at")
+        //
+        // `duration_values` dan `extra_input` ikut dikembalikan supaya klien
+        // MCP bisa memilih durasi yang benar-benar diterima model dan tahu
+        // rasio mana yang sudah dikunci katalog — tanpa itu klien hanya bisa
+        // menebak dari teks `description`, dan tebakan 10 detik ke model yang
+        // cuma punya 4/6/8 baru ketahuan di tagihan (generate memilihkan nilai
+        // terdekat, bukan menolak). Dibutuhkan skill video klip-demi-klip di
+        // `.claude/skills/_shared/pipeline-video-studio.md`.
+        .select("id,model_key,label,task,provider,est_price_usd,unit,description,keeps_identity,init_image_field,ref_image_field,ref_image_multi,duration_field,duration_values,extra_input,audio_field,prompt_field,voice_field,requires_key,attempts,succeeded,failed_input,failed_policy,failed_config,failed_provider,tries_per_result_fair,usd_per_result,last_success_at")
         .eq("active", true).order("task").order("est_price_usd");
       if (typeof args.task === "string") q = q.eq("task", args.task);
       const { data, error } = await q;

@@ -52,6 +52,7 @@ permintaannya diteruskan (proxy status 200) ke edge function. Aturannya ada di
 | `scripts/gen-redirects.mjs` | Menulis `dist/_redirects` saat build. |
 | `netlify.toml` | Proxy MCP, OAuth, link pendek + aturan kapan build boleh dilewati. |
 | `docs/` | Dokumen operasi. |
+| `.claude/skills/` | Skill Claude Code untuk repo ini: `_shared/` pipeline video klip-demi-klip lewat MCP Studio, `vox-explainer/` gaya kolase kertas. Cara menambah gaya: `docs/SKILL-VIDEO-GAYA.md`. |
 
 ### Edge function
 

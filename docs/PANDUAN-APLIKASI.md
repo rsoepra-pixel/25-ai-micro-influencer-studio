@@ -762,6 +762,13 @@ tempat yang tidak punya, Claude perlu URL dari kamu.
 jadi pemeriksaan saldo, jatah, dan langganan berlaku sama untuk browser, cron,
 maupun Claude.
 
+**Video bergaya (Vox / kolase kertas, dan gaya lain).** Di luar UGC dan
+Storyboard, Claude bisa memproduksi video animasi explainer klip demi klip
+lewat tool MCP yang sama: keyframe (gambar) → klip (image-to-video) → narasi
+(TTS), semua tertanda ke satu ide konten di Planner. Rulebook-nya ada di
+`.claude/skills/` repo ini; penjelasan dan cara menambah gaya baru di
+[`docs/SKILL-VIDEO-GAYA.md`](SKILL-VIDEO-GAYA.md).
+
 ---
 
 ## Ringkasan: mana yang memakai uang
