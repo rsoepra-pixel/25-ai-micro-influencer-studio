@@ -1,6 +1,7 @@
 import React, { useEffect, useState, useCallback } from "react";
 import { createRoot } from "react-dom/client";
 import { supa, signupConfirmed, callApp, STATUS_LABELS, usd } from "./supa.js";
+import { setHarga, hargaLabel, hargaLabelLain, tampilanAktif, setTampilan, kursJual } from "./harga.js";
 import {
   Dashboard, Influencers, InfluencerDetail, Studio, Planner, Tasks, Drive, Settings,
 } from "./views.jsx";
@@ -351,6 +352,17 @@ function App() {
   // benar bagi pelanggan, yang selalu live. Tidak tahu = anggap berbayar.
   const [spend, setSpend] = useState({ spent: 0, cap: 200, mode: null, billing: "byo_key", balance: 0 });
   const [spendError, setSpendError] = useState(null);
+  // Kurs jual untuk label harga (src/harga.js). Nilainya hidup di modul itu;
+  // state ini hanya memaksa render ulang begitu kursnya datang atau pelanggan
+  // mengganti tampilan rupiah/dolar.
+  const [, setHargaTick] = useState(0);
+  useEffect(() => {
+    if (!session) return;
+    callApp({ action: "sell_rate" })
+      .then((r) => { setHarga(r); setHargaTick((t) => t + 1); })
+      .catch(() => { /* tanpa kurs, layar memakai dolar — bukan kegagalan */ });
+  }, [session]);
+  const gantiTampilan = (v) => { setTampilan(v); setHargaTick((t) => t + 1); };
   const [tick, setTick] = useState(0);
   const [invite, setInvite] = useState(null);
   // Sesi yang lahir dari link pemulihan. Peristiwanya hanya lewat SEKALI, saat
@@ -555,8 +567,28 @@ function App() {
               <div className="msg-err tiny mt1">Gagal memuat biaya: {spendError}</div>
             ) : spend.billing === "credit" ? (
               <>
-                <div style={{ fontSize: 20, fontWeight: 800, color: spend.balance < 1 ? "var(--warn)" : "var(--ok)" }}>{usd(spend.balance)}</div>
-                <div className="tiny muted">terpakai {usd(spend.spent)} bulan ini</div>
+                {/* Angka utama mengikuti tampilan yang dipilih; yang satunya
+                    ditulis kecil supaya pelanggan yang membeli saldo dalam
+                    rupiah tetap bisa mencocokkan dengan kuitansinya dalam USD. */}
+                <div style={{ fontSize: 20, fontWeight: 800, color: spend.balance < 1 ? "var(--warn)" : "var(--ok)" }}>
+                  {spend.balance > 0 ? hargaLabel(spend.balance) : (tampilanAktif() === "idr" ? "Rp 0" : "$0.00")}
+                </div>
+                {hargaLabelLain(spend.balance) && <div className="tiny muted">{hargaLabelLain(spend.balance)}</div>}
+                <div className="tiny muted">terpakai {spend.spent > 0 ? hargaLabel(spend.spent) : (tampilanAktif() === "idr" ? "Rp 0" : "$0.00")} bulan ini</div>
+                {kursJual() && (
+                  <div className="row mt1" style={{ gap: 4 }}>
+                    {[["idr", "Rp"], ["usd", "$"]].map(([v, l]) => (
+                      <button key={v} type="button" onClick={() => gantiTampilan(v)}
+                        data-tip={v === "idr" ? "Tampilkan harga dalam rupiah, memakai kurs jual yang sama dengan harga saldo." : "Tampilkan harga dalam dolar, seperti di katalog model."}
+                        style={{ fontSize: 11, padding: "2px 8px", borderRadius: 6, cursor: "pointer",
+                          border: `1px solid ${tampilanAktif() === v ? "var(--brand)" : "var(--border)"}`,
+                          background: tampilanAktif() === v ? "var(--brand-soft)" : "transparent",
+                          color: tampilanAktif() === v ? "var(--brand-strong)" : "var(--ink-3)", fontWeight: 700 }}>
+                        {l}
+                      </button>
+                    ))}
+                  </div>
+                )}
                 <ModeBadge mode={spend.mode} />
               </>
             ) : (

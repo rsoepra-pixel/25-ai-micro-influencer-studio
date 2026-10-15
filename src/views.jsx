@@ -5,6 +5,7 @@ import { MembersCard } from "./members.jsx";
 import { supa, callGenerate, callSocial, callCalendar, callApp, callLinks, callMedia, STATUS_LABELS, TYPE_LABELS, usd } from "./supa.js";
 import { recordBadge, recordSentence, byEffectivePrice, estimateFor, nextTierUp } from "./routing.js";
 import { Info, TIP_PENULIS_AI, TIP_BERBAYAR } from "./tips.jsx";
+import { hargaLabel, biayaNaskahLabel } from "./harga.js";
 
 const linkBtn = { background: "none", border: "none", padding: 0, cursor: "pointer", fontWeight: 700, fontSize: 11 };
 
@@ -376,7 +377,7 @@ export function Dashboard({ ws, tick }) {
           {d.jobs.length ? d.jobs.map((j) => (
             <div key={j.id} className="row mb2" style={{ justifyContent: "space-between", border: "1px solid var(--border)", borderRadius: 10, padding: "6px 10px" }}>
               <span className="small">{j.status === "failed" ? "✕ " : j.status === "succeeded" ? "✓ " : "● "}{TYPE_LABELS[j.task]}</span>
-              <span className="tiny muted">{usd(j.cost_actual_usd ?? j.cost_estimate_usd)}</span>
+              <span className="tiny muted">{hargaLabel(j.cost_actual_usd ?? j.cost_estimate_usd)}</span>
             </div>
           )) : <Empty text="Belum ada hasil generate." cta="Buka Studio" href="/studio" />}
         </Card>
@@ -929,7 +930,7 @@ export function Influencers({ ws, refresh, tick, mode }) {
             <div className="bold">Buat influencer baru</div>
             <div className="row" style={{ gap: 6 }}>
               <button type="button" className="btn" style={{ fontSize: 12, padding: "6px 12px" }}
-                onClick={() => setWizardOpen(true)}>✨ Bantu buat dengan AI</button>
+                onClick={() => setWizardOpen(true)}>✨ Bantu buat dengan AI{biayaNaskahLabel()}</button>
               {list.length > 0 && (
                 <button type="button" className="btn btn2" style={{ fontSize: 12, padding: "6px 12px" }}
                   onClick={() => setFormOpen(false)}>Tutup</button>
@@ -1296,7 +1297,7 @@ export function InfluencerDetail({ id, ws, refresh, tick, mode }) {
           <div className="row mb3" style={{ justifyContent: "space-between" }}>
             <div className="bold">Character Sheet</div>
             <button type="button" className="btn" style={{ fontSize: 12, padding: "6px 12px" }}
-              onClick={() => setWizardOpen(true)}>✨ Perbaiki dengan AI</button>
+              onClick={() => setWizardOpen(true)}>✨ Perbaiki dengan AI{biayaNaskahLabel()}</button>
           </div>
           <div className="grid mb3" style={{ gridTemplateColumns: "1fr 1fr" }}>
             <div><label className="label">Nama</label><input name="name" className="input" defaultValue={inf.name} /></div>
@@ -1813,15 +1814,12 @@ const isCheapModel = (m) => Number(m?.est_price_usd || 0) < CHEAP_MAX_USD;
 // berarti murah per klip: $0.05/detik masuk kelompok murah, tapi klip 5 detik
 // tetap $0.25. Estimasi total yang sebenarnya tetap ditampilkan di dekat tombol.
 export const UNIT_SUFFIX = { per_image: "/gambar", per_second: "/detik", per_1k_chars: "/1k karakter" };
-// usd() membulatkan ke 2 desimal, dan katalog memakai 3: $0.003 jadi "$0.00"
-// (seolah gratis), $0.025 jadi "$0.03", $0.125 jadi "$0.13". Angka di dropdown
-// harus sama persis dengan yang tertulis di katalog Settings, jadi tiga desimal
-// dulu lalu satu nol di ekor dibuang ($0.040 → $0.04, $0.125 tetap utuh).
-export const priceLabel = (n) => {
-  const v = Number(n || 0);
-  if (v === 0) return "gratis";
-  return `$${v.toFixed(3).replace(/0$/, "")}`;
-};
+// Label harga mengikuti tampilan yang dipilih pelanggan (rupiah atau dolar,
+// src/harga.js). Dulu selalu dolar tiga desimal; aturan desimalnya pindah ke
+// formatDolar() di sana supaya dropdown model, tombol, dan Settings menulis
+// angka yang sama persis. Nama `priceLabel` dipertahankan karena ugc.jsx dan
+// storyboard.jsx mengimpornya dari sini.
+export const priceLabel = (n) => hargaLabel(n);
 export const byPrice = (a, b) => Number(a.est_price_usd) - Number(b.est_price_usd);
 
 // Aturan pemilihan model hidup di src/routing.js (tanpa React, supaya bisa
@@ -2242,11 +2240,11 @@ function Escalate({ job, models, onDone }) {
         {/* Biayanya disebut SEBELUM tombolnya ditekan, bukan sesudah. Mode mock
             bukan milik pelanggan, jadi tidak ada cara mencoba tanpa membayar. */}
         <div className="mb2 muted">
-          Perkiraan ≈ {usd(est)}{target.unit === "per_second" ? ` (${detik} detik)` : ""}. Job lama tetap ada.
+          Perkiraan ≈ {hargaLabel(est)}{target.unit === "per_second" ? ` (${detik} detik)` : ""}. Job lama tetap ada.
         </div>
         <button type="button" className="btn tiny" disabled={state === "busy"} onClick={kirim}
           style={{ padding: "4px 9px", marginRight: 6 }}>
-          {state === "busy" ? "Mengirim…" : `Kirim · ≈${usd(est)}`}
+          {state === "busy" ? "Mengirim…" : `Kirim · ≈ ${hargaLabel(est)}`}
         </button>
         <button type="button" className="btn btn2 tiny" disabled={state === "busy"}
           style={{ padding: "4px 9px" }} onClick={() => { setState("idle"); setErr(null); }}>Batal</button>
@@ -2258,7 +2256,7 @@ function Escalate({ job, models, onDone }) {
   return (
     <>
       <button type="button" className="btn btn2 tiny" style={{ padding: "4px 9px", marginRight: 6 }}
-        data-tip={`Hasilnya kurang? Buat ulang dengan ${target.label.split(" —")[0]} — prompt dan acuan sama. Memakai saldo, ≈${usd(est)}.`}
+        data-tip={`Hasilnya kurang? Buat ulang dengan ${target.label.split(" —")[0]} — prompt dan acuan sama. Memakai saldo, ≈ ${hargaLabel(est)}.`}
         onClick={() => setState("confirm")}>Naik kelas</button>
       {err && <div className="msg-err tiny mt1" style={{ maxWidth: 240, whiteSpace: "pre-wrap" }}>{err}</div>}
     </>
@@ -2501,7 +2499,7 @@ export function Studio({ ws, refresh, tick, mode, query }) {
                     <Badge tone={statusTone(j.status)}>{STATUS_LABELS[j.status]}</Badge>
                     {j.error && <div className="tiny" style={{ color: "var(--err)", maxWidth: 220 }} title={j.error}>{j.error.slice(0, 80)}</div>}
                   </td>
-                  <td>{usd(j.cost_actual_usd ?? j.cost_estimate_usd)}</td>
+                  <td>{hargaLabel(j.cost_actual_usd ?? j.cost_estimate_usd)}</td>
                   <td>{j.output_url ? <a href={j.output_url} target="_blank" rel="noreferrer" style={{ color: "var(--blue-strong)", fontWeight: 600 }}>Buka →</a> : "—"}</td>
                   <td style={{ whiteSpace: "nowrap" }}>
                     <button type="button" className="btn btn2 tiny" style={{ padding: "4px 9px", marginRight: 6 }}
@@ -2570,7 +2568,7 @@ function AiDraftPanel({ item, onSaved, onClose }) {
       <div className="card p6" onClick={(e) => e.stopPropagation()}
         style={{ width: "100%", maxWidth: 620, maxHeight: "88vh", overflowY: "auto" }}>
         <div className="row mb1" style={{ justifyContent: "space-between" }}>
-          <div className="bold">✨ Tulis dengan AI</div>
+          <div className="bold">✨ Tulis dengan AI<span className="muted" style={{ fontWeight: 400 }}>{biayaNaskahLabel()}</span></div>
           <button type="button" onClick={onClose}
             style={{ background: "none", border: "none", cursor: "pointer", color: "var(--muted)", fontSize: 18 }}>×</button>
         </div>
@@ -2838,7 +2836,7 @@ function PlanWizard({ ws, influencers, pillars, onClose, onSaved }) {
       <div className="card p6" onClick={(e) => e.stopPropagation()}
         style={{ width: "100%", maxWidth: step === 1 ? 640 : 980, maxHeight: "90vh", overflowY: "auto" }}>
         <div className="row mb1" style={{ justifyContent: "space-between" }}>
-          <div className="bold">✨ Rencanakan sebulan dengan AI</div>
+          <div className="bold">✨ Rencanakan sebulan dengan AI<span className="muted" style={{ fontWeight: 400 }}>{biayaNaskahLabel()}</span></div>
           <button type="button" onClick={onClose}
             style={{ background: "none", border: "none", cursor: "pointer", color: "var(--muted)", fontSize: 18 }}>×</button>
         </div>
@@ -3146,7 +3144,7 @@ export function Planner({ ws, refresh, tick }) {
         </div>
         <button type="button" className="btn" style={{ flexShrink: 0 }} onClick={() => setPlanOpen(true)}
           data-tip={`Isi brief sekali, AI menyusun jadwal beberapa minggu; kamu memilih ide mana yang disimpan. ${TIP_PENULIS_AI}`}>
-          ✨ Rencanakan sebulan dengan AI
+          ✨ Rencanakan sebulan dengan AI{biayaNaskahLabel()}
         </button>
       </div>
       {err && <div className="msg-err mb3">{err}</div>}
@@ -3158,7 +3156,7 @@ export function Planner({ ws, refresh, tick }) {
             Mengisi sebulan konten lewat formulir di bawah berarti ratusan isian manual. Wizard AI menyusun
             content pillar, ide, hook, dan tanggalnya sekaligus — kamu tinggal buang yang tidak cocok.
           </p>
-          <button type="button" className="btn" onClick={() => setPlanOpen(true)}>✨ Susun rencana pertama</button>
+          <button type="button" className="btn" onClick={() => setPlanOpen(true)}>✨ Susun rencana pertama{biayaNaskahLabel()}</button>
         </div>
       )}
       {publishMsg && <div className={publishMsg.startsWith("Publish gagal") ? "msg-err mb3" : "msg-ok mb3"}>{publishMsg}</div>}
@@ -3242,7 +3240,7 @@ export function Planner({ ws, refresh, tick }) {
                   </select>
                   <button type="button" className="tiny mt2" style={{ background: "none", border: "none", color: "var(--brand)", fontWeight: 700, cursor: "pointer", padding: 0, display: "block" }}
                     data-tip={`Langsung menulis draf hook, script, dan caption. ${TIP_PENULIS_AI}`}
-                    onClick={() => setAiDraftId(c.id)}>✨ Tulis dengan AI</button>
+                    onClick={() => setAiDraftId(c.id)}>✨ Tulis dengan AI{biayaNaskahLabel()}</button>
                   {aiDraftId === c.id && (
                     <AiDraftPanel item={c} onClose={() => setAiDraftId(null)}
                       onSaved={() => { setAiDraftId(null); reload(); }} />

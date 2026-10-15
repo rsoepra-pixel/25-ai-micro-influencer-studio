@@ -922,6 +922,25 @@ Deno.serve(async (req) => {
         }).eq("workspace_id", c.ws).eq("user_id", c.user.id);
         return json({ ok: true, counted: newSession });
       }
+      if (body.action === "sell_rate") {
+        // Kurs jual dan tarif penulis AI untuk LABEL harga di layar pelanggan
+        // (src/harga.js). Kurs yang sama dengan yang dipakai menjual saldo,
+        // jadi "Rp 7.000" di tombol adalah rupiah yang benar-benar terpotong
+        // dari uang yang ia bayar — bukan konversi kurs pasar. Tarif token
+        // ikut supaya tombol ✨ bisa menulis "≈ Rp 40", bukan hanya di dokumen.
+        // Semuanya angka harga, bukan rahasia; kunci provider tidak lewat sini.
+        // Kalau kurs belum diisi operator, kembalikan null: layar jatuh ke
+        // dolar, dan penawaran saldo (price_quote) tetap menolak seperti biasa.
+        await requireUser(req);
+        const p = await pricing();
+        const raw = await readConfig(["text_price_per_1k_in_usd", "text_price_per_1k_out_usd"]);
+        return json({
+          ok: true,
+          idr_per_usd: p ? Math.round(p.idrPerUsd) : null,
+          text_price_per_1k_in_usd: Number(raw.get("text_price_per_1k_in_usd")) || 0,
+          text_price_per_1k_out_usd: Number(raw.get("text_price_per_1k_out_usd")) || 0,
+        });
+      }
       if (body.action === "price_quote") {
         // Harga untuk sejumlah kredit, sudah termasuk promo terbaik yang
         // berlaku untuk workspace ini. Menolak kalau kurs belum diisi: menjual
