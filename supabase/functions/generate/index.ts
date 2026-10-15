@@ -1157,8 +1157,8 @@ Deno.serve(async (req) => {
         return json({ ok: true, mode: m });
       }
       case "write": {
-        // Penulis AI: kind = script | ideas | persona | lookalike | plan | storyboard.
-        const kind = ["ideas", "persona", "lookalike", "plan", "storyboard", "ugc"].includes(body.kind) ? body.kind : "script";
+        // Penulis AI: kind = script | ideas | persona | lookalike | plan | storyboard | ugc | shot.
+        const kind = ["ideas", "persona", "lookalike", "plan", "storyboard", "ugc", "shot"].includes(body.kind) ? body.kind : "script";
         // Pelaku + keperluan, dibawa ke setiap panggilan chat() di bawah ini.
         const penulis = { actor, purpose: String(kind) };
 
@@ -1176,6 +1176,58 @@ Deno.serve(async (req) => {
         // kontinuitas diminta SEKALI di tingkat storyboard, lalu ditempelkan ke
         // setiap prompt shot oleh klien. Satu sumber kebenaran, bukan lima
         // deskripsi baju yang mirip-mirip tapi tidak sama.
+        if (kind === "shot") {
+          // "Ubah adegan ini" (Okt 2026, tinjauan animator): satu kalimat
+          // Indonesia dari orangnya ("bikin dia tertawa, bukan serius") →
+          // penulis menulis ulang SATU shot. Sebelumnya satu-satunya cara
+          // mengubah adegan adalah menyunting prompt Inggris, dropdown kamera,
+          // dan angka detik — bahasa yang bukan bahasa pelanggan. Prompt
+          // Inggris tetap disimpan; hanya tidak lagi harus ditulis orangnya.
+          const instruction = String(body.instruction || "").trim().slice(0, 300);
+          if (!instruction) throw new Error("Tulis dulu apa yang mau diubah di adegan ini, satu kalimat saja.");
+          const { data: shot } = await admin.from("storyboard_shots").select("*").eq("id", body.shot_id).maybeSingle();
+          if (!shot) throw new Error("Adegan tidak ditemukan.");
+          const { data: board } = await admin.from("storyboards").select("id,workspace_id,continuity,influencer_id,title")
+            .eq("id", shot.storyboard_id).maybeSingle();
+          if (!board || board.workspace_id !== ws) throw new Error("Adegan tidak ditemukan di workspace ini.");
+          let ilang = "Indonesia";
+          if (board.influencer_id) {
+            const { data: inf } = await admin.from("influencers").select("language").eq("id", board.influencer_id).maybeSingle();
+            ilang = inf?.language === "en" ? "English" : inf?.language === "mix" ? "campuran Indonesia-Inggris" : "Indonesia";
+          }
+          const system =
+            `Kamu sutradara video short-form. Kamu menulis ulang SATU shot dari sebuah storyboard sesuai permintaan user, ` +
+            `tanpa mengubah hal yang tidak diminta. Jawab HANYA dengan JSON valid, tanpa penjelasan lain.`;
+          const user =
+            `Shot ${shot.position} dari video "${board.title}".\n` +
+            `Beat: ${shot.beat}\nPrompt visual sekarang (Inggris): ${shot.visual_prompt}\n` +
+            `Narasi sekarang (${ilang}): ${shot.narration || "(kosong)"}\nKamera: ${shot.camera} · Durasi: ${shot.seconds} detik\n` +
+            `Kontinuitas yang berlaku di semua shot (JANGAN diulang di prompt visual): ${board.continuity || "(kosong)"}\n` +
+            `\nPermintaan user: "${instruction}"\n` +
+            `\nAturan:\n` +
+            `1. Ubah HANYA yang diminta. Kalau user bicara soal ekspresi/aksi/sudut, narasinya tetap; kalau soal kata-kata, visualnya tetap.\n` +
+            `2. "visual_prompt" bahasa Inggris, 25-50 kata, hanya yang terlihat di frame: aksi, ekspresi, jarak dan gerak kamera, komposisi. ` +
+            `DILARANG mendeskripsikan wajah, usia, warna kulit, atau rambut — wajah dikunci lewat foto referensi.\n` +
+            `3. "narration" bahasa ${ilang}, kalimat yang benar-benar diucapkan, kira-kira 2,5 kata per detik untuk ${shot.seconds} detik.\n` +
+            `4. "seconds" tetap ${shot.seconds} kecuali user secara eksplisit minta lebih panjang/pendek (bilangan bulat 2-15).\n` +
+            `5. "camera" salah satu: close-up | medium | wide.\n` +
+            `6. "changed": daftar nama kolom yang kamu ubah.\n` +
+            `\nFormat JSON: {"beat": "...", "visual_prompt": "...", "narration": "...", "camera": "...", "seconds": ${shot.seconds}, "changed": ["visual_prompt"]}`;
+          const parsed = parseJsonLoose(await chat(ws, penulis, system, user, undefined, 1200)) as Record<string, unknown>;
+          const CAMERAS = ["close-up", "medium", "wide"];
+          const out = {
+            beat: String(parsed.beat || shot.beat).slice(0, 120),
+            visual_prompt: String(parsed.visual_prompt || shot.visual_prompt).slice(0, 800),
+            narration: String(parsed.narration ?? shot.narration ?? "").slice(0, 600),
+            camera: CAMERAS.includes(String(parsed.camera)) ? String(parsed.camera) : String(shot.camera || "medium"),
+            seconds: Math.min(Math.max(Number(parsed.seconds) || Number(shot.seconds) || 5, 2), 15),
+          };
+          const changed = (["beat", "visual_prompt", "narration", "camera", "seconds"] as const)
+            .filter((k) => String(out[k]) !== String(shot[k] ?? ""));
+          if (!changed.length) throw new Error("Penulis AI tidak mengubah apa pun dari permintaan itu. Coba kalimat yang lebih spesifik — mis. \"dia tertawa sambil memegang keripik\".");
+          return json({ ok: true, shot: out, changed });
+        }
+
         if (kind === "storyboard") {
           // DUA MODE. Mode lama: user menyebut jumlah shot dan detik per shot
           // (halaman Storyboard, pustaka prompt, MCP lama). Mode beat (Okt

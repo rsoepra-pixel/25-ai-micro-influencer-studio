@@ -443,8 +443,13 @@ yang sama — cara lama tetap ada, hanya tidak lagi ditanya duluan.
 
 **Alurnya tiga langkah, dan urutannya dipaksakan:**
 
-1. **Naskah** — periksa daftar shot dan kesiapannya. Tiap shot punya prompt
-   visual dan sudut kamera (close-up / medium / wide). Ada kolom **kontinuitas**
+1. **Naskah** — periksa daftar shot dan kesiapannya. Tiap shot punya kotak
+   **"Ubah adegan ini"**: tulis satu kalimat Indonesia ("dia tertawa, bukan
+   serius", "kameranya lebih dekat", "kata-katanya lebih singkat") dan
+   penulis AI menulis ulang adegan itu saja — memakai saldo per panggilan,
+   hasilnya langsung dipasang, dan **Batalkan** mengembalikannya gratis.
+   Prompt visual Inggris, kamera, dan detik tetap ada di balik tombol
+   **Lanjutan**, tidak lagi harus ditulis orangnya. Ada kolom **kontinuitas**
    terpisah yang ditempelkan ke semua shot saat dikirim, jadi mengubah
    "ganti bajunya jadi jaket denim" cukup sekali, bukan disisir per shot.
 2. **Produksi** — dua tahap, dua tombol (sejak Okt 2026): **gambar pembuka**

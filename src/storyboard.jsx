@@ -24,7 +24,7 @@ import { supa, callGenerate } from "./supa.js";
 import { ModelPicker, byPrice, priceLabel, Badge, useQuery, unwrap, recordBadge} from "./views.jsx";
 import { LibraryPicker } from "./library.jsx";
 import { Info } from "./tips.jsx";
-import { POLA_CERITA } from "./harga.js";
+import { POLA_CERITA, biayaNaskahLabel } from "./harga.js";
 
 const PLATFORMS = [
   ["tiktok", "TikTok"],
@@ -33,6 +33,7 @@ const PLATFORMS = [
 ];
 
 const CAMERA_LABEL = { "close-up": "Close-up", medium: "Medium", wide: "Wide" };
+const TIP_PENULIS_AI_LOKAL = "Memakai saldo: ditagih per panggilan penulis AI. Hasilnya langsung dipasang, dan bisa dibatalkan gratis.";
 
 // Prompt yang benar-benar dikirim untuk satu shot.
 //
@@ -1341,6 +1342,27 @@ function SheetPanel({ board, shots, imgModels, refCount, mode, onDone }) {
 function ShotRow({ shot, board, onPatch, fitted }) {
   const trimmed = fitted != null && fitted !== Number(shot.seconds);
   const [open, setOpen] = useState(false);
+  // "Ubah adegan ini": satu kalimat Indonesia → penulis AI menulis ulang shot
+  // ini. Nilai lama disimpan supaya bisa dibatalkan tanpa memanggil AI lagi.
+  const [perintah, setPerintah] = useState("");
+  const [sibuk, setSibuk] = useState(false);
+  const [galat, setGalat] = useState(null);
+  const [sebelum, setSebelum] = useState(null);
+  async function ubah() {
+    if (!perintah.trim()) return;
+    setSibuk(true); setGalat(null);
+    try {
+      const r = await callGenerate({ action: "write", kind: "shot", shot_id: shot.id, instruction: perintah.trim() });
+      setSebelum({ beat: shot.beat, visual_prompt: shot.visual_prompt, narration: shot.narration, camera: shot.camera, seconds: shot.seconds });
+      await onPatch(r.shot);
+      setPerintah("");
+    } catch (e) { setGalat(e.message); }
+    setSibuk(false);
+  }
+  async function batalkan() {
+    if (!sebelum) return;
+    await onPatch(sebelum); setSebelum(null);
+  }
   const waitingImage = !shot.image_url && shot.image_job_id;
   const waitingVideo = !shot.video_url && shot.video_job_id;
   return (
@@ -1368,8 +1390,24 @@ function ShotRow({ shot, board, onPatch, fitted }) {
                     : <Badge tone="zinc">belum mulai</Badge>}
           </div>
           {shot.narration && <div className="tiny muted mb1">🗣 {shot.narration}</div>}
-          <button className="btn btn2 tiny" onClick={() => setOpen((o) => !o)}>
-            {open ? "Tutup" : "Edit prompt"}
+          <div className="row mb1" style={{ gap: 6, flexWrap: "wrap" }}>
+            <input className="input" style={{ flex: 1, minWidth: 180, fontSize: 13, padding: "6px 10px" }} value={perintah}
+              disabled={sibuk || !!shot.video_url} onChange={(e) => setPerintah(e.target.value)}
+              onKeyDown={(e) => { if (e.key === "Enter") ubah(); }}
+              placeholder={shot.video_url ? "Video sudah jadi — buat versi baru untuk mengubah" : "Ubah adegan ini: mis. dia tertawa, bukan serius"}
+              data-tip="Tulis dalam bahasa Indonesia apa yang mau diubah: ekspresi, aksi, sudut kamera, atau kata-katanya. Penulis AI menulis ulang adegan ini saja; yang lain tetap." />
+            <button className="btn tiny" disabled={sibuk || !perintah.trim() || !!shot.video_url} onClick={ubah}
+              data-tip={`Memanggil penulis AI untuk satu adegan. ${TIP_PENULIS_AI_LOKAL}`}>
+              {sibuk ? "Menulis ulang…" : `Ubah${biayaNaskahLabel()}`}
+            </button>
+            {sebelum && !sibuk && (
+              <button className="btn btn2 tiny" onClick={batalkan} data-tip="Kembalikan adegan ini ke versi sebelum diubah. Gratis.">↶ Batalkan</button>
+            )}
+          </div>
+          {galat && <div className="msg-err tiny mb1">{galat}</div>}
+          <button className="btn btn2 tiny" onClick={() => setOpen((o) => !o)}
+            data-tip="Pengaturan lanjutan: prompt Inggris yang dikirim ke model, kamera, dan detik. Tidak perlu dibuka kalau 'Ubah adegan ini' sudah cukup.">
+            {open ? "Tutup" : "Lanjutan (prompt Inggris)"}
           </button>
         </div>
       </div>
@@ -1377,10 +1415,12 @@ function ShotRow({ shot, board, onPatch, fitted }) {
       {open && (
         <div>
           <label className="label">Prompt visual (bahasa Inggris, tanpa deskripsi wajah)</label>
-          <textarea className="input mb2" rows={3} defaultValue={shot.visual_prompt}
+          {/* key: textarea ini uncontrolled; tanpa key, hasil "Ubah adegan ini"
+              tidak tampak di sini saat panel sedang terbuka. */}
+          <textarea key={`v-${shot.visual_prompt}`} className="input mb2" rows={3} defaultValue={shot.visual_prompt}
             onBlur={(e) => onPatch({ visual_prompt: e.target.value })} />
           <label className="label">Narasi</label>
-          <textarea className="input mb2" rows={2} defaultValue={shot.narration || ""}
+          <textarea key={`n-${shot.narration || ""}`} className="input mb2" rows={2} defaultValue={shot.narration || ""}
             onBlur={(e) => onPatch({ narration: e.target.value })} />
           <div className="grid mb2" style={{ gridTemplateColumns: "1fr 1fr" }}>
             <div>
