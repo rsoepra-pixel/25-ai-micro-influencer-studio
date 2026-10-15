@@ -1006,8 +1006,19 @@ export function Influencers({ ws, refresh, tick, mode }) {
 // ini — kalau voice id-nya salah, yang memberi tahu adalah providernya saat
 // generate pertama. Karena itu kolomnya tetap teks bebas: voice hasil cloning
 // punya id sendiri yang tidak akan pernah ada di daftar mana pun.
+//
+// Suara Indonesian_* ditaruh paling atas karena hampir semua naskah di sini
+// berbahasa Indonesia. Preset di bawahnya (Wise_Woman dst.) adalah penutur
+// bahasa Inggris: diberi naskah Indonesia, intonasinya tetap Inggris dan
+// hasilnya terdengar "AI banget". Daftar Indonesian_* dari halaman System
+// Voice ID MiniMax (platform.minimax.io/docs/faq/system-voice-id); tiga di
+// antaranya (CalmWoman, ConfidentWoman, GentleGirl) sudah terbukti jalan
+// lewat fal pada 14 Okt 2026.
 const VOICE_SUGGESTIONS = {
   "fal-ai/minimax/speech-02-hd": [
+    "Indonesian_GentleGirl", "Indonesian_CalmWoman", "Indonesian_ConfidentWoman",
+    "Indonesian_SweetGirl", "Indonesian_CharmingGirl",
+    "Indonesian_CaringMan", "Indonesian_ReservedYoungMan", "Indonesian_DeterminedBoy", "Indonesian_BossyLeader",
     "Wise_Woman", "Friendly_Person", "Calm_Woman", "Casual_Guy",
     "Lively_Girl", "Deep_Voice_Man", "Patient_Man", "Sweet_Girl_2",
   ],

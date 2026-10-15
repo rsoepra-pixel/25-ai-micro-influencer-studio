@@ -1343,6 +1343,17 @@ Deno.serve(async (req) => {
             `Sebut nama produk secara natural 1-2 kali. Pilih SATU atau DUA keunggulan saja. ` +
             `Kalimat pertama adalah hook yang menahan orang di 2 detik pertama. Kalimat terakhir ajakan singkat (mis. "link-nya di bio"). ` +
             `Total TIDAK LEBIH dari ${wordBudget} kata — hitung.\n` +
+            // Naskah ini DIBACAKAN mesin TTS, bukan dibaca orang. Naskah yang
+            // rapi seperti tulisan (kalimat lengkap, berstruktur, tanpa partikel)
+            // dibacakan TTS dengan nada pengumuman — dan itulah yang membuat
+            // video terasa "AI banget". Uji 14 Okt 2026: suara yang sama dengan
+            // naskah gaya ngobrol (partikel, kalimat terpotong, "...") dinilai
+            // jauh lebih natural daripada naskah gaya tulisan.
+            (ilang === "English" ? "" :
+              `   Tulis untuk DIDENGAR, bukan dibaca: pakai partikel percakapan secukupnya (sih, deh, kan, nih, lho), ` +
+              `kata sehari-hari (nggak, udah, gitu, banget), dan sesekali kalimat terpotong atau pertanyaan pendek ` +
+              `("Sisanya? Bagi dua."). Pakai "..." untuk jeda bicara yang alami. ` +
+              `Hindari kata baku yang jarang diucapkan (tidak, sudah, demikian, merupakan) dan titik dua/titik koma.\n`) +
             `2. "hook": kalimat pertama script itu, disalin apa adanya.\n` +
             `3. "caption": maksimal 150 karakter, bahasa ${ilang}, BUKAN salinan script — satu kalimat yang bikin orang menonton.\n` +
             `4. "hashtags": 4-6 tag tanpa tanda #, relevan dengan produk dan niche.\n` +

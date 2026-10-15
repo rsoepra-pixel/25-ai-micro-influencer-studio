@@ -1,26 +1,26 @@
 // Wizard UGC: produk + orang + suara + naskah + durasi → satu video bicara ke kamera.
 //
-// LIMA INPUT, TIGA JOB, DUA PERSETUJUAN
+// LIMA INPUT, TIGA JOB, TIGA PERSETUJUAN
 //
 // Yang diisi manusia hanya lima hal: produk (Product Kit), influencer
 // (Identity Kit + suara), naskah, durasi, dan latar. Sisanya default yang
 // sudah terbukti: model gambar penjaga wajah yang menerima banyak referensi,
 // TTS dengan suara terkunci/klon, model avatar termurah yang menerima prompt.
 //
-// Tiga job berbayar berurutan, dan sengaja DUA persetujuan — bukan satu
-// seperti storyboard:
+// Tiga job berbayar berurutan, masing-masing dengan tombolnya sendiri:
 //
 //   1. gambar kunci  ($0.03)   wajah dari Identity Kit + produk dari Product Kit
-//      ── ditinjau mata manusia ──
-//   2. audio         ($0.02)   naskah dibacakan suara influencer
+//      ── dilihat ──
+//   2. audio         ($0.01)   naskah dibacakan suara influencer
+//      ── didengar ──
 //   3. video avatar  ($0.5-2)  gambar kunci + audio → orang bicara
 //
-// Jedanya ada di antara 1 dan 2 karena kemasan produk adalah bagian yang
-// paling sering meleset: label berubah, botol berganti bentuk. Model gambar
-// tidak menjamin itu meski diberi foto asli. Mengulang gambar $0.03 sampai
-// benar jauh lebih murah daripada membayar video $1.60 dari gambar yang
-// produknya salah. Setelah gambar disetujui, audio dan video jalan dalam satu
-// persetujuan.
+// Jeda pertama ada karena kemasan produk paling sering meleset: label berubah,
+// botol berganti bentuk. Jeda kedua ada karena suara adalah hal pertama yang
+// membuat penonton merasa "ini AI" — suara preset berbahasa Inggris yang
+// membacakan naskah Indonesia terdengar kaku meski wajahnya sempurna. Dua-duanya
+// prinsip yang sama: tinjau di tahap yang murah, jangan baru ketahuan setelah
+// membayar video.
 //
 // DURASI TIDAK PUNYA KNOB
 //
@@ -341,7 +341,7 @@ function NewProject({ ws, influencers, products, onProductCreated, onCreated }) 
 
 const STEPS = [
   { key: "naskah", label: "Naskah", hint: "periksa kata-kata & kesiapan" },
-  { key: "produksi", label: "Produksi", hint: "gambar kunci dulu, lalu audio + video" },
+  { key: "produksi", label: "Produksi", hint: "gambar kunci, audio, lalu video" },
   { key: "hasil", label: "Hasil", hint: "tonton, caption, bagikan" },
 ];
 
@@ -580,8 +580,11 @@ function StepNaskah({ project, inf, product, refCount, models, patchProject, set
     <div>
       <div className="card p4 mb4">
         <label className="label">Kata-kata yang diucapkan</label>
+        {/* Audio dibuang begitu naskahnya berubah. Sebelumnya audio lama tetap
+            tersimpan dan dipakai lagi oleh video — orang mengedit kata, lalu
+            membayar video yang mengucapkan naskah versi sebelumnya. */}
         <textarea className="input" rows={4} value={script} onChange={(e) => setScript(e.target.value)}
-          onBlur={() => { if (script !== project.script) patchProject({ script }); }} />
+          onBlur={() => { if (script !== project.script) patchProject({ script, audio_url: null, audio_job_id: null }); }} />
         <p className="tiny muted" style={{ marginTop: 4 }}>
           {wordCount(script)} kata ≈ {estSeconds(script)} detik · target {project.target_seconds} detik.
           Videonya sepanjang audionya — memangkas kata memangkas biaya.
@@ -639,6 +642,8 @@ function StepProduksi({ project, inf, product, refCount, models, mode, pending, 
   const cost = costOf({ imgModel, ttsModel, avatarModel, seconds: r.seconds, script: project.script,
     hasKeyframe: !!project.keyframe_url, hasAudio: !!project.audio_url });
   const blocked = !!r.blockers.length || !imgModel || !ttsModel || !avatarModel;
+  // Harga satu percobaan audio, juga saat audionya sudah ada (cost.tts jadi 0).
+  const ttsTry = costOf({ ttsModel, script: project.script, hasAudio: false }).tts;
 
   // Pilihan model dicatat di proyek supaya "Buat ulang" memakai yang sama.
   async function rememberModels() {
@@ -681,33 +686,48 @@ function StepProduksi({ project, inf, product, refCount, models, mode, pending, 
     setRunning(null);
   }
 
-  // ---- Persetujuan 2: audio lalu video ----
+  // ---- Persetujuan 2: audio ----
+  // Audio dulu ikut satu tombol dengan video. Akibatnya suara yang terdengar
+  // seperti robot baru ketahuan setelah video $0.84 selesai dirender — kasus
+  // nyata 14 Okt 2026: suara preset berbahasa Inggris membacakan naskah
+  // Indonesia, dan yang ditolak adalah suaranya, bukan wajahnya. Audio hanya
+  // sekitar $0.01, jadi mendengarkannya dulu adalah gerbang termurah yang ada.
+  async function makeAudio(force = false) {
+    setErr(null);
+    try {
+      await rememberModels();
+      setRunning({ stage: "audio", sec: 0 });
+      let aJob = force ? null : project.audio_job_id;
+      if (aJob && !project.audio_url) {
+        const { data: prev } = await supa.from("production_jobs").select("status").eq("id", aJob).maybeSingle();
+        if (!prev || prev.status === "failed") aJob = null;
+      }
+      if (!aJob) {
+        const res = await callGenerate({
+          action: "submit", origin: "ugc", task: "tts", model_id: ttsModel.id,
+          influencer_id: project.influencer_id, content_item_id: project.content_item_id || null,
+          text: project.script, label: `${project.title} — audio`,
+        });
+        aJob = res.job_id;
+        await patchProject({ audio_job_id: aJob, audio_url: null });
+      }
+      const url = await waitForJob(aJob, { timeoutMs: 240000, onTick: (_, sec) => setRunning({ stage: "audio", sec }) });
+      await patchProject({ audio_url: url });
+      refresh?.();
+    } catch (e) {
+      setErr(e.message);
+      await load();
+    }
+    setRunning(null);
+  }
+
+  // ---- Persetujuan 3: video ----
   async function makeVideo() {
     setErr(null);
     try {
       await rememberModels();
-      // Audio
-      let audioUrl = project.audio_url;
-      if (!audioUrl) {
-        setRunning({ stage: "audio", sec: 0 });
-        let aJob = project.audio_job_id;
-        if (aJob) {
-          const { data: prev } = await supa.from("production_jobs").select("status").eq("id", aJob).maybeSingle();
-          if (!prev || prev.status === "failed") aJob = null;
-        }
-        if (!aJob) {
-          const res = await callGenerate({
-            action: "submit", origin: "ugc", task: "tts", model_id: ttsModel.id,
-            influencer_id: project.influencer_id, content_item_id: project.content_item_id || null,
-            text: project.script, label: `${project.title} — audio`,
-          });
-          aJob = res.job_id;
-          await patchProject({ audio_job_id: aJob });
-        }
-        audioUrl = await waitForJob(aJob, { timeoutMs: 240000, onTick: (_, sec) => setRunning({ stage: "audio", sec }) });
-        await patchProject({ audio_url: audioUrl });
-      }
-      // Video
+      const audioUrl = project.audio_url;
+      if (!audioUrl) throw new Error("Buat dan dengarkan audionya dulu di langkah 2.");
       setRunning({ stage: "video", sec: 0 });
       let vJob = project.video_url ? null : project.video_job_id;
       if (vJob) {
@@ -779,32 +799,51 @@ function StepProduksi({ project, inf, product, refCount, models, mode, pending, 
         </div>
       </div>
 
-      {/* ---- 2. Audio + video ---- */}
+      {/* ---- 2. Audio ---- */}
       <div className="card p4 mb4" style={{ opacity: project.keyframe_url ? 1 : 0.6 }}>
         <div className="row mb2" style={{ justifyContent: "space-between" }}>
-          <div className="bold">2 · Audio + video <span className="muted tiny">satu persetujuan</span></div>
-          {project.audio_url && !project.video_url && <Badge tone="amber">audio siap</Badge>}
+          <div className="bold">2 · Audio <span className="muted tiny">{ttsModel?.label} · suara {inf?.voice?.[ttsModel?.model_key] || "—"}</span></div>
+          {project.audio_url && <Badge tone="green">siap</Badge>}
         </div>
-        <table className="tiny" style={{ width: "100%", borderCollapse: "collapse", marginBottom: 10 }}>
-          <tbody>
-            <tr><td className="muted">Audio</td><td>{ttsModel?.label} · suara {inf?.voice?.[ttsModel?.model_key] || "—"}</td><td style={{ textAlign: "right" }}>{project.audio_url ? "sudah ada" : `$${cost.tts.toFixed(3)}`}</td></tr>
-            <tr><td className="muted">Video</td><td>{avatarModel?.label.split(" —")[0]} · ≈ {r.seconds} detik × {priceLabel(avatarModel?.est_price_usd)}</td><td style={{ textAlign: "right" }}>${cost.av.toFixed(2)}</td></tr>
-            <tr style={{ borderTop: "1px solid var(--border)" }}><td className="bold">Total langkah ini</td><td /><td className="bold" style={{ textAlign: "right" }}>${(cost.tts + cost.av).toFixed(2)}</td></tr>
-          </tbody>
-        </table>
+        <p className="tiny muted mb2">
+          Dengarkan sampai habis sebelum lanjut. Kalau terdengar seperti dibacakan mesin, ganti suaranya di halaman
+          {" "}{inf?.name || "influencer"} → Suara (pilih suara berawalan Indonesian_ untuk naskah bahasa Indonesia), atau
+          tulis naskahnya lebih seperti orang ngobrol. Satu percobaan audio ≈ ${ttsTry.toFixed(3)}, video ≈ ${cost.av.toFixed(2)}.
+        </p>
+        {project.audio_url && <audio src={project.audio_url} controls style={{ width: "100%", marginBottom: 10 }} />}
         <div className="row">
-          <button className="btn" disabled={blocked || !project.keyframe_url || !!running || pending.audio || pending.video} onClick={makeVideo}>
-            {running && running.stage !== "keyframe"
-              ? `${stageLabel[running.stage]}… ${running.sec}s`
-              : (pending.audio || pending.video) ? "Sedang diproses…"
-                : project.video_url ? `Buat ulang video · $${cost.av.toFixed(2)}` : `Buat audio + video · $${(cost.tts + cost.av).toFixed(2)}`}
-          </button>
+          {!project.audio_url ? (
+            <button className="btn" disabled={blocked || !project.keyframe_url || !!running || pending.audio} onClick={() => makeAudio(false)}>
+              {running?.stage === "audio" ? `Membuat audio… ${running.sec}s` : pending.audio ? "Sedang diproses…" : `Buat audio · $${cost.tts.toFixed(3)}`}
+            </button>
+          ) : (
+            <button className="btn btn2" disabled={blocked || !!running || pending.video} onClick={() => makeAudio(true)}>
+              {running?.stage === "audio" ? `Membuat ulang… ${running.sec}s` : "Buat ulang audio"}
+            </button>
+          )}
           <button type="button" className="btn btn2" onClick={() => setShowModels((v) => !v)}>
             {showModels ? "Sembunyikan model" : "Ganti model"}
           </button>
+        </div>
+      </div>
+
+      {/* ---- 3. Video ---- */}
+      <div className="card p4 mb4" style={{ opacity: project.audio_url ? 1 : 0.6 }}>
+        <div className="row mb2" style={{ justifyContent: "space-between" }}>
+          <div className="bold">3 · Video <span className="muted tiny">{avatarModel?.label.split(" —")[0]} · ≈ {r.seconds} detik × {priceLabel(avatarModel?.est_price_usd)}</span></div>
+          {project.video_url && <Badge tone="green">siap</Badge>}
+        </div>
+        <div className="row">
+          <button className="btn" disabled={blocked || !project.keyframe_url || !project.audio_url || !!running || pending.video} onClick={makeVideo}>
+            {running?.stage === "video"
+              ? `${stageLabel.video}… ${running.sec}s`
+              : pending.video ? "Sedang diproses…"
+                : !project.audio_url ? "Setujui audionya dulu"
+                  : project.video_url ? `Buat ulang video · $${cost.av.toFixed(2)}` : `Buat video · $${cost.av.toFixed(2)}`}
+          </button>
           {mode === "mock" && <span className="tiny muted">mode mock — tidak ditagih</span>}
         </div>
-        {running && running.stage !== "keyframe" && (
+        {running?.stage === "video" && (
           <p className="tiny muted mt2">Video avatar butuh 2–6 menit. Halaman boleh ditutup; hasilnya tetap dicatat ke proyek ini.</p>
         )}
       </div>
