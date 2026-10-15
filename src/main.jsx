@@ -11,6 +11,7 @@ import { Products } from "./products.jsx";
 import { Ugc } from "./ugc.jsx";
 import { Profil } from "./profil.jsx";
 import { BuatVideo } from "./buat-video.jsx";
+import { Mulai } from "./mulai.jsx";
 import { TipLayer, Info } from "./tips.jsx";
 
 // Token undangan dibaca SEKALI saat modul dimuat, sebelum apa pun sempat
@@ -553,6 +554,7 @@ function App() {
   else if (routePath === "/studio") view = <Studio {...props} query={routeQuery} />;
   else if (routePath === "/storyboard") view = <Storyboard {...props} query={routeQuery} />;
   else if (routePath === "/buat-video") view = <BuatVideo {...props} />;
+  else if (routePath === "/mulai") view = <Mulai />;
   else if (routePath === "/ugc") view = <Ugc {...props} query={routeQuery} />;
   else if (routePath === "/products") view = <Products {...props} />;
   else if (routePath === "/profil") view = <Profil {...props} />;
@@ -578,6 +580,8 @@ function App() {
             <a key={href} href={`#${href}`} className={`nav ${routePath === href ? "active" : ""}`}
               data-tip={tip} data-tip-side="right">{label}</a>
           ))}
+          <a href="#/mulai" className={`nav ${routePath === "/mulai" ? "active" : ""}`} style={{ marginTop: 6 }}
+            data-tip="Satu halaman: tiga langkah, kapan uang keluar, apa yang perlu disiapkan." data-tip-side="right">❓ Cara mulai</a>
           <button type="button" onClick={gantiMenu} className="tiny muted mt2"
             data-tip={menuLengkap ? "Kembali ke enam menu utama." : "Tampilkan juga Influencers, Product Kit, Production Studio, Storyboard, Video UGC, dan Tasks."}
             data-tip-side="right"

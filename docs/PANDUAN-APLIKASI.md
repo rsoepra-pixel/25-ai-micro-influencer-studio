@@ -23,7 +23,7 @@ sini:
 
 ## Isi
 
-**Menu di sidebar** — [Dashboard](#-dashboard) · [Buat Video](#-buat-video) · [Profil saya](#-profil-saya) (dari Dashboard) ·
+**Menu di sidebar** — [Dashboard](#-dashboard) · [Cara mulai](#-cara-mulai) · [Buat Video](#-buat-video) · [Profil saya](#-profil-saya) (dari Dashboard) ·
 [Influencers](#-influencers) · [Product Kit](#-product-kit) ·
 [Production Studio](#-production-studio) · [Storyboard](#-storyboard) ·
 [Video UGC](#-video-ugc) · [Content Planner](#-content-planner) ·
@@ -138,6 +138,25 @@ Video UGC tetap menolak influencer yang hanya punya itu.
 **Yang perlu diketahui.** Kartu Drive punya tombol hapus di tiap thumbnail, dan
 menghapus media di sini **permanen** — sama seperti di halaman Drive. Lihat
 [Menghapus media](#menghapus-media) di bawah.
+
+---
+
+## ❓ Cara mulai
+
+**Untuk apa.** Satu halaman infografis untuk orang yang baru pertama kali
+membuka aplikasi: tiga langkah (Profil saya → Buat Video → Tonton & bagikan),
+garis "kapan uang keluar" dari yang gratis sampai yang paling mahal, daftar
+"siapkan dulu", dan "kalau bingung". Ada di sidebar (❓ Cara mulai, di kedua
+susunan menu), di kartu Mulai dari sini, dan di `#/mulai`. Tombol **Cetak**
+menyimpannya sebagai PDF satu halaman; sidebar dan tooltip disembunyikan saat
+dicetak.
+
+**Yang perlu diketahui.** Halaman ini **sengaja tidak menulis angka harga**,
+hanya urutan besarannya (gratis / kecil / paling besar). Tarif berubah dan
+halaman ini dibaca berbulan-bulan; angka pastinya tampil di tombol
+masing-masing, dihitung dari katalog hari itu. Satu-satunya pengecualian:
+biaya penulis AI disebut di tooltip batang "menulis naskah", karena dihitung
+langsung dari tarif yang berlaku.
 
 ---
 

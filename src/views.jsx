@@ -302,6 +302,8 @@ function StartHere({ d }) {
           ⚡ Cara cepat: isi Profil saya (foto, suara, bahasa) →
         </a>
       )}
+      <a href="#/mulai" className="tiny mb2" style={{ display: "inline-block", color: "var(--brand-strong)", fontWeight: 600 }}
+        data-tip="Satu halaman infografis: tiga langkah, kapan uang keluar, apa yang perlu disiapkan. Bisa dicetak.">❓ Baru pertama kali? Lihat Cara mulai (1 halaman)</a>
       <div className="grid" style={{ gridTemplateColumns: "repeat(auto-fill,minmax(220px,1fr))", gap: 8 }}>
         {langkah.map((l, i) => (
           <a key={l.judul} href={`#${l.href}`} data-tip={l.tip} className="row small"
