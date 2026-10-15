@@ -36,35 +36,35 @@ import { useProducts, NewProduct } from "./products.jsx";
 import { waitForJob } from "./storyboard.jsx";
 import { Info } from "./tips.jsx";
 
-const PLATFORMS = [
+export const PLATFORMS = [
   ["tiktok", "TikTok"],
   ["instagram", "Instagram Reels"],
   ["youtube", "YouTube Shorts"],
 ];
 
 // Rasio yang sama dengan penulis naskah di server (write kind=ugc).
-const WORDS_PER_SEC = 2.3;
+export const WORDS_PER_SEC = 2.3;
 // Sama dengan MAX_DURATION_SECONDS di supabase/functions/generate/index.ts.
 // Server yang menegakkannya — angka di sini hanya supaya penolakannya terjadi
 // SEBELUM orang menulis naskah dua menit, bukan sesudahnya.
-const MAX_SECONDS = 30;
+export const MAX_SECONDS = 30;
 const wordCount = (s) => String(s || "").split(/\s+/).filter(Boolean).length;
-const estSeconds = (script) => Math.max(3, Math.round(wordCount(script) / WORDS_PER_SEC));
+export const estSeconds = (script) => Math.max(3, Math.round(wordCount(script) / WORDS_PER_SEC));
 
 // Latar dan gaya bawaan kalau user menulis naskah sendiri tanpa memilih
 // template. Tanpa deskripsi wajah (dari foto) dan tanpa deskripsi kemasan
 // (dari foto) — aturan yang sama dengan penulis AI.
-const DEFAULT_SCENE =
+export const DEFAULT_SCENE =
   "candid selfie taken with a phone front camera at arm's length, face and shoulders clearly visible, " +
   "holding the product at chest height with its label facing the camera, soft natural window light, " +
   "cozy home background slightly out of focus, real skin texture, authentic phone-camera look, vertical 9:16";
-const DEFAULT_DELIVERY =
+export const DEFAULT_DELIVERY =
   "talking casually to the phone camera like a friend recommending a product, relaxed and natural, " +
   "small hand gestures, briefly lifting the product into frame, genuine smiles between sentences";
 
 // Model avatar = lipsync yang berangkat dari FOTO (bukan video) dan audio.
 // Sync Lipsync butuh video orang bicara lebih dulu, jadi bukan untuk jalur ini.
-const isAvatarModel = (m) =>
+export const isAvatarModel = (m) =>
   m.task === "lipsync" && m.audio_field && m.init_image_field && m.init_image_field !== "video_url";
 
 export function Ugc({ ws, refresh, tick, mode, query }) {

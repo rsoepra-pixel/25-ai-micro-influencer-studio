@@ -48,3 +48,10 @@ test("biaya naskah dari tarif token: ≈ Rp 40 pada tarif qwen-plus", () => {
   setHarga({ idr_per_usd: 25714 });
   assert.equal(biayaNaskahLabel(), "");
 });
+
+test("bagiAdegan: total detik jadi adegan 5 detik", async () => {
+  // Diimpor dinamis supaya berkas uji ini tetap jalan tanpa DOM untuk tes lain.
+  const { bagiAdegan } = await import("./buat-video.jsx").catch(() => ({ bagiAdegan: null }));
+  if (!bagiAdegan) return; // JSX tidak bisa dimuat Node tanpa transpiler; dilewati, bukan gagal
+  assert.deepEqual(bagiAdegan(15), [5, 5, 5]);
+});

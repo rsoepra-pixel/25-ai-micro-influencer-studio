@@ -26,7 +26,7 @@ lagi yang memanggil `poll`: hasilnya tidak pernah masuk, uangnya tetap keluar,
 dan tidak ada error di mana pun. Deploy sekarang otomatis lewat GitHub Actions
 saat merge ke `main` — **pakai itu**, jangan deploy manual.
 
-**2. `generate/index.ts` ±143 KB — tidak bisa dipasang lewat tool MCP
+**2. `generate/index.ts` ±190 KB — tidak bisa dipasang lewat tool MCP
 `deploy_edge_function`** (melebihi batas satu panggilan). Satu-satunya jalur
 yang bekerja adalah Actions. Jangan habiskan waktu mencoba menyalinnya.
 

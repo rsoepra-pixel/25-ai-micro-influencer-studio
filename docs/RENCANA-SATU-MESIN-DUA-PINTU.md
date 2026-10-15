@@ -331,7 +331,16 @@ Menggantikan enam langkah `StartHere` bagi pelanggan baru dengan satu halaman:
 | **Merek saya** | `brand_kits` (1.2): logo + warna + nama + klaim terlarang. |
 | **Bahasa** | `id` / `en` / `zh`, memilihkan preset suara dari `voice_presets` (1.3). |
 
-### 3.2 Satu wizard "Buat Video" — `src/buat-video.jsx` (baru)
+### 3.2 Satu wizard "Buat Video" — `src/buat-video.jsx`
+
+**Versi ≤ 30 detik sudah dikerjakan di branch ini** (urutan 4): empat
+langkah (Apa → Siapa → Berapa lama → Tinjau & harga) di depan alur UGC dan
+Storyboard yang ada; menyimpan baris `ugc_projects`/`storyboards` yang sama
+lalu membuka `#/ugc?project=` atau `#/storyboard?board=` (dukungan `?board=`
+ditambahkan). Belum: langkah 3 untuk > 30 detik (menunggu 1.1/1.6/1.8),
+pilihan gaya (1.7), pembanding target per menit (0.7, menunggu kunci
+`target_idr_per_video_minute`), dan satu persetujuan tunggal — produksi masih
+memakai jeda gambar-kunci milik wizard UGC/Storyboard.
 
 | Langkah | Isi | Memanggil |
 |---|---|---|
@@ -347,6 +356,11 @@ Pemilih model **tidak tampil**: default dari `byEffectivePrice` di
 model lebih mahal.
 
 ### 3.3 Sidebar untuk pelanggan
+
+**Sudah dikerjakan di branch ini**, dengan satu penyimpangan: enam menu, bukan
+lima — Beranda dipertahankan karena kartu "Mulai dari sini" dan tautan Profil
+saya ada di sana. Saklar "Semua menu" di bawah sidebar, diingat per perangkat,
+bukan di Settings → Akun.
 
 Dari sebelas menu menjadi lima yang terlihat default: **Buat Video · Karya
 (Drive) · Rencana (Planner) · Laporan · Pengaturan**. Production Studio,

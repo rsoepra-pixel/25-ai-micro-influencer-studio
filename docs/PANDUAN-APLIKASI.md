@@ -23,7 +23,7 @@ sini:
 
 ## Isi
 
-**Menu di sidebar** — [Dashboard](#-dashboard) · [Profil saya](#-profil-saya) (dari Dashboard) ·
+**Menu di sidebar** — [Dashboard](#-dashboard) · [Buat Video](#-buat-video) · [Profil saya](#-profil-saya) (dari Dashboard) ·
 [Influencers](#-influencers) · [Product Kit](#-product-kit) ·
 [Production Studio](#-production-studio) · [Storyboard](#-storyboard) ·
 [Video UGC](#-video-ugc) · [Content Planner](#-content-planner) ·
@@ -65,9 +65,21 @@ Apa pun halaman yang dibuka, tiga hal ini tetap di tempatnya.
 
 ### Sidebar kiri
 
-Sebelas menu, diurutkan bukan menurut abjad melainkan menurut alur kerja: dua
-aset yang dipakai berulang (**siapa** dan **apa**) di atas, alat produksi di
-bawahnya, lalu perencanaan, pengukuran, dan pengaturan.
+Dua susunan, dipilih lewat tombol kecil di bawah daftar menu dan diingat per
+perangkat:
+
+- **Menu ringkas (default):** Beranda · **Buat Video** · Karya (Drive) ·
+  Rencana (Content Planner) · Laporan · Pengaturan. Enam, bukan lima seperti
+  rencana awal — Beranda dipertahankan karena kartu "Mulai dari sini" ada di
+  sana. Nama menunya menyebut *tujuan*, bukan nama alat.
+- **Semua menu:** dua belas menu lama, diurutkan menurut alur kerja: dua aset
+  yang dipakai berulang (**siapa** dan **apa**) di atas, alat produksi di
+  bawahnya, lalu perencanaan, pengukuran, dan pengaturan. Tidak ada yang
+  dihapus; Production Studio, Storyboard, Video UGC, Influencers, Product Kit,
+  dan Tasks tetap di sini.
+
+Kenapa ada dua: uji persona Okt 2026 — sebelas menu dengan nama alat memaksa
+orang memilih alat sebelum tahu bedanya.
 
 ### Kartu saldo di kiri bawah
 
@@ -126,6 +138,41 @@ Video UGC tetap menolak influencer yang hanya punya itu.
 **Yang perlu diketahui.** Kartu Drive punya tombol hapus di tiap thumbnail, dan
 menghapus media di sini **permanen** — sama seperti di halaman Drive. Lihat
 [Menghapus media](#menghapus-media) di bawah.
+
+---
+
+## 🎬 Buat Video
+
+**Untuk apa.** Satu wizard di depan Video UGC dan Storyboard, untuk orang yang
+belum tahu bedanya. Empat pertanyaan dalam bahasa orangnya, lalu harganya
+dalam rupiah, **sebelum** apa pun berbayar berangkat.
+
+1. **Apa** — pilih "saya bicara ke kamera" (jalur UGC) atau "cerita beberapa
+   adegan" (jalur Storyboard), lalu ceritakan videonya satu dua kalimat.
+   Perkiraan harga 15 dan 30 detik sudah tertulis di sini.
+2. **Siapa** — profil dari halaman Profil saya (pemilih muncul kalau ada
+   lebih dari satu), dan untuk jalur UGC: produknya (bisa membuat produk baru
+   di tempat). Yang belum siap — foto wajah, suara, produk — disebut di sini
+   dengan tautan ke tempat memperbaikinya, bukan setelah naskah dibayar.
+3. **Berapa lama** — 10, 15, 20, atau 30 detik, masing-masing dengan harganya.
+   Lebih dari 30 detik **belum bisa** (batas per job; versi panjang menunggu
+   perakitan klip di server). Tombol "Tulis naskahnya" memanggil penulis AI
+   (≈ Rp 40, tertulis di tombol).
+4. **Tinjau & harga** — naskah yang akan diucapkan (atau daftar adegan),
+   rincian biaya per bagian dan totalnya dalam rupiah, lalu **Ya, buat video
+   ini**.
+
+Sesudah "Ya", wizard menyimpan proyek yang **sama persis** dengan yang dibuat
+formulir Video UGC atau Storyboard dan membuka alur produksinya
+(`#/ugc?project=…` atau `#/storyboard?board=…`). Gambar pertama tetap dibuat
+dan dilihat dulu sebelum suara dan video dibayar — jeda murah yang sama
+dengan wizard UGC.
+
+**Yang perlu diketahui.** Tidak ada pemilih model; defaultnya mengikuti
+aturan yang sama dengan wizard UGC dan Storyboard (penjaga wajah yang menerima
+foto produk, avatar termurah yang menerima prompt, model multi-shot termurah
+yang terbukti), dan "Naik kelas" tetap ada di riwayat job. Harga yang tampil
+adalah perkiraan: yang ditagih adalah durasi yang dihasilkan model.
 
 ---
 

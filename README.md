@@ -68,8 +68,11 @@ permintaannya diteruskan (proxy status 200) ke edge function. Aturannya ada di
 
 ### Isi aplikasinya
 
-Dashboard · Influencers · Product Kit · Production Studio · Storyboard ·
-Video UGC · Content Planner · Laporan · Tasks · Drive · Settings
+Menu ringkas (default pelanggan): Beranda · **Buat Video** · Karya · Rencana ·
+Laporan · Pengaturan — plus halaman **Profil saya** dari kartu "Mulai dari
+sini". Menu lengkap (satu ketukan di bawah sidebar): Dashboard · Buat Video ·
+Influencers · Product Kit · Production Studio · Storyboard · Video UGC ·
+Content Planner · Laporan · Tasks · Drive · Settings
 
 Apa guna tiap menu dan tiap fitur di dalamnya — termasuk mana yang memakai
 saldo — ada di [`docs/PANDUAN-APLIKASI.md`](docs/PANDUAN-APLIKASI.md).

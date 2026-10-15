@@ -272,8 +272,15 @@ export async function buildSheet(board, shots) {
     canvas.toBlob((b) => (b ? resolve(b) : reject(new Error("Gagal membuat gambar lembar."))), "image/png"));
 }
 
-export function Storyboard({ ws, refresh, tick, mode }) {
+export function Storyboard({ ws, refresh, tick, mode, query }) {
   const [openId, setOpenId] = useState(null);
+  // `#/storyboard?board=<id>` membuka papan itu langsung — dipakai wizard
+  // Buat Video setelah menyimpan, supaya orangnya mendarat di langkah Naskah
+  // papannya sendiri, bukan di daftar.
+  useEffect(() => {
+    const id = new URLSearchParams(query || "").get("board");
+    if (id) setOpenId(id);
+  }, [query]);
   const [localTick, setLocalTick] = useState(0);
   const bump = useCallback(() => setLocalTick((t) => t + 1), []);
 
