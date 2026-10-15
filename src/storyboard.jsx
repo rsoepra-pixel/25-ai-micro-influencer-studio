@@ -1253,20 +1253,79 @@ function StepProduksi({ board, shots, inf, refCount, models, mode, frameReady, p
 
 function StepHasil({ board, shots, inf, models, setStep }) {
   const fit = fitShotDurations(shots.map((s) => Number(s.seconds) || 5), catalogMaxSeconds(models));
+  // "Buat versi lain": salin storyboard ini — gambar pembuka IKUT disalin
+  // (gratis, wajah tetap sama), video tidak — lalu buka salinannya di
+  // langkah Naskah. Dengan instruksi, narasinya ditulis ulang sekali jalan.
+  const [versiOpen, setVersiOpen] = useState(false);
+  const [beda, setBeda] = useState("");
+  const [sibuk, setSibuk] = useState(null);
+  const [galat, setGalat] = useState(null);
+  async function buatVersi() {
+    setGalat(null);
+    try {
+      let naskah = null;
+      if (beda.trim()) {
+        setSibuk("Menulis narasi versi baru…");
+        const r = await callGenerate({ action: "write", kind: "variant", storyboard_id: board.id, instruction: beda.trim() });
+        naskah = r.variant;
+      }
+      setSibuk("Menyalin storyboard…");
+      const { data: baru, error: e1 } = await supa.from("storyboards").insert({
+        workspace_id: board.workspace_id, influencer_id: board.influencer_id, content_item_id: board.content_item_id || null,
+        title: (naskah?.title || `${board.title} · versi lain`).slice(0, 200),
+        logline: board.logline, continuity: board.continuity, platform: board.platform, status: "draft",
+      }).select("id").single();
+      if (e1) throw new Error(e1.message);
+      const byPos = new Map((naskah?.shots || []).map((s) => [Number(s.position), s]));
+      const { error: e2 } = await supa.from("storyboard_shots").insert(shots.map((s) => ({
+        storyboard_id: baru.id, position: s.position,
+        beat: byPos.get(Number(s.position))?.beat || s.beat,
+        visual_prompt: s.visual_prompt,
+        narration: byPos.has(Number(s.position)) ? byPos.get(Number(s.position)).narration : s.narration,
+        camera: s.camera, seconds: s.seconds,
+        // Hanya gambar pembuka (shot 1) yang dibawa: itu yang dipakai model
+        // multi-shot. Gambar shot lain, kalau ada, biar dibuat ulang bila perlu.
+        image_url: s.position === 1 ? s.image_url || null : null,
+      })));
+      if (e2) throw new Error(e2.message);
+      window.location.hash = `#/storyboard?board=${baru.id}`;
+    } catch (e) { setGalat(e.message); }
+    setSibuk(null);
+  }
   return (
     <div>
       <div className="card p4 mb4">
         <video src={board.video_url} controls playsInline style={{ width: "100%", maxHeight: 640, borderRadius: 10, background: "#000" }} />
-        <div className="row mt3" style={{ justifyContent: "space-between" }}>
+        <div className="row mt3" style={{ justifyContent: "space-between", flexWrap: "wrap", gap: 8 }}>
           <div className="tiny muted">
             {fit.total} detik · {shots.length} shot{inf ? ` · ${inf.name}` : ""} · juga tersimpan di Drive
           </div>
-          <div className="row">
-            <a className="btn btn2" href={board.video_url} download target="_blank" rel="noreferrer">Unduh video</a>
-            <button className="btn btn2" onClick={() => setStep("produksi")}>Buat ulang</button>
-            {board.content_item_id && <a className="btn" href="#/planner">Ke planner →</a>}
+          <div className="row" style={{ flexWrap: "wrap", gap: 6 }}>
+            <a className="btn btn2" href={board.video_url} download target="_blank" rel="noreferrer" data-tip="Simpan berkas videonya ke perangkatmu.">Unduh video</a>
+            <button className="btn btn2" onClick={() => setStep("produksi")} data-tip="Kembali ke Produksi untuk membuat ulang video ini dengan gambar pembuka yang sama.">Buat ulang</button>
+            <button className="btn" onClick={() => setVersiOpen((v) => !v)}
+              data-tip="Salin storyboard ini jadi versi baru. Gambar pembuka dipakai ulang (gratis, wajah tetap sama); hanya videonya yang nanti dibayar lagi.">
+              {versiOpen ? "Tutup" : "Buat versi lain"}
+            </button>
+            {board.content_item_id && <a className="btn btn2" href="#/planner">Ke planner →</a>}
           </div>
         </div>
+        {versiOpen && (
+          <div className="card p4 mt3" style={{ background: "var(--subtle)" }}>
+            <label className="label">Apa yang beda di versi ini? (opsional)<Info tip="Kosongkan untuk menyalin apa adanya, lalu ubah per adegan. Diisi: penulis AI menulis ulang kata-kata yang diucapkan di semua adegan sekali jalan — visual dan gambar pembuka tetap." /></label>
+            <input className="input mb2" value={beda} onChange={(e) => setBeda(e.target.value)} disabled={!!sibuk}
+              placeholder="mis. bahasa Inggris · lebih lucu · ajakan beli lewat WhatsApp · untuk Lebaran" />
+            <p className="tiny muted mb2">
+              Yang dipakai ulang: adegan, kontinuitas, dan gambar pembuka. Yang dibayar lagi nanti: hanya videonya.
+              {beda.trim() ? ` Menulis ulang narasi memakai penulis AI${biayaNaskahLabel()}.` : " Tanpa instruksi: salinan persis, gratis."}
+            </p>
+            {galat && <div className="msg-err mb2">{galat}</div>}
+            <button className="btn" disabled={!!sibuk} onClick={buatVersi}
+              data-tip="Membuat salinan dan membukanya di langkah Naskah. Belum ada video yang dibuat.">
+              {sibuk || (beda.trim() ? `Buat versi lain${biayaNaskahLabel()} →` : "Salin jadi versi baru →")}
+            </button>
+          </div>
+        )}
       </div>
       {shots[0]?.image_url && (
         <div className="card p4 mb4">

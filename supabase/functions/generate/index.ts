@@ -1158,7 +1158,7 @@ Deno.serve(async (req) => {
       }
       case "write": {
         // Penulis AI: kind = script | ideas | persona | lookalike | plan | storyboard | ugc | shot.
-        const kind = ["ideas", "persona", "lookalike", "plan", "storyboard", "ugc", "shot"].includes(body.kind) ? body.kind : "script";
+        const kind = ["ideas", "persona", "lookalike", "plan", "storyboard", "ugc", "shot", "variant"].includes(body.kind) ? body.kind : "script";
         // Pelaku + keperluan, dibawa ke setiap panggilan chat() di bawah ini.
         const penulis = { actor, purpose: String(kind) };
 
@@ -1176,6 +1176,58 @@ Deno.serve(async (req) => {
         // kontinuitas diminta SEKALI di tingkat storyboard, lalu ditempelkan ke
         // setiap prompt shot oleh klien. Satu sumber kebenaran, bukan lima
         // deskripsi baju yang mirip-mirip tapi tidak sama.
+        if (kind === "variant") {
+          // "Buat versi lain" (Okt 2026, tinjauan animator): satu storyboard
+          // yang sudah jadi → versi baru dengan NARASI yang berbeda, visual
+          // tetap. Visual sengaja tidak disentuh: gambar pembukanya dipakai
+          // ulang (gratis), dan wajah tetap sama karena sumbernya sama. Satu
+          // produk, tiga video seminggu, satu kali bayar frame. Satu panggilan
+          // chat() untuk semua shot, bukan satu per shot.
+          const instruction = String(body.instruction || "").trim().slice(0, 300);
+          if (!instruction) throw new Error("Tulis dulu apa yang beda di versi ini — mis. \"bahasa Inggris\", \"lebih lucu\", \"ajakan beli lewat WhatsApp\".");
+          const { data: board } = await admin.from("storyboards").select("id,workspace_id,title,logline,influencer_id")
+            .eq("id", body.storyboard_id).eq("workspace_id", ws).maybeSingle();
+          if (!board) throw new Error("Storyboard tidak ditemukan di workspace ini.");
+          const { data: shots } = await admin.from("storyboard_shots").select("position,beat,narration,seconds,visual_prompt")
+            .eq("storyboard_id", board.id).order("position");
+          if (!shots?.length) throw new Error("Storyboard ini belum punya shot.");
+          let ilang = "Indonesia";
+          if (board.influencer_id) {
+            const { data: inf } = await admin.from("influencers").select("language").eq("id", board.influencer_id).maybeSingle();
+            ilang = inf?.language === "en" ? "English" : inf?.language === "mix" ? "campuran Indonesia-Inggris" : "Indonesia";
+          }
+          const system =
+            `Kamu penulis naskah video short-form. Kamu menulis VERSI LAIN dari narasi sebuah storyboard: visual tiap shot ` +
+            `sudah final dan tidak boleh diubah, yang berubah hanya kata-kata yang diucapkan (dan judul). ` +
+            `Jawab HANYA dengan JSON valid, tanpa penjelasan lain.`;
+          const user =
+            `Video: "${board.title}" — ${board.logline || ""}\n` +
+            `Bahasa bawaan narasi: ${ilang}. Kalau permintaan user menyebut bahasa lain, ikuti permintaan user.\n` +
+            `Shot (visual TETAP, hanya narasi yang ditulis ulang):\n` +
+            shots.map((s) => `${s.position}. [${s.seconds} detik] beat: ${s.beat} · visual: ${s.visual_prompt} · narasi sekarang: ${s.narration || "(kosong)"}`).join("\n") +
+            `\n\nPermintaan user untuk versi ini: "${instruction}"\n` +
+            `\nAturan: narasi tiap shot kira-kira 2,5 kata per detik untuk detiknya; shot 1 tetap hook, shot terakhir tetap punya ajakan; ` +
+            `jangan ubah urutan atau jumlah shot; hindari klaim medis/finansial spesifik.\n` +
+            `Format JSON: {"title": "judul versi ini", "shots": [{"position": 1, "beat": "...", "narration": "..."}]}`;
+          const parsed = parseJsonLoose(await chat(ws, penulis, system, user, undefined, 2000)) as Record<string, unknown>;
+          const raw = Array.isArray(parsed.shots) ? parsed.shots as Record<string, unknown>[] : [];
+          const byPos = new Map(raw.map((s) => [Number(s.position), s]));
+          return json({
+            ok: true,
+            variant: {
+              title: String(parsed.title || board.title).slice(0, 200),
+              shots: shots.map((s) => {
+                const n = byPos.get(Number(s.position));
+                return {
+                  position: s.position,
+                  beat: String(n?.beat || s.beat).slice(0, 120),
+                  narration: String(n?.narration ?? s.narration ?? "").slice(0, 600),
+                };
+              }),
+            },
+          });
+        }
+
         if (kind === "shot") {
           // "Ubah adegan ini" (Okt 2026, tinjauan animator): satu kalimat
           // Indonesia dari orangnya ("bikin dia tertawa, bukan serius") →

@@ -460,7 +460,13 @@ yang sama — cara lama tetap ada, hanya tidak lagi ditanya duluan.
    baju, dan latar seluruh videonya. Model yang mengunci wajah langsung dari
    Identity Kit (Seedance reference-to-video) tidak memakai gambar pembuka
    dan tetap satu tombol.
-3. **Hasil** — tonton dan bagikan.
+3. **Hasil** — tonton, unduh, dan **Buat versi lain**: menyalin storyboard
+   ini jadi versi baru dengan **gambar pembuka dipakai ulang** (gratis, wajah
+   tetap sama); hanya videonya yang nanti dibayar lagi. Kolom "apa yang beda"
+   opsional: diisi ("bahasa Inggris", "lebih lucu", "ajakan beli lewat
+   WhatsApp"), penulis AI menulis ulang narasi semua adegan sekali jalan,
+   visual tetap; dikosongkan, salinan persis tanpa biaya. Salinannya terbuka
+   di langkah Naskah, jadi masih bisa diubah per adegan sebelum video dibuat.
 
 **Kenapa cuma dua gambar, bukan satu per shot.** Rancangan pertama membuat satu
 gambar kunci per shot. Dipakai sungguhan, dua hal muncul: Drive penuh potongan
