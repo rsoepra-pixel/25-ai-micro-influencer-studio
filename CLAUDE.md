@@ -41,11 +41,13 @@ lain lolos. Sebelum menambah pemeriksaan di TS, periksa apakah tempatnya bukan
 di trigger.
 
 **5. Migrasi dijalankan manual dan tidak ikut deploy otomatis.** Nomornya harus
-unik, dan sudah ada dua ketidakcocokan yang terlanjur: dua berkas `0044`
-(`archive_error`, `quota_reserved`), dan `0047_prompt_suggestions.sql` yang di
-produksi terlanjur bernama `0045_prompt_suggestions`. Keduanya tidak berbahaya
-(lihat `docs/OPERASI.md`), tapi jangan menambah yang ketiga — cek berkas yang
-ada dulu sebelum memilih nomor.
+unik, dan sudah ada tiga ketidakcocokan yang terlanjur: dua berkas `0044`
+(`archive_error`, `quota_reserved`), dua berkas `0048` (`job_audit`,
+`usage_charge_once`), dan `0047_prompt_suggestions.sql` yang di produksi
+terlanjur bernama `0045_prompt_suggestions`. Ketiganya tidak berbahaya (lihat
+`docs/OPERASI.md`), tapi jangan menambah yang keempat — cek berkas di `main`
+terbaru, bukan cuma di branch-mu, sebelum memilih nomor. `0051` pernah dipakai
+dua PR sekaligus dan baru ketahuan sebelum diterapkan.
 
 **6. Jangan kirim `action_link` Supabase ke orang.** Link itu menunjuk
 langsung ke `/auth/v1/verify` dan tokennya sekali pakai — pratinjau link
