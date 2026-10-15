@@ -313,7 +313,14 @@ Paling mahal, karena menyentuh `src/views.jsx` (±5.000 baris), `ugc.jsx` (924),
 dan `storyboard.jsx` (1.322). Dikerjakan terakhir supaya **hanya mengorkestrasi**
 primitif Fase 1, bukan menulis ulang logikanya.
 
-### 3.1 Halaman "Profil saya" — `src/profil.jsx` (baru)
+### 3.1 Halaman "Profil saya" — `src/profil.jsx`
+
+**Versi tipis sudah dikerjakan di branch ini** (urutan 3 di tabel): foto,
+rekam suara dari mikrofon (satu rekaman → dua klon), bahasa, dan kartu
+"Sudah siap?" dengan tombol ke video pertama. Dibuka dari tautan ⚡ di kartu
+`StartHere`; belum di sidebar (menunggu 3.3). Yang belum: merek (1.2), `zh`
+(1.3), penyimpanan rekaman asli (1.4). Aksi server baru `attach_photos`
+(foto → Identity Kit tanpa penulis AI) di `generate/index.ts`.
 
 Menggantikan enam langkah `StartHere` bagi pelanggan baru dengan satu halaman:
 

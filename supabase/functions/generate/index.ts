@@ -911,7 +911,13 @@ async function storeVoiceSample(ws: string, dataUri: string, infId: string): Pro
   // saringan kasar; batas sebenarnya ditegakkan fal dan pesannya diteruskan.
   if (bytes.byteLength < 4000) throw new Error("Sampel suaranya terlalu kecil — kemungkinan filenya rusak atau kosong.");
   if (bytes.byteLength > 25 * 1024 * 1024) throw new Error("Sampel suaranya lebih dari 25 MB. Potong dulu jadi 5-30 detik.");
-  const ext = m[1].includes("wav") ? "wav" : m[1].includes("mp4") ? "mp4" : m[1].includes("quicktime") || m[1].includes("mov") ? "mov" : "mp3";
+  // webm/ogg: rekaman langsung dari mikrofon browser (halaman Profil saya,
+  // Chrome/Android). Sebelumnya jatuh ke "mp3" — ekstensi yang bohong. Apakah
+  // MiniMax lewat fal menerima webm BELUM diverifikasi; kalau ditolak, pesan
+  // fal diteruskan dan halaman menyarankan unggah berkas dari perekam ponsel.
+  const ext = m[1].includes("wav") ? "wav" : m[1].includes("mp4") ? "mp4"
+    : m[1].includes("quicktime") || m[1].includes("mov") ? "mov"
+    : m[1].includes("webm") ? "webm" : m[1].includes("ogg") ? "ogg" : "mp3";
   const path = `${ws}/voices/${infId}-${crypto.randomUUID()}.${ext}`;
   const { error } = await admin.storage.from("media")
     .upload(path, bytes, { contentType: m[1], upsert: true, cacheControl: "3600" });
@@ -1933,6 +1939,29 @@ Deno.serve(async (req) => {
           await admin.from("influencers").update({ avatar_url: urls[0] }).eq("id", inf.id);
         }
         return json({ ok: true, attached: urls.length });
+      }
+      case "attach_photos": {
+        // Foto (data URI) → Storage → Identity Kit, TANPA penulis AI. Pasangan
+        // attach_refs untuk halaman Profil saya: attach_refs hanya menerima URL
+        // yang sudah ada di Storage, dan satu-satunya jalur yang mengunggah
+        // foto wajah sebelumnya adalah `write` kind persona/lookalike — yang
+        // memanggil penulis AI dan memotong saldo. Menambah foto ke-3 tidak
+        // perlu AI membaca wajahnya lagi, jadi tidak perlu membayar lagi.
+        const { data: inf } = await admin.from("influencers").select("id, avatar_url, workspace_id")
+          .eq("id", body.influencer_id).maybeSingle();
+        if (!inf || inf.workspace_id !== ws) throw new Error("Influencer tidak ditemukan.");
+        const photos: string[] = Array.isArray(body.photos)
+          ? (body.photos as unknown[]).filter((x) => typeof x === "string").slice(0, 8) as string[]
+          : [];
+        if (!photos.length) throw new Error("Tidak ada foto untuk diunggah.");
+        const stored = await storePhotos(ws, photos);
+        if (stored.urls.length) {
+          const { error } = await admin.from("character_assets")
+            .insert(stored.urls.map((url) => ({ influencer_id: inf.id, kind: "reference", url })));
+          if (error) throw new Error(error.message);
+          if (!inf.avatar_url) await admin.from("influencers").update({ avatar_url: stored.urls[0] }).eq("id", inf.id);
+        }
+        return json({ ok: true, attached: stored.urls.length, urls: stored.urls, photos_failed: stored.failed });
       }
       case "apply_draft": {
         // Simpan hasil penulis AI ke content_item (dipisah agar user bisa review dulu).

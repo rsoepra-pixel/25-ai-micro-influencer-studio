@@ -23,7 +23,7 @@ sini:
 
 ## Isi
 
-**Menu di sidebar** — [Dashboard](#-dashboard) ·
+**Menu di sidebar** — [Dashboard](#-dashboard) · [Profil saya](#-profil-saya) (dari Dashboard) ·
 [Influencers](#-influencers) · [Product Kit](#-product-kit) ·
 [Production Studio](#-production-studio) · [Storyboard](#-storyboard) ·
 [Video UGC](#-video-ugc) · [Content Planner](#-content-planner) ·
@@ -126,6 +126,44 @@ Video UGC tetap menolak influencer yang hanya punya itu.
 **Yang perlu diketahui.** Kartu Drive punya tombol hapus di tiap thumbnail, dan
 menghapus media di sini **permanen** — sama seperti di halaman Drive. Lihat
 [Menghapus media](#menghapus-media) di bawah.
+
+---
+
+## 🙂 Profil saya
+
+**Untuk apa.** Jalan pendek untuk tiga langkah pertama: **wajah, suara, dan
+bahasa** dalam satu halaman, tanpa kata "influencer", "Identity Kit", atau
+"voice id". Dibuka dari kartu **Mulai dari sini** di Dashboard (tautan ⚡ "Cara
+cepat"), atau langsung `#/profil`. Tidak ada di sidebar — ia pintu masuk, bukan
+menu kerja.
+
+Ditulis setelah uji persona Okt 2026: pelanggan awam berhenti di langkah
+ke-2 dari enam langkah awal, pada kata "Identity Kit".
+
+**Tiga kartu, berurutan:**
+
+1. **Wajah saya** — nama panggilan, bahasa, dan 1–4 foto. Tombol **Simpan
+   wajah saya** membuat karakter sekaligus foto acuannya; penulis AI membaca
+   ciri wajah dari foto (≈ Rp 40, tertulis di tombolnya) supaya wajahnya
+   terkunci di semua gambar. Menambah foto berikutnya **gratis** dan tanpa AI.
+2. **Suara saya** — **rekam langsung dari mikrofon** (10–30 detik, berhenti
+   sendiri di 30) atau unggah rekaman dari ponsel. Satu rekaman dipakai untuk
+   **dua** klon sekaligus: suara untuk video bicara ke kamera (MiniMax, UGC)
+   lalu suara untuk video cerita beberapa adegan (Kling, Storyboard). Contoh
+   suara hasil tiruan bisa didengar sebelum dipakai. Tidak memotong saldo.
+3. **Bahasa video** — Indonesia, English, atau campuran. Mandarin menyusul.
+
+Kartu penutup menunjukkan tiga tanda centang dan tombol **Buat video
+pertama**, yang baru aktif kalau wajah dan suara sudah ada. Video bicara ke
+kamera tetap butuh satu produk di Product Kit.
+
+**Yang perlu diketahui.** Di workspace yang punya lebih dari satu karakter,
+ada pemilih "profil yang diatur" di atas; pilihannya disimpan di perangkat.
+Semua yang disimpan di sini **sama persis** dengan yang dibuat lewat halaman
+Influencers — Profil saya hanya jalan pendeknya, dan **Pengaturan lengkap**
+membawa ke halaman detail yang sama. Penerimaan rekaman browser (format webm
+di Chrome/Android) oleh penyedia klon suara **belum diverifikasi**; kalau
+ditolak, pesan penyedia ditampilkan dan tombol unggah berkas tetap ada.
 
 ---
 

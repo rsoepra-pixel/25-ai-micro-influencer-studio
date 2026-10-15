@@ -292,6 +292,16 @@ function StartHere({ d }) {
         <div className="bold">Mulai dari sini</div>
         <span className="tiny muted">{selesai} dari {langkah.length} selesai</span>
       </div>
+      {/* Jalan pendek untuk tiga langkah pertama. Uji persona Okt 2026: orang
+          berhenti di langkah ke-2 ("Identity Kit"); halaman Profil saya meminta
+          foto, suara, dan bahasa tanpa istilah itu. Daftar di bawah tetap ada
+          untuk yang mau mengatur sendiri. */}
+      {selesai < 3 && (
+        <a href="#/profil" className="row small mb2" data-tip="Foto, suara, dan bahasa dalam satu halaman — tiga langkah pertama di bawah terisi otomatis."
+          style={{ gap: 8, border: "1px solid var(--brand-line)", borderRadius: 10, padding: "10px 12px", background: "var(--brand-soft)", color: "var(--brand-strong)", fontWeight: 700 }}>
+          ⚡ Cara cepat: isi Profil saya (foto, suara, bahasa) →
+        </a>
+      )}
       <div className="grid" style={{ gridTemplateColumns: "repeat(auto-fill,minmax(220px,1fr))", gap: 8 }}>
         {langkah.map((l, i) => (
           <a key={l.judul} href={`#${l.href}`} data-tip={l.tip} className="row small"
@@ -1087,7 +1097,7 @@ function VoiceCard({ inf, models, onSaved }) {
 // Kling menolak sampel di luar 5-30 detik, dan menemukan itu SETELAH file 20 MB
 // terunggah dan satu panggilan API terpakai adalah cara paling lambat untuk
 // mengetahui hal yang bisa diketahui dalam sekejap di sini.
-function mediaDuration(file) {
+export function mediaDuration(file) {
   return new Promise((resolve) => {
     const url = URL.createObjectURL(file);
     const el = document.createElement(file.type.startsWith("video") ? "video" : "audio");
@@ -1100,7 +1110,7 @@ function mediaDuration(file) {
   });
 }
 
-const fileToDataUri = (file) => new Promise((resolve, reject) => {
+export const fileToDataUri = (file) => new Promise((resolve, reject) => {
   const r = new FileReader();
   r.onload = () => resolve(String(r.result));
   r.onerror = () => reject(new Error("File tidak bisa dibaca."));

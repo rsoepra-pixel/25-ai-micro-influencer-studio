@@ -9,6 +9,7 @@ import { Reports } from "./reports.jsx";
 import { Storyboard } from "./storyboard.jsx";
 import { Products } from "./products.jsx";
 import { Ugc } from "./ugc.jsx";
+import { Profil } from "./profil.jsx";
 import { TipLayer, Info } from "./tips.jsx";
 
 // Token undangan dibaca SEKALI saat modul dimuat, sebelum apa pun sempat
@@ -532,6 +533,7 @@ function App() {
   else if (routePath === "/storyboard") view = <Storyboard {...props} />;
   else if (routePath === "/ugc") view = <Ugc {...props} query={routeQuery} />;
   else if (routePath === "/products") view = <Products {...props} />;
+  else if (routePath === "/profil") view = <Profil {...props} />;
   else if (routePath === "/planner") view = <Planner {...props} />;
   else if (routePath === "/reports") view = <Reports {...props} />;
   else if (routePath === "/tasks") view = <Tasks {...props} />;
