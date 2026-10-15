@@ -30,9 +30,32 @@ sini:
 [Laporan](#-laporan) · [Tasks](#-tasks) · [Drive](#-drive) ·
 [Settings](#-settings)
 
-**Lain-lain** — [Kerangka yang selalu terlihat](#kerangka-yang-selalu-terlihat) ·
+**Lain-lain** — [Masuk & daftar](#masuk--daftar) ·
+[Kerangka yang selalu terlihat](#kerangka-yang-selalu-terlihat) ·
 [Fitur yang muncul di banyak halaman](#fitur-yang-muncul-di-banyak-halaman) ·
 [Ringkasan: mana yang memakai uang](#ringkasan-mana-yang-memakai-uang)
+
+---
+
+## Masuk & daftar
+
+Halaman masuk punya dua jalan: tombol **Masuk dengan Google** di atas, atau
+email & password di bawahnya. Keduanya berlaku untuk masuk maupun daftar.
+
+- **Akun baru lewat Google** lahir lewat jalur yang sama dengan daftar pakai
+  password: langsung dapat workspace sendiri sebagai owner. Tidak ada jalur
+  kedua yang bisa berbeda perilakunya.
+- **Lewat link undangan**, Google juga boleh dipakai. Undangannya tetap
+  diterima setelah kembali dari Google, karena token undangannya ikut
+  dititipkan di alamat kembali.
+- **Akun Google tidak punya password.** Itu tidak masalah untuk aplikasi ini,
+  tapi halaman persetujuan connector Claude (MCP) hanya menerima email &
+  password. Pengguna Google yang mau menghubungkan Claude perlu memasang
+  password dulu di **Settings → Akun → Ganti password saya** — kartu Claude
+  (MCP) menyebutkan ini juga.
+
+Pelanggan yang akunnya dibuat operator masuk pertama kali lewat
+[Link akses](#link-akses), bukan lewat halaman ini.
 
 ---
 
@@ -244,6 +267,14 @@ Isi lain di formulir ini:
   teks dan memotong saldo (≈ Rp 40 per naskah).**
 - **Pustaka prompt** — contoh prompt siap pakai per kategori. Gratis, tidak
   memanggil AI.
+- **URL video sumber (multi-angle)** (task video) — hanya muncul untuk model
+  yang menerimanya: Seedance 2.0, 2.0 Fast, dan 2.5 reference-to-video (versi
+  Mini sengaja tidak). Video yang sudah ada dirender ulang dari sudut kamera
+  lain; sebut videonya di prompt sebagai `@Video1`. **Belum pernah diuji
+  langsung ke provider** — nama field-nya diambil dari dokumentasi publik fal.
+  Tanpa field yang benar, job tetap jalan dan tetap ditagih, tapi videonya
+  dibuat dari nol. Coba dengan job murah dulu. Claude lewat MCP juga bisa
+  mengirimnya (`source_video_url` di `generate_media`).
 - **Estimasi biaya** di sebelah tombol Generate, ditulis "≈" karena memang
   perkiraan.
 
@@ -322,6 +353,14 @@ kamera**, gaya konten buatan pengguna. Ini jalur yang dipakai untuk endorse.
 
 Yang diisi manusia hanya lima: produk (dari Product Kit), influencer (Identity
 Kit + suara), naskah, durasi, dan latar. Sisanya default yang sudah terbukti.
+
+**Latar usulan penulis AI selalu bahasa Inggris dan tidak berulang.** Latar
+dan gaya penyampaian dikirim apa adanya sebagai prompt ke model gambar dan
+model avatar, jadi teks Indonesia di sana menurunkan hasilnya. Kalau penulis
+AI tetap menjawab bahasa Indonesia, aplikasi meminta ulang sekali. Ruangannya
+ditentukan produknya (produk yang tidak terikat tempat — ebook, kursus,
+aplikasi, jasa — tidak boleh memakai home office), dan lima latar terakhir
+influencer yang sama dikirim sebagai daftar yang tidak boleh diulang.
 
 Tiga job berbayar berurutan:
 
@@ -498,7 +537,8 @@ workspace `byo_key` yang memasang key sendiri).
 ### Akun
 
 - **Akun & Admin** — info akunmu, ganti password sendiri. Owner juga bisa
-  mereset password anggota dari sini.
+  mereset password anggota dari sini. Yang biasa masuk dengan Google memasang
+  password pertamanya di sini juga — dibutuhkan untuk menghubungkan Claude.
 - **Langganan** — paket apa, aktif sampai kapan. Kalau kedaluwarsa atau belum
   tercatat, **model berbayar terkunci**; model gratis (Hugging Face) tetap bisa
   dipakai.
@@ -647,6 +687,18 @@ aplikasi menanyakan dulu ke server **apa yang akan hilang**: konten mana yang
 memakainya, apakah sudah pernah terbit, dan untuk foto Identity Kit — berapa
 foto acuan yang tersisa setelahnya.
 
+**File yang masih dipakai tidak ikut dibuang.** Satu file bisa dirujuk banyak
+tempat sekaligus: aset Drive, foto Identity Kit, foto profil, storyboard,
+proyek UGC, dan foto produk. Kalau masih ada pemakai lain, yang dihapus hanya
+entrinya, filenya tetap — dan layar konfirmasi menyebut siapa saja pemakainya.
+Sebelum Okt 2026, menghapus satu entri membuang filenya untuk semua pemakai,
+dan storyboard bisa kehilangan frame-nya tanpa ada yang menyentuhnya.
+
+Riwayat job tidak dihitung sebagai pemakai. Kalau filenya benar-benar
+dibuang, tautan hasil di riwayat produksi ikut mati, dan layar konfirmasi
+memberitahukannya. Kalau pemakaian file berubah di antara konfirmasi dan
+penghapusan, server menolak dan layar memeriksa ulang.
+
 ### Naik kelas (escalate)
 
 Tombol di tiap baris riwayat job yang berhasil. Mengirim ulang **prompt dan
@@ -696,6 +748,15 @@ pertanyaan tes dan daftar masalah umum.
 pernah memanggil provider teks: Claude menulis naskahnya sendiri lalu
 menyimpannya lewat `update_content`. Generate media lewat Claude tetap memakai
 saldo seperti dari aplikasi.
+
+**Foto atau audio yang dilampirkan di chat bisa dipakai.** `generate_media`
+hanya menerima URL, jadi Claude memanggil `create_upload_url` dulu, mengunggah
+filenya langsung ke storage, lalu memakai URL publiknya. Jenis yang diterima
+sengaja sempit — JPG, PNG, WebP, MP3, WAV, M4A — karena bucket media terbuka
+untuk dibaca dan daftar yang longgar berarti hosting file gratis. Unggahannya
+langsung tercatat di Drive dengan nama "Unggahan Claude", dan tidak memotong
+saldo. Mengunggah butuh akses jaringan di sisi Claude (misalnya Cowork); di
+tempat yang tidak punya, Claude perlu URL dari kamu.
 
 **Semua jalur submit bermuara ke satu tempat yang sama** (`production_jobs`),
 jadi pemeriksaan saldo, jatah, dan langganan berlaku sama untuk browser, cron,

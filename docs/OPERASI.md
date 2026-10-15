@@ -166,7 +166,12 @@ hanya mengurus porsi saldonya.
 - Link berlaku **24 jam**, **sekali pakai**, dan tokennya disimpan hanya sebagai
   sha256 — alasan yang sama dengan password. Link yang hilang tidak bisa
   ditampilkan ulang, hanya bisa diterbitkan yang baru.
-- Anggota masuk dengan email & password sendiri.
+- Anggota masuk dengan email & password sendiri, atau dengan Google. Token
+  undangan dititipkan di alamat kembali dari Google, jadi syaratnya
+  `https://25-ai-microinfluencer.netlify.app/**` ada di **Redirect URLs**
+  Supabase. Kalau tidak, Supabase diam-diam kembali ke Site URL, query-nya
+  terbuang, dan orangnya mendarat di workspace kosong miliknya sendiri, bukan
+  di workspace yang mengundangnya.
 - Owner boleh mencabut kursi dan menerbitkan ulang. Karya anggota yang dicabut
   **tidak** ikut terhapus dan `created_by`-nya tidak dikosongkan: siapa yang
   membuat sesuatu tetap benar meskipun orangnya sudah pergi.
@@ -370,7 +375,7 @@ menumpang di jalur yang ramai.
 | **"Anggota tidak boleh menghapus karya orang lain"** | diputuskan, belum ditegakkan. Yang sudah ada baru pembatasan kursi. |
 | **Admin panel** | paket saldo + pencocokan Doku; upgrade kursi 1→3; kelola anggota pelanggan; suspend akses; rincian pemakaian per pelanggan; ringkasan bisnis (omzet, **saldo beredar sebagai kewajiban**, margin terealisasi). |
 | **Email reset password dari dashboard Supabase** | Template bawaan (Authentication → Emails → Reset Password) menunjuk langsung ke `/auth/v1/verify`, jadi token sekali-pakainya bisa habis oleh pemindai link di email sebelum pelanggan mengklik — pelanggan cuma melihat form login. Link akses dari halaman Pelanggan sudah aman (`?pulih=`, sejak #78). Untuk menyamakan, ganti link di template menjadi `{{ .SiteURL }}/?pulih={{ .TokenHash }}`; sampai itu dilakukan, pakai Link akses, bukan tombol "Send password recovery". |
-| **Nomor migrasi ganda** | ada `0044_archive_error.sql` dan `0044_quota_reserved.sql`. Urutannya saat ini aman (dijalankan berdasarkan nama), tapi jangan tambah `0044` ketiga. |
+| **Nomor migrasi ganda** | ada dua `0044` (`archive_error`, `quota_reserved`) dan dua `0048` (`job_audit`, `usage_charge_once`). Urutannya saat ini aman (dijalankan berdasarkan nama), tapi jangan tambah nomor kembar lagi. |
 
 ---
 
@@ -396,20 +401,26 @@ menumpang di jalur yang ramai.
 | `0052` | harga katalog (`provider_models`) hanya bisa diubah operator |
 | `0053` | batas belanja bulanan milik owner: `spend_cap_usd` + trigger di `production_jobs` |
 | `0054` | `media_refs()` — siapa saja yang masih memakai satu URL media; dipakai `media` sebelum membuang file. **Jalankan sebelum merge** perubahan `media` yang memakainya, kalau tidak setiap hapus media ditolak. |
+| `0055` | `provider_models.ref_video_field` / `ref_video_multi` untuk video sumber Seedance reference-to-video (multi-angle), dan dua kolom itu ditambahkan di akhir `provider_models_ranked`. Field `video_urls` **belum diuji** ke fal. Awalnya bernomor `0051` dan diganti karena bertabrakan dengan `0051_new_workspace_live`. |
 
 ### Nama migrasi: repo vs ledger produksi
 
-Dua ketidakcocokan yang sudah terlanjur ada. Keduanya **tidak berbahaya**, tapi
+Tiga ketidakcocokan yang sudah terlanjur ada. Ketiganya **tidak berbahaya**, tapi
 akan membingungkan orang pertama yang mencocokkan `supabase/migrations/` dengan
 ledger di database:
 
 - Ada dua berkas bernomor `0044`: `archive_error` dan `quota_reserved`.
+- Ada dua berkas bernomor `0048`: `job_audit` dan `usage_charge_once`.
 - Berkas `0047_prompt_suggestions.sql` terlanjur diterapkan di produksi dengan
   nama **`0045_prompt_suggestions`**, dan urutan penerapannya mendahului
   `0045_quota_audit` — berbeda dari urutan nama berkasnya.
 
 Tidak ada yang perlu diperbaiki: `0047` hanya menyentuh `prompt_templates` dan
 tidak bergantung sama sekali pada `0044`–`0046`, jadi memutar ulang berkasnya
-berurutan di project baru tetap menghasilkan skema yang sama. Yang penting:
-**jangan menambah `0044` ketiga, dan pakai nomor berikutnya yang benar-benar
-bebas.**
+berurutan di project baru tetap menghasilkan skema yang sama. Dua berkas `0048`
+juga saling lepas: tidak ada yang merujuk kolom atau fungsi milik yang lain.
+Yang penting: **jangan menambah nomor kembar lagi, dan pakai nomor berikutnya
+yang benar-benar bebas.** Okt 2026 hampir terjadi yang keempat — dua PR yang
+dikerjakan bersamaan sama-sama memakai `0051`; yang belakangan diganti jadi
+`0055` sebelum diterapkan. Cek `supabase/migrations/` di `main` terbaru, bukan
+di branch-mu, sesaat sebelum merge.
