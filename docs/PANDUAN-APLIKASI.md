@@ -437,7 +437,13 @@ multi-shot**. Cocok untuk cerita yang butuh perpindahan sudut, bukan untuk orang
 bicara ke kamera (itu Video UGC).
 
 **Formulirnya** menanyakan bentuk cerita (pola yang sama dengan wizard Buat
-Video) dan total durasi; penulis AI membagi adegannya. Yang mau menentukan
+Video), total durasi, dan **foto dari HP-mu (opsional, maks. 5)**: dapur,
+keripik, kemasan, pembeli. Penulis AI melihat fotonya dan menjadikan tiap foto
+bahan satu adegan; foto kemasan ikut dikirim sebagai referensi tambahan ke
+job gambar pembuka (hanya untuk model yang menerima banyak referensi) supaya
+kemasannya tidak dikarang. **Foto tidak menjadi frame per adegan** — model
+video multi-shot hanya menerima satu gambar awal; foto mengarahkan tulisan
+dan gambar pembuka. Penulis AI membagi adegannya. Yang mau menentukan
 sendiri jumlah shot dan detik per shot memilih **Atur sendiri** di pemilih
 yang sama — cara lama tetap ada, hanya tidak lagi ditanya duluan.
 

@@ -1338,11 +1338,24 @@ Deno.serve(async (req) => {
           const platform = ["tiktok", "instagram", "youtube"].includes(body.platform) ? body.platform : "tiktok";
           const platformLabel = platform === "instagram" ? "Instagram Reels" : platform === "youtube" ? "YouTube Shorts" : "TikTok";
 
+          // Foto dari HP orangnya (Okt 2026): tiap foto jadi bahan satu adegan.
+          // Penulis MELIHAT fotonya (chat() menerima gambar, seperti persona),
+          // lalu mendeskripsikan yang terlihat ke visual_prompt. Fotonya
+          // disimpan ke Storage supaya yang kemasan bisa ikut ke job frame
+          // pembuka sebagai referensi tambahan (storyboards.ref_photo_urls).
+          const photos: string[] = Array.isArray(body.photos)
+            ? (body.photos as unknown[]).filter((x) => typeof x === "string").slice(0, 5) as string[]
+            : [];
+
           const system =
             `Kamu sutradara video short-form untuk ${platformLabel}, pasar Indonesia. ` +
             `Kamu memecah satu ide menjadi shot list yang langsung bisa diproduksi model AI. ` +
             `Talent-nya ${iname}${iniche ? `, niche ${iniche}` : ""}. ` +
             (ibio ? `Persona: ${ibio} ` : "") +
+            (photos.length
+              ? `Kamu diberi ${photos.length} foto milik user, berurutan. Deskripsikan yang TERLIHAT di tiap foto secara faktual ` +
+                `(tempat, benda, aksi, suasana) — JANGAN menebak identitas atau mendeskripsikan wajah orang di foto. `
+              : "") +
             `Jawab HANYA dengan JSON valid, tanpa penjelasan lain.`;
 
           const user =
@@ -1355,6 +1368,13 @@ Deno.serve(async (req) => {
                 `hook pendek dan inti/payoff lebih panjang — jangan semua sama. Jumlah detik semua shot HARUS ${total}. ` +
                 `Format vertikal 9:16.\n`
               : `\nPecah jadi TEPAT ${shotCount} shot, masing-masing sekitar ${perShot} detik. Format vertikal 9:16.\n`) +
+            (photos.length
+              ? `\nFoto terlampir (foto 1 sampai ${photos.length}): bangun adegan DARI foto-foto ini — tiap foto jadi bahan satu shot ` +
+                `(dua foto yang mirip boleh digabung), urutannya boleh diatur ulang mengikuti pola/cerita. "visual_prompt" shot itu ` +
+                `mendeskripsikan yang terlihat di fotonya. Kalau ada foto kemasan/produk, tampilkan produk itu di shot PERTAMA ` +
+                `dan shot TERAKHIR — model video paling sering menggeser bentuk kemasan di shot tengah. ` +
+                `Sertakan "photo": nomor foto yang dipakai tiap shot (null kalau tidak ada).\n`
+              : "") +
             `\nAturan yang harus dipatuhi:\n` +
             `1. "continuity": satu deskripsi yang berlaku untuk SEMUA shot — pakaian, lokasi, waktu, ` +
             `pencahayaan, dan palet warna. Bahasa Inggris, 20-40 kata. Ini yang membuat potongan-potongan ` +
@@ -1379,14 +1399,18 @@ Deno.serve(async (req) => {
             `\nFormat JSON: {"title": "judul video", "logline": "1 kalimat bahasa Indonesia isi videonya", ` +
             `"continuity": "...", "shots": [{"beat": "nama beat singkat bahasa Indonesia", ` +
             `"visual_prompt": "...", "narration": "...", "camera": "close-up | medium | wide", ` +
-            `"seconds": ${perShot}}]}`;
+            `"seconds": ${perShot}${photos.length ? ', "photo": 1' : ""}}]}`;
 
-          const parsed = parseJsonLoose(await chat(ws, penulis, system, user, undefined, 3000)) as Record<string, unknown>;
+          const parsed = parseJsonLoose(await chat(ws, penulis, system, user, photos.length ? photos : undefined, 3000)) as Record<string, unknown>;
           const rawShots = Array.isArray(parsed.shots) ? parsed.shots : [];
           if (!rawShots.length) throw new Error("Penulis AI tidak mengembalikan satu shot pun. Coba lagi.");
+          // Foto disimpan SETELAH penulis menjawab: kalau penulisnya gagal,
+          // tidak ada berkas yatim di Storage.
+          const stored = photos.length ? await storePhotos(ws, photos, "storyboard") : { urls: [], failed: [] };
           const CAMERAS = ["close-up", "medium", "wide"];
           const shotsOut = rawShots.slice(0, shotCount).map((s: Record<string, unknown>, i: number) => ({
             position: i + 1,
+            photo: Number.isInteger(Number(s?.photo)) && Number(s?.photo) >= 1 && Number(s?.photo) <= photos.length ? Number(s?.photo) : null,
             beat: String(s?.beat || `Shot ${i + 1}`).slice(0, 120),
             visual_prompt: String(s?.visual_prompt || "").slice(0, 800),
             narration: String(s?.narration || "").slice(0, 600),
@@ -1419,6 +1443,8 @@ Deno.serve(async (req) => {
               logline: String(parsed.logline || "").slice(0, 300),
               continuity: String(parsed.continuity || "").slice(0, 500),
               pattern: modeBeat ? (pattern || "bebas") : null,
+              photo_urls: stored.urls,
+              photos_failed: stored.failed,
               shots: shotsOut,
             },
           });

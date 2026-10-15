@@ -401,6 +401,7 @@ menumpang di jalur yang ramai.
 | `0052` | harga katalog (`provider_models`) hanya bisa diubah operator |
 | `0053` | batas belanja bulanan milik owner: `spend_cap_usd` + trigger di `production_jobs` |
 | `0054` | `media_refs()` — siapa saja yang masih memakai satu URL media; dipakai `media` sebelum membuang file. **Jalankan sebelum merge** perubahan `media` yang memakainya, kalau tidak setiap hapus media ditolak. |
+| `0056` | `storyboards.ref_photo_urls` — foto milik user untuk storyboard-dari-foto: bahan adegan dan referensi tambahan gambar pembuka. **Jalankan sebelum merge** perubahan Storyboard yang menyimpannya, kalau tidak insert storyboard ditolak karena kolomnya tidak ada. Belum dihitung `media_refs()`. |
 | `0055` | `provider_models.ref_video_field` / `ref_video_multi` untuk video sumber Seedance reference-to-video (multi-angle), dan dua kolom itu ditambahkan di akhir `provider_models_ranked`. Field `video_urls` **belum diuji** ke fal. Awalnya bernomor `0051` dan diganti karena bertabrakan dengan `0051_new_workspace_live`. |
 
 ### Nama migrasi: repo vs ledger produksi

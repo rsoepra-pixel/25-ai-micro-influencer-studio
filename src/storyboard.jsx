@@ -21,7 +21,7 @@
 // mengikat suara ke karakternya lewat voice_id. Tidak ada penjahitan klip.
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { supa, callGenerate } from "./supa.js";
-import { ModelPicker, byPrice, priceLabel, Badge, useQuery, unwrap, recordBadge} from "./views.jsx";
+import { ModelPicker, byPrice, priceLabel, Badge, useQuery, unwrap, recordBadge, downscaleToDataUri } from "./views.jsx";
 import { LibraryPicker } from "./library.jsx";
 import { Info } from "./tips.jsx";
 import { POLA_CERITA, biayaNaskahLabel } from "./harga.js";
@@ -398,6 +398,18 @@ function NewBoard({ ws, influencers, onCreated }) {
   // mempertahankan dua angka lama untuk yang memang mau mengatur sendiri.
   const [pola, setPola] = useState("masalah_produk_hasil");
   const [totalDetik, setTotalDetik] = useState(15);
+  // Foto dari HP (opsional, maks 5): bahan adegan + referensi kemasan untuk
+  // gambar pembuka. Diperkecil di browser sebelum dikirim.
+  const [foto, setFoto] = useState([]);
+  async function tambahFoto(e) {
+    const files = Array.from(e.target.files || []);
+    e.target.value = "";
+    if (!files.length) return;
+    try {
+      const kecil = await Promise.all(files.slice(0, 5).map((f) => downscaleToDataUri(f, 1024, 0.86)));
+      setFoto((p) => [...p, ...kecil].slice(0, 5));
+    } catch (e2) { setErr(e2.message); }
+  }
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState(null);
   const [draft, setDraft] = useState(null);
@@ -438,6 +450,7 @@ function NewBoard({ ws, influencers, onCreated }) {
         ...(pola === "manual"
           ? { shots: shotCount, seconds_per_shot: perShot }
           : { pattern: pola, total_seconds: totalDetik }),
+        ...(foto.length ? { photos: foto } : {}),
       });
       setDraft(r.storyboard);
     } catch (e) { setErr(e.message); }
@@ -458,6 +471,7 @@ function NewBoard({ ws, influencers, onCreated }) {
         logline: draft.logline,
         continuity: draft.continuity || tpl?.continuity || null,
         platform,
+        ref_photo_urls: draft.photo_urls || [],
       }).select("id").single();
       if (e1) throw new Error(e1.message);
       const { error: e2 } = await supa.from("storyboard_shots").insert(
@@ -472,7 +486,7 @@ function NewBoard({ ws, influencers, onCreated }) {
         })),
       );
       if (e2) throw new Error(e2.message);
-      setDraft(null); setIdea(""); setContentItemId(""); setTpl(null);
+      setDraft(null); setIdea(""); setContentItemId(""); setTpl(null); setFoto([]);
       onCreated(board.id);
     } catch (e) { setErr(e.message); }
     setBusy(false);
@@ -522,6 +536,25 @@ function NewBoard({ ws, influencers, onCreated }) {
       {tpl && !contentItemId && (
         <p className="tiny muted mb2">Dari pustaka: <b>{tpl.title}</b>. Ubah idenya sesuka hati — pakaian & lokasi bawaannya tetap dipakai kalau AI tidak mengusulkan sendiri.</p>
       )}
+      <div className="mb3">
+        <label className="label">Foto dari HP-mu (opsional, maks. 5)<Info tip="Dapur, keripik, kemasan, pembeli — penulis AI menjadikan tiap foto satu adegan, dan foto kemasan ikut ke gambar pembuka supaya kemasannya tidak dikarang. Foto tidak menjadi frame per adegan: model video hanya menerima satu gambar awal." /></label>
+        {foto.length > 0 && (
+          <div className="row mb2" style={{ gap: 6, flexWrap: "wrap" }}>
+            {foto.map((p, i) => (
+              <div key={i} style={{ position: "relative", width: 64 }}>
+                <div className="thumb" style={{ aspectRatio: "1" }}><img src={p} alt="" /></div>
+                <span className="tiny" style={{ position: "absolute", left: 2, top: 2, background: "rgba(0,0,0,.6)", color: "#fff", borderRadius: 6, padding: "0 5px" }}>{i + 1}</span>
+                <button type="button" title="Hapus" onClick={() => setFoto(foto.filter((_, k) => k !== i))}
+                  style={{ position: "absolute", top: -6, right: -6, width: 18, height: 18, borderRadius: 99, border: "none", background: "var(--text)", color: "#fff", cursor: "pointer", fontSize: 11, lineHeight: "18px", padding: 0 }}>×</button>
+              </div>
+            ))}
+          </div>
+        )}
+        <label className="btn btn2 tiny" style={{ cursor: "pointer" }} data-tip="Pilih sampai 5 foto dari galeri. Belum dikirim sebelum kamu menekan 'Susun shot list'.">
+          + Pilih foto
+          <input type="file" accept="image/*" multiple hidden onChange={tambahFoto} />
+        </label>
+      </div>
       {!contentItemId && (
         <div className="mb3">
           <label className="label">Ide video *</label>
@@ -1060,10 +1093,15 @@ function StepProduksi({ board, shots, inf, refCount, models, mode, frameReady, p
       setRunning({ stage: "frame", sec: 0 });
       let jobId = ulang ? null : first.image_job_id;
       if (!jobId) {
+        // Foto milik user (kemasan dsb.) ikut sebagai referensi tambahan,
+        // hanya untuk model yang menerima banyak referensi; model satu-foto
+        // memakai slotnya untuk Identity Kit. Maks 3, menyisakan ruang.
+        const refs = imgModel.ref_image_multi && Array.isArray(board.ref_photo_urls) ? board.ref_photo_urls.slice(0, 3) : [];
         const res = await callGenerate({
           action: "submit", origin: "storyboard", task: "image", model_id: imgModel.id,
           influencer_id: board.influencer_id, content_item_id: board.content_item_id || null,
-          prompt: shotPrompt(first, board.continuity),
+          prompt: shotPrompt(first, board.continuity) + (refs.length ? ", keep the product packaging identical to the reference photos" : ""),
+          extra_ref_urls: refs,
           label: `${board.title} — frame pembuka`,
         });
         jobId = res.job_id;
@@ -1274,6 +1312,7 @@ function StepHasil({ board, shots, inf, models, setStep }) {
         workspace_id: board.workspace_id, influencer_id: board.influencer_id, content_item_id: board.content_item_id || null,
         title: (naskah?.title || `${board.title} · versi lain`).slice(0, 200),
         logline: board.logline, continuity: board.continuity, platform: board.platform, status: "draft",
+        ref_photo_urls: board.ref_photo_urls || [],
       }).select("id").single();
       if (e1) throw new Error(e1.message);
       const byPos = new Map((naskah?.shots || []).map((s) => [Number(s.position), s]));

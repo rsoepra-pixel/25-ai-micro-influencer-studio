@@ -18,7 +18,7 @@
 // + `storyboard_shots` yang sama persis dengan yang dibuat formulir aslinya.
 import React, { useEffect, useMemo, useState } from "react";
 import { supa, callGenerate } from "./supa.js";
-import { useQuery, unwrap, Badge, byPrice } from "./views.jsx";
+import { useQuery, unwrap, Badge, byPrice, downscaleToDataUri } from "./views.jsx";
 import { estimateFor, byEffectivePrice } from "./routing.js";
 import { useProducts, NewProduct } from "./products.jsx";
 import { isAvatarModel, estSeconds, WORDS_PER_SEC, MAX_SECONDS, DEFAULT_SCENE, DEFAULT_DELIVERY } from "./ugc.jsx";
@@ -72,6 +72,16 @@ export function BuatVideo({ ws, refresh, tick }) {
   const [jenis, setJenis] = useState("ugc");          // ugc | storyboard
   const [ide, setIde] = useState("");
   const [pola, setPola] = useState("masalah_produk_hasil");
+  const [foto, setFoto] = useState([]); // foto HP untuk jalur cerita, maks 5
+  async function tambahFoto(e) {
+    const files = Array.from(e.target.files || []);
+    e.target.value = "";
+    if (!files.length) return;
+    try {
+      const kecil = await Promise.all(files.slice(0, 5).map((f) => downscaleToDataUri(f, 1024, 0.86)));
+      setFoto((p) => [...p, ...kecil].slice(0, 5)); setDraft(null);
+    } catch (e2) { setErr(e2.message); }
+  }
   const [detik, setDetik] = useState(15);
   const [infId, setInfId] = useState(() => { try { return localStorage.getItem(KUNCI_PROFIL) || ""; } catch { return ""; } });
   const [productId, setProductId] = useState("");
@@ -141,7 +151,7 @@ export function BuatVideo({ ws, refresh, tick }) {
         // dari formulir. Total detik dan daftar durasi model ikut supaya
         // hasilnya langsung muat.
         const r = await callGenerate({ action: "write", kind: "storyboard", influencer_id: inf.id, idea: ide.trim(),
-          platform: "tiktok", pattern: pola, total_seconds: detik });
+          platform: "tiktok", pattern: pola, total_seconds: detik, ...(foto.length ? { photos: foto } : {}) });
         setDraft({ storyboard: r.storyboard });
       }
       setLangkah("tinjau");
@@ -171,6 +181,7 @@ export function BuatVideo({ ws, refresh, tick }) {
         const { data: board, error: e1 } = await supa.from("storyboards").insert({
           workspace_id: ws.id, influencer_id: inf.id, content_item_id: null,
           title: d.title, logline: d.logline, continuity: d.continuity || null, platform: "tiktok",
+          ref_photo_urls: d.photo_urls || [],
         }).select("id").single();
         if (e1) throw new Error(e1.message);
         const { error: e2 } = await supa.from("storyboard_shots").insert((d.shots || []).map((s, i) => ({
@@ -234,6 +245,26 @@ export function BuatVideo({ ws, refresh, tick }) {
                 ))}
               </div>
             </>
+          )}
+          {jenis === "storyboard" && (
+            <div className="mb3">
+              <label className="label">Foto dari HP-mu (opsional, maks. 5)<Info tip="Dapur, keripik, kemasan, pembeli — tiap foto jadi bahan satu adegan, dan foto kemasan ikut ke gambar pembuka supaya kemasannya tidak dikarang. Foto tidak menjadi frame per adegan." /></label>
+              {foto.length > 0 && (
+                <div className="row mb2" style={{ gap: 6, flexWrap: "wrap" }}>
+                  {foto.map((p, i) => (
+                    <div key={i} style={{ position: "relative", width: 64 }}>
+                      <div className="thumb" style={{ aspectRatio: "1" }}><img src={p} alt="" /></div>
+                      <button type="button" title="Hapus" onClick={() => { setFoto(foto.filter((_, k) => k !== i)); setDraft(null); }}
+                        style={{ position: "absolute", top: -6, right: -6, width: 18, height: 18, borderRadius: 99, border: "none", background: "var(--text)", color: "#fff", cursor: "pointer", fontSize: 11, lineHeight: "18px", padding: 0 }}>×</button>
+                    </div>
+                  ))}
+                </div>
+              )}
+              <label className="btn btn2 tiny" style={{ cursor: "pointer" }} data-tip="Pilih sampai 5 foto dari galeri. Belum dikirim ke mana pun sebelum naskah ditulis.">
+                + Pilih foto
+                <input type="file" accept="image/*" multiple hidden onChange={tambahFoto} />
+              </label>
+            </div>
           )}
           <label className="label">Ceritakan videonya<Info tip="Satu dua kalimat cukup. Penulis AI menyusun naskah lengkapnya, dan kamu membacanya dulu sebelum apa pun dibuat." /></label>
           <textarea className="input mb2" rows={3} value={ide} onChange={(e) => setIde(e.target.value)}
@@ -343,10 +374,15 @@ export function BuatVideo({ ws, refresh, tick }) {
               <p className="tiny muted mb3">{fit.each.length} adegan · {fit.each.join(" + ")} = {fit.total} detik{fit.raw > fit.total ? ` (dipangkas dari ${fit.raw} karena batas model video)` : ""}</p>
               {(draft.storyboard.shots || []).map((s, i) => (
                 <div key={i} className="row mb1" style={{ gap: 8, alignItems: "flex-start" }}>
-                  <span className="tiny bold muted" style={{ minWidth: 48 }}>{i + 1} · {s.seconds} dtk</span>
-                  <span className="small">{s.narration || s.beat}</span>
+                  {s.photo && foto[s.photo - 1]
+                    ? <img src={foto[s.photo - 1]} alt="" style={{ width: 40, height: 40, objectFit: "cover", borderRadius: 6, flexShrink: 0 }} />
+                    : <span className="tiny bold muted" style={{ minWidth: 48 }}>{i + 1} · {s.seconds} dtk</span>}
+                  <span className="small">{s.photo ? <span className="tiny muted">{i + 1} · {s.seconds} dtk · </span> : null}{s.narration || s.beat}</span>
                 </div>
               ))}
+              {(draft.storyboard.photos_failed || []).length > 0 && (
+                <div className="msg-warn tiny mt2">{draft.storyboard.photos_failed.length} foto gagal disimpan; adegannya tetap ditulis, tapi foto itu tidak ikut ke gambar pembuka.</div>
+              )}
             </>
           )}
           <Rincian jenis={jenis} md={md} detik={jenis === "ugc" ? estSeconds(draft.ugc.script) : fit.total} shots={fit.each} />
