@@ -60,6 +60,14 @@ benar.
 7. **Setiap fase menyebut angka yang harus bergerak.** Repo ini sudah pernah
    mengukur sebelum memutuskan (rem 0050 disimulasikan ke 156 job); rencana
    ini tidak boleh mundur dari standar itu. Angkanya di bagian berikut.
+8. **Setiap isian, tombol, lencana, dan langkah punya petunjuk ⓘ** (aturan
+   pemilik, 15 Okt 2026). Di mana pun orang mungkin ragu "ini apa, lalu
+   saya harus apa", ada ikon ⓘ (label) atau tooltip (tombol) yang menjawab
+   keduanya: apa benda itu, dan apa akibat menekannya — termasuk "belum ada
+   yang dibayar" kalau memang belum. Mekanismenya `Info` dan `data-tip` di
+   `src/tips.jsx`; aturannya tidak menulis angka harga di teks petunjuk
+   (harga dihitung di tombol, bukan ditulis mati). Sudah diterapkan di
+   Profil saya dan Buat Video; layar baru berikutnya mengikuti.
 
 ---
 

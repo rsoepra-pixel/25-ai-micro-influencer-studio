@@ -23,7 +23,7 @@ import { estimateFor, byEffectivePrice } from "./routing.js";
 import { useProducts, NewProduct } from "./products.jsx";
 import { isAvatarModel, estSeconds, WORDS_PER_SEC, MAX_SECONDS, DEFAULT_SCENE, DEFAULT_DELIVERY } from "./ugc.jsx";
 import { catalogMaxSeconds, fitShotDurations } from "./storyboard.jsx";
-import { Info } from "./tips.jsx";
+import { Info, TIP_PENULIS_AI } from "./tips.jsx";
 import { hargaLabel, biayaNaskahLabel, bagiAdegan } from "./harga.js";
 
 const KUNCI_PROFIL = "profil_influencer_id";
@@ -31,10 +31,10 @@ const TTS_KEY = "fal-ai/minimax/speech-02-hd";
 const PILIHAN_DETIK = [10, 15, 20, 30];
 
 const LANGKAH = [
-  { key: "apa", label: "Apa" },
-  { key: "siapa", label: "Siapa" },
-  { key: "panjang", label: "Berapa lama" },
-  { key: "tinjau", label: "Tinjau & harga" },
+  { key: "apa", label: "Apa", tip: "Jenis video dan ceritanya. Belum ada yang dibayar di sini." },
+  { key: "siapa", label: "Siapa", tip: "Wajah dan suara siapa yang tampil, dan produk apa yang dibicarakan." },
+  { key: "panjang", label: "Berapa lama", tip: "Durasi video dan harganya. Tombol terakhir di langkah ini meminta penulis AI menyusun naskah." },
+  { key: "tinjau", label: "Tinjau & harga", tip: "Baca naskahnya dan rincian biaya, lalu putuskan. Tidak ada yang dibuat sebelum kamu menekan 'Ya'." },
 ];
 
 // Model default per jalur. Aturannya disalin dari plan() di ugc.jsx dan
@@ -177,7 +177,7 @@ export function BuatVideo({ ws, refresh, tick }) {
 
       <div className="row mb4" style={{ gap: 6, flexWrap: "wrap" }}>
         {LANGKAH.map((l, i) => (
-          <button key={l.key} type="button" disabled={i > idx} onClick={() => setLangkah(l.key)}
+          <button key={l.key} type="button" disabled={i > idx} onClick={() => setLangkah(l.key)} data-tip={l.tip}
             style={{ border: `1px solid ${i === idx ? "var(--brand)" : i < idx ? "var(--ok-line)" : "var(--border)"}`,
               background: i === idx ? "var(--brand-soft)" : i < idx ? "var(--ok-soft)" : "var(--card)",
               color: i === idx ? "var(--brand-strong)" : i < idx ? "var(--ok)" : "var(--ink-3)",
@@ -190,9 +190,11 @@ export function BuatVideo({ ws, refresh, tick }) {
       {langkah === "apa" && (
         <div className="card p6">
           <div className="grid mb3" style={{ gridTemplateColumns: "1fr 1fr", gap: 10 }}>
-            {[["ugc", "🎤 Saya bicara ke kamera", "Kamu (wajah dan suaramu) membicarakan satu produk. Jalur untuk jualan dan endorse."],
-              ["storyboard", "🎞️ Cerita beberapa adegan", "Satu ide jadi beberapa adegan berpindah sudut. Tanpa bicara ke kamera."]].map(([k, judul, ket]) => (
-              <button key={k} type="button" onClick={() => { setJenis(k); setDraft(null); }}
+            {[["ugc", "🎤 Saya bicara ke kamera", "Kamu (wajah dan suaramu) membicarakan satu produk. Jalur untuk jualan dan endorse.",
+                "Pilih ini kalau videonya kamu sendiri yang bicara, menunjukkan produk, seperti review ke teman. Butuh foto wajah, suara, dan satu produk."],
+              ["storyboard", "🎞️ Cerita beberapa adegan", "Satu ide jadi beberapa adegan berpindah sudut. Tanpa bicara ke kamera.",
+                "Pilih ini untuk video bercerita: beberapa adegan berurutan dengan narasi. Butuh foto wajah; suara tidak wajib."]].map(([k, judul, ket, tip]) => (
+              <button key={k} type="button" onClick={() => { setJenis(k); setDraft(null); }} data-tip={tip}
                 style={{ textAlign: "left", padding: 14, borderRadius: 12, cursor: "pointer",
                   border: `2px solid ${jenis === k ? "var(--brand)" : "var(--border)"}`, background: jenis === k ? "var(--brand-soft)" : "var(--card)" }}>
                 <div className="bold">{judul}</div>
@@ -205,18 +207,19 @@ export function BuatVideo({ ws, refresh, tick }) {
             placeholder={jenis === "ugc" ? "mis. keripik singkong saya, renyah dan tidak berminyak, untuk camilan keluarga" : "mis. pagi di dapur, menggoreng keripik, dikemas, sampai ke tangan pembeli"} />
           {models && inf && (
             <p className="tiny muted mb3">
-              Perkiraan harga: 15 detik ≈ <b>{hargaLabel(hargaUntuk(15))}</b> · 30 detik ≈ <b>{hargaLabel(hargaUntuk(30))}</b>
+              Perkiraan harga<Info tip="Dihitung dari katalog model untuk gambar, suara, dan video. Ditulis ≈ karena yang ditagih adalah durasi yang dihasilkan model, bukan yang diminta. Belum termasuk ulangan kalau gambar pertamanya kurang pas." />: 15 detik ≈ <b>{hargaLabel(hargaUntuk(15))}</b> · 30 detik ≈ <b>{hargaLabel(hargaUntuk(30))}</b>
               {jenis === "storyboard" && fitShotDurations(bagiAdegan(30), maxSb).total < 30 ? ` (model video saat ini paling panjang ${maxSb} detik)` : ""}.
               Ditambah naskah{biayaNaskahLabel() || " (gratis)"}.
             </p>
           )}
-          <button type="button" className="btn" disabled={!bisaLanjut} onClick={() => setLangkah("siapa")}>Lanjut →</button>
+          <button type="button" className="btn" disabled={!bisaLanjut} onClick={() => setLangkah("siapa")}
+            data-tip={bisaLanjut ? "Ke langkah Siapa. Belum ada yang dibayar." : "Isi dulu ceritanya, minimal beberapa kata."}>Lanjut →</button>
         </div>
       )}
 
       {langkah === "siapa" && (
         <div className="card p6">
-          <label className="label">Yang tampil di video</label>
+          <label className="label">Yang tampil di video<Info tip="Wajah dan suara dari Profil saya. Kalau workspace ini punya beberapa karakter, pilih di sini; pilihanmu diingat di perangkat ini." /></label>
           {!influencers?.length ? (
             <div className="msg-warn mb3">Belum ada profil. <a href="#/profil" style={{ fontWeight: 700 }}>Isi Profil saya</a> dulu — foto, suara, bahasa.</div>
           ) : (
@@ -227,8 +230,8 @@ export function BuatVideo({ ws, refresh, tick }) {
                     {influencers.map((i) => <option key={i.id} value={i.id}>{i.name}</option>)}
                   </select>
                 : <div className="bold">{inf?.name}</div>}
-              <Badge tone={(refCount || 0) > 0 ? "green" : "amber"}>{(refCount || 0) > 0 ? "✓ wajah" : "wajah belum"}</Badge>
-              {jenis === "ugc" && <Badge tone={md.ttsModel ? "green" : "amber"}>{md.ttsModel ? "✓ suara" : "suara belum"}</Badge>}
+              <span data-tip="Minimal satu foto wajah tersimpan — tanpa itu wajah di video berganti-ganti. Tambah di Profil saya."><Badge tone={(refCount || 0) > 0 ? "green" : "amber"}>{(refCount || 0) > 0 ? "✓ wajah" : "wajah belum"}</Badge></span>
+              {jenis === "ugc" && <span data-tip="Suara tiruanmu untuk membaca naskah. Rekam di Profil saya."><Badge tone={md.ttsModel ? "green" : "amber"}>{md.ttsModel ? "✓ suara" : "suara belum"}</Badge></span>}
             </div>
           )}
 
@@ -239,7 +242,8 @@ export function BuatVideo({ ws, refresh, tick }) {
                 <option value="">— pilih produk —</option>
                 {(products || []).map((p) => <option key={p.id} value={p.id}>{p.name} ({p.photos?.length || 0} foto)</option>)}
               </select>
-              <button type="button" className="btn btn2 tiny mb3" onClick={() => setProdukBaru((v) => !v)}>{produkBaru ? "Tutup" : "+ Produk baru"}</button>
+              <button type="button" className="btn btn2 tiny mb3" onClick={() => setProdukBaru((v) => !v)}
+                data-tip="Simpan produk baru di sini tanpa pindah halaman: nama, keunggulan, dan foto kemasan asli. Tersimpan ke Product Kit untuk video berikutnya.">{produkBaru ? "Tutup" : "+ Produk baru"}</button>
               {produkBaru && (
                 <div className="mb3">
                   <NewProduct ws={ws} className="card p4" title="Produk baru — tersimpan sekali, dipakai di semua video"
@@ -255,18 +259,20 @@ export function BuatVideo({ ws, refresh, tick }) {
             </div>
           ))}
           <div className="row mt2" style={{ gap: 8 }}>
-            <button type="button" className="btn btn2" onClick={() => setLangkah("apa")}>← Kembali</button>
-            <button type="button" className="btn" disabled={!bisaLanjut} onClick={() => setLangkah("panjang")}>Lanjut →</button>
+            <button type="button" className="btn btn2" onClick={() => setLangkah("apa")} data-tip="Ubah jenis video atau ceritanya. Pilihanmu di sini tetap tersimpan.">← Kembali</button>
+            <button type="button" className="btn" disabled={!bisaLanjut} onClick={() => setLangkah("panjang")}
+              data-tip={bisaLanjut ? "Ke langkah Berapa lama." : "Selesaikan dulu yang ditandai di atas."}>Lanjut →</button>
           </div>
         </div>
       )}
 
       {langkah === "panjang" && (
         <div className="card p6">
-          <label className="label">Berapa lama videonya?</label>
+          <label className="label">Berapa lama videonya?<Info tip="Target untuk penulis naskah (≈ 2,3 kata per detik). Video bicara mengikuti panjang naskah yang dibacakan; video cerita dibagi jadi adegan 5 detik. Maksimal 30 detik per video — pagar yang dipasang supaya satu salah ketik tidak menghabiskan saldo." /></label>
           <div className="row mb2" style={{ gap: 8, flexWrap: "wrap" }}>
             {PILIHAN_DETIK.map((s) => (
-              <button key={s} type="button" className={detik === s ? "btn" : "btn btn2"} onClick={() => { setDetik(s); setDraft(null); }}>
+              <button key={s} type="button" className={detik === s ? "btn" : "btn btn2"} onClick={() => { setDetik(s); setDraft(null); }}
+                data-tip={jenis === "ugc" ? `Sekitar ${Math.round(s * WORDS_PER_SEC)} kata diucapkan. Harga di tombol adalah perkiraan total untuk durasi ini.` : `${bagiAdegan(s).length} adegan × 5 detik. Harga di tombol adalah perkiraan total.`}>
                 {s} detik · {models ? hargaLabel(hargaUntuk(s)) : "…"}
               </button>
             ))}
@@ -279,8 +285,9 @@ export function BuatVideo({ ws, refresh, tick }) {
           </p>
           {err && <div className="msg-err mb3">{err}</div>}
           <div className="row" style={{ gap: 8 }}>
-            <button type="button" className="btn btn2" disabled={!!busy} onClick={() => setLangkah("siapa")}>← Kembali</button>
-            <button type="button" className="btn" disabled={!!busy} onClick={susun}>{busy || `Tulis naskahnya${biayaNaskahLabel()} →`}</button>
+            <button type="button" className="btn btn2" disabled={!!busy} onClick={() => setLangkah("siapa")} data-tip="Ganti orang atau produk.">← Kembali</button>
+            <button type="button" className="btn" disabled={!!busy} onClick={susun}
+              data-tip={`Penulis AI menyusun naskah dari ceritamu${jenis === "ugc" ? " dan keunggulan produk" : ""}. Kamu membacanya dulu di langkah berikutnya; gambar, suara, dan video belum dibuat. ${TIP_PENULIS_AI}`}>{busy || `Tulis naskahnya${biayaNaskahLabel()} →`}</button>
           </div>
         </div>
       )}
@@ -289,14 +296,14 @@ export function BuatVideo({ ws, refresh, tick }) {
         <div className="card p6">
           {jenis === "ugc" ? (
             <>
-              <div className="tiny bold muted mb1">Yang akan kamu ucapkan · {draft.ugc.words} kata ≈ {draft.ugc.est_seconds} detik</div>
+              <div className="tiny bold muted mb1">Yang akan kamu ucapkan · {draft.ugc.words} kata ≈ {draft.ugc.est_seconds} detik<Info tip="Naskah ini yang dibacakan suara tiruanmu di video. Kalau kurang pas, tekan 'Tulis ulang' — atau ubah kata-katanya di layar produksi sesudah 'Ya'." /></div>
               <p className="small mb3" style={{ whiteSpace: "pre-wrap" }}>{draft.ugc.script}</p>
-              <div className="tiny bold muted mb1">Caption</div>
+              <div className="tiny bold muted mb1">Caption<Info tip="Teks di bawah postingan, bukan yang diucapkan. Sengaja pendek dan berbeda dari naskah — caption berisi naskah lengkap adalah tanda paling jelas akun dijalankan mesin." /></div>
               <p className="tiny mb3">{draft.ugc.caption || "—"} <span className="muted">{(draft.ugc.hashtags || []).map((h) => `#${h}`).join(" ")}</span></p>
             </>
           ) : (
             <>
-              <div className="bold mb1">{draft.storyboard.title}</div>
+              <div className="bold mb1">{draft.storyboard.title}<Info tip="Judul dan ringkasan cerita dari penulis AI. Daftar di bawah: tiap baris satu adegan dengan narasinya; detail gambarnya bisa diubah di layar produksi." /></div>
               <p className="tiny muted mb3">{draft.storyboard.logline}</p>
               {(draft.storyboard.shots || []).map((s, i) => (
                 <div key={i} className="row mb1" style={{ gap: 8, alignItems: "flex-start" }}>
@@ -309,9 +316,11 @@ export function BuatVideo({ ws, refresh, tick }) {
           <Rincian jenis={jenis} md={md} detik={jenis === "ugc" ? estSeconds(draft.ugc.script) : fit.total} shots={fit.each} />
           {err && <div className="msg-err mb3">{err}</div>}
           <div className="row" style={{ gap: 8, flexWrap: "wrap" }}>
-            <button type="button" className="btn" disabled={!!busy} onClick={buat}>{busy || "Ya, buat video ini"}</button>
-            <button type="button" className="btn btn2" disabled={!!busy} onClick={susun}>Tulis ulang{biayaNaskahLabel()}</button>
-            <button type="button" className="btn btn2" disabled={!!busy} onClick={() => setLangkah("panjang")}>← Kembali</button>
+            <button type="button" className="btn" disabled={!!busy} onClick={buat}
+              data-tip="Menyimpan proyek ini dan membuka layar produksi. Di sana gambar pertama dibuat dulu (bagian termurah) dan kamu melihatnya sebelum suara dan video dibayar.">{busy || "Ya, buat video ini"}</button>
+            <button type="button" className="btn btn2" disabled={!!busy} onClick={susun}
+              data-tip={`Minta naskah versi lain dari cerita yang sama. ${TIP_PENULIS_AI}`}>Tulis ulang{biayaNaskahLabel()}</button>
+            <button type="button" className="btn btn2" disabled={!!busy} onClick={() => setLangkah("panjang")} data-tip="Ubah durasi. Naskah yang sudah ditulis dibuang.">← Kembali</button>
           </div>
           <p className="tiny muted mt2">
             Sesudah ini kamu masuk ke layar produksi: gambar pertama dibuat dulu (murah) dan kamu melihatnya sebelum
@@ -325,19 +334,24 @@ export function BuatVideo({ ws, refresh, tick }) {
 
 function Rincian({ jenis, md, detik, shots }) {
   const baris = jenis === "ugc"
-    ? [["Gambar pertama (wajah + produk)", estimateFor(md.imgModel)],
-       ["Suaramu membaca naskah", estimateFor(md.ttsModel, { chars: detik * 14 })],
-       [`Video bicara ≈ ${detik} detik`, estimateFor(md.avatarModel, { seconds: detik })]]
-    : [["Gambar pembuka", estimateFor(md.imgModel)],
+    ? [["Gambar pertama (wajah + produk)", estimateFor(md.imgModel),
+        "Satu gambar diam: wajahmu memegang produk, dari foto acuan dan foto kemasan. Dibuat dulu dan kamu lihat sebelum lanjut — kalau kemasannya meleset, ulangi gambar ini, bukan videonya."],
+       ["Suaramu membaca naskah", estimateFor(md.ttsModel, { chars: detik * 14 }),
+        "Berkas suara: naskah dibacakan suara tiruanmu. Bisa didengarkan dulu sebelum video dibuat."],
+       [`Video bicara ≈ ${detik} detik`, estimateFor(md.avatarModel, { seconds: detik }),
+        "Bagian termahal: gambar pertama digerakkan mengikuti suaranya. Panjangnya mengikuti berkas suara, jadi ditagih per detik yang dihasilkan."]]
+    : [["Gambar pembuka", estimateFor(md.imgModel),
+        "Gambar diam untuk adegan pertama; model video mewajibkannya sebagai frame awal, dan wajahmu dikunci dari sini."],
        [`Video ${shots.length} adegan ≈ ${detik} detik`, md.videoModel?.unit === "per_second"
-         ? shots.reduce((s, x) => s + estimateFor(md.videoModel, { seconds: x }), 0) : estimateFor(md.videoModel)]];
+         ? shots.reduce((s, x) => s + estimateFor(md.videoModel, { seconds: x }), 0) : estimateFor(md.videoModel),
+        "Satu video utuh berisi semua adegan, dibuat sekali jalan. Ditagih per detik yang dihasilkan."]];
   const total = baris.reduce((s, [, v]) => s + v, 0);
   return (
     <table className="mb3" style={{ width: "100%", borderCollapse: "collapse" }}>
       <tbody>
-        {baris.map(([l, v]) => (
+        {baris.map(([l, v, tip]) => (
           <tr key={l} style={{ borderBottom: "1px solid var(--line-soft)" }}>
-            <td className="small" style={{ padding: "6px 0" }}>{l}</td>
+            <td className="small" style={{ padding: "6px 0" }}>{l}<Info tip={tip} /></td>
             <td className="small bold" style={{ textAlign: "right", fontVariantNumeric: "tabular-nums" }}>≈ {hargaLabel(v)}</td>
           </tr>
         ))}

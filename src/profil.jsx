@@ -17,7 +17,7 @@
 import React, { useEffect, useRef, useState } from "react";
 import { supa, callGenerate } from "./supa.js";
 import { useQuery, unwrap, Badge, downscaleToDataUri, fileToDataUri, mediaDuration } from "./views.jsx";
-import { Info } from "./tips.jsx";
+import { Info, TIP_PENULIS_AI } from "./tips.jsx";
 import { biayaNaskahLabel } from "./harga.js";
 
 const TTS_KEY = "fal-ai/minimax/speech-02-hd";
@@ -80,21 +80,22 @@ export function Profil({ ws, refresh, tick }) {
       {saya && <KartuBahasa saya={saya} onDone={muat} />}
 
       <div className="card p6 mb4" style={{ borderColor: "var(--brand-line)" }}>
-        <div className="bold mb1">Sudah siap?</div>
+        <div className="bold mb1">Sudah siap?<Info tip="Tiga tanda di bawah terisi otomatis dari yang kamu simpan di kartu 1–3. Tombol 'Buat video pertama' baru aktif kalau wajah dan suara sudah ada." /></div>
         <div className="row mb3" style={{ gap: 8, flexWrap: "wrap" }}>
-          <Badge tone={adaFoto ? "green" : "amber"}>{adaFoto ? "✓ wajah" : "wajah belum"}</Badge>
-          <Badge tone={adaSuaraUgc ? "green" : "amber"}>{adaSuaraUgc ? "✓ suara" : "suara belum"}</Badge>
-          <Badge tone={saya ? "green" : "amber"}>{saya ? `✓ bahasa: ${labelBahasa(saya.language)}` : "bahasa belum"}</Badge>
+          <span data-tip="Minimal satu foto wajah tersimpan (kartu 1)."><Badge tone={adaFoto ? "green" : "amber"}>{adaFoto ? "✓ wajah" : "wajah belum"}</Badge></span>
+          <span data-tip="Suara untuk video bicara sudah ditiru (kartu 2)."><Badge tone={adaSuaraUgc ? "green" : "amber"}>{adaSuaraUgc ? "✓ suara" : "suara belum"}</Badge></span>
+          <span data-tip="Bahasa naskah dan suara (kartu 3)."><Badge tone={saya ? "green" : "amber"}>{saya ? `✓ bahasa: ${labelBahasa(saya.language)}` : "bahasa belum"}</Badge></span>
         </div>
         <p className="tiny muted mb3">
           Video bicara ke kamera butuh satu produk (foto kemasan asli) di Product Kit. Logo dan warna
           merek belum bisa diunggah di sini — menyusul.
         </p>
         <div className="row" style={{ gap: 8, flexWrap: "wrap" }}>
-          <a className="btn" href="#/ugc" aria-disabled={!adaFoto || !adaSuaraUgc}
+          <a className="btn" href="#/buat-video" aria-disabled={!adaFoto || !adaSuaraUgc}
+            data-tip="Membuka wizard Buat Video: empat pertanyaan, harga dalam rupiah, baru videonya dibuat."
             style={!adaFoto || !adaSuaraUgc ? { opacity: .5, pointerEvents: "none" } : undefined}>Buat video pertama →</a>
-          <a className="btn btn2" href="#/products">Simpan produk dulu</a>
-          {saya && <a className="btn btn2" href={`#/influencers/${saya.id}`}>Pengaturan lengkap</a>}
+          <a className="btn btn2" href="#/products" data-tip="Product Kit: nama, keunggulan, dan foto kemasan asli produkmu. Dipakai setiap video 'saya bicara ke kamera'.">Simpan produk dulu</a>
+          {saya && <a className="btn btn2" href={`#/influencers/${saya.id}`} data-tip="Halaman lengkap karakter ini: ubah nama dan deskripsi, hapus foto, atur suara satu per satu.">Pengaturan lengkap</a>}
         </div>
       </div>
     </div>
@@ -182,11 +183,11 @@ function KartuFoto({ ws, saya, refs, onDone }) {
       {!saya && (
         <div className="grid mb3" style={{ gridTemplateColumns: "2fr 1fr", gap: 10 }}>
           <div>
-            <label className="label">Nama panggilan di video</label>
+            <label className="label">Nama panggilan di video<Info tip="Nama yang dipakai penulis naskah saat menyebut dirimu, dan nama karakter ini di daftar. Bisa diganti kapan saja di Pengaturan lengkap." /></label>
             <input className="input" value={nama} onChange={(e) => setNama(e.target.value)} placeholder="mis. Bu Rini" />
           </div>
           <div>
-            <label className="label">Bahasa</label>
+            <label className="label">Bahasa<Info tip="Bahasa naskah yang ditulis dan dibacakan di video. Campuran = Indonesia dengan sisipan Inggris. Bisa diubah lagi di kartu 3." /></label>
             <select className="input" value={bahasa} onChange={(e) => setBahasa(e.target.value)}>
               <option value="id">Indonesia</option><option value="en">English</option><option value="mix">Campuran</option>
             </select>
@@ -195,9 +196,12 @@ function KartuFoto({ ws, saya, refs, onDone }) {
       )}
 
       {refs.length > 0 && (
-        <div className="grid mb3" style={{ gridTemplateColumns: "repeat(4,1fr)", gap: 8 }}>
-          {refs.slice(0, 8).map((r) => <div key={r.id} className="thumb" style={{ aspectRatio: "1" }}>{r.url && <img src={r.url} alt="" />}</div>)}
-        </div>
+        <>
+          <div className="tiny muted mb1">Foto yang sudah tersimpan<Info tip="Foto acuan wajah yang dikirim ke model setiap kali membuat gambar atau video. Menghapus satu per satu bisa di Pengaturan lengkap." /></div>
+          <div className="grid mb3" style={{ gridTemplateColumns: "repeat(4,1fr)", gap: 8 }}>
+            {refs.slice(0, 8).map((r) => <div key={r.id} className="thumb" style={{ aspectRatio: "1" }}>{r.url && <img src={r.url} alt="" />}</div>)}
+          </div>
+        </>
       )}
       {foto.length > 0 && (
         <div className="grid mb3" style={{ gridTemplateColumns: "repeat(4,1fr)", gap: 8 }}>
@@ -215,15 +219,18 @@ function KartuFoto({ ws, saya, refs, onDone }) {
       {err && <div className="msg-err mb2">{err}</div>}
       {ok && <div className="msg-ok mb2">{ok}</div>}
       <div className="row" style={{ gap: 8, flexWrap: "wrap" }}>
-        <label className="btn btn2" style={{ cursor: busy ? "not-allowed" : "pointer" }}>
+        <label className="btn btn2" style={{ cursor: busy ? "not-allowed" : "pointer" }}
+          data-tip="Buka galeri atau kamera ponsel. Boleh pilih sampai 4 foto sekaligus; foto yang dipilih belum dikirim sebelum kamu menekan tombol simpan.">
           + Pilih foto
           <input type="file" accept="image/*" multiple hidden disabled={!!busy} onChange={tambahFoto} />
         </label>
         {!saya
-          ? <button type="button" className="btn" disabled={!!busy || !foto.length} onClick={buat}>
+          ? <button type="button" className="btn" disabled={!!busy || !foto.length} onClick={buat}
+              data-tip={`Membuat profilmu: penulis AI membaca ciri wajah dari foto supaya wajahmu tetap sama di semua video, lalu foto disimpan sebagai acuan. ${TIP_PENULIS_AI}`}>
               {busy || `Simpan wajah saya${biayaNaskahLabel()}`}
             </button>
-          : <button type="button" className="btn" disabled={!!busy || !foto.length} onClick={tambahKeProfil}>
+          : <button type="button" className="btn" disabled={!!busy || !foto.length} onClick={tambahKeProfil}
+              data-tip="Menambahkan foto ke acuan wajah yang sudah ada. Gratis — tidak memanggil AI dan tidak memotong saldo.">
               {busy || `Tambahkan ${foto.length || ""} foto`}
             </button>}
       </div>
@@ -344,8 +351,14 @@ function KartuSuara({ saya, models, adaUgc, adaStoryboard, onDone }) {
       <div className="row mb1" style={{ justifyContent: "space-between" }}>
         <div className="bold">2 · Suara saya<Info tip="Dari satu rekaman, suaramu ditiru untuk membaca naskah di semua video. Tidak memotong saldo." /></div>
         <div className="row" style={{ gap: 6 }}>
-          <Badge tone={adaUgc ? "green" : "amber"}>{adaUgc ? "✓ video bicara" : "video bicara: belum"}</Badge>
-          {bisaStoryboard && <Badge tone={adaStoryboard ? "green" : "zinc"}>{adaStoryboard ? "✓ video cerita" : "video cerita: belum"}</Badge>}
+          <span data-tip="Suara untuk video 'saya bicara ke kamera' (naskah dibacakan dengan suaramu). Wajib ada sebelum video jenis itu bisa dibuat.">
+            <Badge tone={adaUgc ? "green" : "amber"}>{adaUgc ? "✓ video bicara" : "video bicara: belum"}</Badge>
+          </span>
+          {bisaStoryboard && (
+            <span data-tip="Suara untuk video 'cerita beberapa adegan'. Tidak wajib: tanpa ini videonya tetap jadi, hanya suaranya dipilih model dan bisa berganti-ganti.">
+              <Badge tone={adaStoryboard ? "green" : "zinc"}>{adaStoryboard ? "✓ video cerita" : "video cerita: belum"}</Badge>
+            </span>
+          )}
         </div>
       </div>
       <p className="tiny muted mb3">
@@ -356,14 +369,17 @@ function KartuSuara({ saya, models, adaUgc, adaStoryboard, onDone }) {
 
       <div className="row mb3" style={{ gap: 8, flexWrap: "wrap", alignItems: "center" }}>
         {bisaRekam && status !== "rekam" && (
-          <button type="button" className="btn" disabled={mengirim || !bisaUgc} onClick={mulai}>🎙️ {blob ? "Rekam ulang" : "Rekam sekarang"}</button>
+          <button type="button" className="btn" disabled={mengirim || !bisaUgc} onClick={mulai}
+            data-tip={`Browser akan meminta izin mikrofon sekali. Bicara ${REKAM_MIN}–${REKAM_MAX} detik; rekaman berhenti sendiri di ${REKAM_MAX}. Belum ada yang dikirim sampai kamu menekan 'Pakai rekaman ini'.`}>🎙️ {blob ? "Rekam ulang" : "Rekam sekarang"}</button>
         )}
         {status === "rekam" && (
-          <button type="button" className="btn" onClick={berhenti} style={{ background: "var(--err)" }}>
+          <button type="button" className="btn" onClick={berhenti} style={{ background: "var(--err)" }}
+            data-tip={`Berhenti merekam. Kalau belum ${REKAM_MIN} detik, rekamannya terlalu pendek dan perlu diulang.`}>
             ■ Berhenti · {Math.floor(detik)} dtk{detik < REKAM_MIN ? ` (minimal ${REKAM_MIN})` : ""}
           </button>
         )}
-        <label className="btn btn2" style={{ cursor: mengirim ? "not-allowed" : "pointer" }}>
+        <label className="btn btn2" style={{ cursor: mengirim ? "not-allowed" : "pointer" }}
+          data-tip="Pakai rekaman dari aplikasi perekam ponsel (m4a/mp3/wav) atau video mp4. Pilihan paling aman kalau rekaman dari browser ditolak.">
           Unggah rekaman
           <input type="file" accept="audio/*,video/mp4,video/quicktime" hidden disabled={mengirim || !bisaUgc} onChange={dariBerkas} />
         </label>
@@ -376,7 +392,7 @@ function KartuSuara({ saya, models, adaUgc, adaStoryboard, onDone }) {
       )}
       {url && status !== "rekam" && (
         <div className="mb3">
-          <div className="tiny muted mb1">Rekamanmu{detik ? ` · ${Math.round(detik)} detik` : ""} — dengarkan dulu:</div>
+          <div className="tiny muted mb1">Rekamanmu{detik ? ` · ${Math.round(detik)} detik` : ""} — dengarkan dulu<Info tip="Ini rekaman aslimu, belum dikirim ke mana pun. Kalau ada suara latar atau terpotong, rekam ulang sebelum dipakai." /></div>
           <audio src={url} controls style={{ width: "100%" }} />
         </div>
       )}
@@ -384,12 +400,13 @@ function KartuSuara({ saya, models, adaUgc, adaStoryboard, onDone }) {
       {ok && <div className="msg-ok mb2">{ok}</div>}
       {preview && (
         <div className="mb3">
-          <div className="tiny muted mb1">Contoh suara hasil tiruan:</div>
+          <div className="tiny muted mb1">Contoh suara hasil tiruan<Info tip="Kalimat contoh yang dibacakan suara tiruanmu. Kalau belum mirip, rekam ulang di tempat lebih sunyi dan bicara lebih alami — tiruan mengikuti rekamannya." /></div>
           <audio src={preview} controls style={{ width: "100%" }} />
         </div>
       )}
       {blob && status !== "rekam" && (
-        <button type="button" className="btn" disabled={mengirim} onClick={simpan}>
+        <button type="button" className="btn" disabled={mengirim} onClick={simpan}
+          data-tip="Mengirim rekaman ke penyedia suara untuk ditiru — sekitar satu menit. Tidak memotong saldo. Suara lama (kalau ada) diganti.">
           {mengirim ? "Menyimpan suara… (sekitar satu menit)" : adaUgc ? "Ganti dengan rekaman ini" : "Pakai rekaman ini"}
         </button>
       )}
@@ -414,7 +431,8 @@ function KartuBahasa({ saya, onDone }) {
       <p className="tiny muted mb3">Mandarin menyusul; untuk sekarang Indonesia, English, atau campuran.</p>
       <div className="row" style={{ gap: 8, flexWrap: "wrap" }}>
         {[["id", "Indonesia"], ["en", "English"], ["mix", "Campuran"]].map(([k, l]) => (
-          <button key={k} type="button" className={v === k ? "btn" : "btn btn2"} onClick={() => simpan(k)}>{l}</button>
+          <button key={k} type="button" className={v === k ? "btn" : "btn btn2"} onClick={() => simpan(k)}
+            data-tip={k === "id" ? "Naskah dan suara sepenuhnya bahasa Indonesia." : k === "en" ? "Naskah dan suara bahasa Inggris. Suara tiruanmu tetap dipakai." : "Indonesia dengan sisipan istilah Inggris, seperti gaya bicara sehari-hari."}>{l}</button>
         ))}
       </div>
       {msg && <div className={msg.err ? "msg-err mt2" : "msg-ok mt2"}>{msg.text}</div>}
