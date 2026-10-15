@@ -129,7 +129,9 @@ dan janji keuntungan (aturan workspace ini).
 efek yang punya nama atau orang yang menemukannya, twist, lalu takeaway. Tanpa
 CTA kecuali diminta.
 
-Keduanya: bisa diucapkan, 2,3 kata per detik, dihitung (pipeline §5).
+Keduanya: ditulis untuk didengar (partikel percakapan, kata sehari-hari,
+"..." untuk jeda — aturan lengkapnya pipeline §5), 2,3 kata per detik,
+dihitung. Narasi Indonesia memakai voice id `Indonesian_*`.
 
 ## 5. Bentuk prompt — dua prompt per klip
 

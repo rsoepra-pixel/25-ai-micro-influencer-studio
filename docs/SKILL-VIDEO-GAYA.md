@@ -83,6 +83,11 @@ karena katalog Studio berbeda dari MaxFusion:
 3. **`influencer_id` hanya untuk komposit maskot.** Studio menyuntikkan
    identity prompt wajah ke setiap job yang membawa `influencer_id`; klip
    kolase tanpa wajah tidak boleh membawanya.
+4. **Audio didengar dulu, keyframe dilihat dulu, baru klip.** Mengikuti
+   PR #82 (14 Okt 2026, wizard UGC): suara adalah hal pertama yang membuat
+   penonton merasa "ini AI", dan audio ≈ $0,01 sedangkan klip ≈ $0,5. Naskah
+   ditulis untuk didengar (partikel, kata sehari-hari, jeda "..."), narasi
+   Indonesia memakai voice id MiniMax `Indonesian_*`.
 
 Perkiraan biaya satu klip 10 detik (katalog 15 Oktober 2026, berubah):
 keyframe Seedream 4 ≈ $0,03 + klip Seedance 1.5 Pro 10 detik ≈ $0,52 +
