@@ -364,6 +364,35 @@ daftar itu — ketiganya hanya lewat JWT user. `internal_billing_key` dipisah
 sendiri karena ia bisa menambah saldo; kunci yang bisa mencetak uang tidak ikut
 menumpang di jalur yang ramai.
 
+### Login Google
+
+Setelannya ada di dua tempat di luar repo, dan keduanya harus cocok:
+
+| Tempat | Setelan |
+|---|---|
+| Google Cloud → Google Auth Platform → Clients | Client **"AI Micro Influencer Studio"** (Web application), di project Google Cloud yang juga dipakai aplikasi lain milik pemilik. Authorized JavaScript origin `https://25-ai-microinfluencer.netlify.app`; redirect URI `https://kheibvzbvnmhdeokokrw.supabase.co/auth/v1/callback`. Audience: *In production*. |
+| Supabase → Authentication → Sign In / Providers → Google | Client ID dan Client Secret **dari client yang sama** di atas. |
+| Supabase → Authentication → URL Configuration | Site URL `https://25-ai-microinfluencer.netlify.app`; Redirect URLs memuat `https://25-ai-microinfluencer.netlify.app/**` (syarat undangan lewat Google, lihat §4). |
+
+Jangan mengubah client lain di project Google Cloud itu — client-nya milik
+aplikasi lain, dan login di sana ikut rusak.
+
+**Gejala yang sudah pernah terjadi:** login Google kembali dengan
+`Unable to exchange external code` (Okt 2026). Artinya Google sudah setuju,
+tapi Supabase gagal menukar kodenya — Client Secret di Supabase tidak
+berpasangan dengan Client ID-nya (secret dari client lain, terpotong, atau
+ikut spasi). Perbaikannya: tambah secret baru di client yang benar, tempel
+ulang Client ID dan secret di Supabase. Pengguna sekarang hanya melihat
+"Masuk dengan Google gagal…"; teks aslinya ada di console browser.
+
+Cek cepat provider aktif tanpa login:
+`GET https://kheibvzbvnmhdeokokrw.supabase.co/auth/v1/settings` (header
+`apikey` = anon key) → `external.google` harus `true`.
+
+Halaman Google menulis "continue to kheibvzbvnmhdeokokrw.supabase.co", bukan
+nama Studio. Itu bawaan project Supabase tanpa custom domain; tidak
+memengaruhi fungsi.
+
 ---
 
 ## 8. Yang belum selesai

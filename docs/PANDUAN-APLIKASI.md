@@ -57,6 +57,18 @@ email & password di bawahnya. Keduanya berlaku untuk masuk maupun daftar.
 Pelanggan yang akunnya dibuat operator masuk pertama kali lewat
 [Link akses](#link-akses), bukan lewat halaman ini.
 
+**Kalau masuk gagal, halaman ini menyebut sebabnya** — dulu yang terlihat cuma
+form kosong, dan orangnya mengira password-nya yang salah:
+
+| Yang muncul | Artinya | Jalan keluar |
+|---|---|---|
+| "Masuk dengan Google gagal…" | Google atau Supabase menolak setelah akun dipilih | Coba lagi, atau masuk dengan email. Kalau semua orang kena, cek konfigurasi Google di [OPERASI.md § Login Google](OPERASI.md#login-google). |
+| "Link ini sudah kedaluwarsa atau sudah pernah dipakai…" | Link akses/pemulihan sudah terpakai atau habis waktunya | Terbitkan link baru dari halaman Pelanggan. |
+| "Link ini tidak bisa dipakai…" | Link ditolak karena alasan lain | Sama: link baru. |
+
+Detail teknisnya tidak ditampilkan (bisa memuat potongan kode otorisasi);
+operator bisa membacanya di console browser (`Login ditolak: …`).
+
 ---
 
 ## Kerangka yang selalu terlihat
