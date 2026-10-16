@@ -20,13 +20,13 @@ import { TipLayer, Info } from "./tips.jsx";
 // mengarahkan ulang ke halaman login.
 const INVITE_TOKEN = new URLSearchParams(window.location.search).get("invite");
 
-// Undangan dilepas dari URL begitu selesai diproses — berhasil maupun gagal.
-// Kalau dibiarkan, satu kali refresh akan mencoba memakainya lagi, dan
-// percobaan kedua selalu gagal dengan "link sudah dipakai" untuk undangan yang
-// sebenarnya baru saja berhasil.
-function bersihkanUrlUndangan() {
+// Token sekali pakai dilepas dari URL begitu selesai diproses — berhasil
+// maupun gagal. Kalau dibiarkan, satu kali refresh akan mencoba memakainya
+// lagi, dan percobaan kedua selalu gagal dengan "link sudah dipakai" untuk
+// link yang sebenarnya baru saja berhasil.
+function hapusParamUrl(nama) {
   const u = new URL(window.location.href);
-  u.searchParams.delete("invite");
+  u.searchParams.delete(nama);
   window.history.replaceState(null, "", u.toString());
 }
 
@@ -35,13 +35,12 @@ function bersihkanUrlUndangan() {
 // dimuat — karena pembuat pratinjau link (WhatsApp, pemindai email) juga
 // memuat halaman ini, dan token sekali-pakai yang dipakai olehnya membuat
 // pelanggan sungguhan terkunci di luar.
-const PULIH_TOKEN = new URLSearchParams(window.location.search).get("pulih");
-
-function bersihkanUrlPulih() {
-  const u = new URL(window.location.href);
-  u.searchParams.delete("pulih");
-  window.history.replaceState(null, "", u.toString());
-}
+//
+// `let`, bukan `const`, dan diambil lewat ambilSekali(): halaman ini tidak
+// dimuat ulang saat keluar, jadi Login dipasang lagi di halaman yang sama.
+// Nilai yang dibaca ulang dari variabel modul membuat layar link akses dan
+// pesan "link kedaluwarsa" muncul lagi setiap kali orangnya keluar.
+let pulihToken = new URLSearchParams(window.location.search).get("pulih");
 
 // Link pemulihan yang ditolak Supabase kembali ke sini dengan alasannya di
 // fragmen URL (`#error_code=otp_expired&...`). Dulu fragmen itu diabaikan dan
@@ -55,7 +54,7 @@ function bersihkanUrlPulih() {
 // sessionStorage sebelum pindah ke Google.
 const GOOGLE_FLAG = "masuk_google";
 
-const LINK_ERROR = (() => {
+let linkError = (() => {
   let dariGoogle = false;
   try { dariGoogle = sessionStorage.getItem(GOOGLE_FLAG) === "1"; sessionStorage.removeItem(GOOGLE_FLAG); } catch {}
   const h = new URLSearchParams(window.location.hash.replace(/^#\/?/, ""));
@@ -77,6 +76,11 @@ const LINK_ERROR = (() => {
   }
   return "Link ini tidak bisa dipakai. Minta link baru ke admin, lalu buka sekali saja.";
 })();
+
+const ambilSekali = {
+  pulih() { const t = pulihToken; pulihToken = null; return t; },
+  linkError() { const e = linkError; linkError = null; return e; },
+};
 
 // ---------- Hash router sederhana ----------
 function useRoute() {
@@ -156,16 +160,25 @@ function Login() {
   const [mode, setMode] = useState(INVITE_TOKEN ? "signup" : "signin");
   const [email, setEmail] = useState("");
   const [pw, setPw] = useState("");
-  const [err, setErr] = useState(LINK_ERROR);
+  const [err, setErr] = useState(ambilSekali.linkError);
   const [busy, setBusy] = useState(false);
-  const [pulih, setPulih] = useState(PULIH_TOKEN);
+  const [pulih, setPulih] = useState(ambilSekali.pulih);
+
+  // Tombol "Back" di halaman Google bisa memulihkan halaman ini dari bfcache
+  // persis seperti saat ditinggal — busy masih true, dan semua tombol masuk
+  // terkunci di "Memproses…" sampai orangnya memuat ulang sendiri.
+  useEffect(() => {
+    const pulihkan = (e) => { if (e.persisted) setBusy(false); };
+    window.addEventListener("pageshow", pulihkan);
+    return () => window.removeEventListener("pageshow", pulihkan);
+  }, []);
 
   // Menukar token link akses dengan sesi. Berhasil → onAuthStateChange di App
   // menerima PASSWORD_RECOVERY dan langsung membuka layar pasang password.
   async function lanjutPulih() {
     setErr(null); setBusy(true);
     const { error } = await supa.auth.verifyOtp({ token_hash: pulih, type: "recovery" });
-    bersihkanUrlPulih();
+    hapusParamUrl("pulih");
     if (error) {
       setErr("Link ini sudah kedaluwarsa atau sudah pernah dipakai. Minta link baru ke admin.");
       setPulih(null);
@@ -226,8 +239,14 @@ function Login() {
       options: { redirectTo: back.toString() },
     });
     // Kalau berhasil, browser sudah pindah ke Google dan baris di bawah tidak
-    // pernah terlihat.
-    if (error) { setErr(`Gagal masuk dengan Google: ${error.message}`); setBusy(false); }
+    // pernah terlihat. Kalau gagal, penandanya dicabut lagi: tanpa itu, link
+    // akses kedaluwarsa yang dibuka di tab yang sama nanti ikut dilabeli
+    // "Masuk dengan Google gagal".
+    if (error) {
+      try { sessionStorage.removeItem(GOOGLE_FLAG); } catch {}
+      setErr(`Gagal masuk dengan Google: ${error.message}`);
+      setBusy(false);
+    }
   }
 
   return (
@@ -446,12 +465,12 @@ function App() {
     callApp({ action: "invite_accept", token: INVITE_TOKEN })
       .then((r) => {
         setInvite({ status: "ok", name: r.workspace_name });
-        bersihkanUrlUndangan();
+        hapusParamUrl("invite");
         refresh();
       })
       .catch((e) => {
         setInvite({ status: "error", message: e.message });
-        bersihkanUrlUndangan();
+        hapusParamUrl("invite");
       });
   }, [session, invite, refresh]);
 
@@ -502,6 +521,30 @@ function App() {
 
   if (session === undefined) return null;
   if (!session) return <Login />;
+
+  // Link akses dibuka di browser yang sudah login dengan akun lain — operator
+  // yang menguji link pelanggan, atau perangkat yang dipakai bergantian. Dulu
+  // token-nya diam-diam diabaikan dan tertinggal di address bar. Sekarang
+  // orangnya memilih: keluar lalu memakai link ini, atau tetap di akun ini.
+  if (pulihToken) {
+    const tetap = () => { pulihToken = null; hapusParamUrl("pulih"); refresh(); };
+    return (
+      <div style={{ minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center", padding: 24 }}>
+        <div className="card p6" style={{ width: "100%", maxWidth: 420 }}>
+          <div className="bold">Link akses untuk akun lain</div>
+          <p className="muted small mt2 mb4">
+            Kamu sedang masuk sebagai <b>{session.user?.email}</b>. Link akses yang kamu buka dibuat
+            untuk akun pelanggan. Keluar dulu untuk memakainya, atau tetap di akun ini dan link-nya
+            tidak dipakai.
+          </p>
+          <button className="btn mb2" style={{ width: "100%", justifyContent: "center" }}
+            onClick={() => supa.auth.signOut()}>Keluar & pakai link ini</button>
+          <button className="btn btn2" style={{ width: "100%", justifyContent: "center" }}
+            onClick={tetap}>Tetap di akun ini</button>
+        </div>
+      </div>
+    );
+  }
 
   // Layar undangan menahan aplikasi sebentar dengan sengaja: saat undangan
   // diterima, workspace yang sedang dipegang state adalah workspace lama yang
