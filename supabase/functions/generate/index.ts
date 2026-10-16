@@ -911,7 +911,13 @@ async function storeVoiceSample(ws: string, dataUri: string, infId: string): Pro
   // saringan kasar; batas sebenarnya ditegakkan fal dan pesannya diteruskan.
   if (bytes.byteLength < 4000) throw new Error("Sampel suaranya terlalu kecil — kemungkinan filenya rusak atau kosong.");
   if (bytes.byteLength > 25 * 1024 * 1024) throw new Error("Sampel suaranya lebih dari 25 MB. Potong dulu jadi 5-30 detik.");
-  const ext = m[1].includes("wav") ? "wav" : m[1].includes("mp4") ? "mp4" : m[1].includes("quicktime") || m[1].includes("mov") ? "mov" : "mp3";
+  // webm/ogg: rekaman langsung dari mikrofon browser (halaman Profil saya,
+  // Chrome/Android). Sebelumnya jatuh ke "mp3" — ekstensi yang bohong. Apakah
+  // MiniMax lewat fal menerima webm BELUM diverifikasi; kalau ditolak, pesan
+  // fal diteruskan dan halaman menyarankan unggah berkas dari perekam ponsel.
+  const ext = m[1].includes("wav") ? "wav" : m[1].includes("mp4") ? "mp4"
+    : m[1].includes("quicktime") || m[1].includes("mov") ? "mov"
+    : m[1].includes("webm") ? "webm" : m[1].includes("ogg") ? "ogg" : "mp3";
   const path = `${ws}/voices/${infId}-${crypto.randomUUID()}.${ext}`;
   const { error } = await admin.storage.from("media")
     .upload(path, bytes, { contentType: m[1], upsert: true, cacheControl: "3600" });
@@ -1151,8 +1157,8 @@ Deno.serve(async (req) => {
         return json({ ok: true, mode: m });
       }
       case "write": {
-        // Penulis AI: kind = script | ideas | persona | lookalike | plan | storyboard.
-        const kind = ["ideas", "persona", "lookalike", "plan", "storyboard", "ugc"].includes(body.kind) ? body.kind : "script";
+        // Penulis AI: kind = script | ideas | persona | lookalike | plan | storyboard | ugc | shot.
+        const kind = ["ideas", "persona", "lookalike", "plan", "storyboard", "ugc", "shot", "variant"].includes(body.kind) ? body.kind : "script";
         // Pelaku + keperluan, dibawa ke setiap panggilan chat() di bawah ini.
         const penulis = { actor, purpose: String(kind) };
 
@@ -1170,9 +1176,138 @@ Deno.serve(async (req) => {
         // kontinuitas diminta SEKALI di tingkat storyboard, lalu ditempelkan ke
         // setiap prompt shot oleh klien. Satu sumber kebenaran, bukan lima
         // deskripsi baju yang mirip-mirip tapi tidak sama.
+        if (kind === "variant") {
+          // "Buat versi lain" (Okt 2026, tinjauan animator): satu storyboard
+          // yang sudah jadi → versi baru dengan NARASI yang berbeda, visual
+          // tetap. Visual sengaja tidak disentuh: gambar pembukanya dipakai
+          // ulang (gratis), dan wajah tetap sama karena sumbernya sama. Satu
+          // produk, tiga video seminggu, satu kali bayar frame. Satu panggilan
+          // chat() untuk semua shot, bukan satu per shot.
+          const instruction = String(body.instruction || "").trim().slice(0, 300);
+          if (!instruction) throw new Error("Tulis dulu apa yang beda di versi ini — mis. \"bahasa Inggris\", \"lebih lucu\", \"ajakan beli lewat WhatsApp\".");
+          const { data: board } = await admin.from("storyboards").select("id,workspace_id,title,logline,influencer_id")
+            .eq("id", body.storyboard_id).eq("workspace_id", ws).maybeSingle();
+          if (!board) throw new Error("Storyboard tidak ditemukan di workspace ini.");
+          const { data: shots } = await admin.from("storyboard_shots").select("position,beat,narration,seconds,visual_prompt")
+            .eq("storyboard_id", board.id).order("position");
+          if (!shots?.length) throw new Error("Storyboard ini belum punya shot.");
+          let ilang = "Indonesia";
+          if (board.influencer_id) {
+            const { data: inf } = await admin.from("influencers").select("language").eq("id", board.influencer_id).maybeSingle();
+            ilang = inf?.language === "en" ? "English" : inf?.language === "mix" ? "campuran Indonesia-Inggris" : "Indonesia";
+          }
+          const system =
+            `Kamu penulis naskah video short-form. Kamu menulis VERSI LAIN dari narasi sebuah storyboard: visual tiap shot ` +
+            `sudah final dan tidak boleh diubah, yang berubah hanya kata-kata yang diucapkan (dan judul). ` +
+            `Jawab HANYA dengan JSON valid, tanpa penjelasan lain.`;
+          const user =
+            `Video: "${board.title}" — ${board.logline || ""}\n` +
+            `Bahasa bawaan narasi: ${ilang}. Kalau permintaan user menyebut bahasa lain, ikuti permintaan user.\n` +
+            `Shot (visual TETAP, hanya narasi yang ditulis ulang):\n` +
+            shots.map((s) => `${s.position}. [${s.seconds} detik] beat: ${s.beat} · visual: ${s.visual_prompt} · narasi sekarang: ${s.narration || "(kosong)"}`).join("\n") +
+            `\n\nPermintaan user untuk versi ini: "${instruction}"\n` +
+            `\nAturan: narasi tiap shot kira-kira 2,5 kata per detik untuk detiknya; shot 1 tetap hook, shot terakhir tetap punya ajakan; ` +
+            `jangan ubah urutan atau jumlah shot; hindari klaim medis/finansial spesifik.\n` +
+            `Format JSON: {"title": "judul versi ini", "shots": [{"position": 1, "beat": "...", "narration": "..."}]}`;
+          const parsed = parseJsonLoose(await chat(ws, penulis, system, user, undefined, 2000)) as Record<string, unknown>;
+          const raw = Array.isArray(parsed.shots) ? parsed.shots as Record<string, unknown>[] : [];
+          const byPos = new Map(raw.map((s) => [Number(s.position), s]));
+          return json({
+            ok: true,
+            variant: {
+              title: String(parsed.title || board.title).slice(0, 200),
+              shots: shots.map((s) => {
+                const n = byPos.get(Number(s.position));
+                return {
+                  position: s.position,
+                  beat: String(n?.beat || s.beat).slice(0, 120),
+                  narration: String(n?.narration ?? s.narration ?? "").slice(0, 600),
+                };
+              }),
+            },
+          });
+        }
+
+        if (kind === "shot") {
+          // "Ubah adegan ini" (Okt 2026, tinjauan animator): satu kalimat
+          // Indonesia dari orangnya ("bikin dia tertawa, bukan serius") →
+          // penulis menulis ulang SATU shot. Sebelumnya satu-satunya cara
+          // mengubah adegan adalah menyunting prompt Inggris, dropdown kamera,
+          // dan angka detik — bahasa yang bukan bahasa pelanggan. Prompt
+          // Inggris tetap disimpan; hanya tidak lagi harus ditulis orangnya.
+          const instruction = String(body.instruction || "").trim().slice(0, 300);
+          if (!instruction) throw new Error("Tulis dulu apa yang mau diubah di adegan ini, satu kalimat saja.");
+          const { data: shot } = await admin.from("storyboard_shots").select("*").eq("id", body.shot_id).maybeSingle();
+          if (!shot) throw new Error("Adegan tidak ditemukan.");
+          const { data: board } = await admin.from("storyboards").select("id,workspace_id,continuity,influencer_id,title")
+            .eq("id", shot.storyboard_id).maybeSingle();
+          if (!board || board.workspace_id !== ws) throw new Error("Adegan tidak ditemukan di workspace ini.");
+          let ilang = "Indonesia";
+          if (board.influencer_id) {
+            const { data: inf } = await admin.from("influencers").select("language").eq("id", board.influencer_id).maybeSingle();
+            ilang = inf?.language === "en" ? "English" : inf?.language === "mix" ? "campuran Indonesia-Inggris" : "Indonesia";
+          }
+          const system =
+            `Kamu sutradara video short-form. Kamu menulis ulang SATU shot dari sebuah storyboard sesuai permintaan user, ` +
+            `tanpa mengubah hal yang tidak diminta. Jawab HANYA dengan JSON valid, tanpa penjelasan lain.`;
+          const user =
+            `Shot ${shot.position} dari video "${board.title}".\n` +
+            `Beat: ${shot.beat}\nPrompt visual sekarang (Inggris): ${shot.visual_prompt}\n` +
+            `Narasi sekarang (${ilang}): ${shot.narration || "(kosong)"}\nKamera: ${shot.camera} · Durasi: ${shot.seconds} detik\n` +
+            `Kontinuitas yang berlaku di semua shot (JANGAN diulang di prompt visual): ${board.continuity || "(kosong)"}\n` +
+            `\nPermintaan user: "${instruction}"\n` +
+            `\nAturan:\n` +
+            `1. Ubah HANYA yang diminta. Kalau user bicara soal ekspresi/aksi/sudut, narasinya tetap; kalau soal kata-kata, visualnya tetap.\n` +
+            `2. "visual_prompt" bahasa Inggris, 25-50 kata, hanya yang terlihat di frame: aksi, ekspresi, jarak dan gerak kamera, komposisi. ` +
+            `DILARANG mendeskripsikan wajah, usia, warna kulit, atau rambut — wajah dikunci lewat foto referensi.\n` +
+            `3. "narration" bahasa ${ilang}, kalimat yang benar-benar diucapkan, kira-kira 2,5 kata per detik untuk ${shot.seconds} detik.\n` +
+            `4. "seconds" tetap ${shot.seconds} kecuali user secara eksplisit minta lebih panjang/pendek (bilangan bulat 2-15).\n` +
+            `5. "camera" salah satu: close-up | medium | wide.\n` +
+            `6. "changed": daftar nama kolom yang kamu ubah.\n` +
+            `\nFormat JSON: {"beat": "...", "visual_prompt": "...", "narration": "...", "camera": "...", "seconds": ${shot.seconds}, "changed": ["visual_prompt"]}`;
+          const parsed = parseJsonLoose(await chat(ws, penulis, system, user, undefined, 1200)) as Record<string, unknown>;
+          const CAMERAS = ["close-up", "medium", "wide"];
+          const out = {
+            beat: String(parsed.beat || shot.beat).slice(0, 120),
+            visual_prompt: String(parsed.visual_prompt || shot.visual_prompt).slice(0, 800),
+            narration: String(parsed.narration ?? shot.narration ?? "").slice(0, 600),
+            camera: CAMERAS.includes(String(parsed.camera)) ? String(parsed.camera) : String(shot.camera || "medium"),
+            seconds: Math.min(Math.max(Number(parsed.seconds) || Number(shot.seconds) || 5, 2), 15),
+          };
+          const changed = (["beat", "visual_prompt", "narration", "camera", "seconds"] as const)
+            .filter((k) => String(out[k]) !== String(shot[k] ?? ""));
+          if (!changed.length) throw new Error("Penulis AI tidak mengubah apa pun dari permintaan itu. Coba kalimat yang lebih spesifik — mis. \"dia tertawa sambil memegang keripik\".");
+          return json({ ok: true, shot: out, changed });
+        }
+
         if (kind === "storyboard") {
-          const shotCount = Math.min(Math.max(Number(body.shots) || 5, 2), 10);
-          const perShot = Math.min(Math.max(Number(body.seconds_per_shot) || 5, 2), 15);
+          // DUA MODE. Mode lama: user menyebut jumlah shot dan detik per shot
+          // (halaman Storyboard, pustaka prompt, MCP lama). Mode beat (Okt
+          // 2026, tinjauan animator): user memilih POLA CERITA dan total
+          // detik; penulis yang memutuskan jumlah shot dan ritmenya — hook
+          // 2–3 detik, inti lebih panjang. Dua angka yang ditanya sebelum
+          // ceritanya ada menghasilkan "slideshow bermetronom": semua shot
+          // 5 detik rata, apa pun isinya.
+          const POLA: Record<string, string> = {
+            masalah_produk_hasil:
+              "MASALAH → PRODUK → HASIL: (1) hook — masalah yang dirasakan penonton, 2–3 detik; " +
+              "(2) produk muncul sebagai jawaban, 3–5 detik; (3) hasil/perubahan yang terlihat, 3–5 detik; (4) ajakan, 2–3 detik.",
+            proses:
+              "PROSES, dari bahan ke pembeli: (1) bahan/awal, pendek; (2) proses dibuat — boleh 2 shot kalau totalnya cukup; " +
+              "(3) hasil jadi, close-up; (4) sampai ke tangan pembeli + ajakan.",
+            sebelum_sesudah:
+              "SEBELUM / SESUDAH: (1) sebelum — masalah, suasana datar; (2) titik balik, pendek; " +
+              "(3) sesudah — kontras yang jelas dengan shot 1, paling panjang; (4) ajakan.",
+            tiga_tips:
+              "3 TIPS: (1) hook berupa janji, 2 detik; (2) tips 1; (3) tips 2; (4) tips 3; (5) ajakan, pendek. " +
+              "Tiap tips satu kalimat yang bisa dipraktikkan.",
+          };
+          const pattern = typeof body.pattern === "string" && (POLA[body.pattern] || body.pattern === "bebas") ? String(body.pattern) : "";
+          const totalSeconds = Math.min(Math.max(Number(body.total_seconds) || 0, 0), MAX_DURATION_SECONDS);
+          const modeBeat = !body.shots && (pattern !== "" || totalSeconds > 0);
+          const total = totalSeconds || 15;
+          const shotCount = modeBeat ? 6 : Math.min(Math.max(Number(body.shots) || 5, 2), 10);
+          const perShot = modeBeat ? Math.max(2, Math.round(total / 4)) : Math.min(Math.max(Number(body.seconds_per_shot) || 5, 2), 15);
 
           let iname = "kreator", iniche = "", ibio = "", ilang = "Indonesia";
           if (body.influencer_id) {
@@ -1203,17 +1338,43 @@ Deno.serve(async (req) => {
           const platform = ["tiktok", "instagram", "youtube"].includes(body.platform) ? body.platform : "tiktok";
           const platformLabel = platform === "instagram" ? "Instagram Reels" : platform === "youtube" ? "YouTube Shorts" : "TikTok";
 
+          // Foto dari HP orangnya (Okt 2026): tiap foto jadi bahan satu adegan.
+          // Penulis MELIHAT fotonya (chat() menerima gambar, seperti persona),
+          // lalu mendeskripsikan yang terlihat ke visual_prompt. Fotonya
+          // disimpan ke Storage supaya yang kemasan bisa ikut ke job frame
+          // pembuka sebagai referensi tambahan (storyboards.ref_photo_urls).
+          const photos: string[] = Array.isArray(body.photos)
+            ? (body.photos as unknown[]).filter((x) => typeof x === "string").slice(0, 8) as string[]
+            : [];
+
           const system =
             `Kamu sutradara video short-form untuk ${platformLabel}, pasar Indonesia. ` +
             `Kamu memecah satu ide menjadi shot list yang langsung bisa diproduksi model AI. ` +
             `Talent-nya ${iname}${iniche ? `, niche ${iniche}` : ""}. ` +
             (ibio ? `Persona: ${ibio} ` : "") +
+            (photos.length
+              ? `Kamu diberi ${photos.length} foto milik user, berurutan. Deskripsikan yang TERLIHAT di tiap foto secara faktual ` +
+                `(tempat, benda, aksi, suasana) — JANGAN menebak identitas atau mendeskripsikan wajah orang di foto. `
+              : "") +
             `Jawab HANYA dengan JSON valid, tanpa penjelasan lain.`;
 
           const user =
             `Ide video: "${idea}"\n` +
             (existingScript ? `Naskah yang sudah ada (pakai ini, jangan bikin cerita baru):\n${existingScript}\n` : "") +
-            `\nPecah jadi TEPAT ${shotCount} shot, masing-masing sekitar ${perShot} detik. Format vertikal 9:16.\n` +
+            (modeBeat
+              ? `\nPecah jadi 3 sampai 6 shot` +
+                (pattern && pattern !== "bebas" ? ` mengikuti pola ${POLA[pattern]}` : ", kamu yang menentukan beat-nya.") +
+                ` Total durasi TEPAT ${total} detik. Tentukan sendiri detik tiap shot: bilangan bulat, minimal 2, ` +
+                `hook pendek dan inti/payoff lebih panjang — jangan semua sama. Jumlah detik semua shot HARUS ${total}. ` +
+                `Format vertikal 9:16.\n`
+              : `\nPecah jadi TEPAT ${shotCount} shot, masing-masing sekitar ${perShot} detik. Format vertikal 9:16.\n`) +
+            (photos.length
+              ? `\nFoto terlampir (foto 1 sampai ${photos.length}): bangun adegan DARI foto-foto ini — tiap foto jadi bahan satu shot ` +
+                `(dua foto yang mirip boleh digabung), urutannya boleh diatur ulang mengikuti pola/cerita. "visual_prompt" shot itu ` +
+                `mendeskripsikan yang terlihat di fotonya. Kalau ada foto kemasan/produk, tampilkan produk itu di shot PERTAMA ` +
+                `dan shot TERAKHIR — model video paling sering menggeser bentuk kemasan di shot tengah. ` +
+                `Sertakan "photo": nomor foto yang dipakai tiap shot (null kalau tidak ada).\n`
+              : "") +
             `\nAturan yang harus dipatuhi:\n` +
             `1. "continuity": satu deskripsi yang berlaku untuk SEMUA shot — pakaian, lokasi, waktu, ` +
             `pencahayaan, dan palet warna. Bahasa Inggris, 20-40 kata. Ini yang membuat potongan-potongan ` +
@@ -1225,7 +1386,9 @@ Deno.serve(async (req) => {
             `deskripsimu akan berkelahi dengan fotonya dan yang keluar orang lain.\n` +
             `3. Jangan ulang isi "continuity" di dalam "visual_prompt" — itu ditempelkan otomatis.\n` +
             `4. "narration" tiap shot: bahasa ${ilang}, kalimat yang benar-benar diucapkan, ` +
-            `panjangnya wajar untuk ${perShot} detik (kira-kira ${Math.round(perShot * 2.5)} kata). ` +
+            (modeBeat
+              ? `panjangnya mengikuti detik shot itu (kira-kira 2,5 kata per detik). `
+              : `panjangnya wajar untuk ${perShot} detik (kira-kira ${Math.round(perShot * 2.5)} kata). `) +
             `Boleh string kosong untuk shot tanpa suara.\n` +
             `5. Shot 1 adalah HOOK: harus menahan orang di 1-3 detik pertama. Jangan basa-basi, ` +
             `jangan "halo guys", langsung ke hal yang bikin penasaran.\n` +
@@ -1236,29 +1399,53 @@ Deno.serve(async (req) => {
             `\nFormat JSON: {"title": "judul video", "logline": "1 kalimat bahasa Indonesia isi videonya", ` +
             `"continuity": "...", "shots": [{"beat": "nama beat singkat bahasa Indonesia", ` +
             `"visual_prompt": "...", "narration": "...", "camera": "close-up | medium | wide", ` +
-            `"seconds": ${perShot}}]}`;
+            `"seconds": ${perShot}${photos.length ? ', "photo": 1' : ""}}]}`;
 
-          const parsed = parseJsonLoose(await chat(ws, penulis, system, user, undefined, 3000)) as Record<string, unknown>;
+          const parsed = parseJsonLoose(await chat(ws, penulis, system, user, photos.length ? photos : undefined, 3000)) as Record<string, unknown>;
           const rawShots = Array.isArray(parsed.shots) ? parsed.shots : [];
           if (!rawShots.length) throw new Error("Penulis AI tidak mengembalikan satu shot pun. Coba lagi.");
+          // Foto disimpan SETELAH penulis menjawab: kalau penulisnya gagal,
+          // tidak ada berkas yatim di Storage.
+          const stored = photos.length ? await storePhotos(ws, photos, "storyboard") : { urls: [], failed: [] };
           const CAMERAS = ["close-up", "medium", "wide"];
+          const shotsOut = rawShots.slice(0, shotCount).map((s: Record<string, unknown>, i: number) => ({
+            position: i + 1,
+            photo: Number.isInteger(Number(s?.photo)) && Number(s?.photo) >= 1 && Number(s?.photo) <= photos.length ? Number(s?.photo) : null,
+            beat: String(s?.beat || `Shot ${i + 1}`).slice(0, 120),
+            visual_prompt: String(s?.visual_prompt || "").slice(0, 800),
+            narration: String(s?.narration || "").slice(0, 600),
+            camera: CAMERAS.includes(String(s?.camera)) ? String(s?.camera) : "medium",
+            // Durasi dari model tidak dipercaya mentah-mentah: ia sering
+            // menulis angka yang tidak ada di daftar model video mana pun.
+            // Yang mengikat tetap pilihan user; ini cuma usulan.
+            seconds: Math.min(Math.max(Number(s?.seconds) || perShot, 2), 15),
+          })).filter((s) => s.visual_prompt);
+          if (modeBeat && shotsOut.length) {
+            // Penulis sering meleset satu-dua detik dari total. Dipaskan
+            // proporsional supaya yang ditampilkan ke orangnya = yang diminta;
+            // pemangkasan ke batas model tetap dikerjakan klien (fitShotDurations).
+            const sum = shotsOut.reduce((a, s) => a + s.seconds, 0);
+            if (sum !== total) {
+              const scaled = shotsOut.map((s) => Math.max(2, Math.round((s.seconds * total) / sum)));
+              let drift = total - scaled.reduce((a, b) => a + b, 0);
+              const order = scaled.map((_, i) => i).sort((a, b) => scaled[b] - scaled[a]);
+              for (let k = 0; drift > 0; k = (k + 1) % scaled.length) { scaled[order[k]]++; drift--; }
+              for (let k = 0, guard = 0; drift < 0 && guard < 100; k = (k + 1) % scaled.length, guard++) {
+                if (scaled[order[k]] > 2) { scaled[order[k]]--; drift++; }
+              }
+              shotsOut.forEach((s, i) => { s.seconds = scaled[i]; });
+            }
+          }
           return json({
             ok: true,
             storyboard: {
               title: String(parsed.title || idea).slice(0, 200),
               logline: String(parsed.logline || "").slice(0, 300),
               continuity: String(parsed.continuity || "").slice(0, 500),
-              shots: rawShots.slice(0, shotCount).map((s: Record<string, unknown>, i: number) => ({
-                position: i + 1,
-                beat: String(s?.beat || `Shot ${i + 1}`).slice(0, 120),
-                visual_prompt: String(s?.visual_prompt || "").slice(0, 800),
-                narration: String(s?.narration || "").slice(0, 600),
-                camera: CAMERAS.includes(String(s?.camera)) ? String(s?.camera) : "medium",
-                // Durasi dari model tidak dipercaya mentah-mentah: ia sering
-                // menulis angka yang tidak ada di daftar model video mana pun.
-                // Yang mengikat tetap pilihan user; ini cuma usulan.
-                seconds: Math.min(Math.max(Number(s?.seconds) || perShot, 2), 15),
-              })).filter((s) => s.visual_prompt),
+              pattern: modeBeat ? (pattern || "bebas") : null,
+              photo_urls: stored.urls,
+              photos_failed: stored.failed,
+              shots: shotsOut,
             },
           });
         }
@@ -1933,6 +2120,29 @@ Deno.serve(async (req) => {
           await admin.from("influencers").update({ avatar_url: urls[0] }).eq("id", inf.id);
         }
         return json({ ok: true, attached: urls.length });
+      }
+      case "attach_photos": {
+        // Foto (data URI) → Storage → Identity Kit, TANPA penulis AI. Pasangan
+        // attach_refs untuk halaman Profil saya: attach_refs hanya menerima URL
+        // yang sudah ada di Storage, dan satu-satunya jalur yang mengunggah
+        // foto wajah sebelumnya adalah `write` kind persona/lookalike — yang
+        // memanggil penulis AI dan memotong saldo. Menambah foto ke-3 tidak
+        // perlu AI membaca wajahnya lagi, jadi tidak perlu membayar lagi.
+        const { data: inf } = await admin.from("influencers").select("id, avatar_url, workspace_id")
+          .eq("id", body.influencer_id).maybeSingle();
+        if (!inf || inf.workspace_id !== ws) throw new Error("Influencer tidak ditemukan.");
+        const photos: string[] = Array.isArray(body.photos)
+          ? (body.photos as unknown[]).filter((x) => typeof x === "string").slice(0, 8) as string[]
+          : [];
+        if (!photos.length) throw new Error("Tidak ada foto untuk diunggah.");
+        const stored = await storePhotos(ws, photos);
+        if (stored.urls.length) {
+          const { error } = await admin.from("character_assets")
+            .insert(stored.urls.map((url) => ({ influencer_id: inf.id, kind: "reference", url })));
+          if (error) throw new Error(error.message);
+          if (!inf.avatar_url) await admin.from("influencers").update({ avatar_url: stored.urls[0] }).eq("id", inf.id);
+        }
+        return json({ ok: true, attached: stored.urls.length, urls: stored.urls, photos_failed: stored.failed });
       }
       case "apply_draft": {
         // Simpan hasil penulis AI ke content_item (dipisah agar user bisa review dulu).

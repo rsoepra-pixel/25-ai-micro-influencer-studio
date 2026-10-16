@@ -23,7 +23,7 @@ sini:
 
 ## Isi
 
-**Menu di sidebar** — [Dashboard](#-dashboard) ·
+**Menu di sidebar** — [Dashboard](#-dashboard) · [Cara mulai](#-cara-mulai) · [Buat Video](#-buat-video) · [Profil saya](#-profil-saya) (dari Dashboard) ·
 [Influencers](#-influencers) · [Product Kit](#-product-kit) ·
 [Production Studio](#-production-studio) · [Storyboard](#-storyboard) ·
 [Video UGC](#-video-ugc) · [Content Planner](#-content-planner) ·
@@ -65,9 +65,21 @@ Apa pun halaman yang dibuka, tiga hal ini tetap di tempatnya.
 
 ### Sidebar kiri
 
-Sebelas menu, diurutkan bukan menurut abjad melainkan menurut alur kerja: dua
-aset yang dipakai berulang (**siapa** dan **apa**) di atas, alat produksi di
-bawahnya, lalu perencanaan, pengukuran, dan pengaturan.
+Dua susunan, dipilih lewat tombol kecil di bawah daftar menu dan diingat per
+perangkat:
+
+- **Menu ringkas (default):** Beranda · **Buat Video** · Karya (Drive) ·
+  Rencana (Content Planner) · Laporan · Pengaturan. Enam, bukan lima seperti
+  rencana awal — Beranda dipertahankan karena kartu "Mulai dari sini" ada di
+  sana. Nama menunya menyebut *tujuan*, bukan nama alat.
+- **Semua menu:** dua belas menu lama, diurutkan menurut alur kerja: dua aset
+  yang dipakai berulang (**siapa** dan **apa**) di atas, alat produksi di
+  bawahnya, lalu perencanaan, pengukuran, dan pengaturan. Tidak ada yang
+  dihapus; Production Studio, Storyboard, Video UGC, Influencers, Product Kit,
+  dan Tasks tetap di sini.
+
+Kenapa ada dua: uji persona Okt 2026 — sebelas menu dengan nama alat memaksa
+orang memilih alat sebelum tahu bedanya.
 
 ### Kartu saldo di kiri bawah
 
@@ -126,6 +138,114 @@ Video UGC tetap menolak influencer yang hanya punya itu.
 **Yang perlu diketahui.** Kartu Drive punya tombol hapus di tiap thumbnail, dan
 menghapus media di sini **permanen** — sama seperti di halaman Drive. Lihat
 [Menghapus media](#menghapus-media) di bawah.
+
+---
+
+## ❓ Cara mulai
+
+**Untuk apa.** Satu halaman infografis untuk orang yang baru pertama kali
+membuka aplikasi: tiga langkah (Profil saya → Buat Video → Tonton & bagikan),
+garis "kapan uang keluar" dari yang gratis sampai yang paling mahal, daftar
+"siapkan dulu", dan "kalau bingung". Ada di sidebar (❓ Cara mulai, di kedua
+susunan menu), di kartu Mulai dari sini, dan di `#/mulai`. Tombol **Cetak**
+menyimpannya sebagai PDF satu halaman; sidebar dan tooltip disembunyikan saat
+dicetak.
+
+**Yang perlu diketahui.** Halaman ini **sengaja tidak menulis angka harga**,
+hanya urutan besarannya (gratis / kecil / paling besar). Tarif berubah dan
+halaman ini dibaca berbulan-bulan; angka pastinya tampil di tombol
+masing-masing, dihitung dari katalog hari itu. Satu-satunya pengecualian:
+biaya penulis AI disebut di tooltip batang "menulis naskah", karena dihitung
+langsung dari tarif yang berlaku.
+
+### Cara mulai lewat Claude
+
+Padanan halaman di atas untuk yang lebih nyaman mengetik seperti di
+WhatsApp: `#/mulai-claude`, ditautkan dari "Kalau bingung → Lebih suka
+ngobrol?" dan dari kartu Claude (MCP) di Pengaturan → Koneksi ("❓ Panduan
+1 halaman"). Isinya: syarat akun Claude yang mendukung connector, empat
+langkah penyambungan sekali jalan (password untuk pengguna Google, salin
+alamat connector, tambah di claude.ai, nyalakan di chat), alamat connector
+dengan tombol salin, tiga kalimat pertama yang bisa disalin, dan "kalau tidak
+jalan". **Jujur soal batas hari ini:** foto acuan wajah dan klon suara belum
+bisa lewat chat, jadi tetap diisi di Profil saya.
+
+---
+
+## 🎬 Buat Video
+
+**Untuk apa.** Satu wizard di depan Video UGC dan Storyboard, untuk orang yang
+belum tahu bedanya. Empat pertanyaan dalam bahasa orangnya, lalu harganya
+dalam rupiah, **sebelum** apa pun berbayar berangkat.
+
+1. **Apa** — pilih "saya bicara ke kamera" (jalur UGC) atau "cerita beberapa
+   adegan" (jalur Storyboard), lalu ceritakan videonya satu dua kalimat.
+   Untuk jalur cerita ada **bentuk cerita** yang dipilih dari kartu: Masalah →
+   Produk → Hasil · Proses · Sebelum/Sesudah · 3 Tips · Bebas. Penulis AI yang
+   memutuskan jumlah adegan dan detik tiap adegan (pembuka pendek, inti lebih
+   panjang); tidak ada angka yang ditanya. Perkiraan harga 15 dan 30 detik
+   sudah tertulis di sini.
+2. **Siapa** — profil dari halaman Profil saya (pemilih muncul kalau ada
+   lebih dari satu), dan untuk jalur UGC: produknya (bisa membuat produk baru
+   di tempat). Yang belum siap — foto wajah, suara, produk — disebut di sini
+   dengan tautan ke tempat memperbaikinya, bukan setelah naskah dibayar.
+3. **Berapa lama** — 10, 15, 20, atau 30 detik, masing-masing dengan harganya.
+   Lebih dari 30 detik **belum bisa** (batas per job; versi panjang menunggu
+   perakitan klip di server). Tombol "Tulis naskahnya" memanggil penulis AI
+   (≈ Rp 40, tertulis di tombol).
+4. **Tinjau & harga** — naskah yang akan diucapkan (atau daftar adegan),
+   rincian biaya per bagian dan totalnya dalam rupiah, lalu **Ya, buat video
+   ini**.
+
+Sesudah "Ya", wizard menyimpan proyek yang **sama persis** dengan yang dibuat
+formulir Video UGC atau Storyboard dan membuka alur produksinya
+(`#/ugc?project=…` atau `#/storyboard?board=…`). Gambar pertama tetap dibuat
+dan dilihat dulu sebelum suara dan video dibayar — jeda murah yang sama
+dengan wizard UGC.
+
+**Yang perlu diketahui.** Tidak ada pemilih model; defaultnya mengikuti
+aturan yang sama dengan wizard UGC dan Storyboard (penjaga wajah yang menerima
+foto produk, avatar termurah yang menerima prompt, model multi-shot termurah
+yang terbukti), dan "Naik kelas" tetap ada di riwayat job. Harga yang tampil
+adalah perkiraan: yang ditagih adalah durasi yang dihasilkan model.
+
+---
+
+## 🙂 Profil saya
+
+**Untuk apa.** Jalan pendek untuk tiga langkah pertama: **wajah, suara, dan
+bahasa** dalam satu halaman, tanpa kata "influencer", "Identity Kit", atau
+"voice id". Dibuka dari kartu **Mulai dari sini** di Dashboard (tautan ⚡ "Cara
+cepat"), atau langsung `#/profil`. Tidak ada di sidebar — ia pintu masuk, bukan
+menu kerja.
+
+Ditulis setelah uji persona Okt 2026: pelanggan awam berhenti di langkah
+ke-2 dari enam langkah awal, pada kata "Identity Kit".
+
+**Tiga kartu, berurutan:**
+
+1. **Wajah saya** — nama panggilan, bahasa, dan 1–4 foto. Tombol **Simpan
+   wajah saya** membuat karakter sekaligus foto acuannya; penulis AI membaca
+   ciri wajah dari foto (≈ Rp 40, tertulis di tombolnya) supaya wajahnya
+   terkunci di semua gambar. Menambah foto berikutnya **gratis** dan tanpa AI.
+2. **Suara saya** — **rekam langsung dari mikrofon** (10–30 detik, berhenti
+   sendiri di 30) atau unggah rekaman dari ponsel. Satu rekaman dipakai untuk
+   **dua** klon sekaligus: suara untuk video bicara ke kamera (MiniMax, UGC)
+   lalu suara untuk video cerita beberapa adegan (Kling, Storyboard). Contoh
+   suara hasil tiruan bisa didengar sebelum dipakai. Tidak memotong saldo.
+3. **Bahasa video** — Indonesia, English, atau campuran. Mandarin menyusul.
+
+Kartu penutup menunjukkan tiga tanda centang dan tombol **Buat video
+pertama**, yang baru aktif kalau wajah dan suara sudah ada. Video bicara ke
+kamera tetap butuh satu produk di Product Kit.
+
+**Yang perlu diketahui.** Di workspace yang punya lebih dari satu karakter,
+ada pemilih "profil yang diatur" di atas; pilihannya disimpan di perangkat.
+Semua yang disimpan di sini **sama persis** dengan yang dibuat lewat halaman
+Influencers — Profil saya hanya jalan pendeknya, dan **Pengaturan lengkap**
+membawa ke halaman detail yang sama. Penerimaan rekaman browser (format webm
+di Chrome/Android) oleh penyedia klon suara **belum diverifikasi**; kalau
+ditolak, pesan penyedia ditampilkan dan tombol unggah berkas tetap ada.
 
 ---
 
@@ -316,15 +436,43 @@ provider dan hasilnya masuk saat ada yang membuka lagi.
 multi-shot**. Cocok untuk cerita yang butuh perpindahan sudut, bukan untuk orang
 bicara ke kamera (itu Video UGC).
 
+**Formulirnya** menanyakan bentuk cerita (pola yang sama dengan wizard Buat
+Video), total durasi, dan **foto dari HP-mu (opsional, maks. 8)**: dapur,
+keripik, kemasan, pembeli. Penulis AI melihat fotonya dan menjadikan tiap foto
+bahan satu adegan; foto kemasan ikut dikirim sebagai referensi tambahan ke
+job gambar pembuka (hanya untuk model yang menerima banyak referensi) supaya
+kemasannya tidak dikarang. **Foto tidak menjadi frame per adegan** — model
+video multi-shot hanya menerima satu gambar awal; foto mengarahkan tulisan
+dan gambar pembuka. Penulis AI membagi adegannya. Yang mau menentukan
+sendiri jumlah shot dan detik per shot memilih **Atur sendiri** di pemilih
+yang sama — cara lama tetap ada, hanya tidak lagi ditanya duluan.
+
 **Alurnya tiga langkah, dan urutannya dipaksakan:**
 
-1. **Naskah** — periksa daftar shot dan kesiapannya. Tiap shot punya prompt
-   visual dan sudut kamera (close-up / medium / wide). Ada kolom **kontinuitas**
+1. **Naskah** — periksa daftar shot dan kesiapannya. Tiap shot punya kotak
+   **"Ubah adegan ini"**: tulis satu kalimat Indonesia ("dia tertawa, bukan
+   serius", "kameranya lebih dekat", "kata-katanya lebih singkat") dan
+   penulis AI menulis ulang adegan itu saja — memakai saldo per panggilan,
+   hasilnya langsung dipasang, dan **Batalkan** mengembalikannya gratis.
+   Prompt visual Inggris, kamera, dan detik tetap ada di balik tombol
+   **Lanjutan**, tidak lagi harus ditulis orangnya. Ada kolom **kontinuitas**
    terpisah yang ditempelkan ke semua shot saat dikirim, jadi mengubah
    "ganti bajunya jadi jaket denim" cukup sekali, bukan disisir per shot.
-2. **Produksi** — satu persetujuan, dua job: **frame pembuka** dulu, lalu
-   videonya.
-3. **Hasil** — tonton dan bagikan.
+2. **Produksi** — dua tahap, dua tombol (sejak Okt 2026): **gambar pembuka**
+   dulu, ditampilkan besar dengan pertanyaan "wajahnya mirip? latar dan
+   pakaiannya benar?", boleh **Coba lagi** seharga satu gambar — baru **Ya,
+   buat video**. Sebelumnya satu tombol mengerjakan keduanya berurutan, dan
+   video $0,5–2 dibayar tanpa pernah melihat frame yang menentukan wajah,
+   baju, dan latar seluruh videonya. Model yang mengunci wajah langsung dari
+   Identity Kit (Seedance reference-to-video) tidak memakai gambar pembuka
+   dan tetap satu tombol.
+3. **Hasil** — tonton, unduh, dan **Buat versi lain**: menyalin storyboard
+   ini jadi versi baru dengan **gambar pembuka dipakai ulang** (gratis, wajah
+   tetap sama); hanya videonya yang nanti dibayar lagi. Kolom "apa yang beda"
+   opsional: diisi ("bahasa Inggris", "lebih lucu", "ajakan beli lewat
+   WhatsApp"), penulis AI menulis ulang narasi semua adegan sekali jalan,
+   visual tetap; dikosongkan, salinan persis tanpa biaya. Salinannya terbuka
+   di langkah Naskah, jadi masih bisa diubah per adegan sebelum video dibuat.
 
 **Kenapa cuma dua gambar, bukan satu per shot.** Rancangan pertama membuat satu
 gambar kunci per shot. Dipakai sungguhan, dua hal muncul: Drive penuh potongan

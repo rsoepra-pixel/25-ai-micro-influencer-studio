@@ -1,6 +1,7 @@
 import React, { useEffect, useState, useCallback } from "react";
 import { createRoot } from "react-dom/client";
 import { supa, signupConfirmed, callApp, STATUS_LABELS, usd } from "./supa.js";
+import { setHarga, hargaLabel, hargaLabelLain, tampilanAktif, setTampilan, kursJual } from "./harga.js";
 import {
   Dashboard, Influencers, InfluencerDetail, Studio, Planner, Tasks, Drive, Settings,
 } from "./views.jsx";
@@ -8,6 +9,9 @@ import { Reports } from "./reports.jsx";
 import { Storyboard } from "./storyboard.jsx";
 import { Products } from "./products.jsx";
 import { Ugc } from "./ugc.jsx";
+import { Profil } from "./profil.jsx";
+import { BuatVideo } from "./buat-video.jsx";
+import { Mulai, MulaiClaude } from "./mulai.jsx";
 import { TipLayer, Info } from "./tips.jsx";
 
 // Token undangan dibaca SEKALI saat modul dimuat, sebelum apa pun sempat
@@ -76,8 +80,23 @@ const legalHref = (page) => {
 // Elemen ketiga adalah petunjuk hover. Pertanyaan pertama orang baru hampir
 // selalu "Studio, Storyboard, atau UGC — yang mana?", dan nama menunya saja
 // tidak menjawabnya; petunjuknya menyebut hasil tiap menu, bukan fiturnya.
+// Dua susunan menu. RINGKAS adalah yang dilihat pelanggan secara default:
+// uji persona Okt 2026 — sebelas menu dengan nama alat (Production Studio,
+// Storyboard, Video UGC, Product Kit) memaksa orang memilih alat sebelum tahu
+// bedanya. Yang ringkas menamai TUJUAN (Buat Video, Karya, Rencana). Menu
+// lengkap tetap satu ketukan jauhnya di bawah sidebar dan diingat per
+// perangkat; tidak ada yang dihapus.
+const NAV_RINGKAS = [
+  ["/", "🏠 Beranda", "Ringkasan dan langkah awal."],
+  ["/buat-video", "🎬 Buat Video", "Empat pertanyaan, harga dalam rupiah, lalu videonya dibuat."],
+  ["/drive", "📁 Karya", "Semua video, gambar, dan suara yang sudah jadi."],
+  ["/planner", "🗓️ Rencana", "Jadwal konten dan tempat memposting ke sosial."],
+  ["/reports", "📊 Laporan", "Apa yang sudah tayang, dan uangnya ke mana."],
+  ["/settings", "⚙️ Pengaturan", "Akun, tim, koneksi sosial, Claude (MCP)."],
+];
 const NAV = [
   ["/", "🏠 Dashboard", "Ringkasan workspace dan langkah awal kalau kamu baru mulai."],
+  ["/buat-video", "🎬 Buat Video", "Empat pertanyaan, harga dalam rupiah, lalu videonya dibuat lewat UGC atau Storyboard."],
   // Dua aset yang dipakai ulang (siapa, apa) di atas; alat produksi di bawahnya.
   ["/influencers", "👥 Influencers", "Karakter AI-mu: wajah, suara, kepribadian. Mulai dari sini."],
   ["/products", "📦 Product Kit", "Foto produk asli, disimpan sekali untuk dipakai di semua video UGC."],
@@ -351,6 +370,22 @@ function App() {
   // benar bagi pelanggan, yang selalu live. Tidak tahu = anggap berbayar.
   const [spend, setSpend] = useState({ spent: 0, cap: 200, mode: null, billing: "byo_key", balance: 0 });
   const [spendError, setSpendError] = useState(null);
+  // Kurs jual untuk label harga (src/harga.js). Nilainya hidup di modul itu;
+  // state ini hanya memaksa render ulang begitu kursnya datang atau pelanggan
+  // mengganti tampilan rupiah/dolar.
+  const [, setHargaTick] = useState(0);
+  const [menuLengkap, setMenuLengkap] = useState(() => { try { return localStorage.getItem("menu_lengkap") === "1"; } catch { return false; } });
+  const gantiMenu = () => {
+    const v = !menuLengkap; setMenuLengkap(v);
+    try { localStorage.setItem("menu_lengkap", v ? "1" : "0"); } catch { /* mode privat */ }
+  };
+  useEffect(() => {
+    if (!session) return;
+    callApp({ action: "sell_rate" })
+      .then((r) => { setHarga(r); setHargaTick((t) => t + 1); })
+      .catch(() => { /* tanpa kurs, layar memakai dolar — bukan kegagalan */ });
+  }, [session]);
+  const gantiTampilan = (v) => { setTampilan(v); setHargaTick((t) => t + 1); };
   const [tick, setTick] = useState(0);
   const [invite, setInvite] = useState(null);
   // Sesi yang lahir dari link pemulihan. Peristiwanya hanya lewat SEKALI, saat
@@ -517,9 +552,13 @@ function App() {
   else if (routePath === "/influencers") view = <Influencers {...props} />;
   else if (routePath.startsWith("/influencers/")) view = <InfluencerDetail {...props} key={routePath.split("/")[2]} id={routePath.split("/")[2]} />;
   else if (routePath === "/studio") view = <Studio {...props} query={routeQuery} />;
-  else if (routePath === "/storyboard") view = <Storyboard {...props} />;
+  else if (routePath === "/storyboard") view = <Storyboard {...props} query={routeQuery} />;
+  else if (routePath === "/buat-video") view = <BuatVideo {...props} />;
+  else if (routePath === "/mulai") view = <Mulai />;
+  else if (routePath === "/mulai-claude") view = <MulaiClaude />;
   else if (routePath === "/ugc") view = <Ugc {...props} query={routeQuery} />;
   else if (routePath === "/products") view = <Products {...props} />;
+  else if (routePath === "/profil") view = <Profil {...props} />;
   else if (routePath === "/planner") view = <Planner {...props} />;
   else if (routePath === "/reports") view = <Reports {...props} />;
   else if (routePath === "/tasks") view = <Tasks {...props} />;
@@ -538,10 +577,18 @@ function App() {
           <div className="tiny muted mt1">{ws.name}</div>
         </div>
         <nav style={{ padding: 12, flex: 1 }}>
-          {NAV.map(([href, label, tip]) => (
+          {(menuLengkap ? NAV : NAV_RINGKAS).map(([href, label, tip]) => (
             <a key={href} href={`#${href}`} className={`nav ${routePath === href ? "active" : ""}`}
               data-tip={tip} data-tip-side="right">{label}</a>
           ))}
+          <a href="#/mulai" className={`nav ${routePath === "/mulai" ? "active" : ""}`} style={{ marginTop: 6 }}
+            data-tip="Satu halaman: tiga langkah, kapan uang keluar, apa yang perlu disiapkan." data-tip-side="right">❓ Cara mulai</a>
+          <button type="button" onClick={gantiMenu} className="tiny muted mt2"
+            data-tip={menuLengkap ? "Kembali ke enam menu utama." : "Tampilkan juga Influencers, Product Kit, Production Studio, Storyboard, Video UGC, dan Tasks."}
+            data-tip-side="right"
+            style={{ background: "none", border: "none", cursor: "pointer", padding: "6px 12px", textAlign: "left", width: "100%" }}>
+            {menuLengkap ? "▴ Menu ringkas" : "▾ Semua menu"}
+          </button>
         </nav>
         <div style={{ padding: 14, borderTop: "1px solid var(--border)" }}>
           <div className="card p4" style={{ background: "var(--subtle)" }}>
@@ -555,8 +602,28 @@ function App() {
               <div className="msg-err tiny mt1">Gagal memuat biaya: {spendError}</div>
             ) : spend.billing === "credit" ? (
               <>
-                <div style={{ fontSize: 20, fontWeight: 800, color: spend.balance < 1 ? "var(--warn)" : "var(--ok)" }}>{usd(spend.balance)}</div>
-                <div className="tiny muted">terpakai {usd(spend.spent)} bulan ini</div>
+                {/* Angka utama mengikuti tampilan yang dipilih; yang satunya
+                    ditulis kecil supaya pelanggan yang membeli saldo dalam
+                    rupiah tetap bisa mencocokkan dengan kuitansinya dalam USD. */}
+                <div style={{ fontSize: 20, fontWeight: 800, color: spend.balance < 1 ? "var(--warn)" : "var(--ok)" }}>
+                  {spend.balance > 0 ? hargaLabel(spend.balance) : (tampilanAktif() === "idr" ? "Rp 0" : "$0.00")}
+                </div>
+                {hargaLabelLain(spend.balance) && <div className="tiny muted">{hargaLabelLain(spend.balance)}</div>}
+                <div className="tiny muted">terpakai {spend.spent > 0 ? hargaLabel(spend.spent) : (tampilanAktif() === "idr" ? "Rp 0" : "$0.00")} bulan ini</div>
+                {kursJual() && (
+                  <div className="row mt1" style={{ gap: 4 }}>
+                    {[["idr", "Rp"], ["usd", "$"]].map(([v, l]) => (
+                      <button key={v} type="button" onClick={() => gantiTampilan(v)}
+                        data-tip={v === "idr" ? "Tampilkan harga dalam rupiah, memakai kurs jual yang sama dengan harga saldo." : "Tampilkan harga dalam dolar, seperti di katalog model."}
+                        style={{ fontSize: 11, padding: "2px 8px", borderRadius: 6, cursor: "pointer",
+                          border: `1px solid ${tampilanAktif() === v ? "var(--brand)" : "var(--border)"}`,
+                          background: tampilanAktif() === v ? "var(--brand-soft)" : "transparent",
+                          color: tampilanAktif() === v ? "var(--brand-strong)" : "var(--ink-3)", fontWeight: 700 }}>
+                        {l}
+                      </button>
+                    ))}
+                  </div>
+                )}
                 <ModeBadge mode={spend.mode} />
               </>
             ) : (

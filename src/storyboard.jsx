@@ -21,9 +21,10 @@
 // mengikat suara ke karakternya lewat voice_id. Tidak ada penjahitan klip.
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { supa, callGenerate } from "./supa.js";
-import { ModelPicker, byPrice, priceLabel, Badge, useQuery, unwrap, recordBadge} from "./views.jsx";
+import { ModelPicker, byPrice, priceLabel, Badge, useQuery, unwrap, recordBadge, downscaleToDataUri } from "./views.jsx";
 import { LibraryPicker } from "./library.jsx";
 import { Info } from "./tips.jsx";
+import { POLA_CERITA, biayaNaskahLabel } from "./harga.js";
 
 const PLATFORMS = [
   ["tiktok", "TikTok"],
@@ -32,6 +33,7 @@ const PLATFORMS = [
 ];
 
 const CAMERA_LABEL = { "close-up": "Close-up", medium: "Medium", wide: "Wide" };
+const TIP_PENULIS_AI_LOKAL = "Memakai saldo: ditagih per panggilan penulis AI. Hasilnya langsung dipasang, dan bisa dibatalkan gratis.";
 
 // Prompt yang benar-benar dikirim untuk satu shot.
 //
@@ -272,8 +274,15 @@ export async function buildSheet(board, shots) {
     canvas.toBlob((b) => (b ? resolve(b) : reject(new Error("Gagal membuat gambar lembar."))), "image/png"));
 }
 
-export function Storyboard({ ws, refresh, tick, mode }) {
+export function Storyboard({ ws, refresh, tick, mode, query }) {
   const [openId, setOpenId] = useState(null);
+  // `#/storyboard?board=<id>` membuka papan itu langsung — dipakai wizard
+  // Buat Video setelah menyimpan, supaya orangnya mendarat di langkah Naskah
+  // papannya sendiri, bukan di daftar.
+  useEffect(() => {
+    const id = new URLSearchParams(query || "").get("board");
+    if (id) setOpenId(id);
+  }, [query]);
   const [localTick, setLocalTick] = useState(0);
   const bump = useCallback(() => setLocalTick((t) => t + 1), []);
 
@@ -385,6 +394,22 @@ function NewBoard({ ws, influencers, onCreated }) {
   const [contentItemId, setContentItemId] = useState("");
   const [shotCount, setShotCount] = useState(5);
   const [perShot, setPerShot] = useState(5);
+  // Pola cerita (Okt 2026): penulis yang membagi adegan dan detiknya. "manual"
+  // mempertahankan dua angka lama untuk yang memang mau mengatur sendiri.
+  const [pola, setPola] = useState("masalah_produk_hasil");
+  const [totalDetik, setTotalDetik] = useState(15);
+  // Foto dari HP (opsional, maks 8): bahan adegan + referensi kemasan untuk
+  // gambar pembuka. Diperkecil di browser sebelum dikirim.
+  const [foto, setFoto] = useState([]);
+  async function tambahFoto(e) {
+    const files = Array.from(e.target.files || []);
+    e.target.value = "";
+    if (!files.length) return;
+    try {
+      const kecil = await Promise.all(files.slice(0, 8).map((f) => downscaleToDataUri(f, 1024, 0.86)));
+      setFoto((p) => [...p, ...kecil].slice(0, 8));
+    } catch (e2) { setErr(e2.message); }
+  }
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState(null);
   const [draft, setDraft] = useState(null);
@@ -422,8 +447,10 @@ function NewBoard({ ws, influencers, onCreated }) {
         content_item_id: contentItemId || null,
         idea: idea.trim(),
         platform,
-        shots: shotCount,
-        seconds_per_shot: perShot,
+        ...(pola === "manual"
+          ? { shots: shotCount, seconds_per_shot: perShot }
+          : { pattern: pola, total_seconds: totalDetik }),
+        ...(foto.length ? { photos: foto } : {}),
       });
       setDraft(r.storyboard);
     } catch (e) { setErr(e.message); }
@@ -444,6 +471,7 @@ function NewBoard({ ws, influencers, onCreated }) {
         logline: draft.logline,
         continuity: draft.continuity || tpl?.continuity || null,
         platform,
+        ref_photo_urls: draft.photo_urls || [],
       }).select("id").single();
       if (e1) throw new Error(e1.message);
       const { error: e2 } = await supa.from("storyboard_shots").insert(
@@ -458,7 +486,7 @@ function NewBoard({ ws, influencers, onCreated }) {
         })),
       );
       if (e2) throw new Error(e2.message);
-      setDraft(null); setIdea(""); setContentItemId(""); setTpl(null);
+      setDraft(null); setIdea(""); setContentItemId(""); setTpl(null); setFoto([]);
       onCreated(board.id);
     } catch (e) { setErr(e.message); }
     setBusy(false);
@@ -508,6 +536,25 @@ function NewBoard({ ws, influencers, onCreated }) {
       {tpl && !contentItemId && (
         <p className="tiny muted mb2">Dari pustaka: <b>{tpl.title}</b>. Ubah idenya sesuka hati — pakaian & lokasi bawaannya tetap dipakai kalau AI tidak mengusulkan sendiri.</p>
       )}
+      <div className="mb3">
+        <label className="label">Foto dari HP-mu (opsional, maks. 8)<Info tip="Dapur, keripik, kemasan, pembeli — penulis AI menjadikan tiap foto satu adegan, dan foto kemasan ikut ke gambar pembuka supaya kemasannya tidak dikarang. Foto tidak menjadi frame per adegan: model video hanya menerima satu gambar awal." /></label>
+        {foto.length > 0 && (
+          <div className="row mb2" style={{ gap: 6, flexWrap: "wrap" }}>
+            {foto.map((p, i) => (
+              <div key={i} style={{ position: "relative", width: 64 }}>
+                <div className="thumb" style={{ aspectRatio: "1" }}><img src={p} alt="" /></div>
+                <span className="tiny" style={{ position: "absolute", left: 2, top: 2, background: "rgba(0,0,0,.6)", color: "#fff", borderRadius: 6, padding: "0 5px" }}>{i + 1}</span>
+                <button type="button" title="Hapus" onClick={() => setFoto(foto.filter((_, k) => k !== i))}
+                  style={{ position: "absolute", top: -6, right: -6, width: 18, height: 18, borderRadius: 99, border: "none", background: "var(--text)", color: "#fff", cursor: "pointer", fontSize: 11, lineHeight: "18px", padding: 0 }}>×</button>
+              </div>
+            ))}
+          </div>
+        )}
+        <label className="btn btn2 tiny" style={{ cursor: "pointer" }} data-tip="Pilih sampai 8 foto dari galeri. Belum dikirim sebelum kamu menekan 'Susun shot list'.">
+          + Pilih foto
+          <input type="file" accept="image/*" multiple hidden onChange={tambahFoto} />
+        </label>
+      </div>
       {!contentItemId && (
         <div className="mb3">
           <label className="label">Ide video *</label>
@@ -518,18 +565,37 @@ function NewBoard({ ws, influencers, onCreated }) {
 
       <div className="grid mb3" style={{ gridTemplateColumns: "1fr 1fr" }}>
         <div>
-          <label className="label">Jumlah shot</label>
-          <input className="input" type="number" min={2} max={10} value={shotCount}
-            onChange={(e) => setShotCount(Math.min(Math.max(Number(e.target.value) || 5, 2), 10))} />
+          <label className="label">Bentuk cerita<Info tip="Pola menentukan urutan adegan dan ritmenya; penulis AI yang membagi detiknya. Pilih 'Atur sendiri' kalau mau menentukan jumlah shot dan durasinya." /></label>
+          <select className="input" value={pola} onChange={(e) => setPola(e.target.value)}>
+            {POLA_CERITA.map((p) => <option key={p.key} value={p.key}>{p.ikon} {p.label}</option>)}
+            <option value="manual">🔧 Atur sendiri (jumlah shot & durasi)</option>
+          </select>
+          <p className="tiny muted" style={{ marginTop: 4 }}>{(POLA_CERITA.find((p) => p.key === pola) || {}).ket || "Kamu menentukan jumlah shot dan detik per shot."}</p>
         </div>
-        <div>
-          <label className="label">Durasi per shot (detik)</label>
-          <input className="input" type="number" min={2} max={15} value={perShot}
-            onChange={(e) => setPerShot(Math.min(Math.max(Number(e.target.value) || 5, 2), 15))} />
-          <p className="tiny muted" style={{ marginTop: 4 }}>
-            Ini usulan. Tiap model video hanya menerima durasi tertentu, dan yang dipakai nanti adalah nilai terdekat yang diterimanya.
-          </p>
-        </div>
+        {pola === "manual" ? (
+          <div className="grid" style={{ gridTemplateColumns: "1fr 1fr", gap: 8 }}>
+            <div>
+              <label className="label">Jumlah shot</label>
+              <input className="input" type="number" min={2} max={10} value={shotCount}
+                onChange={(e) => setShotCount(Math.min(Math.max(Number(e.target.value) || 5, 2), 10))} />
+            </div>
+            <div>
+              <label className="label">Detik per shot</label>
+              <input className="input" type="number" min={2} max={15} value={perShot}
+                onChange={(e) => setPerShot(Math.min(Math.max(Number(e.target.value) || 5, 2), 15))} />
+            </div>
+          </div>
+        ) : (
+          <div>
+            <label className="label">Total durasi<Info tip="Penulis membagi total ini ke 3–6 adegan. Tiap model video hanya menerima durasi tertentu; kalau melebihi batas model, dipangkas di langkah Produksi dan diberi tahu." /></label>
+            <div className="row" style={{ gap: 6, flexWrap: "wrap" }}>
+              {[10, 15, 20, 30].map((s) => (
+                <button key={s} type="button" className={totalDetik === s ? "btn" : "btn btn2"} style={{ fontSize: 12, padding: "6px 10px" }}
+                  onClick={() => setTotalDetik(s)}>{s} detik</button>
+              ))}
+            </div>
+          </div>
+        )}
       </div>
 
       {err && <div className="msg-err mb3">{err}</div>}
@@ -1013,10 +1079,48 @@ function StepProduksi({ board, shots, inf, refCount, models, mode, frameReady, p
   // Menunggunya diurus effect pengaman di BoardDetail.
   const videoPending = !board.video_url && !!board.video_job_id;
 
+  // Dua tahap, dua tombol. Dulu satu tombol mengerjakan frame lalu LANGSUNG
+  // video. Frame pembuka menentukan wajah, baju, dan latar seluruh video
+  // (Kling: start_image_url), dan ia bagian termurah; membayar video $0,5–2
+  // tanpa pernah melihat framenya adalah kesalahan termahal yang bisa
+  // dibuat halaman ini. Panduan dan wizard Buat Video sudah menjanjikan
+  // "gambar pertama dilihat dulu" — sekarang kodenya ikut.
+  async function buatFrame({ ulang = false } = {}) {
+    setErr(null);
+    try {
+      const first = shots[0];
+      if (ulang) await patchShot(first.id, { image_url: null, image_job_id: null });
+      setRunning({ stage: "frame", sec: 0 });
+      let jobId = ulang ? null : first.image_job_id;
+      if (!jobId) {
+        // Foto milik user (kemasan dsb.) ikut sebagai referensi tambahan,
+        // hanya untuk model yang menerima banyak referensi; model satu-foto
+        // memakai slotnya untuk Identity Kit. Maks 3, menyisakan ruang.
+        const refs = imgModel.ref_image_multi && Array.isArray(board.ref_photo_urls) ? board.ref_photo_urls.slice(0, 3) : [];
+        const res = await callGenerate({
+          action: "submit", origin: "storyboard", task: "image", model_id: imgModel.id,
+          influencer_id: board.influencer_id, content_item_id: board.content_item_id || null,
+          prompt: shotPrompt(first, board.continuity) + (refs.length ? ", keep the product packaging identical to the reference photos" : ""),
+          extra_ref_urls: refs,
+          label: `${board.title} — frame pembuka`,
+        });
+        jobId = res.job_id;
+        await patchShot(first.id, { image_job_id: jobId });
+      }
+      const url = await waitForJob(jobId, { timeoutMs: 240000, onTick: (_, sec) => setRunning({ stage: "frame", sec }) });
+      await patchShot(first.id, { image_url: url });
+      await load();
+    } catch (e) {
+      setErr(e.message);
+      await load();
+    }
+    setRunning(null);
+  }
+
   async function produce() {
     setErr(null);
     try {
-      // ---- 1. Frame pembuka ----
+      // ---- 1. Frame pembuka (cadangan: kalau sampai di sini tanpa frame) ----
       const first = shots[0];
       if (needFrame && !first.image_url) {
         setRunning({ stage: "frame", sec: 0 });
@@ -1073,11 +1177,11 @@ function StepProduksi({ board, shots, inf, refCount, models, mode, frameReady, p
   return (
     <div>
       <div className="card p4 mb4">
-        <div className="bold mb1">Satu persetujuan, dua job berurutan</div>
+        <div className="bold mb1">{needFrame ? "Dua tahap: lihat gambar pembuka dulu, baru video" : "Satu tahap: video"}</div>
         <p className="tiny muted mb3">
-          Frame pembuka dibuat dulu (Kling mewajibkan sebuah foto sebagai frame pertama), lalu videonya
-          langsung diantre begitu framenya jadi. Kamu tidak perlu kembali ke halaman ini untuk menekan
-          tombol kedua.
+          {needFrame
+            ? "Gambar pembuka dibuat dulu (model video mewajibkannya sebagai frame pertama, dan ia menentukan wajah, baju, dan latar seluruh video). Kamu melihatnya, boleh mengulang yang murah ini, baru videonya dibayar."
+            : "Model ini mengunci wajah langsung dari foto Identity Kit, tanpa gambar pembuka."}
         </p>
 
         <table className="mb3" style={{ width: "100%", borderCollapse: "collapse" }}>
@@ -1138,8 +1242,34 @@ function StepProduksi({ board, shots, inf, refCount, models, mode, frameReady, p
             </div>
             <div className="tiny muted mt1">{stageLabel}. Boleh ditinggal — hasilnya tersimpan di storyboard ini.</div>
           </div>
+        ) : needFrame && !frameReady ? (
+          <button className="btn" disabled={blocked || videoPending} onClick={() => buatFrame()}
+            data-tip="Membuat satu gambar diam untuk adegan pertama — bagian termurah. Kamu melihatnya dulu sebelum video dibayar.">
+            Buat gambar pembuka — {priceLabel(frameCost)}
+          </button>
+        ) : needFrame ? (
+          <div className="card p4" style={{ background: "var(--subtle)" }}>
+            <div className="row" style={{ gap: 14, alignItems: "flex-start", flexWrap: "wrap" }}>
+              <img src={shots[0].image_url} alt="Gambar pembuka" style={{ width: 160, maxWidth: "40%", borderRadius: 10 }} />
+              <div style={{ flex: 1, minWidth: 200 }}>
+                <div className="bold mb1">Wajahnya mirip? Latar dan pakaiannya benar?<Info tip="Yang kamu lihat di sini adalah yang akan ada di seluruh video. Kalau meleset, ulangi gambar ini (murah), bukan videonya (mahal)." /></div>
+                <p className="tiny muted mb2">Ubah latar atau pakaian lewat kotak kontinuitas di langkah Naskah, lalu "Coba lagi".</p>
+                <div className="row" style={{ gap: 8, flexWrap: "wrap" }}>
+                  <button className="btn btn2" disabled={blocked || videoPending} onClick={() => buatFrame({ ulang: true })}
+                    data-tip="Membuat gambar pembuka baru dengan prompt yang sama. Dihitung lagi sebesar harga satu gambar.">
+                    Coba lagi — {priceLabel(Number(imgModel?.est_price_usd) || 0)}
+                  </button>
+                  <button className="btn" disabled={blocked || videoPending} onClick={produce}
+                    data-tip="Mengirim video multi-shot dari gambar ini. Bagian termahal; ditagih per detik yang dihasilkan.">
+                    {board.video_url ? `Ya, buat ulang video — ${priceLabel(videoCost)}` : `Ya, buat video — ${priceLabel(videoCost)}`}
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
         ) : (
-          <button className="btn" disabled={blocked || videoPending} onClick={produce}>
+          <button className="btn" disabled={blocked || videoPending} onClick={produce}
+            data-tip="Model ini tidak memakai gambar pembuka. Video dikirim langsung; ditagih per detik yang dihasilkan.">
             {board.video_url ? `Buat ulang video — ${priceLabel(total)}` : `Buat video — ${priceLabel(total)}`}
           </button>
         )}
@@ -1161,20 +1291,80 @@ function StepProduksi({ board, shots, inf, refCount, models, mode, frameReady, p
 
 function StepHasil({ board, shots, inf, models, setStep }) {
   const fit = fitShotDurations(shots.map((s) => Number(s.seconds) || 5), catalogMaxSeconds(models));
+  // "Buat versi lain": salin storyboard ini — gambar pembuka IKUT disalin
+  // (gratis, wajah tetap sama), video tidak — lalu buka salinannya di
+  // langkah Naskah. Dengan instruksi, narasinya ditulis ulang sekali jalan.
+  const [versiOpen, setVersiOpen] = useState(false);
+  const [beda, setBeda] = useState("");
+  const [sibuk, setSibuk] = useState(null);
+  const [galat, setGalat] = useState(null);
+  async function buatVersi() {
+    setGalat(null);
+    try {
+      let naskah = null;
+      if (beda.trim()) {
+        setSibuk("Menulis narasi versi baru…");
+        const r = await callGenerate({ action: "write", kind: "variant", storyboard_id: board.id, instruction: beda.trim() });
+        naskah = r.variant;
+      }
+      setSibuk("Menyalin storyboard…");
+      const { data: baru, error: e1 } = await supa.from("storyboards").insert({
+        workspace_id: board.workspace_id, influencer_id: board.influencer_id, content_item_id: board.content_item_id || null,
+        title: (naskah?.title || `${board.title} · versi lain`).slice(0, 200),
+        logline: board.logline, continuity: board.continuity, platform: board.platform, status: "draft",
+        ref_photo_urls: board.ref_photo_urls || [],
+      }).select("id").single();
+      if (e1) throw new Error(e1.message);
+      const byPos = new Map((naskah?.shots || []).map((s) => [Number(s.position), s]));
+      const { error: e2 } = await supa.from("storyboard_shots").insert(shots.map((s) => ({
+        storyboard_id: baru.id, position: s.position,
+        beat: byPos.get(Number(s.position))?.beat || s.beat,
+        visual_prompt: s.visual_prompt,
+        narration: byPos.has(Number(s.position)) ? byPos.get(Number(s.position)).narration : s.narration,
+        camera: s.camera, seconds: s.seconds,
+        // Hanya gambar pembuka (shot 1) yang dibawa: itu yang dipakai model
+        // multi-shot. Gambar shot lain, kalau ada, biar dibuat ulang bila perlu.
+        image_url: s.position === 1 ? s.image_url || null : null,
+      })));
+      if (e2) throw new Error(e2.message);
+      window.location.hash = `#/storyboard?board=${baru.id}`;
+    } catch (e) { setGalat(e.message); }
+    setSibuk(null);
+  }
   return (
     <div>
       <div className="card p4 mb4">
         <video src={board.video_url} controls playsInline style={{ width: "100%", maxHeight: 640, borderRadius: 10, background: "#000" }} />
-        <div className="row mt3" style={{ justifyContent: "space-between" }}>
+        <div className="row mt3" style={{ justifyContent: "space-between", flexWrap: "wrap", gap: 8 }}>
           <div className="tiny muted">
             {fit.total} detik · {shots.length} shot{inf ? ` · ${inf.name}` : ""} · juga tersimpan di Drive
           </div>
-          <div className="row">
-            <a className="btn btn2" href={board.video_url} download target="_blank" rel="noreferrer">Unduh video</a>
-            <button className="btn btn2" onClick={() => setStep("produksi")}>Buat ulang</button>
-            {board.content_item_id && <a className="btn" href="#/planner">Ke planner →</a>}
+          <div className="row" style={{ flexWrap: "wrap", gap: 6 }}>
+            <a className="btn btn2" href={board.video_url} download target="_blank" rel="noreferrer" data-tip="Simpan berkas videonya ke perangkatmu.">Unduh video</a>
+            <button className="btn btn2" onClick={() => setStep("produksi")} data-tip="Kembali ke Produksi untuk membuat ulang video ini dengan gambar pembuka yang sama.">Buat ulang</button>
+            <button className="btn" onClick={() => setVersiOpen((v) => !v)}
+              data-tip="Salin storyboard ini jadi versi baru. Gambar pembuka dipakai ulang (gratis, wajah tetap sama); hanya videonya yang nanti dibayar lagi.">
+              {versiOpen ? "Tutup" : "Buat versi lain"}
+            </button>
+            {board.content_item_id && <a className="btn btn2" href="#/planner">Ke planner →</a>}
           </div>
         </div>
+        {versiOpen && (
+          <div className="card p4 mt3" style={{ background: "var(--subtle)" }}>
+            <label className="label">Apa yang beda di versi ini? (opsional)<Info tip="Kosongkan untuk menyalin apa adanya, lalu ubah per adegan. Diisi: penulis AI menulis ulang kata-kata yang diucapkan di semua adegan sekali jalan — visual dan gambar pembuka tetap." /></label>
+            <input className="input mb2" value={beda} onChange={(e) => setBeda(e.target.value)} disabled={!!sibuk}
+              placeholder="mis. bahasa Inggris · lebih lucu · ajakan beli lewat WhatsApp · untuk Lebaran" />
+            <p className="tiny muted mb2">
+              Yang dipakai ulang: adegan, kontinuitas, dan gambar pembuka. Yang dibayar lagi nanti: hanya videonya.
+              {beda.trim() ? ` Menulis ulang narasi memakai penulis AI${biayaNaskahLabel()}.` : " Tanpa instruksi: salinan persis, gratis."}
+            </p>
+            {galat && <div className="msg-err mb2">{galat}</div>}
+            <button className="btn" disabled={!!sibuk} onClick={buatVersi}
+              data-tip="Membuat salinan dan membukanya di langkah Naskah. Belum ada video yang dibuat.">
+              {sibuk || (beda.trim() ? `Buat versi lain${biayaNaskahLabel()} →` : "Salin jadi versi baru →")}
+            </button>
+          </div>
+        )}
       </div>
       {shots[0]?.image_url && (
         <div className="card p4 mb4">
@@ -1250,6 +1440,27 @@ function SheetPanel({ board, shots, imgModels, refCount, mode, onDone }) {
 function ShotRow({ shot, board, onPatch, fitted }) {
   const trimmed = fitted != null && fitted !== Number(shot.seconds);
   const [open, setOpen] = useState(false);
+  // "Ubah adegan ini": satu kalimat Indonesia → penulis AI menulis ulang shot
+  // ini. Nilai lama disimpan supaya bisa dibatalkan tanpa memanggil AI lagi.
+  const [perintah, setPerintah] = useState("");
+  const [sibuk, setSibuk] = useState(false);
+  const [galat, setGalat] = useState(null);
+  const [sebelum, setSebelum] = useState(null);
+  async function ubah() {
+    if (!perintah.trim()) return;
+    setSibuk(true); setGalat(null);
+    try {
+      const r = await callGenerate({ action: "write", kind: "shot", shot_id: shot.id, instruction: perintah.trim() });
+      setSebelum({ beat: shot.beat, visual_prompt: shot.visual_prompt, narration: shot.narration, camera: shot.camera, seconds: shot.seconds });
+      await onPatch(r.shot);
+      setPerintah("");
+    } catch (e) { setGalat(e.message); }
+    setSibuk(false);
+  }
+  async function batalkan() {
+    if (!sebelum) return;
+    await onPatch(sebelum); setSebelum(null);
+  }
   const waitingImage = !shot.image_url && shot.image_job_id;
   const waitingVideo = !shot.video_url && shot.video_job_id;
   return (
@@ -1277,8 +1488,24 @@ function ShotRow({ shot, board, onPatch, fitted }) {
                     : <Badge tone="zinc">belum mulai</Badge>}
           </div>
           {shot.narration && <div className="tiny muted mb1">🗣 {shot.narration}</div>}
-          <button className="btn btn2 tiny" onClick={() => setOpen((o) => !o)}>
-            {open ? "Tutup" : "Edit prompt"}
+          <div className="row mb1" style={{ gap: 6, flexWrap: "wrap" }}>
+            <input className="input" style={{ flex: 1, minWidth: 180, fontSize: 13, padding: "6px 10px" }} value={perintah}
+              disabled={sibuk || !!shot.video_url} onChange={(e) => setPerintah(e.target.value)}
+              onKeyDown={(e) => { if (e.key === "Enter") ubah(); }}
+              placeholder={shot.video_url ? "Video sudah jadi — buat versi baru untuk mengubah" : "Ubah adegan ini: mis. dia tertawa, bukan serius"}
+              data-tip="Tulis dalam bahasa Indonesia apa yang mau diubah: ekspresi, aksi, sudut kamera, atau kata-katanya. Penulis AI menulis ulang adegan ini saja; yang lain tetap." />
+            <button className="btn tiny" disabled={sibuk || !perintah.trim() || !!shot.video_url} onClick={ubah}
+              data-tip={`Memanggil penulis AI untuk satu adegan. ${TIP_PENULIS_AI_LOKAL}`}>
+              {sibuk ? "Menulis ulang…" : `Ubah${biayaNaskahLabel()}`}
+            </button>
+            {sebelum && !sibuk && (
+              <button className="btn btn2 tiny" onClick={batalkan} data-tip="Kembalikan adegan ini ke versi sebelum diubah. Gratis.">↶ Batalkan</button>
+            )}
+          </div>
+          {galat && <div className="msg-err tiny mb1">{galat}</div>}
+          <button className="btn btn2 tiny" onClick={() => setOpen((o) => !o)}
+            data-tip="Pengaturan lanjutan: prompt Inggris yang dikirim ke model, kamera, dan detik. Tidak perlu dibuka kalau 'Ubah adegan ini' sudah cukup.">
+            {open ? "Tutup" : "Lanjutan (prompt Inggris)"}
           </button>
         </div>
       </div>
@@ -1286,10 +1513,12 @@ function ShotRow({ shot, board, onPatch, fitted }) {
       {open && (
         <div>
           <label className="label">Prompt visual (bahasa Inggris, tanpa deskripsi wajah)</label>
-          <textarea className="input mb2" rows={3} defaultValue={shot.visual_prompt}
+          {/* key: textarea ini uncontrolled; tanpa key, hasil "Ubah adegan ini"
+              tidak tampak di sini saat panel sedang terbuka. */}
+          <textarea key={`v-${shot.visual_prompt}`} className="input mb2" rows={3} defaultValue={shot.visual_prompt}
             onBlur={(e) => onPatch({ visual_prompt: e.target.value })} />
           <label className="label">Narasi</label>
-          <textarea className="input mb2" rows={2} defaultValue={shot.narration || ""}
+          <textarea key={`n-${shot.narration || ""}`} className="input mb2" rows={2} defaultValue={shot.narration || ""}
             onBlur={(e) => onPatch({ narration: e.target.value })} />
           <div className="grid mb2" style={{ gridTemplateColumns: "1fr 1fr" }}>
             <div>
