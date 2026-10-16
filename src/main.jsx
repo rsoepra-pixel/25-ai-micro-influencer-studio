@@ -597,12 +597,15 @@ function App() {
           <div className="tiny muted mt1">{ws.name}</div>
         </div>
         <nav style={{ padding: 12, flex: 1 }}>
+          {/* Paling atas, di atas Beranda: orang baru mencari petunjuk sebelum
+              apa pun, dan di bawah daftar menu ia tenggelam — terutama saat
+              "Semua menu" terbuka dan daftarnya jadi dua belas baris. */}
+          <a href="#/mulai" className={`nav ${routePath === "/mulai" ? "active" : ""}`} style={{ marginBottom: 6 }}
+            data-tip="Satu halaman: tiga langkah, kapan uang keluar, apa yang perlu disiapkan." data-tip-side="right">💡 Cara mulai</a>
           {(menuLengkap ? NAV : NAV_RINGKAS).map(([href, label, tip]) => (
             <a key={href} href={`#${href}`} className={`nav ${routePath === href ? "active" : ""}`}
               data-tip={tip} data-tip-side="right">{label}</a>
           ))}
-          <a href="#/mulai" className={`nav ${routePath === "/mulai" ? "active" : ""}`} style={{ marginTop: 6 }}
-            data-tip="Satu halaman: tiga langkah, kapan uang keluar, apa yang perlu disiapkan." data-tip-side="right">❓ Cara mulai</a>
           <button type="button" onClick={gantiMenu} className="tiny muted mt2"
             data-tip={menuLengkap ? "Kembali ke enam menu utama." : "Tampilkan juga Influencers, Product Kit, Production Studio, Storyboard, Video UGC, dan Tasks."}
             data-tip-side="right"
