@@ -23,7 +23,7 @@ sini:
 
 ## Isi
 
-**Menu di sidebar** — [Dashboard](#-dashboard) · [Cara mulai](#-cara-mulai) · [Buat Video](#-buat-video) · [Profil saya](#-profil-saya) (dari Dashboard) ·
+**Menu di sidebar** — [Cara mulai](#-cara-mulai) · [Dashboard](#-dashboard) · [Buat Video](#-buat-video) · [Profil saya](#-profil-saya) (dari Dashboard) ·
 [Influencers](#-influencers) · [Product Kit](#-product-kit) ·
 [Production Studio](#-production-studio) · [Storyboard](#-storyboard) ·
 [Video UGC](#-video-ugc) · [Content Planner](#-content-planner) ·
@@ -141,12 +141,12 @@ menghapus media di sini **permanen** — sama seperti di halaman Drive. Lihat
 
 ---
 
-## ❓ Cara mulai
+## 💡 Cara mulai
 
 **Untuk apa.** Satu halaman infografis untuk orang yang baru pertama kali
 membuka aplikasi: tiga langkah (Profil saya → Buat Video → Tonton & bagikan),
 garis "kapan uang keluar" dari yang gratis sampai yang paling mahal, daftar
-"siapkan dulu", dan "kalau bingung". Ada di sidebar (❓ Cara mulai, di kedua
+"siapkan dulu", dan "kalau bingung". Ada di sidebar (💡 Cara mulai, paling atas di kedua
 susunan menu), di kartu Mulai dari sini, dan di `#/mulai`. Tombol **Cetak**
 menyimpannya sebagai PDF satu halaman; sidebar dan tooltip disembunyikan saat
 dicetak.
