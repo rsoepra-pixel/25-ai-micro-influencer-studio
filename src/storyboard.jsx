@@ -398,7 +398,7 @@ function NewBoard({ ws, influencers, onCreated }) {
   // mempertahankan dua angka lama untuk yang memang mau mengatur sendiri.
   const [pola, setPola] = useState("masalah_produk_hasil");
   const [totalDetik, setTotalDetik] = useState(15);
-  // Foto dari HP (opsional, maks 5): bahan adegan + referensi kemasan untuk
+  // Foto dari HP (opsional, maks 8): bahan adegan + referensi kemasan untuk
   // gambar pembuka. Diperkecil di browser sebelum dikirim.
   const [foto, setFoto] = useState([]);
   async function tambahFoto(e) {
@@ -406,8 +406,8 @@ function NewBoard({ ws, influencers, onCreated }) {
     e.target.value = "";
     if (!files.length) return;
     try {
-      const kecil = await Promise.all(files.slice(0, 5).map((f) => downscaleToDataUri(f, 1024, 0.86)));
-      setFoto((p) => [...p, ...kecil].slice(0, 5));
+      const kecil = await Promise.all(files.slice(0, 8).map((f) => downscaleToDataUri(f, 1024, 0.86)));
+      setFoto((p) => [...p, ...kecil].slice(0, 8));
     } catch (e2) { setErr(e2.message); }
   }
   const [busy, setBusy] = useState(false);
@@ -537,7 +537,7 @@ function NewBoard({ ws, influencers, onCreated }) {
         <p className="tiny muted mb2">Dari pustaka: <b>{tpl.title}</b>. Ubah idenya sesuka hati — pakaian & lokasi bawaannya tetap dipakai kalau AI tidak mengusulkan sendiri.</p>
       )}
       <div className="mb3">
-        <label className="label">Foto dari HP-mu (opsional, maks. 5)<Info tip="Dapur, keripik, kemasan, pembeli — penulis AI menjadikan tiap foto satu adegan, dan foto kemasan ikut ke gambar pembuka supaya kemasannya tidak dikarang. Foto tidak menjadi frame per adegan: model video hanya menerima satu gambar awal." /></label>
+        <label className="label">Foto dari HP-mu (opsional, maks. 8)<Info tip="Dapur, keripik, kemasan, pembeli — penulis AI menjadikan tiap foto satu adegan, dan foto kemasan ikut ke gambar pembuka supaya kemasannya tidak dikarang. Foto tidak menjadi frame per adegan: model video hanya menerima satu gambar awal." /></label>
         {foto.length > 0 && (
           <div className="row mb2" style={{ gap: 6, flexWrap: "wrap" }}>
             {foto.map((p, i) => (
@@ -550,7 +550,7 @@ function NewBoard({ ws, influencers, onCreated }) {
             ))}
           </div>
         )}
-        <label className="btn btn2 tiny" style={{ cursor: "pointer" }} data-tip="Pilih sampai 5 foto dari galeri. Belum dikirim sebelum kamu menekan 'Susun shot list'.">
+        <label className="btn btn2 tiny" style={{ cursor: "pointer" }} data-tip="Pilih sampai 8 foto dari galeri. Belum dikirim sebelum kamu menekan 'Susun shot list'.">
           + Pilih foto
           <input type="file" accept="image/*" multiple hidden onChange={tambahFoto} />
         </label>

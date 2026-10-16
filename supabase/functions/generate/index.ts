@@ -1344,7 +1344,7 @@ Deno.serve(async (req) => {
           // disimpan ke Storage supaya yang kemasan bisa ikut ke job frame
           // pembuka sebagai referensi tambahan (storyboards.ref_photo_urls).
           const photos: string[] = Array.isArray(body.photos)
-            ? (body.photos as unknown[]).filter((x) => typeof x === "string").slice(0, 5) as string[]
+            ? (body.photos as unknown[]).filter((x) => typeof x === "string").slice(0, 8) as string[]
             : [];
 
           const system =

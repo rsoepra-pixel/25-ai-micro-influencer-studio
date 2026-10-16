@@ -72,14 +72,14 @@ export function BuatVideo({ ws, refresh, tick }) {
   const [jenis, setJenis] = useState("ugc");          // ugc | storyboard
   const [ide, setIde] = useState("");
   const [pola, setPola] = useState("masalah_produk_hasil");
-  const [foto, setFoto] = useState([]); // foto HP untuk jalur cerita, maks 5
+  const [foto, setFoto] = useState([]); // foto HP untuk jalur cerita, maks 8
   async function tambahFoto(e) {
     const files = Array.from(e.target.files || []);
     e.target.value = "";
     if (!files.length) return;
     try {
-      const kecil = await Promise.all(files.slice(0, 5).map((f) => downscaleToDataUri(f, 1024, 0.86)));
-      setFoto((p) => [...p, ...kecil].slice(0, 5)); setDraft(null);
+      const kecil = await Promise.all(files.slice(0, 8).map((f) => downscaleToDataUri(f, 1024, 0.86)));
+      setFoto((p) => [...p, ...kecil].slice(0, 8)); setDraft(null);
     } catch (e2) { setErr(e2.message); }
   }
   const [detik, setDetik] = useState(15);
@@ -248,7 +248,7 @@ export function BuatVideo({ ws, refresh, tick }) {
           )}
           {jenis === "storyboard" && (
             <div className="mb3">
-              <label className="label">Foto dari HP-mu (opsional, maks. 5)<Info tip="Dapur, keripik, kemasan, pembeli — tiap foto jadi bahan satu adegan, dan foto kemasan ikut ke gambar pembuka supaya kemasannya tidak dikarang. Foto tidak menjadi frame per adegan." /></label>
+              <label className="label">Foto dari HP-mu (opsional, maks. 8)<Info tip="Dapur, keripik, kemasan, pembeli — tiap foto jadi bahan satu adegan, dan foto kemasan ikut ke gambar pembuka supaya kemasannya tidak dikarang. Foto tidak menjadi frame per adegan." /></label>
               {foto.length > 0 && (
                 <div className="row mb2" style={{ gap: 6, flexWrap: "wrap" }}>
                   {foto.map((p, i) => (
@@ -260,7 +260,7 @@ export function BuatVideo({ ws, refresh, tick }) {
                   ))}
                 </div>
               )}
-              <label className="btn btn2 tiny" style={{ cursor: "pointer" }} data-tip="Pilih sampai 5 foto dari galeri. Belum dikirim ke mana pun sebelum naskah ditulis.">
+              <label className="btn btn2 tiny" style={{ cursor: "pointer" }} data-tip="Pilih sampai 8 foto dari galeri. Belum dikirim ke mana pun sebelum naskah ditulis.">
                 + Pilih foto
                 <input type="file" accept="image/*" multiple hidden onChange={tambahFoto} />
               </label>
