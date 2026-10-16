@@ -48,15 +48,34 @@ function bersihkanUrlPulih() {
 // orangnya cuma melihat form login kosong — tanpa petunjuk bahwa link-nya yang
 // bermasalah, bukan dia. Dibaca sekali saat modul dimuat, lalu dibuang supaya
 // tidak terbaca sebagai rute.
+//
+// Login Google yang gagal kembali lewat fragmen yang SAMA, jadi tanpa penanda
+// orang yang cuma menekan "Masuk dengan Google" disuruh "minta link baru ke
+// admin" — link yang tidak pernah ada. Penandanya ditaruh masukGoogle() di
+// sessionStorage sebelum pindah ke Google.
+const GOOGLE_FLAG = "masuk_google";
+
 const LINK_ERROR = (() => {
+  let dariGoogle = false;
+  try { dariGoogle = sessionStorage.getItem(GOOGLE_FLAG) === "1"; sessionStorage.removeItem(GOOGLE_FLAG); } catch {}
   const h = new URLSearchParams(window.location.hash.replace(/^#\/?/, ""));
   const code = h.get("error_code");
   if (!code && !h.get("error")) return null;
   window.history.replaceState(null, "", window.location.pathname + window.location.search);
+  // Deskripsinya dikodekan dua kali oleh Supabase ("%3A" tetap tersisa
+  // setelah URLSearchParams). Isinya untuk operator, bukan untuk orangnya —
+  // pada login Google ia bahkan memuat potongan kode otorisasi — jadi hanya
+  // dicatat di console.
+  let detail = h.get("error_description") || code;
+  try { detail = decodeURIComponent(detail); } catch {}
+  console.warn("Login ditolak:", code, detail);
+  if (dariGoogle) {
+    return "Masuk dengan Google gagal. Coba sekali lagi, atau masuk dengan email dan password. Kalau terus gagal, hubungi admin.";
+  }
   if (code === "otp_expired") {
     return "Link ini sudah kedaluwarsa atau sudah pernah dipakai. Minta link baru ke admin, lalu buka sekali saja.";
   }
-  return `Link tidak bisa dipakai: ${h.get("error_description") || code}. Minta link baru ke admin.`;
+  return "Link ini tidak bisa dipakai. Minta link baru ke admin, lalu buka sekali saja.";
 })();
 
 // ---------- Hash router sederhana ----------
@@ -201,6 +220,7 @@ function Login() {
     setErr(null); setBusy(true);
     const back = new URL(window.location.origin + window.location.pathname);
     if (INVITE_TOKEN) back.searchParams.set("invite", INVITE_TOKEN);
+    try { sessionStorage.setItem(GOOGLE_FLAG, "1"); } catch {}
     const { error } = await supa.auth.signInWithOAuth({
       provider: "google",
       options: { redirectTo: back.toString() },
