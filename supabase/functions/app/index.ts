@@ -861,11 +861,16 @@ Deno.serve(async (req) => {
         // Link ke aplikasi dengan token_hash di query tahan terhadap itu:
         // pratinjau hanya memuat HTML, dan token baru dipakai (verifyOtp)
         // saat orangnya sendiri menekan tombol di halaman tersebut.
+        //
+        // Tanpa hashed_token server menolak, tidak mundur ke action_link:
+        // mundur diam-diam berarti operator mengirim link yang akan habis
+        // oleh pratinjau WhatsApp, dan pelanggan terkunci lagi tanpa ada yang
+        // tahu sebabnya.
         const hashed = data?.properties?.hashed_token;
-        const link = hashed
-          ? `${APP_ORIGIN}/?pulih=${encodeURIComponent(hashed)}`
-          : data?.properties?.action_link || null;
-        return json({ ok: true, link });
+        if (!hashed) {
+          throw new Error("Supabase tidak mengembalikan token link akses. Coba lagi sebentar; kalau terus terjadi, laporkan ke pengembang.");
+        }
+        return json({ ok: true, link: `${APP_ORIGIN}/?pulih=${encodeURIComponent(hashed)}` });
       }
       if (body.action === "payment_events") {
         await requirePlatformAdmin(req);
