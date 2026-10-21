@@ -25,6 +25,7 @@ import { ModelPicker, byPrice, priceLabel, Badge, useQuery, unwrap, recordBadge,
 import { LibraryPicker } from "./library.jsx";
 import { Info } from "./tips.jsx";
 import { POLA_CERITA, biayaNaskahLabel } from "./harga.js";
+import { modelHidup } from "./routing.js";
 
 const PLATFORMS = [
   ["tiktok", "TikTok"],
@@ -1055,9 +1056,9 @@ function StepProduksi({ board, shots, inf, refCount, models, mode, frameReady, p
 
   // Pilihan bawaan: yang menjaga wajah untuk gambar (kalau ada fotonya),
   // yang termurah untuk video. Bisa diganti, tapi tidak harus dipilih.
-  const identityModel = imgModels.find((m) => m.keeps_identity);
+  const identityModel = modelHidup(imgModels).find((m) => m.keeps_identity);
   const imgModel = imgModels.find((m) => m.id === imgId) || (refCount > 0 && identityModel) || imgModels[0];
-  const vidModel = videoModels.find((m) => m.id === vidId) || videoModels[0];
+  const vidModel = videoModels.find((m) => m.id === vidId) || modelHidup(videoModels)[0];
 
   // Seedance reference-to-video (multishot_field = "prompt") mengunci wajah
   // dari foto Identity Kit dan tidak memakai frame pembuka sama sekali —
@@ -1381,7 +1382,7 @@ function StepHasil({ board, shots, inf, models, setStep }) {
 // teks sungguhan saat diunduh, bukan diminta ke model — model gambar menulis
 // huruf dengan buruk.
 function SheetPanel({ board, shots, imgModels, refCount, mode, onDone }) {
-  const identityModel = imgModels.find((m) => m.keeps_identity);
+  const identityModel = modelHidup(imgModels).find((m) => m.keeps_identity);
   const [modelId, setModelId] = useState("");
   const model = imgModels.find((m) => m.id === modelId) || (refCount > 0 && identityModel) || imgModels[0];
   const [busy, setBusy] = useState(null);

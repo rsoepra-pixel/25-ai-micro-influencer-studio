@@ -19,7 +19,7 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { supa, callGenerate } from "./supa.js";
 import { useQuery, unwrap, Badge, byPrice, downscaleToDataUri } from "./views.jsx";
-import { estimateFor, byEffectivePrice } from "./routing.js";
+import { estimateFor, byEffectivePrice, modelHidup } from "./routing.js";
 import { useProducts, NewProduct } from "./products.jsx";
 import { isAvatarModel, estSeconds, WORDS_PER_SEC, MAX_SECONDS, DEFAULT_SCENE, DEFAULT_DELIVERY } from "./ugc.jsx";
 import { catalogMaxSeconds, fitShotDurations } from "./storyboard.jsx";
@@ -42,14 +42,14 @@ const LANGKAH = [
 // ditampilkan alur produksinya — bukan tebakan kedua.
 export function modelDefault(models, inf) {
   const all = models || [];
-  const img = all.filter((m) => m.task === "image" && m.keeps_identity && m.provider === "fal").sort(byPrice);
+  const img = modelHidup(all.filter((m) => m.task === "image" && m.keeps_identity && m.provider === "fal").sort(byPrice));
   const imgModel = img.find((m) => m.ref_image_multi) || img[0] || null;
   const voice = inf?.voice || {};
   const tts = all.filter((m) => m.task === "tts").sort(byPrice);
   const ttsModel = tts.find((m) => voice[m.model_key]) || null;
-  const avatars = all.filter(isAvatarModel).sort(byPrice);
+  const avatars = modelHidup(all.filter(isAvatarModel).sort(byPrice));
   const avatarModel = avatars.find((m) => m.prompt_field) || avatars[0] || null;
-  const video = all.filter((m) => m.multishot_field).sort(byEffectivePrice);
+  const video = modelHidup(all.filter((m) => m.multishot_field).sort(byEffectivePrice));
   const videoModel = video[0] || null;
   return { imgModel, ttsModel, avatarModel, videoModel };
 }

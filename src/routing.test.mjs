@@ -5,7 +5,7 @@
 // contoh yang dikarang agar lulus.
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { nextTierUp, estimateFor, triesPerResult, byEffectivePrice } from "./routing.js";
+import { nextTierUp, estimateFor, triesPerResult, byEffectivePrice, isDeadModel, modelHidup } from "./routing.js";
 
 const M = (o) => ({ attempts: 0, succeeded: 0, keeps_identity: false, ...o });
 
@@ -122,4 +122,31 @@ test("urutan efektif menaikkan model yang selalu jadi di atas yang sering diulan
   const agakMahalTapiSelaluJadi = { est_price_usd: 0.09, tries_per_result_fair: 1 }; // efektif 0,09
   const urut = [murahTapiSeringGagal, agakMahalTapiSelaluJadi].sort(byEffectivePrice);
   assert.equal(urut[0], agakMahalTapiSelaluJadi);
+});
+
+// ---------- Model mati tidak boleh jadi pilihan bawaan ----------
+// Kasus nyata Sep 2026: Storyboard memilih multi-shot termurah, Seedance 2.0
+// Mini Reference (2x dicoba, 0 jadi, ditolak policy), sehingga aksi berbayar
+// pertama orang baru selalu gagal. Kling 3 Pro (1 dari 8 jadi) tetap hidup.
+test("isDeadModel: 0 jadi dari >=2 percobaan, atau 1 penolakan policy", () => {
+  assert.equal(isDeadModel(M({ attempts: 2, succeeded: 0 })), true);
+  assert.equal(isDeadModel(M({ attempts: 1, succeeded: 0, failed_policy: 1 })), true);
+  assert.equal(isDeadModel(M({ attempts: 1, succeeded: 0, failed_config: 1 })), false);
+  assert.equal(isDeadModel(M({ attempts: 0, succeeded: 0 })), false);
+  assert.equal(isDeadModel(M({ attempts: 8, succeeded: 1 })), false);
+});
+
+test("modelHidup + byEffectivePrice: bawaan multi-shot jatuh ke Kling 3, bukan Seedance Mini Ref", () => {
+  const multishot = [
+    M({ id: "s20mr", est_price_usd: 0.1547, unit: "per_second", attempts: 2, succeeded: 0, failed_policy: 2 }),
+    M({ id: "k3", est_price_usd: 0.168, unit: "per_second", attempts: 8, succeeded: 1, tries_per_result_fair: 1 }),
+  ];
+  assert.equal(modelHidup(multishot.slice().sort(byEffectivePrice))[0].id, "k3");
+  // Model mati juga turun ke bawah di pemilih, walaupun termurah.
+  assert.equal(multishot.slice().sort(byEffectivePrice)[0].id, "k3");
+});
+
+test("modelHidup: kalau semua mati, daftar asli dikembalikan (layar tetap bisa dipakai)", () => {
+  const semuaMati = [M({ id: "a", attempts: 2 }), M({ id: "b", attempts: 3 })];
+  assert.equal(modelHidup(semuaMati).length, 2);
 });

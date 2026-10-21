@@ -749,6 +749,37 @@ function pickDuration(
 // pagar adalah batas bulanan. Satu nol kelebihan saat mengetik sudah cukup.
 const MAX_DURATION_SECONDS = 30;
 
+// Aturan klaim untuk SEMUA penulis yang menghasilkan kata-kata yang diucapkan
+// atau dipasang influencer (naskah, hook, caption, ide, rencana).
+//
+// Influencer di sini adalah persona AI. Kalimat orang pertama tentang
+// pengalaman ("aku udah pakai 3 minggu, jerawatku hilang") yang diucapkan
+// persona AI adalah testimoni palsu — risiko takedown dan hukum bagi akun
+// yang menjadi seluruh investasi pemiliknya. Evaluasi Okt 2026 menemukan
+// penulis meminta naskah orang pertama tanpa batas, dan rencana konten
+// mengarang "tes" dan statistik.
+//
+// Disatukan di sini supaya satu perubahan aturan berlaku ke semua penulis;
+// menyalinnya per prompt berarti cepat atau lambat ada yang tertinggal.
+const ATURAN_KLAIM =
+  `
+
+ATURAN KLAIM (wajib, mengalahkan instruksi lain):
+` +
+  `- Influencer ini persona AI. Orang pertama BOLEH untuk opini, preferensi, ajakan, dan demonstrasi yang terlihat di video ` +
+  `("menurutku teksturnya ringan", "lihat, gini cara pakainya"). DILARANG mengaku pernah mengalami hasil ` +
+  `("udah 3 minggu pakai, jerawatku hilang", "berat badanku turun 5 kg").
+` +
+  `- DILARANG mengarang angka, statistik, hasil tes, persentase, testimoni, atau kutipan orang lain. ` +
+  `Angka hanya boleh kalau tertulis di data produk atau catatan riset yang diberikan.
+` +
+  `- DILARANG klaim medis, kesehatan, atau keuangan yang menjanjikan hasil (menyembuhkan, menurunkan berat badan, ` +
+  `pasti untung, bebas utang). Tulis sebagai edukasi umum atau ajakan konsultasi ke ahli.
+` +
+  `- JANGAN pakai topik ini sebagai hook atau bahan konten: bunuh diri atau menyakiti diri, kekerasan pada anak, ` +
+  `tragedi atau kematian sungguhan, SARA, dan politik praktis.
+`;
+
 // Sekitar berapa kata yang muat dalam sedetik ucapan. Sama dengan WORDS_PER_SEC
 // di src/ugc.jsx dan dengan rasio yang dipakai penulis naskah (write kind=ugc).
 // Dipakai HANYA untuk menyusun pesan error yang bisa ditindaklanjuti, tidak
@@ -1199,7 +1230,7 @@ Deno.serve(async (req) => {
           const system =
             `Kamu penulis naskah video short-form. Kamu menulis VERSI LAIN dari narasi sebuah storyboard: visual tiap shot ` +
             `sudah final dan tidak boleh diubah, yang berubah hanya kata-kata yang diucapkan (dan judul). ` +
-            `Jawab HANYA dengan JSON valid, tanpa penjelasan lain.`;
+            `Jawab HANYA dengan JSON valid, tanpa penjelasan lain.` + ATURAN_KLAIM;
           const user =
             `Video: "${board.title}" — ${board.logline || ""}\n` +
             `Bahasa bawaan narasi: ${ilang}. Kalau permintaan user menyebut bahasa lain, ikuti permintaan user.\n` +
@@ -1249,7 +1280,7 @@ Deno.serve(async (req) => {
           }
           const system =
             `Kamu sutradara video short-form. Kamu menulis ulang SATU shot dari sebuah storyboard sesuai permintaan user, ` +
-            `tanpa mengubah hal yang tidak diminta. Jawab HANYA dengan JSON valid, tanpa penjelasan lain.`;
+            `tanpa mengubah hal yang tidak diminta. Jawab HANYA dengan JSON valid, tanpa penjelasan lain.` + ATURAN_KLAIM;
           const user =
             `Shot ${shot.position} dari video "${board.title}".\n` +
             `Beat: ${shot.beat}\nPrompt visual sekarang (Inggris): ${shot.visual_prompt}\n` +
@@ -1356,7 +1387,7 @@ Deno.serve(async (req) => {
               ? `Kamu diberi ${photos.length} foto milik user, berurutan. Deskripsikan yang TERLIHAT di tiap foto secara faktual ` +
                 `(tempat, benda, aksi, suasana) — JANGAN menebak identitas atau mendeskripsikan wajah orang di foto. `
               : "") +
-            `Jawab HANYA dengan JSON valid, tanpa penjelasan lain.`;
+            `Jawab HANYA dengan JSON valid, tanpa penjelasan lain.` + ATURAN_KLAIM;
 
           const user =
             `Ide video: "${idea}"\n` +
@@ -1516,7 +1547,7 @@ Deno.serve(async (req) => {
             `DUA field output, "scene_en" dan "delivery_en", WAJIB ditulis dalam BAHASA INGGRIS. ` +
             `Keduanya bukan untuk dibaca manusia: keduanya dikirim langsung ke model gambar yang hanya ` +
             `memahami bahasa Inggris dengan baik. Field lainnya bahasa ${ilang}. ` +
-            `Jawab HANYA dengan JSON valid, tanpa penjelasan lain.`;
+            `Jawab HANYA dengan JSON valid, tanpa penjelasan lain.` + ATURAN_KLAIM;
 
           const user =
             `Produk: ${product.name}\n` +
@@ -1526,7 +1557,7 @@ Deno.serve(async (req) => {
             (angle ? `Sudut cerita yang diminta: ${angle}\n` : "") +
             `Bahasa naskah: ${ilang}. Target durasi ${seconds} detik = MAKSIMAL ${wordBudget} kata.\n` +
             `\nAturan yang harus dipatuhi:\n` +
-            `1. "script": orang pertama, kalimat pendek seperti orang bicara, tanpa "halo guys", tanpa membaca daftar. ` +
+            `1. "script": orang pertama untuk opini dan demonstrasi saja (lihat ATURAN KLAIM), kalimat pendek seperti orang bicara, tanpa "halo guys", tanpa membaca daftar. ` +
             `Sebut nama produk secara natural 1-2 kali. Pilih SATU atau DUA keunggulan saja. ` +
             `Kalimat pertama adalah hook yang menahan orang di 2 detik pertama. Kalimat terakhir ajakan singkat (mis. "link-nya di bio"). ` +
             `Total TIDAK LEBIH dari ${wordBudget} kata — hitung.\n` +
@@ -1668,7 +1699,7 @@ Deno.serve(async (req) => {
             `Kamu menyusun rencana konten satu periode penuh untuk ${iname}${iniche ? `, niche ${iniche}` : ""}, ` +
             `platform utama ${platformLabel}, bahasa ${ilang}. ` +
             (ibio ? `Persona kreator: ${ibio} ` : "") +
-            `Jawab HANYA dengan JSON valid, tanpa penjelasan lain.`;
+            `Jawab HANYA dengan JSON valid, tanpa penjelasan lain.` + ATURAN_KLAIM;
 
           const pillarRule = makePillars
             ? `1. "pillars": 3-4 content pillar. Salah satunya WAJIB pillar jualan/promosi dengan "target_ratio" ` +
@@ -1858,7 +1889,7 @@ Deno.serve(async (req) => {
           `Kamu penulis konten short-form video untuk kreator ${name}${niche ? ` di niche ${niche}` : ""}. ` +
           `Tulis dalam bahasa ${language}, gaya santai dan natural seperti orang bicara, bukan bahasa iklan. ` +
           `Hindari klaim medis/kesehatan/finansial yang spesifik. Jawab HANYA dengan JSON valid, tanpa penjelasan lain.` +
-          (persona ? ` Persona kreator: ${persona}` : "");
+          (persona ? ` Persona kreator: ${persona}` : "") + ATURAN_KLAIM;
 
         if (kind === "ideas") {
           const n = Math.min(Math.max(Number(body.n) || 5, 1), 10);
@@ -1873,9 +1904,15 @@ Deno.serve(async (req) => {
           .eq("id", body.content_item_id).eq("workspace_id", ws).maybeSingle();
         if (!item) throw new Error("Konten tidak ditemukan.");
         const platform = item.platform === "instagram" ? "Instagram Reels" : item.platform === "youtube" ? "YouTube Shorts" : "TikTok";
+        // Sama dengan penulis UGC (Math.round(detik * 2.3)). Dulu "30-45 detik,
+        // 90-140 kata": avatar ditagih per detik audio, jadi naskah Planner yang
+        // dibawa ke UGC menggandakan biaya videonya, dan masih melewati batas
+        // 30 detik pipeline.
+        const draftSeconds = 15;
+        const draftWords = Math.round(draftSeconds * 2.3);
         const user =
-          `Judul/ide konten: "${item.title}". Platform: ${platform}. Durasi target 30-45 detik.\n` +
-          `Format JSON: {"hook": "kalimat pembuka kuat 1-3 detik", "script": "naskah lengkap siap dibacakan, 90-140 kata, pakai baris baru antar beat", ` +
+          `Judul/ide konten: "${item.title}". Platform: ${platform}. Durasi target ${draftSeconds} detik = MAKSIMAL ${draftWords} kata.\n` +
+          `Format JSON: {"hook": "kalimat pembuka kuat 1-3 detik, maksimal 14 kata", "script": "naskah lengkap siap dibacakan, total tidak lebih dari ${draftWords} kata, pakai baris baru antar beat", ` +
           `"caption": "caption siap posting, maksimal 200 karakter", "hashtags": ["tag1","tag2"]}`;
         const parsed = parseJsonLoose(await chat(ws, penulis, system, user)) as Record<string, unknown>;
         return json({
@@ -1989,7 +2026,7 @@ Deno.serve(async (req) => {
           `Kamu tahu format mana yang bertahan karena kamu melihat komentar dan retensi, bukan artikel tren. ` +
           (iname ? `Talent-nya ${iname}${iniche ? `, niche ${iniche}` : ""}. ` : "") +
           (ibio ? `Persona: ${ibio} ` : "") +
-          `Jawab HANYA dengan JSON valid, tanpa penjelasan lain.`;
+          `Jawab HANYA dengan JSON valid, tanpa penjelasan lain.` + ATURAN_KLAIM;
 
         const user =
           `Buat TEPAT 3 usulan video ${seconds} detik, format vertikal 9:16, untuk industri "${industryLabel}"` +

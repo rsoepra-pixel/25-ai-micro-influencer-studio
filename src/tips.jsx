@@ -99,4 +99,4 @@ export function Info({ tip }) {
 // Planner dan di halaman influencer tidak menjelaskan biaya yang sama dengan
 // dua kalimat berbeda.
 export const TIP_PENULIS_AI = "Memakai saldo: penulis AI ditagih per naskah. Kamu meninjau hasilnya dulu sebelum disimpan.";
-export const TIP_BERBAYAR = "Memakai saldo sungguhan. Perkiraan biayanya tertulis di samping tombol.";
+export const TIP_BERBAYAR = "Memakai saldo sungguhan. Perkiraan biayanya tertulis di samping tombol. Kalau gagal, tidak ditagih.";
