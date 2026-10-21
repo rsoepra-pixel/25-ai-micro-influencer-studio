@@ -83,7 +83,9 @@ with j as (
     status,
     created_at,
     coalesce(cost_estimate_usd, 0)::numeric as est,
-    coalesce(cost_actual_usd, cost_estimate_usd, 0)::numeric as billed,
+    -- Job mock berhasil dengan cost_actual_usd = 0; tanpa nullif ia ikut
+    -- menurunkan rata-rata "biaya per hasil" seolah modelnya gratis.
+    coalesce(nullif(cost_actual_usd, 0), cost_estimate_usd, 0)::numeric as billed,
     case when status = 'failed' then public.job_failure_kind(error) end as kind
   from public.production_jobs
   where status in ('succeeded', 'failed')
@@ -188,12 +190,18 @@ set search_path = ''
 as $$
 declare
   jendela integer;
-  akhir   record;
+  st      text;
+  er      text;
+  dibuat  timestamptz;
 begin
   jendela := coalesce((select nullif(value, '')::integer
                        from public.service_config where key = 'provider_lock_mins'), 15);
 
-  select pj.status, pj.error, pj.created_at into akhir
+  -- Variabel skalar + FOUND, bukan variabel `record`: fungsi ini dipanggil
+  -- trigger BEFORE INSERT di setiap job live, jadi error apa pun di sini
+  -- (mis. membaca field dari record yang tidak pernah terisi karena tidak
+  -- ada job dalam jendela) akan menggagalkan SEMUA generate di platform.
+  select pj.status, pj.error, pj.created_at into st, er, dibuat
   from public.production_jobs pj
   join public.provider_models pm on pm.model_key = pj.model_key and pm.task = pj.task
   where pm.provider = prov
@@ -202,13 +210,17 @@ begin
   order by pj.created_at desc
   limit 1;
 
-  if akhir is null or akhir.status <> 'failed'
-     or coalesce(akhir.error, '') !~* '(user is locked|exhausted balance)' then
+  if not found then
     return query select false, null::integer;
     return;
   end if;
 
-  return query select true, greatest(floor(extract(epoch from (ts - akhir.created_at)) / 60)::integer, 0);
+  if st <> 'failed' or coalesce(er, '') !~* '(user is locked|exhausted balance)' then
+    return query select false, null::integer;
+    return;
+  end if;
+
+  return query select true, greatest(floor(extract(epoch from (ts - dibuat)) / 60)::integer, 0);
 end $$;
 
 comment on function public.provider_balance_lock(text, timestamptz) is
