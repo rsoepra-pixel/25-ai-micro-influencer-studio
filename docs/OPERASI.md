@@ -399,6 +399,8 @@ memengaruhi fungsi.
 
 | | |
 |---|---|
+| **Tarif suara Kling 3 Pro** | Sejak 0057 ada `provider_models.voice_price_usd`, sengaja kosong. fal menagih $0,196/detik bila `voice_id` ikut (bukan $0,168), jadi selama kosong video bersuara klon ditagih di bawah biaya provider. Mengisinya (lewat SQL: `update provider_models set voice_price_usd = … where model_key = …`; belum ada kolomnya di tab Katalog Model) menaikkan harga ke pelanggan — keputusan pemilik. Layar Storyboard dan Buat Video ikut membaca kolom ini, jadi harga yang tampil tetap sama dengan yang ditagih. |
+| **Peringatan saldo provider ke operator** | Rem 0057 menahan job pelanggan dengan pesan ramah saat saldo fal/DashScope habis, tapi belum ada notifikasi ke operator — yang tahu pertama tetap pelanggan. |
 | **Doku** | URL notifikasi `https://kheibvzbvnmhdeokokrw.supabase.co/functions/v1/pay` belum didaftarkan di Back Office, dan `doku_secret_key` / `doku_client_id` / `doku_notification_path` masih kosong. Sampai itu diisi, pembayaran masuk **tidak** mengaktifkan langganan otomatis — harus diaktifkan manual dari halaman Pelanggan. |
 | **Alias `qwen-plus` bisa bergeser** | Harga penulis AI ($0,40/$1,20 per 1jt token) adalah tarif alias `qwen-plus`, yang per Sep 2026 masih menunjuk ke snapshot generasi Qwen3. Alibaba disebut akan memindahkannya ke Qwen3.5-Plus, yang token keluarnya **dua kali lipat** ($2,40). Kalau itu terjadi, biaya naik diam-diam sementara kolom harga tidak ikut berubah — operator menanggung selisihnya tanpa ada yang berbunyi. Cocokkan sekali dengan tagihan DashScope, dan pertimbangkan mengunci `text_model` ke snapshot bertanggal supaya harganya tidak bisa bergeser sendiri. |
 | **"Anggota tidak boleh menghapus karya orang lain"** | diputuskan, belum ditegakkan. Yang sudah ada baru pembatasan kursi. |
@@ -432,6 +434,7 @@ memengaruhi fungsi.
 | `0054` | `media_refs()` — siapa saja yang masih memakai satu URL media; dipakai `media` sebelum membuang file. **Jalankan sebelum merge** perubahan `media` yang memakainya, kalau tidak setiap hapus media ditolak. |
 | `0056` | `storyboards.ref_photo_urls` — foto milik user untuk storyboard-dari-foto: bahan adegan dan referensi tambahan gambar pembuka. **Jalankan sebelum merge** perubahan Storyboard yang menyimpannya, kalau tidak insert storyboard ditolak karena kolomnya tidak ada. Belum dihitung `media_refs()`. |
 | `0055` | `provider_models.ref_video_field` / `ref_video_multi` untuk video sumber Seedance reference-to-video (multi-angle), dan dua kolom itu ditambahkan di akhir `provider_models_ranked`. Field `video_urls` **belum diuji** ke fal. Awalnya bernomor `0051` dan diganti karena bertabrakan dengan `0051_new_workspace_live`. |
+| `0057` | `provider_models.voice_price_usd` (tarif bila suara klon diikat — **kosong**, pemilik yang mengisi); `model_scorecard` + `provider_models_ranked` ditambah `billed_usd`, `usd_per_result_billed`, `failed_estimate_usd`, `voice_price_usd` di ujung; `job_failure_kind` mengenali saldo provider habis dan "Model not exist" sebagai `config`; rem `production_jobs_throttle_provider_lock` menahan job baru selama job selesai terakhir provider itu gagal karena saldo habis (jendela `service_config.provider_lock_mins`, bawaan 15). Kode yang menyertainya aman dijalankan sebelum maupun sesudah migrasi ini. |
 
 ### Nama migrasi: repo vs ledger produksi
 

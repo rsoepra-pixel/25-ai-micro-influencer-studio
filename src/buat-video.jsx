@@ -51,7 +51,9 @@ export function modelDefault(models, inf) {
   const avatarModel = avatars.find((m) => m.prompt_field) || avatars[0] || null;
   const video = modelHidup(all.filter((m) => m.multishot_field).sort(byEffectivePrice));
   const videoModel = video[0] || null;
-  return { imgModel, ttsModel, avatarModel, videoModel };
+  // Suara klon Kling ikut ke video multi-shot (elements) — tarifnya bisa lain.
+  const suaraKlon = !!voice.kling_voice_id && videoModel?.multishot_field !== "prompt";
+  return { imgModel, ttsModel, avatarModel, videoModel, suaraKlon };
 }
 
 // Perkiraan biaya dalam USD. Ditulis "≈" di layar karena yang ditagih adalah
@@ -62,8 +64,8 @@ export function perkiraanUsd(jenis, md, { seconds, chars = 0, shots = [] }) {
       + estimateFor(md.avatarModel, { seconds });
   }
   const perShot = md.videoModel?.unit === "per_second"
-    ? shots.reduce((s, x) => s + estimateFor(md.videoModel, { seconds: x }), 0)
-    : estimateFor(md.videoModel) * (shots.length || 1);
+    ? shots.reduce((s, x) => s + estimateFor(md.videoModel, { seconds: x, suaraKlon: md.suaraKlon }), 0)
+    : estimateFor(md.videoModel, { suaraKlon: md.suaraKlon }) * (shots.length || 1);
   return estimateFor(md.imgModel) + perShot;
 }
 
@@ -417,7 +419,7 @@ function Rincian({ jenis, md, detik, shots }) {
     : [["Gambar pembuka", estimateFor(md.imgModel),
         "Gambar diam untuk adegan pertama; model video mewajibkannya sebagai frame awal, dan wajahmu dikunci dari sini."],
        [`Video ${shots.length} adegan ≈ ${detik} detik`, md.videoModel?.unit === "per_second"
-         ? shots.reduce((s, x) => s + estimateFor(md.videoModel, { seconds: x }), 0) : estimateFor(md.videoModel),
+         ? shots.reduce((s, x) => s + estimateFor(md.videoModel, { seconds: x, suaraKlon: md.suaraKlon }), 0) : estimateFor(md.videoModel, { suaraKlon: md.suaraKlon }),
         "Satu video utuh berisi semua adegan, dibuat sekali jalan. Ditagih per detik yang dihasilkan."]];
   const total = baris.reduce((s, [, v]) => s + v, 0);
   return (
