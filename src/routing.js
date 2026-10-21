@@ -80,10 +80,37 @@ export const recordSentence = (m) => {
   return `${awal}${ekor}`;
 };
 
+// Model yang tidak pernah jadi. Batasnya dua percobaan, ATAU satu penolakan
+// policy: penolakan konten provider (mis. ByteDance menolak foto wajah
+// fotorealistis — Seedance 2.x reference-to-video, Sep 2026) tidak akan lulus
+// dengan dicoba ulang, jadi satu kali sudah cukup bukti.
+//
+// Tidak dibuang dari katalog — operator tetap bisa memilihnya dengan sengaja,
+// dan badge ⚠ di pemilih model sudah memberi tahu rekamannya. Yang dicegah
+// hanya model mati menjadi PILIHAN BAWAAN: dulu Storyboard memilih model
+// termurah, yaitu Seedance 2.0 Mini Reference, sehingga aksi berbayar pertama
+// orang baru selalu gagal.
+export const isDeadModel = (m) => {
+  if ((Number(m?.succeeded) || 0) > 0) return false;
+  return (Number(m?.attempts) || 0) >= 2 || (Number(m?.failed_policy) || 0) >= 1;
+};
+
+// Saringan untuk memilih bawaan: buang model mati, KECUALI kalau semuanya mati
+// — lebih baik pilihan dengan badge ⚠ daripada layar yang tidak bisa dipakai.
+// Aturan pilihan di pemanggil (mis. "yang menerima banyak foto dulu") tetap
+// berjalan di atas daftar hasil saringan.
+export const modelHidup = (list) => {
+  const hidup = (list || []).filter((m) => !isDeadModel(m));
+  return hidup.length ? hidup : (list || []);
+};
+
 // Urutan dalam satu kelompok: harga panggilan DIKALI pengali percobaan.
 // Model yang selalu jadi naik, model yang sering harus diulang turun.
+// Model mati selalu di bawah: pengali percobaannya tidak terdefinisi (0 jadi),
+// jadi tanpa aturan ini ia dihitung 1× dan bisa naik ke baris teratas.
 export const byEffectivePrice = (a, b) =>
-  effectiveCost(a, a.est_price_usd) - effectiveCost(b, b.est_price_usd);
+  (isDeadModel(a) - isDeadModel(b))
+  || effectiveCost(a, a.est_price_usd) - effectiveCost(b, b.est_price_usd);
 
 // Perkiraan biaya satu job untuk sebuah model. Satu tempat, karena rumusnya
 // berbeda per satuan dan menyalinnya berarti dua tempat yang cepat atau lambat

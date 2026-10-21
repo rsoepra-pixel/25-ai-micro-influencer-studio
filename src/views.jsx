@@ -264,7 +264,7 @@ function StartHere({ d }) {
       tip: "Karakter AI-mu. Bisa dibantu AI dari beberapa pertanyaan pendek atau dari foto.",
     },
     {
-      ok: s.refs > 0, href: pertama ? `/influencers/${pertama.id}` : "/influencers", judul: "Tambah foto Identity Kit",
+      ok: s.refs > 0, href: pertama ? `/influencers/${pertama.id}` : "/influencers", judul: "Tambah foto wajah",
       tip: "Foto acuan wajah. Tanpa ini, wajah influencer berganti di setiap gambar dan video.",
     },
     {
@@ -272,12 +272,15 @@ function StartHere({ d }) {
       tip: "Tanpa suara, Video UGC ditolak di langkah audio. Klon suara dari rekaman di halaman detail influencer.",
     },
     {
-      ok: s.products > 0, href: "/products", judul: "Simpan produk di Product Kit",
-      tip: "Perlu kalau kamu membuat video endorse (Video UGC). Foto produk asli, bukan hasil AI.",
+      ok: s.products > 0, href: "/products", judul: "Simpan foto produk (kalau mau endorse)",
+      tip: "Hanya perlu untuk video yang membicarakan produk. Pakai foto produk asli, bukan hasil AI.",
     },
     {
-      ok: s.done > 0, href: "/ugc", judul: "Buat video pertama",
-      tip: "Video UGC: bicara ke kamera tentang produk. Storyboard: satu ide, beberapa shot. Keduanya memakai saldo.",
+      // Ke wizard Buat Video, bukan /ugc: /ugc adalah alat untuk yang sudah
+      // terbiasa (tiga tombol berbayar terpisah), dan checklist ini dibaca
+      // orang yang belum pernah membuat video sama sekali.
+      ok: s.done > 0, href: "/buat-video", judul: "Buat video pertama",
+      tip: "Jawab beberapa pertanyaan, lihat harganya dalam rupiah, lalu videonya dibuat. Memakai saldo.",
     },
     s.social === null ? null : {
       ok: s.social.length > 0, href: "/settings?tab=koneksi", judul: "Hubungkan akun Instagram/TikTok",
@@ -389,7 +392,7 @@ export function Dashboard({ ws, tick }) {
           {d.jobs.length ? d.jobs.map((j) => (
             <div key={j.id} className="row mb2" style={{ justifyContent: "space-between", border: "1px solid var(--border)", borderRadius: 10, padding: "6px 10px" }}>
               <span className="small">{j.status === "failed" ? "✕ " : j.status === "succeeded" ? "✓ " : "● "}{TYPE_LABELS[j.task]}</span>
-              <span className="tiny muted">{hargaLabel(j.cost_actual_usd ?? j.cost_estimate_usd)}</span>
+              <span className="tiny muted">{biayaJobLabel(j)}</span>
             </div>
           )) : <Empty text="Belum ada hasil generate." cta="Buka Studio" href="/studio" />}
         </Card>
@@ -453,7 +456,7 @@ const NICHE_IDEAS = [
     id: "skincare",
     label: "Skincare & Beauty",
     niche: "Skincare & beauty",
-    bioHint: "Reviewer skincare & beauty yang jujur dan approachable, suka membagikan rutinitas dan tips sesuai jenis kulit. Tidak memberi klaim medis — hanya pengalaman & preferensi pribadi.",
+    bioHint: "Reviewer skincare & beauty yang jujur dan approachable, suka membagikan rutinitas dan tips sesuai jenis kulit. Tidak memberi klaim medis — fokus ke cara pakai, tekstur, dan preferensi, bukan hasil yang dijanjikan.",
   },
   {
     id: "kuliner",
@@ -465,40 +468,40 @@ const NICHE_IDEAS = [
     id: "fitness",
     label: "Fitness & Wellness",
     niche: "Fitness & wellness harian",
-    bioHint: "Berbagi rutinitas olahraga dan gaya hidup sehat sehari-hari. Tidak memberi klaim medis/kesehatan spesifik — hanya rutinitas & motivasi pribadi.",
+    bioHint: "Berbagi rutinitas olahraga dan gaya hidup sehat sehari-hari. Tidak memberi klaim medis/kesehatan spesifik — fokus ke contoh gerakan, rutinitas, dan motivasi.",
   },
   {
     id: "finance",
     label: "Keuangan Pribadi",
     niche: "Keuangan pribadi & budgeting",
-    bioHint: "Tips menabung dan mengatur keuangan untuk anak muda. PENTING: verifikasi aturan OJK soal konten finansial (\"finfluencer\") sebelum publikasi apa pun yang bisa dibaca sebagai saran investasi.",
+    bioHint: "Tips menabung dan mengatur keuangan untuk anak muda. Edukasi umum, bukan saran investasi — tidak merekomendasikan produk investasi atau menjanjikan hasil.",
     warning: "Perlu riset regulasi OJK dulu sebelum publikasi live",
   },
   {
     id: "fashion",
     label: "Fashion & OOTD",
     niche: "Fashion & styling (thrift/local brand)",
-    bioHint: "Inspirasi outfit sehari-hari, mix-and-match thrift & brand lokal, styling tips dengan budget terjangkau. Beda fokus dari skincare — di sini soal pakaian & gaya, bukan rutinitas kulit.",
+    bioHint: "Inspirasi outfit sehari-hari, mix-and-match thrift & brand lokal, styling tips dengan budget terjangkau.",
   },
   {
     id: "comedy",
     label: "Komedi & Skit Sehari-hari",
     niche: "Komedi & skit relatable",
-    bioHint: "Skit lucu tentang situasi sehari-hari yang relatable (kerja, keluarga, pertemanan). Fokus ke humor situasional & caption, bukan timing komedi yang rumit — lebih mudah dieksekusi konsisten untuk karakter AI.",
+    bioHint: "Skit lucu tentang situasi sehari-hari yang relatable (kerja, keluarga, pertemanan). Fokus ke humor situasional dan caption yang kena.",
     warning: "Niche performa terbaik di Indonesia, tapi timing komedi lebih sulit dieksekusi AI secara konsisten — mulai dari humor situasional yang sederhana",
   },
   {
     id: "tech",
     label: "Tech & Gadget Review",
     niche: "Tech & gadget review",
-    bioHint: "Review gadget, HP, dan aplikasi dengan bahasa yang mudah dipahami, bukan cuma buat yang paham teknis. Konten terstruktur (unboxing, perbandingan, tips) — rendah risiko kepatuhan.",
+    bioHint: "Review gadget, HP, dan aplikasi dengan bahasa yang mudah dipahami, bukan cuma buat yang paham teknis. Konten terstruktur: unboxing, perbandingan, dan tips.",
     warning: "Niche kuat secara global, tapi belum saya verifikasi data spesifik untuk pasar Indonesia",
   },
   {
     id: "travel",
     label: "Travel & Staycation Lokal",
     niche: "Travel & staycation domestik",
-    bioHint: "Rekomendasi staycation, hidden gem lokal, dan tips liburan hemat di dalam negeri. Konten visual yang variatif dan mudah dimonetisasi lewat partner pariwisata/hospitality.",
+    bioHint: "Rekomendasi staycation, hidden gem lokal, dan tips liburan hemat di dalam negeri. Konten visual yang variatif, dari kamar hotel sampai jajanan setempat.",
     warning: "Niche kuat secara global, tapi belum saya verifikasi data spesifik untuk pasar Indonesia",
   },
 ];
@@ -1834,6 +1837,18 @@ export const UNIT_SUFFIX = { per_image: "/gambar", per_second: "/detik", per_1k_
 export const priceLabel = (n) => hargaLabel(n);
 export const byPrice = (a, b) => Number(a.est_price_usd) - Number(b.est_price_usd);
 
+// Biaya satu job di daftar riwayat. Job gagal tidak pernah ditagih — pemakaian
+// baru dicatat ke ledger saat job 'succeeded' (lihat 0048) — tapi dulu baris
+// gagal tetap menampilkan estimasinya (mis. "Rp 21.600"), sehingga orang
+// mengira saldonya terpotong dan berhenti mencoba. Job yang masih berjalan
+// diberi "≈ … (ditahan)" karena angkanya belum final.
+export function biayaJobLabel(j) {
+  if (j.status === "failed" || j.status === "canceled") return "Rp 0 · tidak ditagih";
+  if (j.cost_actual_usd != null) return hargaLabel(j.cost_actual_usd);
+  if (j.status === "queued" || j.status === "running") return `${hargaLabel(j.cost_estimate_usd)} (ditahan)`;
+  return hargaLabel(j.cost_estimate_usd);
+}
+
 // Aturan pemilihan model hidup di src/routing.js (tanpa React, supaya bisa
 // diuji sendiri). Di-export ulang dari sini karena ugc.jsx dan storyboard.jsx
 // sudah mengimpornya lewat views.jsx.
@@ -2511,7 +2526,7 @@ export function Studio({ ws, refresh, tick, mode, query }) {
                     <Badge tone={statusTone(j.status)}>{STATUS_LABELS[j.status]}</Badge>
                     {j.error && <div className="tiny" style={{ color: "var(--err)", maxWidth: 220 }} title={j.error}>{j.error.slice(0, 80)}</div>}
                   </td>
-                  <td>{hargaLabel(j.cost_actual_usd ?? j.cost_estimate_usd)}</td>
+                  <td>{biayaJobLabel(j)}</td>
                   <td>{j.output_url ? <a href={j.output_url} target="_blank" rel="noreferrer" style={{ color: "var(--blue-strong)", fontWeight: 600 }}>Buka →</a> : "—"}</td>
                   <td style={{ whiteSpace: "nowrap" }}>
                     <button type="button" className="btn btn2 tiny" style={{ padding: "4px 9px", marginRight: 6 }}

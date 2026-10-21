@@ -426,6 +426,16 @@ biaya, dan tautan hasil. **Label tab ini membawa jumlah job yang masih
 berjalan**, supaya kamu tidak menekan Generate lagi karena mengira yang pertama
 tidak terkirim.
 
+Kolom biaya: job **gagal atau batal** tertulis **"Rp 0 · tidak ditagih"** —
+pemakaian baru dicatat ke saldo saat job berhasil. Job yang masih berjalan
+diberi "(ditahan)" karena angkanya masih perkiraan.
+
+**Model bawaan tidak pernah model yang mati.** Model yang belum pernah berhasil
+setelah 2 percobaan, atau pernah ditolak provider karena isinya (mis. Seedance
+2.x Reference untuk wajah fotorealistis), dilewati saat memilih bawaan di Buat
+Video, Video UGC, dan Storyboard, dan selalu ditaruh paling bawah di pemilih
+model. Ia tetap bisa dipilih manual — badge ⚠ menjelaskan rekamannya.
+
 Tiga tombol per baris:
 
 - **Jejak** — membuka apa yang sebenarnya dikirim ke provider: prompt akhir,

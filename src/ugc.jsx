@@ -35,6 +35,7 @@ import { LibraryPicker } from "./library.jsx";
 import { useProducts, NewProduct } from "./products.jsx";
 import { waitForJob } from "./storyboard.jsx";
 import { Info } from "./tips.jsx";
+import { modelHidup } from "./routing.js";
 
 export const PLATFORMS = [
   ["tiktok", "TikTok"],
@@ -162,7 +163,7 @@ function NewProject({ ws, influencers, products, onProductCreated, onCreated }) 
   const [infId, setInfId] = useState("");
   const [productId, setProductId] = useState("");
   const [platform, setPlatform] = useState("tiktok");
-  const [seconds, setSeconds] = useState(12);
+  const [seconds, setSeconds] = useState(15);
   const [idea, setIdea] = useState("");
   const [script, setScript] = useState("");
   const [tpl, setTpl] = useState(null);
@@ -398,8 +399,9 @@ function plan({ project, inf, product, refCount, models }) {
   // Gambar: penjaga wajah yang menerima banyak referensi (supaya foto produk
   // ikut) lebih diutamakan daripada yang termurah.
   const imgModels = all.filter((m) => m.task === "image" && m.keeps_identity && m.provider === "fal").sort(byPrice);
+  const imgHidup = modelHidup(imgModels);
   const imgModel = all.find((m) => m.id === project.image_model_id)
-    || imgModels.find((m) => m.ref_image_multi) || imgModels[0] || null;
+    || imgHidup.find((m) => m.ref_image_multi) || imgHidup[0] || null;
   // Suara: TTS yang influencer ini punya voice id-nya. Tanpa voice id, server
   // menolak job TTS atas nama influencer — jadi lebih baik ketahuan di sini.
   const voice = (inf?.voice || {});
@@ -409,8 +411,9 @@ function plan({ project, inf, product, refCount, models }) {
   // Avatar: termurah yang menerima prompt gaya; SadTalker (tanpa prompt, kaku)
   // tetap bisa dipilih manual untuk draft.
   const avatarModels = all.filter(isAvatarModel).sort(byPrice);
+  const avatarHidup = modelHidup(avatarModels);
   const avatarModel = all.find((m) => m.id === project.avatar_model_id)
-    || avatarModels.find((m) => m.prompt_field) || avatarModels[0] || null;
+    || avatarHidup.find((m) => m.prompt_field) || avatarHidup[0] || null;
 
   const seconds = estSeconds(project.script);
   const blockers = [];
