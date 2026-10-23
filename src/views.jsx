@@ -5088,7 +5088,7 @@ export function Settings({ ws, refresh, tick, spend, spendError, query }) {
             pernah ditagih fal (job yang ditolak 422 tidak pernah dirender),
             jadi bacalah sebagai "uang yang nyaris keluar", bukan tagihan. */}
         <table>
-          <thead><tr><th>Model</th><th>Task</th><th>Provider</th><th>Tier</th><th>Harga (USD/unit)</th><th>Rekaman</th><th>Terbuang</th></tr></thead>
+          <thead><tr><th>Model</th><th>Task</th><th>Provider</th><th>Tier</th><th>Harga (USD/unit)</th><th>Rekaman</th><th data-tip="Jumlah estimasi job yang gagal. Tidak ditagih ke pelanggan — pemakaian baru dicatat saat job berhasil.">Estimasi gagal</th></tr></thead>
           <tbody>
             {models.map((m) => (
               <tr key={m.id}>
@@ -5109,7 +5109,7 @@ export function Settings({ ws, refresh, tick, spend, spendError, query }) {
                         {Number(m.succeeded)}/{Number(m.attempts)} jadi
                       </span>}
                 </td>
-                <td className="tiny muted">{Number(m.wasted_usd) > 0 ? usd(Number(m.wasted_usd)) : "—"}</td>
+                <td className="tiny muted">{Number(m.failed_estimate_usd ?? m.wasted_usd) > 0 ? usd(Number(m.failed_estimate_usd ?? m.wasted_usd)) : "—"}</td>
               </tr>
             ))}
           </tbody>

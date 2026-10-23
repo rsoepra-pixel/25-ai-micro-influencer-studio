@@ -5,7 +5,7 @@
 // contoh yang dikarang agar lulus.
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { nextTierUp, estimateFor, triesPerResult, byEffectivePrice, isDeadModel, modelHidup } from "./routing.js";
+import { nextTierUp, estimateFor, triesPerResult, byEffectivePrice, isDeadModel, modelHidup, hargaSatuan } from "./routing.js";
 
 const M = (o) => ({ attempts: 0, succeeded: 0, keeps_identity: false, ...o });
 
@@ -149,4 +149,17 @@ test("modelHidup + byEffectivePrice: bawaan multi-shot jatuh ke Kling 3, bukan S
 test("modelHidup: kalau semua mati, daftar asli dikembalikan (layar tetap bisa dipakai)", () => {
   const semuaMati = [M({ id: "a", attempts: 2 }), M({ id: "b", attempts: 3 })];
   assert.equal(modelHidup(semuaMati).length, 2);
+});
+
+// ---------- Tarif suara hasil klon (0057) ----------
+// Kling 3 Pro: $0,168/detik, $0,196/detik bila voice_id ikut. Sebelum operator
+// mengisi voice_price_usd, harga yang tampil tidak boleh berubah.
+test("hargaSatuan: tarif suara klon hanya bila diisi dan suaranya ikut", () => {
+  const k3 = M({ est_price_usd: 0.168, unit: "per_second" });
+  assert.equal(hargaSatuan(k3, { suaraKlon: true }), 0.168);
+  const k3v = { ...k3, voice_price_usd: 0.196 };
+  assert.equal(hargaSatuan(k3v, { suaraKlon: true }), 0.196);
+  assert.equal(hargaSatuan(k3v, { suaraKlon: false }), 0.168);
+  assert.ok(Math.abs(estimateFor(k3v, { seconds: 10, suaraKlon: true }) - 1.96) < 1e-9);
+  assert.ok(Math.abs(estimateFor(k3v, { seconds: 10 }) - 1.68) < 1e-9);
 });

@@ -25,7 +25,7 @@ import { ModelPicker, byPrice, priceLabel, Badge, useQuery, unwrap, recordBadge,
 import { LibraryPicker } from "./library.jsx";
 import { Info } from "./tips.jsx";
 import { POLA_CERITA, biayaNaskahLabel } from "./harga.js";
-import { modelHidup } from "./routing.js";
+import { modelHidup, hargaSatuan } from "./routing.js";
 
 const PLATFORMS = [
   ["tiktok", "TikTok"],
@@ -1070,9 +1070,12 @@ function StepProduksi({ board, shots, inf, refCount, models, mode, frameReady, p
   // harus mengikuti model yang benar-benar akan menagih.
   const maxSec = modelMaxSeconds(vidModel);
   const fit = fitShotDurations(shots.map((s) => Number(s.seconds) || 5), maxSec);
+  // Suara klon hanya ikut ke model yang memakai elements (Kling), bukan ke
+  // Seedance reference-to-video — sama dengan syarat di generate.
+  const suaraKlon = r.voiceReady && vidModel?.multishot_field !== "prompt";
   const videoCost = vidModel?.unit === "per_second"
-    ? (Number(vidModel.est_price_usd) || 0) * fit.total
-    : Number(vidModel?.est_price_usd) || 0;
+    ? hargaSatuan(vidModel, { suaraKlon }) * fit.total
+    : hargaSatuan(vidModel, { suaraKlon });
   const total = frameCost + videoCost;
   const blocked = !!r.blockers.length || !imgModel || !vidModel;
 

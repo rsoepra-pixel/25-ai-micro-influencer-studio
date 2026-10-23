@@ -736,6 +736,8 @@ async function runTool(name: string, args: Record<string, unknown>, ctx: Ctx) {
       // menjalankan generate_media. Perkiraan yang memakai harga panggilan
       // saja pernah meleset 8 kali lipat — Kling v3 Pro butuh 8 job untuk
       // menghasilkan 1 video, dan yang disebut ke user cuma biaya job pertama.
+      // (7 dari 8 itu ternyata bug bentuk permintaan kita sendiri dan tidak
+      // ditagih; pengali yang dipakai karena itu `tries_per_result_fair`.)
       let q = admin.from("provider_models_ranked")
         //
         // `duration_values` dan `extra_input` ikut dikembalikan supaya klien
@@ -745,7 +747,15 @@ async function runTool(name: string, args: Record<string, unknown>, ctx: Ctx) {
         // cuma punya 4/6/8 baru ketahuan di tagihan (generate memilihkan nilai
         // terdekat, bukan menolak). Dibutuhkan skill video klip-demi-klip di
         // `.claude/skills/_shared/pipeline-video-studio.md`.
-        .select("id,model_key,label,task,provider,est_price_usd,unit,description,keeps_identity,init_image_field,ref_image_field,ref_image_multi,duration_field,duration_values,extra_input,audio_field,prompt_field,voice_field,requires_key,attempts,succeeded,failed_input,failed_policy,failed_config,failed_provider,tries_per_result_fair,usd_per_result,last_success_at")
+        //
+        // `select("*")` lalu dipilih di bawah, BUKAN daftar kolom di query:
+        // kolom 0057 (voice_price_usd, usd_per_result_billed) baru ada setelah
+        // migrasinya dijalankan manual, sedangkan fungsi ini ter-deploy otomatis
+        // saat merge. Kolom yang belum ada di daftar query membuat list_models
+        // error total; kolom yang belum ada di objek cuma undefined. View-nya
+        // sendiri sudah daftar putih kolom (0049), jadi `*` tidak membocorkan
+        // apa pun dari tabel katalog.
+        .select("*")
         .eq("active", true).order("task").order("est_price_usd");
       if (typeof args.task === "string") q = q.eq("task", args.task);
       const { data, error } = await q;
@@ -753,7 +763,21 @@ async function runTool(name: string, args: Record<string, unknown>, ctx: Ctx) {
       // Rekaman mentah tetap ikut, tapi kesimpulannya ditulis sebagai kalimat.
       // Angka `tries_per_result_fair: 1.33` gampang dibaca sekilas sebagai
       // "bagus" — kalimat yang menyebut penyebutnya tidak bisa.
-      const rows = (data || []).map((m) => {
+      const KOLOM = [
+        "id", "model_key", "label", "task", "provider", "est_price_usd", "unit", "description", "keeps_identity",
+        "init_image_field", "ref_image_field", "ref_image_multi", "duration_field", "duration_values", "extra_input",
+        "audio_field", "prompt_field", "voice_field", "requires_key", "attempts", "succeeded", "failed_input",
+        "failed_policy", "failed_config", "failed_provider", "tries_per_result_fair", "last_success_at",
+        "voice_price_usd",
+      ];
+      const rows = (data || []).map((full: Record<string, unknown>) => {
+        const m: Record<string, unknown> = Object.fromEntries(KOLOM.map((k) => [k, full[k] ?? null]));
+        // Biaya per hasil dari yang DITAGIH (0057). `usd_per_result` lama ikut
+        // menghitung estimasi job gagal — yang tidak ditagih ke siapa pun —
+        // sehingga Kling 3 Pro tampil $10,64 per video padahal $1,34, dan klien
+        // MCP menjauhi satu-satunya model yang mengunci wajah dan suara.
+        // Sebelum migrasinya dijalankan, angka lama dipakai apa adanya.
+        m.usd_per_result = full.usd_per_result_billed ?? full.usd_per_result ?? null;
         const tries = Number(m.attempts) || 0;
         const okJobs = Number(m.succeeded) || 0;
         const mult = Number(m.tries_per_result_fair);

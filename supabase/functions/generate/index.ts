@@ -2700,9 +2700,16 @@ Deno.serve(async (req) => {
         }
         mergeExtra(input, model.extra_input);
 
-        const est = model.unit === "per_second"
-          ? Number(model.est_price_usd) * fitted.total
+        // Suara hasil klon (voice_id di elements) ditagih fal dengan tarif lain:
+        // Kling 3 Pro $0,196/detik, bukan $0,168. Tarifnya dari katalog
+        // (voice_price_usd, 0057) — kosong = tetap est_price_usd, jadi tidak
+        // ada harga pelanggan yang berubah sebelum operator mengisinya.
+        // Estimasi ini juga yang menjadi cost_actual_usd saat job selesai.
+        const voicePrice = Number((model as Record<string, unknown>).voice_price_usd);
+        const unitPrice = voiceId && !promptMultishot && Number.isFinite(voicePrice) && voicePrice > 0
+          ? voicePrice
           : Number(model.est_price_usd);
+        const est = model.unit === "per_second" ? unitPrice * fitted.total : unitPrice;
 
         if (mode === "live" && est > 0) {
           if ((await billingMode(ws)) === "credit") {

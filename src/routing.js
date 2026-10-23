@@ -112,6 +112,17 @@ export const byEffectivePrice = (a, b) =>
   (isDeadModel(a) - isDeadModel(b))
   || effectiveCost(a, a.est_price_usd) - effectiveCost(b, b.est_price_usd);
 
+// Harga per satuan yang benar-benar ditagih. Bila suara hasil klon diikat ke
+// job dan katalog punya tarifnya (voice_price_usd, 0057 — mis. Kling 3 Pro
+// $0,196/detik dengan voice_id, bukan $0,168), tarif itu yang dipakai — sama
+// persis dengan estimasi di generate/index.ts, yang menjadi tagihannya. Tanpa
+// ini layar menyebut harga lebih rendah dari yang ditagih.
+export const hargaSatuan = (m, { suaraKlon = false } = {}) => {
+  const suara = Number(m?.voice_price_usd);
+  if (suaraKlon && Number.isFinite(suara) && suara > 0) return suara;
+  return Number(m?.est_price_usd) || 0;
+};
+
 // Perkiraan biaya satu job untuk sebuah model. Satu tempat, karena rumusnya
 // berbeda per satuan dan menyalinnya berarti dua tempat yang cepat atau lambat
 // tidak lagi sama.
@@ -120,8 +131,8 @@ export const byEffectivePrice = (a, b) =>
 // DIHASILKAN model, bukan yang diminta (lihat pickDuration() di
 // generate/index.ts — minta 5 detik ke Veo, yang keluar 6 detik, dan 6 detik
 // itu yang dibayar). Karena itu angkanya selalu ditulis dengan "≈".
-export const estimateFor = (m, { seconds = 5, chars = 0 } = {}) => {
-  const harga = Number(m?.est_price_usd) || 0;
+export const estimateFor = (m, { seconds = 5, chars = 0, suaraKlon = false } = {}) => {
+  const harga = hargaSatuan(m, { suaraKlon });
   if (m?.unit === "per_second") return harga * (Number(seconds) || 5);
   if (m?.unit === "per_1k_chars") return (harga * (Number(chars) || 500)) / 1000;
   return harga;
