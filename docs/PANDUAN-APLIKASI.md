@@ -532,19 +532,27 @@ ditentukan produknya (produk yang tidak terikat tempat — ebook, kursus,
 aplikasi, jasa — tidak boleh memakai home office), dan lima latar terakhir
 influencer yang sama dikirim sebagai daftar yang tidak boleh diulang.
 
-Tiga job berbayar berurutan:
+Tiga job berbayar, dua persetujuan:
 
 | # | Job | Kisaran biaya | Dari |
 |---|---|---|---|
-| 1 | Gambar kunci | ≈ $0,03 | Wajah Identity Kit + produk Product Kit |
-| 2 | Audio | ≈ $0,02 | Naskah dibacakan suara influencer |
-| 3 | Video avatar | ≈ $0,5–2 | Gambar kunci + audio |
+| 1a | Gambar kunci | ≈ $0,03 | Wajah Identity Kit + produk Product Kit |
+| 1b | Audio | ≈ $0,02 | Naskah dibacakan suara influencer |
+| 2 | Video avatar | ≈ $0,5–2 | Gambar kunci + audio |
 
-**Jedanya ada di antara 1 dan 2, dan itu disengaja.** Kemasan produk adalah
-bagian yang paling sering meleset: label berubah, botol berganti bentuk. Model
-gambar tidak menjamin itu meski diberi foto asli. Mengulang gambar $0,03 sampai
-benar jauh lebih murah daripada membayar video $1,60 dari gambar yang produknya
-salah. Setelah gambar disetujui, audio dan video jalan dalam satu persetujuan.
+**Pratinjau (1a + 1b) dibuat bersamaan dan ditinjau di satu layar.** Kemasan
+produk adalah bagian yang paling sering meleset: label berubah, botol berganti
+bentuk, dan model gambar tidak menjamin itu meski diberi foto asli. Suara adalah
+hal pertama yang membuat penonton merasa "ini AI". Keduanya murah dan tidak
+saling butuh, jadi tidak ada alasan menunggu gambar selesai sebelum suaranya
+dibuat. Masing-masing bisa diulang sendiri (Ulang gambar / Ulang suara).
+Video (bagian mahal) baru bisa dibuat setelah dua-duanya ada, dengan tombolnya
+sendiri.
+
+Dari wizard **Buat Video**, tombol terakhir berbunyi "Ya, buat pratinjau · ≈ Rp …"
+dan pratinjaunya langsung berangkat begitu layar produksi terbuka — tanpa klik
+kedua. Persetujuan itu dipakai sekali: memuat ulang halaman atau bolak-balik ke
+langkah Naskah tidak mengirim job baru.
 
 Langkahnya sama-sama tiga: **Naskah → Produksi → Hasil**.
 
@@ -947,7 +955,7 @@ lewat tool MCP yang sama: keyframe (gambar) → klip (image-to-video) → narasi
 
 - Production Studio → Generate, dan Character sheet
 - Storyboard → frame pembuka, video, lembar
-- Video UGC → gambar kunci, audio, video avatar
+- Video UGC → pratinjau (gambar kunci + audio, bersamaan), lalu video avatar
 - Naik kelas di riwayat job
 
 **Memakai uang (provider teks — ≈ Rp 40 per naskah):**

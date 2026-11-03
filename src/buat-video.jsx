@@ -162,8 +162,10 @@ export function BuatVideo({ ws, refresh, tick }) {
   }
 
   // Menyimpan = membuat baris yang sama dengan formulir UGC/Storyboard, lalu
-  // membuka alurnya. Produksi (dan persetujuan gambar kunci yang murah) tetap
-  // di sana; wizard ini berhenti sebelum uang pertama untuk media keluar.
+  // membuka alurnya. Untuk UGC, tombolnya sekaligus persetujuan pratinjau
+  // (gambar + suara, bagian murah) yang langsung berangkat di layar produksi;
+  // video tetap disetujui di sana. Untuk cerita, wizard berhenti sebelum uang
+  // pertama untuk media keluar.
   async function buat() {
     setErr(null); setBusy("Menyimpan…");
     try {
@@ -177,7 +179,10 @@ export function BuatVideo({ ws, refresh, tick }) {
         }).select("id").single();
         if (error) throw new Error(error.message);
         refresh();
-        window.location.hash = `#/ugc?project=${row.id}`;
+        // `pratinjau=1`: tombol yang ditekan menyebut harga pratinjau, jadi
+        // gambar dan suaranya langsung dibuat di layar produksi. Videonya
+        // (bagian mahal) tetap menunggu tombolnya sendiri di sana.
+        window.location.hash = `#/ugc?project=${row.id}&pratinjau=1`;
       } else {
         const d = draft.storyboard;
         const { data: board, error: e1 } = await supa.from("storyboards").insert({
@@ -196,6 +201,11 @@ export function BuatVideo({ ws, refresh, tick }) {
       }
     } catch (e) { setErr(e.message); setBusy(null); }
   }
+
+  // Harga yang disetujui tombol "Ya" di jalur UGC: gambar + suara saja.
+  // Rumus yang sama dengan baris pertama dan kedua di <Rincian>.
+  const usdPratinjau = jenis === "ugc" && draft?.ugc
+    ? estimateFor(md.imgModel) + estimateFor(md.ttsModel, { chars: estSeconds(draft.ugc.script) * 14 }) : 0;
 
   const idx = LANGKAH.findIndex((l) => l.key === langkah);
   const bisaLanjut = langkah === "apa" ? ide.trim().length > 3 : langkah === "siapa" ? penghalang.length === 0 : true;
@@ -392,15 +402,16 @@ export function BuatVideo({ ws, refresh, tick }) {
           <div className="row" style={{ gap: 8, flexWrap: "wrap" }}>
             <button type="button" className="btn" disabled={!!busy} onClick={buat}
               data-tip={jenis === "ugc"
-                ? "Menyimpan proyek ini dan membuka layar produksi. Di sana gambar pertama dibuat dulu (bagian termurah) dan kamu melihatnya sebelum suara dan video dibayar."
-                : "Menyimpan storyboard ini dan membuka layar produksi. Di sana gambar pembuka dibuat dulu (bagian termurah) dan kamu melihatnya sebelum videonya dibayar."}>{busy || "Ya, buat video ini"}</button>
+                ? "Menyimpan proyek ini, lalu langsung membuat gambar pertama dan suaramu (bagian murah) bersamaan. Kamu melihat dan mendengarnya dulu; videonya baru dibuat setelah kamu menekan tombolnya sendiri."
+                : "Menyimpan storyboard ini dan membuka layar produksi. Di sana gambar pembuka dibuat dulu (bagian termurah) dan kamu melihatnya sebelum videonya dibayar."}>{busy || (jenis === "ugc" ? `Ya, buat pratinjau · ≈ ${hargaLabel(usdPratinjau)}` : "Ya, buat video ini")}</button>
             <button type="button" className="btn btn2" disabled={!!busy} onClick={susun}
               data-tip={`Minta naskah versi lain dari cerita yang sama. ${TIP_PENULIS_AI}`}>Tulis ulang{biayaNaskahLabel()}</button>
             <button type="button" className="btn btn2" disabled={!!busy} onClick={() => setLangkah("panjang")} data-tip="Ubah durasi. Naskah yang sudah ditulis dibuang.">← Kembali</button>
           </div>
           <p className="tiny muted mt2">
-            Sesudah ini kamu masuk ke layar produksi: gambar pertama dibuat dulu (murah) dan kamu melihatnya sebelum
-            {jenis === "ugc" ? " suara dan video" : " videonya"} dibayar. Naskah masih bisa diubah di sana.
+            {jenis === "ugc"
+              ? "Sesudah ini gambar pertama dan suaramu dibuat bersamaan (bagian murah), lalu kamu melihat dan mendengarnya di satu layar. Video baru dibayar setelah kamu setuju. Naskah masih bisa diubah di sana."
+              : "Sesudah ini kamu masuk ke layar produksi: gambar pertama dibuat dulu (murah) dan kamu melihatnya sebelum videonya dibayar. Naskah masih bisa diubah di sana."}
           </p>
         </div>
       )}
