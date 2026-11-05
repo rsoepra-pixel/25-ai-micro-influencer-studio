@@ -31,8 +31,22 @@
 # netlify.toml sendiri TIDAK dikecualikan. Berkas ini berisi aturan redirect
 # yang menentukan endpoint MCP, OAuth, dan link pendek — mengubahnya tanpa
 # deploy berarti aturan barunya tidak pernah berlaku.
+#
+# KENAPA ADA `merge-base --is-ancestor` DI DEPANNYA. Versi pertama hanya
+# `git diff`, dan selama Okt–Nov 2026 lima merge berturut-turut (#87–#92) tidak
+# pernah sampai ke produksi: Netlify mencatat "Canceled build due to no content
+# change", frontend dideploy manual, dan tidak ada yang tahu kenapa. Ternyata
+# CACHED_COMMIT_REF bukan commit produksi terakhir, melainkan build TERAKHIR
+# APA PUN — termasuk deploy preview PR. Dengan squash merge, commit di main
+# punya isi yang sama persis dengan kepala branch PR yang baru saja dibangun
+# sebagai preview, jadi diff-nya kosong dan build produksi dilewati. Commit
+# preview itu tidak pernah menjadi leluhur commit main (squash membuat commit
+# baru), jadi pemeriksaan leluhur memisahkan kedua kasus: kalau cache datang
+# dari tempat lain, bangun; kalau dari main sebelumnya, baru diff yang memutuskan.
+# Diuji pada riwayat nyata: cache = preview #92 → bangun; cache = main sebelum
+# #92 → bangun (ada perubahan frontend); cache kosong → bangun (kode 128).
 [build]
-  ignore = "git diff --quiet $CACHED_COMMIT_REF $COMMIT_REF -- . ':!supabase' ':!*.md'"
+  ignore = "git merge-base --is-ancestor $CACHED_COMMIT_REF $COMMIT_REF && git diff --quiet $CACHED_COMMIT_REF $COMMIT_REF -- . ':!supabase' ':!*.md'"
 
 # Routing Netlify untuk endpoint MCP + OAuth.
 #

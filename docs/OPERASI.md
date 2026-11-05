@@ -302,6 +302,11 @@ pencatatan ke `text_usage` tetap jalan.
 
 ### Frontend
 Netlify membangun `src/` otomatis setiap merge ke `main`.
+Commit yang hanya menyentuh `supabase/` atau berkas `.md` sengaja dilewati
+(lihat `ignore` di `netlify.toml`). Kalau sebuah merge frontend tercatat
+"Canceled build due to no content change" di daftar deploy Netlify, itu bug —
+bukan tanda aman — dan perbaiki pemeriksaannya; untuk sementara, deploy dari
+dashboard Netlify → Deploys → Trigger deploy.
 
 ### Edge function
 GitHub Actions (`.github/workflows/deploy-functions.yml`) memasang fungsi yang
