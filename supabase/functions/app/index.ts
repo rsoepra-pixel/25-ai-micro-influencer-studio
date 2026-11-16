@@ -85,7 +85,33 @@ const PLATFORM_SETTABLE: Record<string, "secret" | "plain"> = {
   // AI" di halaman Tim & Kursi: pemakaian sungguhan, bukan tebakan.
   text_price_per_1k_in_usd: "plain",
   text_price_per_1k_out_usd: "plain",
+  // Kontak bantuan/isi saldo yang dibaca SEMUA pelanggan lewat aksi
+  // `support_contact`. Bukan rahasia — justru harus terlihat di sini supaya
+  // operator melihat persis apa yang dilihat pelanggan. Nomornya konfigurasi,
+  // bukan kode: nomor siapa dan jam berapa adalah keputusan pemilik, dan
+  // selama belum diisi (baris tidak ada) tombol "Isi saldo / Butuh bantuan"
+  // di klien tersembunyi — nilai netral, bukan nomor tebakan yang
+  // mengarahkan pelanggan ke WhatsApp orang yang salah.
+  support_whatsapp: "plain",
+  support_hours: "plain",
 };
+
+// Nomor WhatsApp dalam bentuk yang diterima wa.me: hanya angka, kode negara
+// di depan, tanpa "+". Operator (atau SQL) wajar mengetik "0812-3456 7890"
+// atau "+62 812…"; wa.me menolak keduanya dan pelanggan yang menekan tombol
+// cuma melihat halaman "nomor tidak valid" — tanpa jalan lain menghubungi
+// kita. Awalan "0" diasumsikan nomor Indonesia (62).
+//
+// Mengembalikan null untuk yang kosong ATAU yang tetap bukan nomor setelah
+// dibersihkan (mis. diisi lewat SQL dengan huruf): tombol yang tersembunyi
+// lebih jujur daripada tombol yang membuka wa.me ke nomor rusak.
+// E.164 paling panjang 15 digit; di bawah 8 hampir pasti salah ketik.
+function normalizeWhatsapp(raw: string | undefined | null): string | null {
+  let n = String(raw ?? "").replace(/[\s\-().]/g, "").replace(/^\+/, "");
+  if (!n) return null;
+  if (n.startsWith("0")) n = "62" + n.slice(1);
+  return /^\d{8,15}$/.test(n) ? n : null;
+}
 
 // Operator platform, BUKAN owner workspace.
 //
@@ -626,6 +652,25 @@ Deno.serve(async (req) => {
           }),
         });
       }
+      if (body.action === "support_contact") {
+        // Siapa pun yang login boleh membaca — pelanggan yang saldonya habis
+        // justru yang paling butuh. Karena itu yang dibaca HANYA dua key ini,
+        // disebut satu per satu, bukan daftar PLATFORM_SETTABLE: key lain di
+        // sana (kurs, margin, kunci provider) tidak ada urusannya dengan
+        // pelanggan, dan menambah key baru ke daftar itu kelak tidak boleh
+        // diam-diam membuatnya terbaca dari sini.
+        await requireUser(req);
+        // readConfig melempar kalau gagal baca: lebih baik klien melihat
+        // error dan mencoba lagi daripada mengira nomornya belum diisi lalu
+        // menyembunyikan tombol bantuan saat orang sedang butuh.
+        const cfg = await readConfig(["support_whatsapp", "support_hours"]);
+        const hours = (cfg.get("support_hours") || "").trim();
+        return json({
+          ok: true,
+          whatsapp: normalizeWhatsapp(cfg.get("support_whatsapp")),
+          hours: hours || null,
+        });
+      }
       if (body.action === "set_platform_config") {
         const c = await requirePlatformAdmin(req);
         const key = String(body.key || "");
@@ -637,8 +682,21 @@ Deno.serve(async (req) => {
           await admin.from("service_config").delete().eq("key", key);
           return json({ ok: true, key, cleared: true });
         }
-        const value = raw.trim();
-        if (PLATFORM_SETTABLE[key] === "plain") {
+        let value = raw.trim();
+        // Dua key kontak ini teks bebas, bukan angka — tanpa cabang sendiri
+        // keduanya jatuh ke pemeriksaan angka di bawah dan ditolak dengan
+        // "Nilainya harus angka." untuk "+62 812-…" atau "Senin–Jumat 09.00".
+        if (key === "support_whatsapp") {
+          const n = normalizeWhatsapp(value);
+          if (!n) {
+            throw new Error("Nomor WhatsApp tidak valid. Tulis seperti 0812-3456-7890 atau +62 812 3456 7890.");
+          }
+          // Disimpan dalam bentuk yang sudah dinormalkan supaya yang terbaca
+          // operator di sini sama dengan yang dipakai tombol pelanggan.
+          value = n;
+        } else if (key === "support_hours") {
+          if (value.length > 120) throw new Error("Jam layanan terlalu panjang — cukup satu baris, mis. \"Senin–Jumat 09.00–17.00 WIB\".");
+        } else if (PLATFORM_SETTABLE[key] === "plain") {
           const n = Number(value);
           if (!Number.isFinite(n) || n < 0) throw new Error("Nilainya harus angka.");
           if (key === "margin_pct" && n >= 100) throw new Error("Margin harus di bawah 100%.");
