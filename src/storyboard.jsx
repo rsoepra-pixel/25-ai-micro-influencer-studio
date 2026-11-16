@@ -27,6 +27,7 @@ import { Info } from "./tips.jsx";
 import { POLA_CERITA, biayaNaskahLabel } from "./harga.js";
 import { modelHidup, hargaSatuan } from "./routing.js";
 import { jenisGagal, kalimatGagal, bacaGagal, catatGagal, hapusGagal } from "./gagal.js";
+import { TombolBagikan, namaBerkasDari } from "./bagikan.jsx";
 
 const PLATFORMS = [
   ["tiktok", "TikTok"],
@@ -1400,9 +1401,12 @@ function StepHasil({ board, shots, inf, models, setStep }) {
             {fit.total} detik · {shots.length} shot{inf ? ` · ${inf.name}` : ""} · juga tersimpan di Drive
           </div>
           <div className="row" style={{ flexWrap: "wrap", gap: 6 }}>
+            {/* Storyboard tidak punya caption sendiri — logline/narasi itu naskah,
+                bukan teks di bawah postingan — jadi share sheet dibuka tanpa teks. */}
+            <TombolBagikan url={board.video_url} namaBerkas={namaBerkasDari(inf?.name, board.title)} />
             <a className="btn btn2" href={board.video_url} download target="_blank" rel="noreferrer" data-tip="Simpan berkas videonya ke perangkatmu.">Unduh video</a>
             <button className="btn btn2" onClick={() => setStep("produksi")} data-tip="Kembali ke Produksi untuk membuat ulang video ini dengan gambar pembuka yang sama.">Buat ulang</button>
-            <button className="btn" onClick={() => setVersiOpen((v) => !v)}
+            <button className="btn btn2" onClick={() => setVersiOpen((v) => !v)}
               data-tip="Salin storyboard ini jadi versi baru. Gambar pembuka dipakai ulang (gratis, wajah tetap sama); hanya videonya yang nanti dibayar lagi.">
               {versiOpen ? "Tutup" : "Buat versi lain"}
             </button>

@@ -117,7 +117,7 @@ const NAV_RINGKAS = [
   ["/drive", "📁 Karya", "Semua video, gambar, dan suara yang sudah jadi."],
   ["/planner", "🗓️ Rencana", "Jadwal konten dan tempat memposting ke sosial."],
   ["/reports", "📊 Laporan", "Apa yang sudah tayang, dan uangnya ke mana."],
-  ["/settings", "⚙️ Pengaturan", "Akun, tim, koneksi sosial, Claude (MCP)."],
+  ["/settings", "⚙️ Pengaturan", "Akun, tim, Claude (MCP)."],
 ];
 const NAV = [
   ["/", "🏠 Dashboard", "Ringkasan workspace dan langkah awal kalau kamu baru mulai."],
@@ -132,7 +132,7 @@ const NAV = [
   ["/reports", "📊 Laporan", "Apa yang sudah tayang, dan uangnya ke mana."],
   ["/tasks", "✅ Tasks", "Daftar kerja tim. Tidak terhubung ke produksi maupun saldo."],
   ["/drive", "📁 Drive", "Semua hasil produksi: gambar, video, dan suara."],
-  ["/settings", "⚙️ Settings", "Akun, tim, koneksi sosial, Claude (MCP), dan pustaka prompt."],
+  ["/settings", "⚙️ Settings", "Akun, tim, Claude (MCP), dan pustaka prompt."],
 ];
 
 // Lencana mode di kartu saldo. "live"/"mock" adalah istilah operator; bagi

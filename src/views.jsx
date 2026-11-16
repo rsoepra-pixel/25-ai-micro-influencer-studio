@@ -9,6 +9,27 @@ import { hargaLabel, biayaNaskahLabel } from "./harga.js";
 
 const linkBtn = { background: "none", border: "none", padding: 0, cursor: "pointer", fontWeight: 700, fontSize: 11 };
 
+// ---------- Koneksi akun sosial: dimatikan ----------
+//
+// Keputusan pemilik 16 Nov 2026: menghubungkan Instagram/TikTok (OAuth +
+// publish) tidak ditawarkan ke siapa pun untuk sementara, operator juga.
+// Alasannya:
+//   - mode live mengharuskan tiap pelanggan punya Meta Developer app sendiri —
+//     mustahil bagi pengguna Meta Business Suite biasa;
+//   - jalur yang benar-benar bisa dicapai pelanggan cuma mock, dan mock
+//     memalsukan "berhasil" tanpa ada yang tayang;
+//   - app Meta/TikTok tingkat platform berarti review berminggu-minggu;
+//   - publikasi memang manual sejak awal, dan orang toh mengunggah dari galeri
+//     HP-nya sendiri.
+// Link pendek tetap jalan tanpa koneksi apa pun, jadi atribusi klik per konten
+// tidak hilang.
+//
+// Yang disembunyikan: kartu SocialConnections di Settings → Koneksi, tombol
+// "Publish ke sosial" di Content Planner, dan langkah "hubungkan akun" di
+// kartu Mulai dari sini. Komponennya tidak dihapus — menyalakan lagi cukup
+// membalik flag ini (dan mengembalikan langkah di StartHere kalau perlu).
+const KONEKSI_SOSIAL_AKTIF = false;
+
 // ---------- Hapus media ----------
 //
 // Menghapus media bisa berakhir dengan tiga cara, dan orangnya harus tahu yang
@@ -251,6 +272,12 @@ function TabStrip({ current, onGo, tabs, hints }) {
 // Setiap langkah dihitung dari data workspace, bukan dicentang manual, jadi
 // daftar ini tidak bisa berbohong dan menghilang sendiri begitu semuanya
 // beres. Langkah yang statusnya tidak bisa diketahui (null) disembunyikan.
+//
+// Langkah "Hubungkan akun Instagram/TikTok" dihapus (16 Nov 2026, lihat
+// KONEKSI_SOSIAL_AKTIF): koneksinya tidak ditawarkan, jadi langkah itu tidak
+// akan pernah bisa dicentang dan kartu ini tidak akan pernah hilang. Lima
+// langkah di bawah cukup sampai video pertama; mempostingnya dilakukan sendiri
+// dari galeri.
 function StartHere({ d }) {
   const s = d.start;
   const pertama = d.inf[0];
@@ -282,11 +309,7 @@ function StartHere({ d }) {
       ok: s.done > 0, href: "/buat-video", judul: "Buat video pertama",
       tip: "Jawab beberapa pertanyaan, lihat harganya dalam rupiah, lalu videonya dibuat. Memakai saldo.",
     },
-    s.social === null ? null : {
-      ok: s.social.length > 0, href: "/settings?tab=koneksi", judul: "Hubungkan akun Instagram/TikTok",
-      tip: "Supaya konten bisa diposting dari Content Planner. Posting selalu atas perintahmu, tidak otomatis.",
-    },
-  ].filter(Boolean);
+  ];
   const selesai = langkah.filter((l) => l.ok).length;
   if (selesai === langkah.length) return null;
   return (
@@ -326,7 +349,7 @@ function StartHere({ d }) {
 // ---------- Dashboard ----------
 export function Dashboard({ ws, tick }) {
   const [d, reload, error] = useQuery(async () => {
-    const [inf, jobs, items, assets, tasks, refs, products, done, social] = await Promise.all([
+    const [inf, jobs, items, assets, tasks, refs, products, done] = await Promise.all([
       supa.from("influencers").select("id,name,status,avatar_url,voice").order("created_at").limit(25),
       supa.from("production_jobs").select("*").order("created_at", { ascending: false }).limit(5),
       supa.from("content_items").select("id,title,status").order("created_at", { ascending: false }).limit(5),
@@ -339,15 +362,10 @@ export function Dashboard({ ws, tick }) {
       // tapi langkahnya berbunyi "buat video pertama".
       supa.from("production_jobs").select("id", { count: "exact", head: true })
         .eq("status", "succeeded").in("task", ["video", "lipsync"]),
-      // Token akun sosial ada di tabelnya, jadi dibaca lewat edge function,
-      // bukan langsung. Kalau gagal, langkahnya disembunyikan — "belum" yang
-      // sebenarnya "tidak tahu" akan menyuruh orang menghubungkan ulang akun
-      // yang sudah terhubung.
-      callSocial({ action: "list_connections" }).then((r) => r.connections || []).catch(() => null),
     ]);
     return {
       inf: unwrap(inf), jobs: unwrap(jobs), items: unwrap(items), assets: unwrap(assets), tasks: unwrap(tasks),
-      start: { refs: refs.count || 0, products: products.count || 0, done: done.count || 0, social },
+      start: { refs: refs.count || 0, products: products.count || 0, done: done.count || 0 },
     };
   }, [ws.id, tick]);
   if (!d) return error ? <div className="msg-err">Gagal memuat dashboard: {error}</div> : <div className="muted">Memuat…</div>;
@@ -3054,7 +3072,11 @@ export function Planner({ ws, refresh, tick }) {
       supa.from("content_pillars").select("*, influencers(name)").order("created_at"),
       supa.from("content_items").select("*, influencers(name)").order("scheduled_date", { ascending: true }),
       supa.from("influencers").select("id,name").order("name"),
-      callSocial({ action: "list_connections" }).catch(() => ({ connections: [] })),
+      // Selama koneksi sosial dimatikan, edge function-nya tidak dipanggil sama
+      // sekali: daftar kosong membuat tombol Publish tidak muncul.
+      KONEKSI_SOSIAL_AKTIF
+        ? callSocial({ action: "list_connections" }).catch(() => ({ connections: [] }))
+        : Promise.resolve({ connections: [] }),
       supa.from("publish_jobs").select("*, content_items(title)").order("created_at", { ascending: false }).limit(20),
       // Media kandidat untuk layar publish. Diambil di sini supaya form publish
       // bisa menunjukkan file mana yang akan diposting — sebelumnya server yang
@@ -3272,7 +3294,9 @@ export function Planner({ ws, refresh, tick }) {
                     <AiDraftPanel item={c} onClose={() => setAiDraftId(null)}
                       onSaved={() => { setAiDraftId(null); reload(); }} />
                   )}
-                  {d.conns.length > 0 && (
+                  {/* Tanpa flag, tombol ini hanya bisa "berhasil" di mode mock —
+                      orang mengira kontennya tayang padahal tidak. */}
+                  {KONEKSI_SOSIAL_AKTIF && d.conns.length > 0 && (
                     publishOpenId === c.id ? (
                       <form onSubmit={(e) => doPublish(e, c)} className="mt2" style={{ borderTop: "1px solid var(--border)", paddingTop: 8 }}>
                         <select name="connection_id" className="input mb1" style={{ fontSize: 11, padding: "3px 6px" }} required defaultValue="">
@@ -3337,6 +3361,10 @@ export function Planner({ ws, refresh, tick }) {
       </div>
       )}
 
+      {/* Tetap tampil kalau ada riwayat lama, supaya percobaan sebelum koneksi
+          dimatikan tidak lenyap diam-diam; workspace tanpa riwayat tidak perlu
+          melihat kartu untuk fitur yang tidak ditawarkan. */}
+      {(KONEKSI_SOSIAL_AKTIF || d.jobs.length > 0) && (
       <div className="card p6 mt4">
         <div className="bold mb1">Riwayat Publish</div>
         <p className="tiny muted mb3">Percobaan publish ke Instagram/TikTok terbaru (mock atau live).</p>
@@ -3360,6 +3388,7 @@ export function Planner({ ws, refresh, tick }) {
           </table>
         ) : <div className="small muted">Belum ada percobaan publish.</div>}
       </div>
+      )}
     </div>
   );
 }
@@ -5027,7 +5056,9 @@ const SETTINGS_HINTS = {
   akun: "Password, langganan, saldo, dan batas belanja bulanan.",
   tim: "Undang anggota, lihat pemakaian per orang, atur jatah kredit.",
   provider: "Penulis AI dan batas biaya bulanan.",
-  koneksi: "Instagram/TikTok, Google Calendar, Claude (MCP), dan link pendek.",
+  koneksi: KONEKSI_SOSIAL_AKTIF
+    ? "Instagram/TikTok, Google Calendar, Claude (MCP), dan link pendek."
+    : "Claude (MCP), Google Calendar, dan link pendek.",
   pustaka: "Contoh prompt siap pakai per kategori. Gratis — tidak memanggil AI.",
   katalog: "Operator: harga model. Harga ini yang ditagih ke semua pelanggan.",
   pelanggan: "Operator platform: akses, saldo, dan webhook pembayaran pelanggan.",
@@ -5168,7 +5199,8 @@ export function Settings({ ws, refresh, tick, spend, spendError, query }) {
           tidak membukanya. */}
       {shownTab === "koneksi" && (<>
         <McpSettings ws={ws} tick={tick} />
-        <SocialConnections ws={ws} tick={tick} query={query} />
+        {/* Disembunyikan, bukan dihapus — lihat KONEKSI_SOSIAL_AKTIF. */}
+        {KONEKSI_SOSIAL_AKTIF && <SocialConnections ws={ws} tick={tick} query={query} />}
         <CalendarConnection ws={ws} tick={tick} query={query} />
         <LinksCard ws={ws} tick={tick} />
       </>)}
