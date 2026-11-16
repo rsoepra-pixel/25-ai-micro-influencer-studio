@@ -45,8 +45,18 @@
 # dari tempat lain, bangun; kalau dari main sebelumnya, baru diff yang memutuskan.
 # Diuji pada riwayat nyata: cache = preview #92 → bangun; cache = main sebelum
 # #92 → bangun (ada perubahan frontend); cache kosong → bangun (kode 128).
+#
+# ...dan itu BELUM cukup. Merge #93 sendiri (yang mengubah berkas ini) tetap
+# dibatalkan "no content change". Dari semua nilai cache yang mungkin, hanya
+# satu yang membuat pemeriksaan di atas keluar 0 untuk commit itu:
+# CACHED_COMMIT_REF SAMA DENGAN COMMIT_REF — diff sebuah commit dengan dirinya
+# sendiri selalu kosong. Dugaan kami: Netlify mengisinya begitu saat tidak ada
+# cache build yang bisa dipakai (produksi terakhir datang dari unggahan
+# manual, bukan build). Jadi "cache = commit ini" diperlakukan sebagai "tidak
+# tahu pembandingnya" → bangun. Begitu satu build produksi sungguhan berhasil,
+# cache-nya ada lagi dan commit khusus supabase/ kembali dilewati.
 [build]
-  ignore = "git merge-base --is-ancestor $CACHED_COMMIT_REF $COMMIT_REF && git diff --quiet $CACHED_COMMIT_REF $COMMIT_REF -- . ':!supabase' ':!*.md'"
+  ignore = "[ \"$CACHED_COMMIT_REF\" != \"$COMMIT_REF\" ] && git merge-base --is-ancestor $CACHED_COMMIT_REF $COMMIT_REF && git diff --quiet $CACHED_COMMIT_REF $COMMIT_REF -- . ':!supabase' ':!*.md'"
 
 # Routing Netlify untuk endpoint MCP + OAuth.
 #
