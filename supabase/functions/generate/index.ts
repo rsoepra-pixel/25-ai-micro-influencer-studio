@@ -255,15 +255,32 @@ async function textConfig(ws: string) {
 // Ditaruh di sini — bukan di tiap cabang aksi `write` — karena ini SATU-SATUNYA
 // tempat provider teks benar-benar dihubungi. Cabang baru apa pun yang menulis
 // lewat chat() ikut tercatat tanpa perlu ingat menambahkannya.
+//
+// `meta.platformKey` / `meta.model` hanya untuk asisten bantuan (lihat aksi
+// `bantuan_tanya`). Keduanya BUKAN saklar uang: yang memutuskan siapa yang
+// membayar tetap `text_precheck`/`charge_text` dari `purpose` (0059). Kunci
+// operator dipakai karena bantuan dibayar operator, dan workspace baru masih
+// `byo_key` tanpa kunci teks — tanpa ini justru pendatang baru, yang paling
+// sering bertanya, tidak bisa bertanya sama sekali.
 async function chat(
   ws: string,
-  meta: { actor: string | null; purpose: string },
+  meta: { actor: string | null; purpose: string; model?: string; platformKey?: boolean },
   system: string,
   user: string,
   photos?: string[],
   maxTokens = 1200,
 ): Promise<string> {
   const cfg = await textConfig(ws);
+  if (meta.platformKey) {
+    // Kunci operator adalah kunci DashScope, jadi provider/base URL milik
+    // workspace (mis. Kimi atau base URL sendiri) diabaikan juga: kunci
+    // operator yang dikirim ke Moonshot hanya menghasilkan 401.
+    cfg.key = await platformSecret(PLATFORM_KEYS["text_api_key"]);
+    cfg.base = TEXT_PRESETS.qwen.base;
+    cfg.model = TEXT_PRESETS.qwen.model;
+    if (!cfg.key) throw new Error("Asisten bantuan belum aktif — hubungi admin.");
+  }
+  if (meta.model) cfg.model = meta.model;
   if (!cfg.key) throw new Error("API key penulis AI belum dipasang — isi di Settings → Penulis AI.");
   if (!cfg.base || !cfg.model) throw new Error("Base URL / model penulis AI belum lengkap.");
   const withPhotos = Array.isArray(photos) && photos.length > 0;
@@ -280,8 +297,13 @@ async function chat(
   // Gerbang SEBELUM provider dihubungi. Sesudahnya sudah terlambat: uangnya
   // keluar begitu permintaan terkirim, dan menolak di belakang berarti orangnya
   // membayar untuk naskah yang tidak pernah ia terima.
+  // `purpose` HANYA dikirim untuk panggilan yang dibayar operator: parameter
+  // keempat baru ada sejak migrasi 0059, dan migrasi dijalankan manual. Kalau
+  // fungsi ini terpasang sebelum migrasinya, yang rusak cuma asisten bantuan
+  // — bukan semua penulis AI berbayar. Dari purpose itu database memakai batas
+  // per menit, bukan gerbang saldo/jatah.
   const { error: gateErr } = await admin.rpc("text_precheck", {
-    ws, uid: meta.actor, max_tokens: maxTokens,
+    ws, uid: meta.actor, max_tokens: maxTokens, ...(meta.platformKey ? { purpose: meta.purpose } : {}),
   });
   if (gateErr) throw new Error(gateErr.message);
 
@@ -2142,6 +2164,103 @@ Deno.serve(async (req) => {
               : "Belum ada model video aktif di katalog.",
           },
         });
+      }
+      case "bantuan_tanya": {
+        // Asisten bantuan di dalam aplikasi (docs/SPEK-ASISTEN-BANTUAN.md).
+        // Biayanya ditanggung operator — keputusan itu ada di database
+        // (`text_operator_purposes`, 0059), di sini cukup menyebut purpose
+        // "bantuan". Hanya lewat JWT user: kunci internal tidak berwenang
+        // (INTERNAL_KEYS), dan tanpa pelaku batas per menit tidak bisa dihitung.
+        if (!actor) throw new Error("Bantuan hanya bisa dipakai setelah login.");
+        const pertanyaan = String(body.pertanyaan || "").trim().slice(0, 600);
+        if (!pertanyaan) throw new Error("Tulis dulu pertanyaannya.");
+        const k = (body.konteks && typeof body.konteks === "object" ? body.konteks : {}) as Record<string, unknown>;
+        const teks = (v: unknown, n: number) => (typeof v === "string" ? v.trim().slice(0, n) : "");
+        const layar = teks(k.layar, 200);
+        const langkah = teks(k.langkah, 200);
+        const gagal = teks(k.gagal_terakhir, 600);
+        const saldo = typeof k.saldo_usd === "number" && Number.isFinite(k.saldo_usd) ? k.saldo_usd : null;
+        const riwayat = (Array.isArray(k.riwayat) ? k.riwayat : []).slice(-6)
+          .map((r: Record<string, unknown>) => ({
+            peran: (r?.peran === "asisten" || r?.peran === "assistant") ? "asisten" : "user",
+            teks: teks(r?.teks, 600),
+          }))
+          .filter((r: { teks: string }) => r.teks);
+
+        // Pertanyaan lanjutan ("terus gimana?") tidak memuat kata kuncinya
+        // sendiri; kalau tidak menemukan apa pun, cari ulang bersama pertanyaan
+        // user sebelumnya dan nama layarnya.
+        type Artikel = { slug: string; judul: string; isi: string };
+        const cari = async (q: string): Promise<Artikel[]> => {
+          const { data, error } = await admin.rpc("cari_bantuan", { q, n: 5 });
+          if (error) throw new Error(`Basis pengetahuan bantuan tidak bisa dibaca: ${error.message}`);
+          return (data || []) as Artikel[];
+        };
+        let artikel = await cari(pertanyaan);
+        if (!artikel.length) {
+          const sebelumnya = [...riwayat].reverse().find((r: { peran: string }) => r.peran === "user")?.teks || "";
+          const q2 = [sebelumnya, pertanyaan, layar].filter(Boolean).join(" ");
+          if (q2 !== pertanyaan) artikel = await cari(q2);
+        }
+
+        // Model lebih murah dari penulis AI biasa: jawabannya pendek dan
+        // bahannya sudah disiapkan, sementara operator yang membayar setiap
+        // pertanyaan. Dibaca dari service_config supaya pemilik bisa
+        // menggantinya tanpa deploy. Bawaannya model preset (qwen-plus) yang
+        // sudah terbukti jalan; model lebih murah (mis. qwen-turbo) belum
+        // diverifikasi di akun DashScope ini — coba satu panggilan dulu, lalu
+        // isi bantuan_text_model di service_config.
+        const model = (await platformSecret("bantuan_text_model")) || TEXT_PRESETS.qwen.model;
+
+        const konteksBaris = [
+          layar && `- Layar yang sedang dibuka: ${layar}`,
+          langkah && `- Langkah yang sedang dikerjakan: ${langkah}`,
+          gagal && `- Kegagalan terakhir: ${gagal}`,
+          saldo !== null && `- Saldo: ${saldo.toFixed(2)} USD (untuk kamu pahami saja; jangan sebut angkanya — aplikasi menampilkannya dalam rupiah)`,
+        ].filter(Boolean).join("\n");
+        const bahan = artikel.length
+          ? artikel.map((a) => `### ${a.judul}\n${String(a.isi || "").slice(0, 1500)}`).join("\n\n")
+          : "(tidak ada artikel yang cocok)";
+
+        // Aturan "belum tahu" memakai kalimat pembuka yang PERSIS sama karena
+        // dari situ `tahu` dihitung — bahan menulis artikel baru. Larangan
+        // menulis naskah ada supaya bantuan gratis tidak jadi penulis AI gratis.
+        const system =
+          `Kamu asisten bantuan di dalam aplikasi AI Micro Influencer Studio.\n` +
+          `Aturan:\n` +
+          `1. Jawab HANYA dari artikel di bawah dan konteks pengguna. Jangan mengarang fitur, menu, atau langkah.\n` +
+          `2. Bahasa Indonesia santai tapi jelas, maksimal sekitar 120 kata. Kalau ada langkah, tulis sebagai daftar bernomor yang pendek.\n` +
+          `3. Tulis nama menu dan tombol persis seperti di artikel.\n` +
+          `4. Jangan pernah mengarang harga atau angka. Kalau ditanya harga, jelaskan bahwa harganya tampil di tombol sebelum apa pun ditagih.\n` +
+          `5. Kalau artikel tidak menjawab pertanyaannya, mulai jawaban PERSIS dengan "Saya belum tahu jawabannya." lalu sarankan menghubungi admin.\n` +
+          `6. Jangan menjanjikan refund atau pengembalian saldo.\n` +
+          `7. Jangan pernah meminta password, kode OTP, atau API key.\n` +
+          `8. Jangan menuliskan naskah, caption, hook, atau prompt untuk pengguna — arahkan ke tombol ✨ penulis AI di aplikasi.\n` +
+          (konteksBaris ? `\nKonteks pengguna:\n${konteksBaris}\n` : "") +
+          `\nArtikel:\n${bahan}`;
+        const user = [
+          ...riwayat.map((r: { peran: string; teks: string }) => `${r.peran === "asisten" ? "Asisten" : "Pengguna"}: ${r.teks}`),
+          `Pengguna: ${pertanyaan}`,
+        ].join("\n\n");
+
+        // Error precheck (mis. "Pertanyaannya terlalu cepat…") sudah kalimat
+        // untuk orangnya; dibiarkan naik apa adanya ke catch di bawah.
+        const jawaban = (await chat(ws, { actor, purpose: "bantuan", model, platformKey: true }, system, user, undefined, 400)).trim();
+        const belumTahu = jawaban.startsWith("Saya belum tahu");
+
+        // Catatan pertanyaan hanya bahan menulis artikel; gagal menyimpannya
+        // tidak boleh membuang jawaban yang sudah dibayar operator.
+        const { error: insErr } = await admin.from("help_questions").insert({
+          workspace_id: ws, created_by: actor, pertanyaan, layar: layar || null,
+          artikel: artikel.map((a) => a.slug), tahu: !belumTahu,
+        });
+        if (insErr) console.error("help_questions gagal disimpan", ws, insErr.message);
+
+        const sumber = artikel.map((a) => ({ slug: a.slug, judul: a.judul }));
+        // `artikel`/`tahu` = nama di spek, `sumber`/`belum_tahu` = nama di
+        // rencana PR 2; keduanya dikirim supaya widget tidak bergantung pada
+        // salah satunya.
+        return json({ ok: true, jawaban, sumber, belum_tahu: belumTahu, artikel: sumber, tahu: !belumTahu });
       }
       case "attach_refs": {
         // Daftarkan foto referensi ke Identity Kit influencer + pasang avatar bila kosong.

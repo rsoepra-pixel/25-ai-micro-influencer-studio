@@ -14,6 +14,7 @@ import { BuatVideo } from "./buat-video.jsx";
 import { Mulai, MulaiClaude } from "./mulai.jsx";
 import { TipLayer, Info } from "./tips.jsx";
 import { TombolIsiSaldo } from "./bantuan.jsx";
+import { AsistenBantuan } from "./bantuan-chat.jsx";
 
 // Token undangan dibaca SEKALI saat modul dimuat, sebelum apa pun sempat
 // membersihkan query string. Link-nya berbentuk `/?invite=...` (query, bukan
@@ -793,6 +794,10 @@ function App() {
         ))}
       </nav>
       <TipLayer />
+      {/* Sampai di sini session dan workspace pasti ada (login dan "Workspace
+          belum tersedia" sudah return lebih awal), jadi asisten tidak pernah
+          muncul di layar login. */}
+      <AsistenBantuan ws={ws} routePath={routePath} spend={spend} support={support} />
     </div>
   );
 }
