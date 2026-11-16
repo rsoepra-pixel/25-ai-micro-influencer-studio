@@ -4331,6 +4331,41 @@ function WriterPriceCard({ keys, onSave, busy }) {
   );
 }
 
+// Kontak bantuan / isi saldo.
+//
+// Nomor ini keputusan pemilik, jadi disimpan sebagai config, bukan ditulis di
+// kode. Kosong = tombol "Isi saldo / Butuh bantuan" tidak tampil ke pelanggan
+// (nilai netral, bukan nomor tebakan). Server yang menormalkan nomornya dan
+// menolak yang tidak valid; pesannya ditampilkan apa adanya lewat `save`.
+function KontakBantuanCard({ keys, onSave, busy }) {
+  const val = (k) => keys.find((x) => x.key === k)?.value || "";
+  return (
+    <div className="card p4 mb3" style={{ background: "var(--subtle)" }}>
+      <div className="row mb2" style={{ justifyContent: "space-between" }}>
+        <span className="bold small">Kontak bantuan pelanggan</span>
+        <Badge tone={val("support_whatsapp") ? "green" : "zinc"}>{val("support_whatsapp") ? "tombol tampil" : "tombol disembunyikan"}</Badge>
+      </div>
+      <div className="grid mb2" style={{ gridTemplateColumns: "1fr 1fr", gap: 10 }}>
+        <form onSubmit={(e) => onSave(e, "support_whatsapp")}>
+          <label className="label">Nomor WhatsApp bantuan / isi saldo</label>
+          <div className="row">
+            <input name="value" className="input" defaultValue={val("support_whatsapp")} placeholder="0812-3456-7890" />
+            <button className="btn" style={{ fontSize: 12 }} disabled={busy}>Simpan</button>
+          </div>
+        </form>
+        <form onSubmit={(e) => onSave(e, "support_hours")}>
+          <label className="label">Jam layanan</label>
+          <div className="row">
+            <input name="value" className="input" defaultValue={val("support_hours")} placeholder="Senin–Jumat 09.00–17.00 WIB" maxLength={120} />
+            <button className="btn" style={{ fontSize: 12 }} disabled={busy}>Simpan</button>
+          </div>
+        </form>
+      </div>
+      <div className="tiny muted">Kosong = tombol 'Isi saldo / Butuh bantuan' tidak tampil ke pelanggan.</div>
+    </div>
+  );
+}
+
 // Mesin promo. Yang membuatnya berguna bukan diskonnya, melainkan syarat
 // audiensnya — dan syarat yang salah ketik tidak pernah berbunyi, ia cuma
 // diam-diam tidak menembak siapa pun. Karena itu ada tombol pratinjau yang
@@ -4519,6 +4554,7 @@ function PlatformConfig({ st, reload }) {
       {msg && <div className={msg.includes("tersimpan") || msg.includes("dihapus") ? "msg-ok mb3" : "msg-err mb3"}>{msg}</div>}
       <PricingCard keys={st.keys || []} onSave={save} busy={busy} />
       <WriterPriceCard keys={st.keys || []} onSave={save} busy={busy} />
+      <KontakBantuanCard keys={st.keys || []} onSave={save} busy={busy} />
       {(st.keys || []).filter((k) => k.kind !== "plain").map((k) => (
         <div key={k.key} className="card p4 mb3" style={{ background: "var(--subtle)" }}>
           <div className="row mb1" style={{ justifyContent: "space-between" }}>
