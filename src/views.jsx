@@ -3721,7 +3721,10 @@ function SocialConnections({ ws, tick, query }) {
               <tr key={c.id}>
                 <td className="bold">{c.platform === "instagram" ? "Instagram" : "TikTok"}</td>
                 <td className="muted">{c.external_account_name || "—"}</td>
-                <td><Badge tone={c.provider_mode === "live" ? "green" : "zinc"}>{c.provider_mode}</Badge></td>
+                <td>
+                  <Badge tone={c.provider_mode === "live" ? "green" : "zinc"}>{c.provider_mode}</Badge>
+                  {c.provider_mode === "mock" && <> <Badge tone="amber">TIDAK DIPOSTING — koneksi uji coba</Badge></>}
+                </td>
                 <td className="tiny muted">{new Date(c.connected_at).toLocaleDateString("id-ID")}</td>
                 <td><button type="button" className="tiny" style={{ background: "none", border: "none", color: "var(--err)", fontWeight: 700, cursor: "pointer" }} onClick={() => disconnect(c.id)}>Putuskan</button></td>
               </tr>
