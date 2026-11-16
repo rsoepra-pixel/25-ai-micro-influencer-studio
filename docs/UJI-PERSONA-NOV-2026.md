@@ -251,3 +251,71 @@ diterima penyedia klon suara (`docs/PANDUAN-APLIKASI.md` §Profil mengaku belum
 diverifikasi); (b) ketidakcocokan harga jalur cerita untuk model multi-shot
 (`src/buat-video.jsx:68` vs `:433`) — agen tidak memastikan satuan model
 bawaan, perlu dicek dengan katalog hari ini.
+
+---
+
+## Tinjauan biaya vs manfaat (16 Nov 2026)
+
+Ditinjau oleh satu agen dengan peran desainer produk senior alat video AI,
+membaca laporan di atas dan kodenya. Estimasi untuk **satu** developer yang
+sudah kenal repo, ±50 %. Tidak ada aplikasi yang dijalankan.
+
+Tiga fakta kode yang membuat semua lebih mahal dari label "kecil/sedang" di
+atas: ≈790 `style={{…}}` inline di `src/` (media query tidak bisa menimpa
+inline style tanpa refactor atau `!important`); tidak ada tes React sama
+sekali; perubahan server lewat migrasi manual atau `generate/index.ts` 190 KB
+yang hanya bisa deploy via Actions.
+
+| Celah | Hari dev | Keputusan pemilik? | Manfaat | Putusan |
+|---|---|---|---|---|
+| 5a Laporan crash | 0,25–1 | Tidak | Terbukti dari kode | **Sekarang** |
+| 1 Layout ponsel (jalur uang saja) | 4–7 | Tidak | Jangkau → video pertama (hipotesis) | **Sekarang, dibatasi** |
+| 2 Pesan uang | 3–5 | Ya: kanal isi saldo / nomor WA | Lindungi pendapatan, kurangi support | **Klien sekarang, server minggu 3–4** |
+| 3 Tunggu & gagal | 2–3 dasar; +2–3 realtime; +3–5 push | Kanal push | Kepercayaan, pemakaian ulang | **Dasar sekarang; realtime nanti; push tunda** |
+| 4 Ulang bayar penuh | 2–4 | Ya: tarif model draf | Lindungi saldo | **Sekarang (penghalang + konfirmasi)** |
+| 5b Laporan dalam / mock sosial | 4–7 | Ya: app Meta platform | Kepercayaan owner, "tayang" jujur | **Label mock nanti; sisanya tunda** |
+| Bantuan 1 chip WA | 0,5–1 | Ya: nomor, jam layanan | Kanal support | **Sekarang** |
+| Bantuan 2 ⓘ → lembar bawah | 1–2 | Tidak | Pemahaman di HP | **Bersama celah 1** |
+| Bantuan 3 indikator global | masuk celah 3 | Tidak | — | **Nanti** |
+| Bantuan 4 diagnosa AI | 1–2 | Tidak | Hipotesis | **Tolak dulu** — petakan `job_failure_kind` (migrasi 0050) ke kalimat tetap, gratis dan deterministik |
+| Bantuan 5 chat MCP | 0 | Tidak | Pengguna didampingi | **Biarkan** |
+
+**Catatan per celah.**
+- Celah 1: risiko utama tertarik ke `views.jsx` (5.100 baris, 32 grid inline).
+  Batasi ke Beranda → Buat Video → UGC → Karya → Saldo; Settings/Studio/Drive
+  tetap desktop dulu. Klaim "3 dari 4 persona berhenti" adalah **inferensi
+  agen**, kolom 46 px-nya yang fakta.
+- Celah 2: biaya non-teknis — top-up manual adalah kerja operator yang tumbuh
+  per pelanggan selama Doku belum tersambung (`docs/OPERASI.md` §saldo).
+- Celah 3: `model_catalog` **tidak punya kolom durasi** (sudah dicek), jadi
+  "durasi tipikal" harus dihitung dari timestamp job. Alternatif murah untuk
+  realtime: poll global 20–30 detik di shell, tanpa migrasi.
+- Celah 4: `effectiveCost` menaikkan harga yang tampil — jujur, tapi bisa
+  menakuti. Konfirmasi sebelum ulang mungkin **menurunkan** belanja ulang.
+
+**Yang menurut peninjau salah atau kurang di laporan.**
+1. Tidak ada cara mengukur dirinya: setiap baris "Ukur:" memakai analitik yang
+   belum ada. Tambah log event minimal (satu tabel) di minggu 1.
+2. Pembayaran adalah langkah funnel sungguhan, bukan tombol. Norma UMKM
+   Indonesia adalah QRIS/e-wallet kredit instan; top-up manual menunda
+   berjam-jam tepat saat niat beli. Ini keputusan pemilik dan mungkin item
+   pendapatan nomor satu — laporan memasukkannya sebagai perbaikan UI.
+3. Realtime dan ETA dilebih-lebihkan. 2–6 menit untuk lipsync normal
+   (pengetahuan industri umum, bukan studi bernama); ETA yang **salah** lebih
+   merusak daripada tidak ada — tampilkan rentang. Polling sudah ada.
+4. Ponsel bukan cuma layout. Hasil harus keluar dari aplikasi: Web Share
+   "Kirim ke WhatsApp/TikTok" di layar hasil (`src/ugc.jsx:931`) lebih penting
+   dari "Unduh", dan ukuran berkas video di kuota prabayar nyata.
+
+**Rencana minimum, satu developer.**
+- *Minggu 1:* perbaiki crash Laporan + tes asap; log event; poller tampilkan
+  error + "tidak ditagih"; penghalang foto produk; konfirmasi sebelum beli
+  ulang video; cek saldo langkah 3 + kata "jatah 0"; chip WA kalau nomor ada.
+  Ukur: hit error boundary, banner gagal, pesan WA per topik.
+- *Minggu 2:* shell ponsel + jalur uang; tooltip lewat ketuk; Web Share di
+  layar hasil. **Lalu** uji 3–5 orang sungguhan di HP. Ukur: di mana berhenti,
+  Rp tampil = Rp terpotong?
+- *Minggu 3–4:* error uang terstruktur dalam rupiah (migrasi + Actions);
+  indikator job global via poll + judul tab; draf wizard di localStorage;
+  label "TIDAK DIPOSTING"; `effectiveCost`. Ukur: video kedua dalam 7 hari;
+  penolakan saldo vs top-up. Baru putuskan realtime, push, laporan besar.
