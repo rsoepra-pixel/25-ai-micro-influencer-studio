@@ -26,6 +26,7 @@ import { LibraryPicker } from "./library.jsx";
 import { Info } from "./tips.jsx";
 import { POLA_CERITA, biayaNaskahLabel } from "./harga.js";
 import { modelHidup, hargaSatuan } from "./routing.js";
+import { jenisGagal, kalimatGagal, bacaGagal, catatGagal, hapusGagal } from "./gagal.js";
 
 const PLATFORMS = [
   ["tiktok", "TikTok"],
@@ -756,7 +757,15 @@ function Stepper({ current, reached, onGo }) {
 // Diperiksa dulu SEBELUM tidur, karena job mode mock (dan sebagian provider)
 // sudah selesai saat submit menjawab — tidak perlu menunggu 5 detik untuk
 // hasil yang sudah ada.
-export async function waitForJob(jobId, { timeoutMs, every = 5000, onTick } = {}) {
+//
+// `tempat` dipakai di pesan batas waktu: fungsi ini juga dipanggil layar UGC,
+// dan "hasilnya akan muncul di storyboard ini" di sana menyuruh orang mencari
+// storyboard yang tidak pernah ia buat.
+//
+// Error karena job GAGAL membawa `jobGagal` (teks error dari server) supaya
+// pemanggil bisa membedakannya dari batas waktu — job yang lewat batas waktu
+// masih jalan dan tidak boleh dicatat sebagai gagal.
+export async function waitForJob(jobId, { timeoutMs, every = 5000, onTick, tempat = "storyboard ini" } = {}) {
   const deadline = Date.now() + timeoutMs;
   for (let n = 0; ; n++) {
     if (n > 0) {
@@ -767,11 +776,34 @@ export async function waitForJob(jobId, { timeoutMs, every = 5000, onTick } = {}
       .select("status, output_url, error").eq("id", jobId).maybeSingle();
     onTick?.(job, Math.round((Date.now() - (deadline - timeoutMs)) / 1000));
     if (job?.status === "succeeded" && job.output_url) return job.output_url;
-    if (job?.status === "failed") throw new Error(job.error || "Job gagal tanpa pesan.");
+    if (job?.status === "failed") {
+      const e = new Error(job.error || "Job gagal tanpa pesan.");
+      e.jobGagal = job.error || "";
+      throw e;
+    }
     if (Date.now() > deadline) {
-      throw new Error("Belum selesai setelah batas waktu. Job-nya tetap jalan dan hasilnya akan muncul di storyboard ini — buka lagi sebentar lagi.");
+      throw new Error(`Belum selesai setelah batas waktu. Job-nya tetap jalan dan hasilnya akan muncul di ${tempat} — buka lagi sebentar lagi.`);
     }
   }
+}
+
+// Peringatan di atas tombol sebuah slot yang percobaan terakhirnya gagal.
+// Tanpa ini, orang yang kembali setelah job-nya gagal hanya melihat "belum
+// dibuat" (poller sudah melepas job matinya) dan membayar lagi tanpa tahu
+// kenapa yang pertama gagal. Dipakai juga oleh layar UGC.
+//
+// "Tidak terpotong" aman diklaim: ledger hanya menagih saat job 'succeeded'
+// (0048, lihat komentar 0057 bagian rapor model) — job gagal tidak pernah
+// masuk ke credits_ledger.
+export function GagalTerakhir({ rec, label }) {
+  if (!rec) return null;
+  return (
+    <div className="msg-warn mb3">
+      ⚠ Percobaan terakhir{label ? ` (${label})` : ""} gagal — saldomu tidak terpotong.{" "}
+      {kalimatGagal(jenisGagal(rec.error))}{" "}
+      <a className="tiny" href="#/studio?tab=riwayat">Lihat riwayat →</a>
+    </div>
+  );
 }
 
 function BoardDetail({ id, models, influencers, mode, onBack, refresh }) {
@@ -780,6 +812,13 @@ function BoardDetail({ id, models, influencers, mode, onBack, refresh }) {
   const [err, setErr] = useState(null);
   const [refCount, setRefCount] = useState(0);
   const [step, setStep] = useState(null);
+  // Kegagalan terakhir per slot ("frame", "video"), dari poller maupun dari
+  // tombol yang ditunggu di halaman — dua jalur, satu catatan.
+  const kunciGagal = `sb:gagal:${id}`;
+  const [gagalTerakhir, setGagalTerakhir] = useState(() => bacaGagal(kunciGagal));
+  useEffect(() => { setGagalTerakhir(bacaGagal(kunciGagal)); }, [kunciGagal]);
+  const catatGagalSlot = (slot, error) => setGagalTerakhir(catatGagal(kunciGagal, slot, error));
+  const lupakanGagal = (slot) => setGagalTerakhir(hapusGagal(kunciGagal, slot));
 
   const load = useCallback(async () => {
     const [{ data: b }, { data: s }] = await Promise.all([
@@ -834,7 +873,7 @@ function BoardDetail({ id, models, influencers, mode, onBack, refresh }) {
     const timer = setInterval(async () => {
       await callGenerate({ action: "poll" }).catch(() => {});
       const { data: jobs } = await supa.from("production_jobs")
-        .select("id, status, output_url").in("id", pendingIds);
+        .select("id, status, output_url, error").in("id", pendingIds);
       if (!alive || !jobs?.length) return;
       for (const j of jobs) {
         // Job yang GAGAL harus dilepas dari storyboard, bukan dibiarkan
@@ -842,20 +881,26 @@ function BoardDetail({ id, models, influencers, mode, onBack, refresh }) {
         // tidak pernah hilang, effect ini mem-poll selamanya, dan tombol
         // Buat video memakai ulang job mati itu — ketahuan dari job 1a7b181b
         // (Seedance ditolak fal) yang membuat tombolnya langsung gagal lagi.
+        // Melepas id-nya saja menghapus satu-satunya jejak bahwa job ini
+        // pernah ada, jadi alasannya dicatat dulu untuk ditampilkan.
         if (j.status === "failed") {
           if (j.id === shots[0]?.image_job_id) {
+            catatGagalSlot("frame", j.error);
             await supa.from("storyboard_shots").update({ image_job_id: null }).eq("id", shots[0].id);
           }
           if (j.id === board?.video_job_id) {
+            catatGagalSlot("video", j.error);
             await supa.from("storyboards").update({ video_job_id: null }).eq("id", board.id);
           }
           continue;
         }
         if (j.status !== "succeeded" || !j.output_url) continue;
         if (j.id === shots[0]?.image_job_id) {
+          lupakanGagal("frame");
           await supa.from("storyboard_shots").update({ image_url: j.output_url }).eq("id", shots[0].id);
         }
         if (j.id === board?.video_job_id) {
+          lupakanGagal("video");
           await supa.from("storyboards").update({ video_url: j.output_url, status: "done" }).eq("id", board.id);
         }
       }
@@ -877,7 +922,7 @@ function BoardDetail({ id, models, influencers, mode, onBack, refresh }) {
 
   if (!board || !step) return <div className="card p6">Memuat storyboard…</div>;
 
-  const shared = { board, shots, inf, refCount, models, mode, patchShot, patchBoard, load, refresh, setErr, setStep };
+  const shared = { board, shots, inf, refCount, models, mode, patchShot, patchBoard, load, refresh, setErr, setStep, gagalTerakhir, catatGagalSlot, lupakanGagal };
 
   return (
     <div>
@@ -1044,7 +1089,7 @@ function StepNaskah({ board, shots, inf, refCount, models, patchShot, patchBoard
   );
 }
 
-function StepProduksi({ board, shots, inf, refCount, models, mode, frameReady, patchShot, patchBoard, load, refresh, setErr, setStep }) {
+function StepProduksi({ board, shots, inf, refCount, models, mode, frameReady, patchShot, patchBoard, load, refresh, setErr, setStep, gagalTerakhir = {}, catatGagalSlot, lupakanGagal }) {
   const r = readiness({ board, shots, inf, refCount, models });
   const imgModels = useMemo(() => (models || []).filter((m) => m.task === "image").sort(byPrice), [models]);
   const videoModels = useMemo(() => r.videoModels.slice().sort(byPrice), [models]); // eslint-disable-line
@@ -1113,8 +1158,10 @@ function StepProduksi({ board, shots, inf, refCount, models, mode, frameReady, p
       }
       const url = await waitForJob(jobId, { timeoutMs: 240000, onTick: (_, sec) => setRunning({ stage: "frame", sec }) });
       await patchShot(first.id, { image_url: url });
+      lupakanGagal?.("frame");
       await load();
     } catch (e) {
+      if (e.jobGagal !== undefined) catatGagalSlot?.("frame", e.jobGagal);
       setErr(e.message);
       await load();
     }
@@ -1123,6 +1170,8 @@ function StepProduksi({ board, shots, inf, refCount, models, mode, frameReady, p
 
   async function produce() {
     setErr(null);
+    // Slot mana yang sedang ditunggu, supaya kegagalan dicatat di tempat yang benar.
+    let tahap = "frame";
     try {
       // ---- 1. Frame pembuka (cadangan: kalau sampai di sini tanpa frame) ----
       const first = shots[0];
@@ -1143,10 +1192,12 @@ function StepProduksi({ board, shots, inf, refCount, models, mode, frameReady, p
         }
         const url = await waitForJob(jobId, { timeoutMs: 240000, onTick: (_, sec) => setRunning({ stage: "frame", sec }) });
         await patchShot(first.id, { image_url: url });
+        lupakanGagal?.("frame");
       }
       if (board.status === "draft") await patchBoard({ status: "producing" });
 
       // ---- 2. Video ----
+      tahap = "video";
       setRunning({ stage: "video", sec: 0 });
       let vJob = board.video_job_id;
       if (vJob && !board.video_url) {
@@ -1163,9 +1214,11 @@ function StepProduksi({ board, shots, inf, refCount, models, mode, frameReady, p
       }
       const vurl = await waitForJob(vJob, { timeoutMs: 900000, onTick: (_, sec) => setRunning({ stage: "video", sec }) });
       await patchBoard({ video_url: vurl, status: "done" });
+      lupakanGagal?.("video");
       refresh?.();
       setStep("hasil");
     } catch (e) {
+      if (e.jobGagal !== undefined) catatGagalSlot?.(tahap, e.jobGagal);
       setErr(e.message);
       await load();
     }
@@ -1236,6 +1289,9 @@ function StepProduksi({ board, shots, inf, refCount, models, mode, frameReady, p
             begitu jadi, kamu dipindah ke Hasil.
           </div>
         )}
+
+        {!running && !videoPending && needFrame && !frameReady && <GagalTerakhir rec={gagalTerakhir.frame} label="gambar pembuka" />}
+        {!running && !videoPending && !board.video_url && <GagalTerakhir rec={gagalTerakhir.video} label="video" />}
 
         {stageLabel ? (
           <div className="card p4" style={{ background: "var(--subtle)" }}>

@@ -174,7 +174,7 @@ export function Reports({ ws, tick }) {
       supa.from("content_pillars").select("id,name,color,target_ratio"),
       supa.from("content_items").select("id,title,status,scheduled_date,created_at,pillar_id,influencer_id,platform").limit(1000),
       supa.from("production_jobs").select("id,task,status,cost_actual_usd,cost_estimate_usd,influencer_id,created_at").limit(1000),
-      supa.from("publish_jobs").select("id,platform,status,created_at").limit(1000),
+      supa.from("publish_jobs").select("id,platform,status,created_at,external_post_id").limit(1000),
     ]);
     return { inf: unwrap(inf), pillars: unwrap(pillars), items: unwrap(items), jobs: unwrap(jobs), pubs: unwrap(pubs) };
   }, [ws.id, tick]);
@@ -196,8 +196,14 @@ export function Reports({ ws, tick }) {
   // --- KPI ---
   const published = pItems.filter((it) => it.status === "published").length;
   const spend = okJobs.reduce((s, j) => s + jobCost(j), 0);
-  const pubOk = pPubs.filter((p) => p.status === "succeeded").length;
-  const pubFail = pPubs.filter((p) => p.status === "failed").length;
+  // Koneksi mode uji (mock) menulis status "succeeded" tanpa benar-benar
+  // memposting (external_post_id berawalan "mock_"). Kalau ikut dihitung,
+  // angka "Publish sukses" membengkak dan pemilik mengira konten sudah tayang.
+  const nyata = (p) => !String(p.external_post_id || "").startsWith("mock_");
+  const pPubsNyata = pPubs.filter(nyata);
+  const ujiCoba = pPubs.length - pPubsNyata.length;
+  const pubOk = pPubsNyata.filter((p) => p.status === "succeeded").length;
+  const pubFail = pPubsNyata.filter((p) => p.status === "failed").length;
   const pubRate = pubOk + pubFail > 0 ? Math.round((pubOk / (pubOk + pubFail)) * 100) : null;
   const jobOkRate = pJobs.length ? Math.round((okJobs.length / pJobs.length) * 100) : null;
 
@@ -277,6 +283,7 @@ export function Reports({ ws, tick }) {
             <StatTile label="Biaya produksi" value={hargaLabel(spend)} sub={`${okJobs.length} job berhasil`}
               tip="Hanya job yang berhasil. Job yang gagal bisa tetap ditagih provider, jadi ini biaya hasil, bukan seluruh pengeluaran." />
             <StatTile label="Publish sukses" value={pubRate == null ? "—" : `${pubRate}%`} sub={pubRate == null ? "belum ada percobaan publish" : `${pubOk} sukses · ${pubFail} gagal`} />
+            {ujiCoba > 0 && <StatTile label="Uji coba (tidak diposting)" value={ujiCoba} sub="koneksi mode uji — tidak tayang di akun sosial" />}
             <StatTile label="Job produksi sukses" value={jobOkRate == null ? "—" : `${jobOkRate}%`} sub={pJobs.length ? `${okJobs.length} dari ${pJobs.length} job` : "belum ada job"} />
           </div>
 
@@ -298,12 +305,12 @@ export function Reports({ ws, tick }) {
               <div className="card p6 mb4">
                 <div className="bold">Biaya per influencer</div>
                 <p className="tiny muted mb3">Job generate yang berhasil, biaya aktual (atau estimasi jika belum tercatat).</p>
-                <BarList rows={spendInfRows} color={CH.blue} fmt={usd} />
+                <BarList rows={spendInfRows} color={CH.blue} fmt={hargaLabel} />
               </div>
               <div className="card p6">
                 <div className="bold">Biaya per jenis produksi</div>
                 <p className="tiny muted mb3">Gambar, video, suara, dan lip sync — untuk lihat ke mana budget mengalir.</p>
-                <BarList rows={spendTaskRows} color={CH.orange} fmt={usd} />
+                <BarList rows={spendTaskRows} color={CH.orange} fmt={hargaLabel} />
               </div>
             </div>
           </div>
