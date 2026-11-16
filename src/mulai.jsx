@@ -26,7 +26,9 @@ const LANGKAH = [
   },
   {
     n: 3, judul: "Tonton & bagikan", href: "#/drive", warna: "var(--ok)", soft: "var(--ok-soft)",
-    poin: ["gambar pertama kamu lihat dulu", "lalu suara dan video dibuat", "unduh di Karya, posting dari Rencana"],
+    // Bukan "posting dari Rencana": koneksi akun sosial dimatikan sejak 16 Nov
+    // 2026 (KONEKSI_SOSIAL_AKTIF di views.jsx), jadi videonya diunggah sendiri.
+    poin: ["gambar pertama kamu lihat dulu", "lalu suara dan video dibuat", "unduh di Karya, unggah dari galeri ke IG/TikTok"],
     waktu: "± 5–10 menit menunggu",
     tip: "Produksi berjalan di layar yang terbuka setelah 'Ya'. Bagian termurah (gambar) dibuat dulu dan kamu setujui sebelum bagian termahal (video) dibayar.",
   },

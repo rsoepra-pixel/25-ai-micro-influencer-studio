@@ -62,7 +62,7 @@ permintaannya diteruskan (proxy status 200) ke edge function. Aturannya ada di
 | `app` | Akun, anggota & undangan, token MCP, konfigurasi platform, pelanggan, saldo. |
 | `pay` | Webhook pembayaran Doku. |
 | `mcp` · `oauth` | Server MCP dan alur OAuth-nya untuk claude.ai. |
-| `social` | Koneksi dan publikasi ke akun sosial. |
+| `social` | Koneksi dan publikasi ke akun sosial. Saat ini tidak dipakai UI (dimatikan 16 Nov 2026, lihat `KONEKSI_SOSIAL_AKTIF` di `src/views.jsx`). |
 | `media` · `metrics` · `calendar` | Unggah aset, metrik postingan, jadwal. |
 | `links` · `r` | Pembuatan link pendek dan pengalihannya (sekaligus pencatat klik). |
 

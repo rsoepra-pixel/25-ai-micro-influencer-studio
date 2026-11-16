@@ -128,10 +128,12 @@ sebelum uang keluar tetap tertulis terlihat di halaman.
 tanpa membuka lima halaman. Isinya ringkasan, bukan tempat bekerja.
 
 **Mulai dari sini.** Selama workspace belum lengkap, kartu paling atas berisi
-enam langkah awal: buat influencer, tambah foto Identity Kit, siapkan suara,
-simpan produk, buat video pertama, dan hubungkan akun sosial. Tiap langkah
-dicentang **otomatis dari datanya**, bukan manual, dan kartunya hilang sendiri
-begitu semuanya beres. Suara Kling tidak dihitung sebagai "suara siap", karena
+lima langkah awal: buat influencer, tambah foto Identity Kit, siapkan suara,
+simpan produk, dan buat video pertama. Tiap langkah dicentang **otomatis dari
+datanya**, bukan manual, dan kartunya hilang sendiri begitu semuanya beres.
+Langkah keenam yang dulu ada, "hubungkan akun sosial", dihapus 16 Nov 2026
+bersama koneksi sosialnya (lihat [Koneksi](#koneksi)) — tanpa itu kartunya
+tidak akan pernah bisa selesai. Suara Kling tidak dihitung sebagai "suara siap", karena
 Video UGC tetap menolak influencer yang hanya punya itu.
 
 **Isinya enam kartu**, masing-masing tautan ke halaman lengkapnya:
@@ -581,8 +583,9 @@ influencer.
 
 ## 🗓️ Content Planner
 
-**Untuk apa.** Merencanakan konten sebelum diproduksi, lalu **mempublikasikannya**
-ke akun sosial. Ini satu-satunya tempat di aplikasi yang memposting.
+**Untuk apa.** Merencanakan konten sebelum diproduksi, lalu melacak statusnya
+sampai tayang. Sejak 16 Nov 2026 aplikasi tidak memposting ke akun sosial —
+videonya diunduh lalu diunggah sendiri dari galeri (lihat [Koneksi](#koneksi)).
 
 ### Content Pillars
 
@@ -620,6 +623,12 @@ disimpan. **Memanggil provider teks, memotong saldo.**
 - **📅 Kalender** — konten pada tanggal jadwalnya.
 
 ### 📤 Publish ke sosial
+
+**Sedang tidak ditampilkan** (flag `KONEKSI_SOSIAL_AKTIF = false` di
+`src/views.jsx`, lihat [Koneksi](#koneksi)). Tombolnya hanya muncul kalau ada
+akun terhubung, dan koneksinya kini tidak ditawarkan. Kartu **Riwayat Publish**
+hanya muncul di workspace yang punya riwayat dari sebelum itu. Keterangan di
+bawah berlaku kalau flag-nya dinyalakan lagi.
 
 Formulir publish per ide. Kamu memilih akun tujuan dan berkas yang diposting —
 media yang **sudah ditandai untuk konten ini** dikelompokkan terpisah dari yang
@@ -772,9 +781,17 @@ ke browser**.
   halaman consent), Claude Code di terminal memakai token statik lewat header.
   Lihat [Lewat Claude](#lewat-claude-mcp) di bawah. Dulu kartu ini ada di tab
   Lanjutan; tautan lama `?tab=lanjutan` dari pelanggan diantar ke sini.
-- **Akun sosial** — menghubungkan Instagram dan TikTok untuk publish.
+- **Akun sosial** — **dimatikan** untuk semua orang, termasuk operator
+  (keputusan pemilik 16 Nov 2026). Kartunya disembunyikan di balik
+  `KONEKSI_SOSIAL_AKTIF = false` di `src/views.jsx`, bukan dihapus. Alasannya:
+  mode live mengharuskan tiap pelanggan punya Meta Developer app sendiri, yang
+  mustahil bagi pengguna Meta Business Suite biasa; jalur yang bisa dicapai
+  hanya mode mock, yang memalsukan "berhasil" tanpa ada yang tayang; app
+  Meta/TikTok tingkat platform berarti review berminggu-minggu; dan publikasi
+  memang manual sejak awal — orang mengunggah dari galerinya sendiri.
 - **Google Calendar** — pengingat jadwal konten.
-- **Link pendek** — membuat link terlacak dan membaca kliknya.
+- **Link pendek** — membuat link terlacak dan membaca kliknya. Tidak butuh
+  koneksi akun sosial apa pun, jadi tetap jalan.
 
 **Kenapa link pendek layak dipakai.** Instagram dan TikTok tidak pernah memberi
 tahu link mana yang diklik dari post mana. Tanpa link pendek, pertanyaan
