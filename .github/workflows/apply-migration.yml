@@ -1,0 +1,83 @@
+# Menjalankan SATU berkas migrasi ke database produksi — hanya lewat tombol
+# "Run workflow", tidak pernah otomatis saat merge.
+#
+# KENAPA ADA, PADAHAL MIGRASI SENGAJA MANUAL
+#
+# README dan docs/OPERASI.md menegaskan migrasi tidak boleh jadi efek samping
+# merge, karena mengubah data yang tidak bisa dikembalikan dengan deploy ulang.
+# Prinsip itu TETAP: alur ini hanya workflow_dispatch, satu berkas per jalan,
+# dan orang yang menekan tombolnya harus mengetik nama berkasnya. Yang diganti
+# hanya "menyalin isi berkas ke SQL editor di dashboard" — langkah yang pernah
+# membuat satu berkas diterapkan dengan nama lain (0047 → 0045 di produksi) dan
+# yang menunda 0057 berminggu-minggu karena connector Supabase di sesi Claude
+# tidak punya akses ke project ini.
+#
+# Token yang dipakai sama dengan deploy fungsi (SUPABASE_ACCESS_TOKEN), lewat
+# Management API: POST /v1/projects/{ref}/database/query. Seluruh berkas
+# dikirim sebagai satu query, jadi berkas yang berisi beberapa statement
+# dijalankan dalam satu transaksi — gagal di tengah berarti tidak ada yang
+# berubah.
+
+name: Apply migration (manual)
+
+on:
+  workflow_dispatch:
+    inputs:
+      file:
+        description: "Nama berkas di supabase/migrations/, mis. 0059_asisten_bantuan.sql"
+        required: true
+
+env:
+  PROJECT_REF: kheibvzbvnmhdeokokrw
+
+jobs:
+  apply:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Periksa berkas
+        id: cek
+        env:
+          FILE: ${{ github.event.inputs.file }}
+        run: |
+          set -euo pipefail
+          # Dicocokkan ke daftar berkas yang benar-benar ada, bukan diperiksa
+          # "ada file-nya": nama seperti ../x lolos uji -f tapi bukan migrasi.
+          if ! ls supabase/migrations | grep -qx -- "$FILE"; then
+            echo "::error::Berkas '$FILE' tidak ada di supabase/migrations/." >&2
+            exit 1
+          fi
+          echo "path=supabase/migrations/$FILE" >> "$GITHUB_OUTPUT"
+          echo "Akan dijalankan: $FILE ($(wc -c < "supabase/migrations/$FILE") byte)"
+
+      - name: Jalankan
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+          PATH_SQL: ${{ steps.cek.outputs.path }}
+        run: |
+          set -euo pipefail
+          if [ -z "${SUPABASE_ACCESS_TOKEN:-}" ]; then
+            echo "::error::Secret SUPABASE_ACCESS_TOKEN belum diisi di repo ini." >&2
+            exit 1
+          fi
+          # jq yang membungkus isi berkas jadi string JSON, supaya tanda kutip
+          # dan baris baru di SQL tidak merusak body permintaan.
+          jq -Rs '{query: .}' "$PATH_SQL" > /tmp/body.json
+          http=$(curl -sS -o /tmp/resp.json -w '%{http_code}' \
+            -X POST "https://api.supabase.com/v1/projects/$PROJECT_REF/database/query" \
+            -H "Authorization: Bearer $SUPABASE_ACCESS_TOKEN" \
+            -H "Content-Type: application/json" \
+            --data-binary @/tmp/body.json)
+          echo "HTTP $http"
+          head -c 4000 /tmp/resp.json; echo
+          if [ "$http" -lt 200 ] || [ "$http" -ge 300 ]; then
+            echo "::error::Migrasi ditolak (HTTP $http). Tidak ada yang berubah." >&2
+            exit 1
+          fi
+
+      - name: Ringkasan
+        env:
+          FILE: ${{ github.event.inputs.file }}
+        run: |
+          { echo "### Migrasi diterapkan"; echo; echo "- \`$FILE\` → project \`$PROJECT_REF\`"; } >> "$GITHUB_STEP_SUMMARY"

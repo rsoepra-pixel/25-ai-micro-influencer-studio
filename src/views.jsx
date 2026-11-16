@@ -4517,6 +4517,156 @@ function PromotionsCard({ tick }) {
   );
 }
 
+// ---------- Asisten bantuan (operator) ----------
+//
+// Basis pengetahuan asisten adalah DATA milik operator (tabel help_articles),
+// bukan kode. Alasannya: jawaban yang salah atau menu yang berganti nama harus
+// bisa dibetulkan hari itu juga, tanpa menunggu PR dan deploy — kalau
+// artikelnya hidup di repo, satu salah ketik di jawaban bertahan sampai rilis
+// berikutnya dan terus diulang ke setiap pelanggan yang bertanya.
+//
+// Statistik 7 hari ditaruh di sini, bukan di halaman pelanggan, karena biaya
+// asisten ditanggung operator (pelanggan melihat "Gratis — tidak memotong
+// saldo"). Tidak ada dompet pelanggan yang menjerit kalau biayanya naik, jadi
+// satu-satunya yang akan melihatnya adalah operator — dan hanya kalau angkanya
+// ada di depan mata saat menyunting artikel.
+const ARTIKEL_KOSONG = { slug: "", judul: "", isi: "", tags: "", aktif: true, urutan: 0 };
+
+function AsistenBantuanAdmin({ tick }) {
+  const [list, reload, listErr] = useQuery(async () => (await callApp({ action: "help_articles_list" })).articles || [], [tick]);
+  const [stats, reloadStats, statsErr] = useQuery(async () => (await callApp({ action: "help_stats" })).hari7 || {}, [tick]);
+  const [cari, setCari] = useState("");
+  const [edit, setEdit] = useState(null); // null = editor tertutup; tanpa id = artikel baru
+  const [busy, setBusy] = useState(false);
+  const [err, setErr] = useState(null);
+  const [seedMsg, setSeedMsg] = useState(null);
+
+  function buka(a) {
+    setErr(null);
+    setEdit(a ? { ...a, tags: (a.tags || []).join(", ") } : { ...ARTIKEL_KOSONG });
+  }
+
+  async function seed() {
+    setBusy(true); setSeedMsg(null);
+    try {
+      const r = await callApp({ action: "help_articles_seed" });
+      setSeedMsg({ ok: true, text: `${r.ditambah ?? 0} ditambah, ${r.dilewati ?? 0} dilewati (sudah pernah diedit)` });
+      reload();
+    } catch (e) { setSeedMsg({ ok: false, text: `Gagal mengisi artikel bawaan: ${e.message}` }); }
+    setBusy(false);
+  }
+
+  async function simpan(e) {
+    e.preventDefault();
+    setBusy(true); setErr(null);
+    try {
+      await callApp({
+        action: "help_articles_upsert",
+        ...(edit.id ? { id: edit.id } : {}),
+        slug: edit.slug.trim(),
+        judul: edit.judul.trim(),
+        isi: edit.isi,
+        tags: edit.tags.split(",").map((t) => t.trim()).filter(Boolean),
+        aktif: !!edit.aktif,
+        urutan: Number(edit.urutan) || 0,
+      });
+      setEdit(null);
+      reload();
+    } catch (e2) { setErr(e2.message); }
+    setBusy(false);
+  }
+
+  async function hapus() {
+    if (!window.confirm(`Hapus artikel "${edit.judul || edit.slug}"? Asisten tidak akan bisa memakainya lagi.`)) return;
+    setBusy(true); setErr(null);
+    try {
+      await callApp({ action: "help_articles_delete", id: edit.id });
+      setEdit(null);
+      reload();
+    } catch (e2) { setErr(e2.message); }
+    setBusy(false);
+  }
+
+  const q = cari.trim().toLowerCase();
+  const tampil = (list || []).filter((a) => !q
+    || (a.judul || "").toLowerCase().includes(q)
+    || (a.slug || "").toLowerCase().includes(q)
+    || (a.tags || []).some((t) => t.toLowerCase().includes(q)));
+  const set = (k) => (e) => setEdit({ ...edit, [k]: e.target.type === "checkbox" ? e.target.checked : e.target.value });
+
+  return (<>
+    <div className="card p6 mb4" style={{ borderColor: "var(--warn)" }}>
+      <div className="row mb1" style={{ justifyContent: "space-between" }}>
+        <div className="bold">Asisten bantuan</div>
+        <Badge tone="amber">operator</Badge>
+      </div>
+      <p className="tiny muted mb3">7 hari terakhir. Biayanya ditanggung platform — tidak memotong saldo pelanggan.</p>
+      {statsErr && <div className="msg-err mb3 tiny">Gagal memuat statistik: {statsErr} <button type="button" className="tiny" style={linkBtn} onClick={reloadStats}>coba lagi</button></div>}
+      <div className="row mb3" style={{ gap: 24 }}>
+        <div><div className="tiny muted">Pertanyaan</div><div className="bold" style={{ fontSize: 20 }}>{stats ? Number(stats.jumlah || 0) : "…"}</div></div>
+        <div><div className="tiny muted">Biaya operator</div><div className="bold" style={{ fontSize: 20 }}>{stats ? (Number(stats.operator_cost_usd) ? hargaLabel(stats.operator_cost_usd) : "—") : "…"}</div></div>
+      </div>
+      <div className="row" style={{ gap: 8 }}>
+        <button type="button" className="btn btn2" disabled={busy} onClick={seed}>Isi dari dokumen bawaan</button>
+        <button type="button" className="btn" disabled={busy} onClick={() => buka(null)}>Artikel baru</button>
+      </div>
+      {seedMsg && <div className={`${seedMsg.ok ? "msg-ok" : "msg-err"} mt3`}>{seedMsg.text}</div>}
+    </div>
+
+    {edit && (
+      <form className="card p6 mb4" onSubmit={simpan}>
+        <div className="bold mb3">{edit.id ? "Sunting artikel" : "Artikel baru"}</div>
+        {err && <div className="msg-err mb3">{err}</div>}
+        <div className="grid mb3" style={{ gridTemplateColumns: "repeat(auto-fit,minmax(220px,1fr))", gap: 12 }}>
+          <div><label className="label">Slug</label><input className="input" required value={edit.slug} onChange={set("slug")} placeholder="isi-saldo" /></div>
+          <div><label className="label">Judul</label><input className="input" required value={edit.judul} onChange={set("judul")} /></div>
+          <div><label className="label">Tags (pisahkan dengan koma)</label><input className="input" value={edit.tags} onChange={set("tags")} placeholder="saldo, pembayaran" /></div>
+          <div><label className="label">Urutan</label><input className="input" type="number" value={edit.urutan} onChange={set("urutan")} /></div>
+        </div>
+        <label className="row small mb3" style={{ gap: 6, cursor: "pointer" }}>
+          <input type="checkbox" checked={!!edit.aktif} onChange={set("aktif")} /> Aktif
+        </label>
+        <label className="label">Isi (markdown)</label>
+        <textarea className="input mb2" rows={14} value={edit.isi} onChange={set("isi")} required
+          style={{ fontFamily: "ui-monospace, SFMono-Regular, Menlo, monospace", fontSize: 12 }} />
+        <p className="tiny muted mb3">
+          Asisten hanya menjawab dari artikel yang aktif. Tulis seperti menjawab pelanggan di WhatsApp: singkat, langkah demi langkah, sebut nama menu persis seperti di layar.
+        </p>
+        <div className="row" style={{ gap: 8 }}>
+          <button className="btn" disabled={busy}>{busy ? "Menyimpan…" : "Simpan"}</button>
+          {edit.id && <button type="button" className="btn btn2" disabled={busy} onClick={hapus}>Hapus</button>}
+          <button type="button" className="btn btn2" disabled={busy} onClick={() => { setEdit(null); setErr(null); }}>Batal</button>
+        </div>
+      </form>
+    )}
+
+    <div className="card p6 mb4">
+      <div className="row mb3" style={{ justifyContent: "space-between", gap: 12 }}>
+        <div className="bold">Artikel{list ? ` (${tampil.length}/${list.length})` : ""}</div>
+        <input className="input" style={{ maxWidth: 260 }} placeholder="Cari judul, slug, atau tag…" value={cari} onChange={(e) => setCari(e.target.value)} />
+      </div>
+      {!list ? (listErr ? <div className="msg-err">Gagal memuat artikel: {listErr}</div> : <div className="muted small">Memuat…</div>)
+        : list.length === 0 ? <div className="small muted">Belum ada artikel. Tekan "Isi dari dokumen bawaan" untuk memulai.</div>
+        : (
+        <table>
+          <thead><tr><th>Judul</th><th>Slug</th><th>Tags</th><th>Status</th><th>Diubah</th></tr></thead>
+          <tbody>
+            {tampil.map((a) => (
+              <tr key={a.id} onClick={() => buka(a)} style={{ cursor: "pointer", ...(a.aktif ? {} : { opacity: 0.55 }) }}>
+                <td className="bold">{a.judul}</td>
+                <td className="tiny muted">{a.slug}</td>
+                <td className="tiny">{(a.tags || []).join(", ") || "—"}</td>
+                <td><Badge tone={a.aktif ? "green" : "zinc"}>{a.aktif ? "aktif" : "nonaktif"}</Badge></td>
+                <td className="tiny muted">{a.updated_at ? new Date(a.updated_at).toLocaleString("id-ID") : "—"}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      )}
+    </div>
+  </>);
+}
+
 function PlatformConfig({ st, reload }) {
   const [msg, setMsg] = useState(null);
   const [busy, setBusy] = useState(false);
@@ -4865,6 +5015,8 @@ const SETTINGS_TABS = [
   // server tetap memeriksa sendiri di setiap aksi — tab yang disembunyikan
   // adalah kerapian, bukan pengamanan.
   ["pelanggan", "Pelanggan", "platform"],
+  // Basis pengetahuan dan biaya asisten bantuan — keduanya milik operator.
+  ["bantuan", "Asisten bantuan", "platform"],
   // Isinya tinggal kartu operator sejak kartu Claude (MCP) pindah ke Koneksi,
   // jadi ikut disaring — tab kosong di depan pelanggan lebih membingungkan
   // daripada tab yang tidak ada.
@@ -4879,6 +5031,7 @@ const SETTINGS_HINTS = {
   pustaka: "Contoh prompt siap pakai per kategori. Gratis — tidak memanggil AI.",
   katalog: "Operator: harga model. Harga ini yang ditagih ke semua pelanggan.",
   pelanggan: "Operator platform: akses, saldo, dan webhook pembayaran pelanggan.",
+  bantuan: "Operator: artikel yang dipakai asisten bantuan, dan biayanya 7 hari terakhir.",
   lanjutan: "Konfigurasi platform dan promosi (operator).",
 };
 
@@ -5005,6 +5158,8 @@ export function Settings({ ws, refresh, tick, spend, spendError, query }) {
       {shownTab === "tim" && <MembersCard tick={tick} />}
 
       {shownTab === "pelanggan" && platform?.is_platform_admin && <CustomersAdmin tick={tick} />}
+
+      {shownTab === "bantuan" && platform?.is_platform_admin && <AsistenBantuanAdmin tick={tick} />}
 
       {/* Claude (MCP) ada di sini, bukan di Lanjutan: ia koneksi ke aplikasi
           luar seperti Instagram dan Calendar, lengkap dengan daftar "aplikasi
