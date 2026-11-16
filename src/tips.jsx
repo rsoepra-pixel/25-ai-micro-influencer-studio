@@ -21,13 +21,20 @@
 // perlu, hitung dari katalog (estimateFor di routing.js) di tempat tombolnya.
 import React, { useEffect, useState } from "react";
 
-const LEBAR = 280;
 const JARAK = 8;
+
+// Ketukan di ponsel hampir selalu disusul gulir kecil (jari bergeser sedikit
+// saat diangkat). Tanpa jeda ini petunjuk yang baru dibuka dengan tap langsung
+// hilang lagi oleh handler scroll — kelihatannya ⓘ tidak berfungsi.
+let abaikanScrollSampai = 0;
 
 function posisi(el) {
   const r = el.getBoundingClientRect();
   const vw = window.innerWidth;
   const vh = window.innerHeight;
+  // Sama dengan max-width .tip-layer (min(280px, 90vw)): di layar sempit
+  // petunjuknya menyempit, jadi perhitungan posisi harus ikut menyempit.
+  const LEBAR = Math.min(280, vw * 0.9);
   // Sidebar: ke kanan, supaya petunjuknya tidak menutupi menu di bawahnya.
   if (el.getAttribute("data-tip-side") === "right" && r.right + JARAK + LEBAR < vw) {
     return { left: r.right + JARAK, top: r.top + r.height / 2, transform: "translateY(-50%)" };
@@ -43,11 +50,13 @@ export function TipLayer() {
 
   useEffect(() => {
     let aktif = null;
+    let dibukaPada = 0;
     const cari = (t) => (t && t.closest ? t.closest("[data-tip]") : null);
     const tampil = (el) => {
       const text = el.getAttribute("data-tip");
       if (!text) return;
       aktif = el;
+      dibukaPada = Date.now();
       setTip({ text, style: posisi(el) });
     };
     const sembunyi = () => { aktif = null; setTip(null); };
@@ -60,15 +69,33 @@ export function TipLayer() {
     const fokus = (e) => { const el = cari(e.target); if (el) tampil(el); };
     const lepas = (e) => { if (cari(e.target) === aktif) sembunyi(); };
     const tombol = (e) => { if (e.key === "Escape") sembunyi(); };
+    // Tap bukan hover: di layar sentuh mouseover tidak bisa diandalkan, jadi
+    // ⓘ juga dibuka/ditutup dengan klik. HANYA .info-tip — tombol berbayar
+    // juga punya data-tip, dan tap di sana harus menjalankan tombolnya, bukan
+    // memunculkan petunjuk sebagai efek samping.
+    const klik = (e) => {
+      const el = e.target && e.target.closest ? e.target.closest(".info-tip") : null;
+      if (!el) return;
+      // Satu tap di ponsel sudah memicu mouseover dan focusin SEBELUM click,
+      // jadi saat click tiba petunjuknya sudah tampil. Kalau itu baru terjadi
+      // (< 400 ms), click ini adalah tap yang sama — jangan langsung ditutup.
+      // Tap berikutnya, atau Enter setelah fokus, baru menutupnya.
+      if (el === aktif && Date.now() - dibukaPada > 400) { sembunyi(); return; }
+      if (el !== aktif) tampil(el);
+      abaikanScrollSampai = Date.now() + 4000;
+    };
+    const gulir = () => { if (Date.now() >= abaikanScrollSampai) sembunyi(); };
 
     document.addEventListener("mouseover", over);
     document.addEventListener("mouseout", out);
     document.addEventListener("focusin", fokus);
     document.addEventListener("focusout", lepas);
     document.addEventListener("keydown", tombol);
+    document.addEventListener("click", klik);
     // Posisinya dihitung sekali saat muncul; begitu halaman digulir, posisi
     // itu salah. Menghilang lebih jujur daripada melayang di tempat lain.
-    window.addEventListener("scroll", sembunyi, true);
+    // Kecuali beberapa detik setelah ⓘ diketuk (lihat abaikanScrollSampai).
+    window.addEventListener("scroll", gulir, true);
     window.addEventListener("resize", sembunyi);
     // Pindah halaman: elemen yang disorot sudah tidak ada, jadi mouseout-nya
     // tidak akan pernah datang.
@@ -79,7 +106,8 @@ export function TipLayer() {
       document.removeEventListener("focusin", fokus);
       document.removeEventListener("focusout", lepas);
       document.removeEventListener("keydown", tombol);
-      window.removeEventListener("scroll", sembunyi, true);
+      document.removeEventListener("click", klik);
+      window.removeEventListener("scroll", gulir, true);
       window.removeEventListener("resize", sembunyi);
       window.removeEventListener("hashchange", sembunyi);
     };
@@ -91,8 +119,15 @@ export function TipLayer() {
 
 // Ikon ⓘ di samping label. `aria-label` membawa teks yang sama, jadi pembaca
 // layar mendapatkannya tanpa perlu hover.
+// Enter/Spasi memicu klik supaya pengguna keyboard bisa membuka DAN menutup
+// petunjuk lewat jalur yang sama dengan tap (fokus saja hanya membuka).
 export function Info({ tip }) {
-  return <span className="info-tip" tabIndex={0} role="img" aria-label={tip} data-tip={tip}>i</span>;
+  const tekan = (e) => {
+    if (e.key !== "Enter" && e.key !== " ") return;
+    e.preventDefault(); // Spasi jangan menggulir halaman
+    e.currentTarget.click();
+  };
+  return <span className="info-tip" tabIndex={0} role="img" aria-label={tip} data-tip={tip} onKeyDown={tekan}>i</span>;
 }
 
 // Teks petunjuk yang dipakai di banyak tempat. Satu sumber, supaya tombol ✨ di

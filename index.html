@@ -72,7 +72,7 @@
       select.input{appearance:auto}
       .avatar{border-radius:999px;background:var(--brand-soft);color:var(--brand-strong);font-weight:700;display:flex;align-items:center;justify-content:center;overflow:hidden}
       .avatar img{width:100%;height:100%;object-fit:cover}
-      @media print{.sidebar,.tip-layer,.mulai .btn{display:none!important}.mulai{max-width:none!important}.mulai .panah{display:none}.mulai .cetak-saja{display:block!important}body{background:#fff}}
+      @media print{.sidebar,.tip-layer,.bar-atas,.tab-bawah,.mulai .btn{display:none!important}.mulai{max-width:none!important}.mulai .panah{display:none}.mulai .cetak-saja{display:block!important}body{background:#fff}}
       .sidebar a.nav{display:flex;align-items:center;gap:10px;border-radius:10px;padding:9px 12px;font-weight:500;color:var(--ink-2)}
       .sidebar a.nav:hover{background:var(--brand-soft);color:var(--brand-strong)}
       /* Halaman aktif ditandai dua hal sekaligus — warna DAN garis tepi —
@@ -90,9 +90,36 @@
          (lihat TipLayer di views.jsx), bukan ::after per elemen: baris tab
          dan sidebar memakai overflow, dan pseudo-elemen di dalamnya akan
          terpotong tepat di tempat petunjuknya paling dibutuhkan. */
-      .tip-layer{position:fixed;z-index:1000;max-width:280px;padding:8px 10px;border-radius:8px;background:var(--text);color:#fff;font-size:12px;line-height:1.45;font-weight:500;pointer-events:none;box-shadow:0 4px 14px rgba(0,0,0,.18);white-space:normal;text-transform:none;letter-spacing:normal}
+      .tip-layer{position:fixed;z-index:1000;max-width:min(280px,90vw);padding:8px 10px;border-radius:8px;background:var(--text);color:#fff;font-size:12px;line-height:1.45;font-weight:500;pointer-events:none;box-shadow:0 4px 14px rgba(0,0,0,.18);white-space:normal;text-transform:none;letter-spacing:normal}
       .info-tip{display:inline-flex;align-items:center;justify-content:center;width:15px;height:15px;margin-left:4px;border-radius:999px;border:1px solid var(--dim);color:var(--muted);font-size:10px;font-weight:700;font-style:normal;cursor:help;vertical-align:middle;text-transform:none;letter-spacing:normal;line-height:1}
       .info-tip:focus-visible{outline:2px solid var(--brand-line)}
+      /* Bar atas dan tab bawah hanya untuk ponsel. Aturan dasarnya (sembunyi)
+         sengaja ditulis SEBELUM blok @media: spesifisitasnya sama, jadi yang
+         belakangan menang — kalau urutannya terbalik, display:none ini
+         menimpa display:flex di dalam media query dan keduanya tidak pernah
+         muncul. */
+      .bar-atas,.tab-bawah{display:none}
+      .bar-atas{position:sticky;top:0;z-index:50;align-items:center;justify-content:space-between;gap:10px;padding:10px 16px;background:#fff;border-bottom:1px solid var(--border)}
+      .tab-bawah{position:fixed;left:0;right:0;bottom:0;z-index:50;background:#fff;border-top:1px solid var(--border);padding:6px 4px calc(6px + env(safe-area-inset-bottom));justify-content:space-around}
+      .tab-bawah a.nav{display:flex;flex-direction:column;align-items:center;gap:2px;font-size:11px;font-weight:500;padding:6px 8px;min-width:64px;border-radius:10px;color:var(--ink-2)}
+      /* Aktif: warna DAN garis, sama seperti sidebar — garisnya di atas
+         karena tab berjajar mendatar. */
+      .tab-bawah a.nav.active{background:var(--brand-soft);color:var(--brand-strong);box-shadow:inset 0 3px 0 var(--brand)}
+      /* Ponsel. 63 grid memakai gridTemplateColumns inline, jadi hanya
+         !important yang bisa menimpanya tanpa refactor — refactor-nya bukan
+         prioritas (uji persona Nov 2026). 767 = lebar tablet potret paling
+         umum. Blok ini ditaruh PALING AKHIR supaya menang atas aturan dasar
+         .info-tip dan .bar-atas di atasnya; di desktop tidak ada yang
+         berubah karena semuanya ada di dalam media query. padding-bottom
+         main memberi ruang untuk tab bawah yang fixed. */
+      @media (max-width:767px){
+        .sidebar{display:none!important}
+        main{padding:16px!important;padding-bottom:80px!important}
+        .grid{grid-template-columns:1fr!important}
+        .bar-atas,.tab-bawah{display:flex}
+        .info-tip{width:24px;height:24px;font-size:12px}
+        img,video{max-width:100%}
+      }
     </style>
   </head>
   <body>

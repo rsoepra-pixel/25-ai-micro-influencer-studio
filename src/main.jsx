@@ -154,6 +154,79 @@ function ModeBadge({ mode }) {
   );
 }
 
+// Kartu saldo dipakai di DUA tempat: sidebar (desktop) dan bar atas (ponsel,
+// tempat sidebar disembunyikan). Satu komponen, bukan dua salinan, supaya
+// angka saldo tidak bisa berbeda antara keduanya — pelanggan yang melihat
+// saldo berbeda di HP dan di laptop akan mengira uangnya hilang.
+//
+// `compact` (bar atas) hanya membawa yang perlu dilihat sekilas di layar
+// sempit: saldo (warna sama dengan sidebar), padanannya dalam mata uang lain,
+// dan tombol isi saldo. Pilihan Rp/$ dan angka "terpakai" tetap di sidebar.
+function KartuSaldo({ spend, spendError, gantiTampilan, support, ws, compact }) {
+  if (compact) {
+    return (
+      <div className="row" style={{ gap: 8, minWidth: 0 }}>
+        <div style={{ textAlign: "right", minWidth: 0 }}>
+          <div style={{ fontSize: 15, fontWeight: 800, lineHeight: 1.2, color: spend.balance < 1 ? "var(--warn)" : "var(--ok)" }}>
+            {spend.balance > 0 ? hargaLabel(spend.balance) : (tampilanAktif() === "idr" ? "Rp 0" : "$0.00")}
+          </div>
+          {hargaLabelLain(spend.balance) && <div className="tiny muted">{hargaLabelLain(spend.balance)}</div>}
+        </div>
+        {/* Label pendek dan tanpa jam layanan: label penuh plus jamnya
+            membuat bar atas jadi tiga baris di layar 360 px. Jam layanan
+            tetap terlihat di Settings. */}
+        <TombolIsiSaldo support={support && { ...support, hours: null }} ws={ws} label="Isi saldo" />
+      </div>
+    );
+  }
+  return (
+    <div className="card p4" style={{ background: "var(--subtle)" }}>
+      <span className="label">
+        {spend.billing === "credit" ? "Saldo kredit" : "Biaya bulan ini"}
+        <Info tip={spend.billing === "credit"
+          ? "Saldo yang membayar model gambar, video, suara, dan penulis AI (tombol ✨). Job ditolak kalau saldo habis."
+          : "Total biaya generate bulan ini, dibandingkan batas bulanan di Settings → Provider & Biaya."} />
+      </span>
+      {spendError ? (
+        <div className="msg-err tiny mt1">Gagal memuat biaya: {spendError}</div>
+      ) : spend.billing === "credit" ? (
+        <>
+          {/* Angka utama mengikuti tampilan yang dipilih; yang satunya
+              ditulis kecil supaya pelanggan yang membeli saldo dalam
+              rupiah tetap bisa mencocokkan dengan kuitansinya dalam USD. */}
+          <div style={{ fontSize: 20, fontWeight: 800, color: spend.balance < 1 ? "var(--warn)" : "var(--ok)" }}>
+            {spend.balance > 0 ? hargaLabel(spend.balance) : (tampilanAktif() === "idr" ? "Rp 0" : "$0.00")}
+          </div>
+          {hargaLabelLain(spend.balance) && <div className="tiny muted">{hargaLabelLain(spend.balance)}</div>}
+          <div className="tiny muted">terpakai {spend.spent > 0 ? hargaLabel(spend.spent) : (tampilanAktif() === "idr" ? "Rp 0" : "$0.00")} bulan ini</div>
+          <TombolIsiSaldo support={support} ws={ws} />
+          {kursJual() && (
+            <div className="row mt1" style={{ gap: 4 }}>
+              {[["idr", "Rp"], ["usd", "$"]].map(([v, l]) => (
+                <button key={v} type="button" onClick={() => gantiTampilan(v)}
+                  data-tip={v === "idr" ? "Tampilkan harga dalam rupiah, memakai kurs jual yang sama dengan harga saldo." : "Tampilkan harga dalam dolar, seperti di katalog model."}
+                  style={{ fontSize: 11, padding: "2px 8px", borderRadius: 6, cursor: "pointer",
+                    border: `1px solid ${tampilanAktif() === v ? "var(--brand)" : "var(--border)"}`,
+                    background: tampilanAktif() === v ? "var(--brand-soft)" : "transparent",
+                    color: tampilanAktif() === v ? "var(--brand-strong)" : "var(--ink-3)", fontWeight: 700 }}>
+                  {l}
+                </button>
+              ))}
+            </div>
+          )}
+          <ModeBadge mode={spend.mode} />
+        </>
+      ) : (
+        <>
+          <div style={{ fontSize: 20, fontWeight: 800, color: "var(--warn)" }}>{usd(spend.spent)}</div>
+          <div className="tiny muted">dari batas {usd(spend.cap)}</div>
+          <ModeBadge mode={spend.mode} />
+        </>
+      )}
+    </div>
+  );
+}
+
 function Login() {
   // Yang datang lewat link undangan hampir pasti belum punya akun, jadi
   // formnya dibuka di "Daftar". Menyambut mereka dengan form "Masuk" berarti
@@ -673,50 +746,7 @@ function App() {
           </button>
         </nav>
         <div style={{ padding: 14, borderTop: "1px solid var(--border)" }}>
-          <div className="card p4" style={{ background: "var(--subtle)" }}>
-            <span className="label">
-              {spend.billing === "credit" ? "Saldo kredit" : "Biaya bulan ini"}
-              <Info tip={spend.billing === "credit"
-                ? "Saldo yang membayar model gambar, video, suara, dan penulis AI (tombol ✨). Job ditolak kalau saldo habis."
-                : "Total biaya generate bulan ini, dibandingkan batas bulanan di Settings → Provider & Biaya."} />
-            </span>
-            {spendError ? (
-              <div className="msg-err tiny mt1">Gagal memuat biaya: {spendError}</div>
-            ) : spend.billing === "credit" ? (
-              <>
-                {/* Angka utama mengikuti tampilan yang dipilih; yang satunya
-                    ditulis kecil supaya pelanggan yang membeli saldo dalam
-                    rupiah tetap bisa mencocokkan dengan kuitansinya dalam USD. */}
-                <div style={{ fontSize: 20, fontWeight: 800, color: spend.balance < 1 ? "var(--warn)" : "var(--ok)" }}>
-                  {spend.balance > 0 ? hargaLabel(spend.balance) : (tampilanAktif() === "idr" ? "Rp 0" : "$0.00")}
-                </div>
-                {hargaLabelLain(spend.balance) && <div className="tiny muted">{hargaLabelLain(spend.balance)}</div>}
-                <div className="tiny muted">terpakai {spend.spent > 0 ? hargaLabel(spend.spent) : (tampilanAktif() === "idr" ? "Rp 0" : "$0.00")} bulan ini</div>
-                <TombolIsiSaldo support={support} ws={ws} />
-                {kursJual() && (
-                  <div className="row mt1" style={{ gap: 4 }}>
-                    {[["idr", "Rp"], ["usd", "$"]].map(([v, l]) => (
-                      <button key={v} type="button" onClick={() => gantiTampilan(v)}
-                        data-tip={v === "idr" ? "Tampilkan harga dalam rupiah, memakai kurs jual yang sama dengan harga saldo." : "Tampilkan harga dalam dolar, seperti di katalog model."}
-                        style={{ fontSize: 11, padding: "2px 8px", borderRadius: 6, cursor: "pointer",
-                          border: `1px solid ${tampilanAktif() === v ? "var(--brand)" : "var(--border)"}`,
-                          background: tampilanAktif() === v ? "var(--brand-soft)" : "transparent",
-                          color: tampilanAktif() === v ? "var(--brand-strong)" : "var(--ink-3)", fontWeight: 700 }}>
-                        {l}
-                      </button>
-                    ))}
-                  </div>
-                )}
-                <ModeBadge mode={spend.mode} />
-              </>
-            ) : (
-              <>
-                <div style={{ fontSize: 20, fontWeight: 800, color: "var(--warn)" }}>{usd(spend.spent)}</div>
-                <div className="tiny muted">dari batas {usd(spend.cap)}</div>
-                <ModeBadge mode={spend.mode} />
-              </>
-            )}
-          </div>
+          <KartuSaldo spend={spend} spendError={spendError} gantiTampilan={gantiTampilan} support={support} ws={ws} />
           <div className="row mt3" style={{ justifyContent: "space-between" }}>
             <span className="tiny muted" style={{ overflow: "hidden", textOverflow: "ellipsis" }}>{session.user.email}</span>
             <button title="Keluar" style={{ background: "none", border: "none", cursor: "pointer", color: "var(--dim)" }}
@@ -724,9 +754,44 @@ function App() {
           </div>
         </div>
       </aside>
-      <main style={{ flex: 1, padding: 32, overflow: "auto" }}>
-        <ViewBoundary resetKey={routePath}>{view}</ViewBoundary>
-      </main>
+      {/* Kolom kanan: bar atas (hanya ponsel) di atas <main>. minWidth 0
+          wajib — tanpa itu item flex tidak mau menyusut di bawah lebar
+          isinya, dan grid/tabel yang lebar mendorong halaman ke samping. */}
+      <div style={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column" }}>
+        {/* Di ponsel sidebar disembunyikan, padahal saldo dan tombol keluar
+            ada di sana. Bar ini membawa keduanya; di desktop ia display:none
+            (index.html), jadi tampilan desktop tidak berubah. */}
+        <header className="bar-atas">
+          <span className="tiny muted" style={{ minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{ws.name}</span>
+          <div className="row" style={{ gap: 8, flexShrink: 0 }}>
+            {spend.billing === "credit" && !spendError && (
+              <KartuSaldo compact spend={spend} spendError={spendError} gantiTampilan={gantiTampilan} support={support} ws={ws} />
+            )}
+            <button title="Keluar" aria-label="Keluar" style={{ background: "none", border: "none", cursor: "pointer", color: "var(--dim)", fontSize: 18, padding: 6 }}
+              onClick={async () => { await supa.auth.signOut(); }}>⏻</button>
+          </div>
+        </header>
+        <main style={{ flex: 1, padding: 32, overflow: "auto" }}>
+          <ViewBoundary resetKey={routePath}>{view}</ViewBoundary>
+        </main>
+      </div>
+      {/* Tab bawah ponsel: empat tujuan yang paling sering dicari dengan ibu
+          jari. "Saldo" menunjuk ke Settings sampai ada halaman saldo
+          sendiri. Kelas `nav active` sama dengan sidebar, jadi halaman aktif
+          ditandai dengan cara yang sama. Petunjuknya diambil dari menu
+          ringkas supaya tidak ada dua kalimat untuk menu yang sama. */}
+      <nav className="tab-bawah" aria-label="Menu utama">
+        {[
+          ["/", "🏠", "Beranda", NAV_RINGKAS[0][2]],
+          ["/buat-video", "🎬", "Buat Video", NAV_RINGKAS[1][2]],
+          ["/drive", "🗂", "Karya", NAV_RINGKAS[2][2]],
+          ["/settings", "💳", "Saldo", NAV_RINGKAS[5][2]],
+        ].map(([href, ikon, label, tip]) => (
+          <a key={href} href={`#${href}`} className={`nav ${routePath === href ? "active" : ""}`} data-tip={tip}>
+            <span style={{ fontSize: 18 }} aria-hidden="true">{ikon}</span>{label}
+          </a>
+        ))}
+      </nav>
       <TipLayer />
     </div>
   );
