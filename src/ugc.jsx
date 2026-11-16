@@ -661,6 +661,14 @@ function StepNaskah({ project, inf, product, refCount, models, patchProject, set
   );
 }
 
+// Tautan penjelasan di kartu video mengarah ke tombol di kartu pratinjau; tombol yang
+// sedang disabled tidak bisa difokus, tapi tetap digulirkan ke tengah layar.
+function sorotTombol(id) {
+  const el = document.getElementById(id);
+  el?.scrollIntoView({ behavior: "smooth", block: "center" });
+  el?.focus();
+}
+
 function StepProduksi({ project, inf, product, refCount, models, mode, pending, patchProject, load, refresh, setErr, setStep, autoPratinjau, pakaiAuto, gagalTerakhir = {}, catatGagalSlot, lupakanGagal }) {
   const r = plan({ project, inf, product, refCount, models });
   const [imgId, setImgId] = useState(project.image_model_id || "");
@@ -878,12 +886,12 @@ function StepProduksi({ project, inf, product, refCount, models, mode, pending, 
             </button>
           )}
           {project.keyframe_url && (
-            <button className="btn btn2" disabled={blocked || sibuk} onClick={() => pratinjau({ ulangGambar: true })}>
+            <button id="btn-ulang-gambar" className="btn btn2" disabled={blocked || sibuk} onClick={() => pratinjau({ ulangGambar: true })}>
               Ulang gambar · {priceLabel(imgTry)}
             </button>
           )}
           {project.audio_url && (
-            <button className="btn btn2" disabled={blocked || sibuk || pending.video} onClick={() => pratinjau({ ulangSuara: true })}>
+            <button id="btn-ulang-suara" className="btn btn2" disabled={blocked || sibuk || pending.video} onClick={() => pratinjau({ ulangSuara: true })}>
               Ulang suara · {priceLabel(ttsTry)}
             </button>
           )}
@@ -913,6 +921,19 @@ function StepProduksi({ project, inf, product, refCount, models, mode, pending, 
           </button>
           {mode === "mock" && <span className="tiny muted">mode mock — tidak ditagih</span>}
         </div>
+        {/* Kenapa teks, bukan modal konfirmasi: merender ulang dengan gambar dan suara yang
+            sama menagih harga penuh untuk hasil yang nyaris identik, dan tuas yang jauh lebih
+            murah ada di kartu pratinjau (gambar/suara). Penjelasan sebaris cukup memberi tahu
+            itu tanpa memperlambat orang yang memang sah mengulang. */}
+        {project.video_url && running.video === undefined && !pending.video && (
+          <p className="tiny muted mt2">
+            Yang berubah kalau diulang: hanya gambar dan suara yang sedang disetujui di atas. Kalau keduanya sama, hasilnya biasanya mirip —{" "}
+            <a href="#ulang-gambar" onClick={(e) => { e.preventDefault(); sorotTombol("btn-ulang-gambar"); }}>ulang gambarnya</a>
+            {" "}atau{" "}
+            <a href="#ulang-suara" onClick={(e) => { e.preventDefault(); sorotTombol("btn-ulang-suara"); }}>ulang suaranya</a>
+            {" "}dulu, itu jauh lebih murah.
+          </p>
+        )}
         {running.video !== undefined && (
           <p className="tiny muted mt2">Video avatar butuh 2–6 menit. Halaman boleh ditutup; hasilnya tetap dicatat ke proyek ini.</p>
         )}
