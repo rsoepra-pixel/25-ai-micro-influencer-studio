@@ -13,6 +13,7 @@ import { Profil } from "./profil.jsx";
 import { BuatVideo } from "./buat-video.jsx";
 import { Mulai, MulaiClaude } from "./mulai.jsx";
 import { TipLayer, Info } from "./tips.jsx";
+import { TombolIsiSaldo } from "./bantuan.jsx";
 
 // Token undangan dibaca SEKALI saat modul dimuat, sebelum apa pun sempat
 // membersihkan query string. Link-nya berbentuk `/?invite=...` (query, bukan
@@ -409,6 +410,9 @@ function App() {
   // benar bagi pelanggan, yang selalu live. Tidak tahu = anggap berbayar.
   const [spend, setSpend] = useState({ spent: 0, cap: 200, mode: null, billing: "byo_key", balance: 0 });
   const [spendError, setSpendError] = useState(null);
+  // Nomor WA + jam layanan untuk tombol "Isi saldo". null = belum dimuat atau
+  // gagal; tombolnya cukup tidak tampil, aplikasi tetap jalan.
+  const [support, setSupport] = useState(null);
   // Kurs jual untuk label harga (src/harga.js). Nilainya hidup di modul itu;
   // state ini hanya memaksa render ulang begitu kursnya datang atau pelanggan
   // mengganti tampilan rupiah/dolar.
@@ -517,6 +521,18 @@ function App() {
     })();
   }, [session, tick]);
 
+  // Sekali per login, terpisah dari muat biaya di atas: kontak dukungan tidak
+  // berubah saat `tick` naik, dan gagalnya tidak boleh ikut memunculkan
+  // "Gagal memuat biaya" di kartu saldo.
+  useEffect(() => {
+    if (!session || !ws?.id) return;
+    let batal = false;
+    callApp({ action: "support_contact" })
+      .then((r) => { if (!batal) setSupport(r?.ok ? r : null); })
+      .catch((e) => { console.warn("Kontak dukungan tidak termuat:", e?.message || e); if (!batal) setSupport(null); });
+    return () => { batal = true; };
+  }, [session?.user?.id, ws?.id]); // eslint-disable-line
+
   const [routePath, routeQuery] = route.split("?");
 
   if (session === undefined) return null;
@@ -616,7 +632,7 @@ function App() {
   else if (routePath.startsWith("/influencers/")) view = <InfluencerDetail {...props} key={routePath.split("/")[2]} id={routePath.split("/")[2]} />;
   else if (routePath === "/studio") view = <Studio {...props} query={routeQuery} />;
   else if (routePath === "/storyboard") view = <Storyboard {...props} query={routeQuery} />;
-  else if (routePath === "/buat-video") view = <BuatVideo {...props} />;
+  else if (routePath === "/buat-video") view = <BuatVideo {...props} spend={spend} support={support} />;
   else if (routePath === "/mulai") view = <Mulai />;
   else if (routePath === "/mulai-claude") view = <MulaiClaude />;
   else if (routePath === "/ugc") view = <Ugc {...props} query={routeQuery} />;
@@ -676,6 +692,7 @@ function App() {
                 </div>
                 {hargaLabelLain(spend.balance) && <div className="tiny muted">{hargaLabelLain(spend.balance)}</div>}
                 <div className="tiny muted">terpakai {spend.spent > 0 ? hargaLabel(spend.spent) : (tampilanAktif() === "idr" ? "Rp 0" : "$0.00")} bulan ini</div>
+                <TombolIsiSaldo support={support} ws={ws} />
                 {kursJual() && (
                   <div className="row mt1" style={{ gap: 4 }}>
                     {[["idr", "Rp"], ["usd", "$"]].map(([v, l]) => (

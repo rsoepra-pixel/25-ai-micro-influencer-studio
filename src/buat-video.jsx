@@ -24,7 +24,8 @@ import { useProducts, NewProduct } from "./products.jsx";
 import { isAvatarModel, estSeconds, WORDS_PER_SEC, MAX_SECONDS, DEFAULT_SCENE, DEFAULT_DELIVERY } from "./ugc.jsx";
 import { catalogMaxSeconds, fitShotDurations } from "./storyboard.jsx";
 import { Info, TIP_PENULIS_AI } from "./tips.jsx";
-import { hargaLabel, biayaNaskahLabel, bagiAdegan, POLA_CERITA } from "./harga.js";
+import { hargaLabel, tampilanAktif, biayaNaskahLabel, biayaNaskahUsd, bagiAdegan, POLA_CERITA } from "./harga.js";
+import { TombolIsiSaldo, rupiahkanPesan } from "./bantuan.jsx";
 
 const KUNCI_PROFIL = "profil_influencer_id";
 const TTS_KEY = "fal-ai/minimax/speech-02-hd";
@@ -69,7 +70,7 @@ export function perkiraanUsd(jenis, md, { seconds, chars = 0, shots = [] }) {
   return estimateFor(md.imgModel) + perShot;
 }
 
-export function BuatVideo({ ws, refresh, tick }) {
+export function BuatVideo({ ws, refresh, tick, spend, support }) {
   const [langkah, setLangkah] = useState("apa");
   const [jenis, setJenis] = useState("ugc");          // ugc | storyboard
   const [ide, setIde] = useState("");
@@ -107,6 +108,51 @@ export function BuatVideo({ ws, refresh, tick }) {
   }, [inf?.id, tick]);
   const product = (products || []).find((p) => p.id === productId) || null;
 
+  // Jatah anggota non-owner. Saldo workspace saja tidak cukup untuk anggota:
+  // server menolak kalau pemakaian ORANG ITU melewati porsinya, walau saldo
+  // bersama masih banyak (trigger di 0044_quota_reserved). Owner tidak
+  // dibatasi porsi di sini — yang membatasinya saldo.
+  // null = belum tahu / owner / tanpa batas; { kuota, sisa } kalau ada porsi.
+  const [jatah, setJatah] = useState(null);
+  useEffect(() => {
+    let batal = false;
+    (async () => {
+      try {
+        const { data: u } = await supa.auth.getUser();
+        const uid = u?.user?.id;
+        if (!uid) return;
+        const me = await supa.from("workspace_members").select("role")
+          .eq("workspace_id", ws.id).eq("user_id", uid).maybeSingle();
+        if (me.error) throw new Error(me.error.message);
+        if (!me.data || me.data.role === "owner") { if (!batal) setJatah(null); return; }
+        const [q, sp] = await Promise.all([
+          supa.rpc("member_quota_usd", { ws: ws.id, uid }),
+          supa.rpc("member_spent_usd", { ws: ws.id, uid }),
+        ]);
+        if (q.error) throw new Error(q.error.message);
+        const kuota = q.data == null ? null : Number(q.data);
+        // Server membandingkan terpakai + perkiraan dengan kuota, jadi yang
+        // relevan adalah sisanya. Kalau angka terpakai tidak termuat, pakai
+        // kuota penuh: peringatannya jadi lebih jarang, bukan salah arah.
+        const terpakai = sp.error ? 0 : Number(sp.data || 0);
+        if (!batal) setJatah(kuota == null ? null : { kuota, sisa: Math.max(kuota - terpakai, 0) });
+      } catch (e) {
+        // Tidak tahu = tidak memperingatkan. Server tetap gerbangnya.
+        console.warn("Jatah anggota tidak termuat:", e?.message || e);
+        if (!batal) setJatah(null);
+      }
+    })();
+    return () => { batal = true; };
+  }, [ws.id, tick]);
+  // Saldo dan jatah hanya menahan job di mode kredit yang live; di mode mock
+  // tidak ada yang ditagih, dan di mode kunci sendiri saldo selalu 0 — dua-duanya
+  // akan memunculkan peringatan palsu.
+  const ditagih = spend?.billing === "credit" && spend?.mode !== "mock";
+  const sisaUsd = ditagih
+    ? Math.min(Number(spend?.balance ?? Infinity), jatah ? jatah.sisa : Infinity)
+    : Infinity;
+  const jatahNol = ditagih && jatah?.kuota === 0;
+
   const md = useMemo(() => modelDefault(models, inf), [models, inf]);
   const maxSb = useMemo(() => catalogMaxSeconds(models || []), [models]);
   // Sebelum naskah ada: adegan 5 detik rata hanya untuk PERKIRAAN harga.
@@ -136,6 +182,16 @@ export function BuatVideo({ ws, refresh, tick }) {
     if (jenis === "ugc" && !md.ttsModel) penghalang.push({ text: `${inf.name} belum punya suara.`, href: "#/profil", cta: "Rekam suara" });
   }
   if (jenis === "ugc" && !productId) penghalang.push({ text: "Pilih produk yang dibicarakan, atau simpan produk baru." });
+  // Produk tanpa foto dulu lolos sampai layar produksi, dan peringatan
+  // "kemasan akan dikarang" di plan() (ugc.jsx) baru muncul SETELAH pratinjau
+  // berbayar terkirim. Di sini masih gratis untuk berhenti. Hanya kalau model
+  // gambarnya memang memakai foto produk (ref_image_multi) — kalau tidak,
+  // menambah foto tidak mengubah hasil, jadi menghalangi hanya membuang waktu.
+  const pakaiFotoProduk = md.imgModel?.ref_image_multi ?? true;
+  if (jenis === "ugc" && product && pakaiFotoProduk && (product.photos?.length || 0) === 0) penghalang.push({
+    text: `${product.name} belum punya foto. Tanpa foto, kemasannya akan dikarang model dan hasilnya sering tidak mirip.`,
+    href: "#/products", cta: "Tambah foto produk",
+  });
   if (jenis === "ugc" && (!md.imgModel || !md.avatarModel)) penghalang.push({ text: "Model gambar atau model video bicara belum aktif di katalog. Hubungi operator." });
   if (jenis === "storyboard" && !md.videoModel) penghalang.push({ text: "Model video beberapa adegan belum aktif di katalog. Hubungi operator." });
 
@@ -320,6 +376,7 @@ export function BuatVideo({ ws, refresh, tick }) {
                 <option value="">— pilih produk —</option>
                 {(products || []).map((p) => <option key={p.id} value={p.id}>{p.name} ({p.photos?.length || 0} foto)</option>)}
               </select>
+              {product && md.imgModel && !pakaiFotoProduk && <p className="tiny muted mb2">Model gambar ini tidak memakai foto produk.</p>}
               <button type="button" className="btn btn2 tiny mb3" onClick={() => setProdukBaru((v) => !v)}
                 data-tip="Simpan produk baru di sini tanpa pindah halaman: nama, keunggulan, dan foto kemasan asli. Tersimpan ke Product Kit untuk video berikutnya.">{produkBaru ? "Tutup" : "+ Produk baru"}</button>
               {produkBaru && (
@@ -361,7 +418,23 @@ export function BuatVideo({ ws, refresh, tick }) {
               : `Pola "${(POLA_CERITA.find((p) => p.key === pola) || {}).label}": penulis AI membagi ${detik} detik jadi 3–6 adegan dengan ritme sendiri${fitAwal.raw > fitAwal.total ? ` (dipangkas ke ${fitAwal.total} karena batas model video)` : ""}.`}
             {" "}Video lebih dari {MAX_SECONDS} detik menyusul — untuk sekarang buat beberapa video pendek.
           </p>
-          {err && <div className="msg-err mb3">{err}</div>}
+          {models && (() => {
+            const total = hargaUntuk(detik) + (biayaNaskahUsd() || 0);
+            if (!Number.isFinite(sisaUsd) || (!jatahNol && total <= sisaUsd)) return null;
+            // Peringatan, bukan gerbang: tombol di bawah tetap aktif. Yang
+            // memutuskan boleh-tidaknya adalah trigger di database (CLAUDE.md
+            // jebakan #4) — angka di klien ini perkiraan, dan saldo bisa diisi
+            // operator sementara orangnya masih membaca naskah.
+            return (
+              <div className="msg-warn mb3">
+                {jatahNol
+                  ? "Owner belum memberi jatah untuk akunmu. Minta owner mengisinya di Pengaturan → Tim & Kursi."
+                  : <>Saldomu {sisaUsd > 0 ? hargaLabel(sisaUsd) : (tampilanAktif() === "idr" ? "Rp 0" : "$0.00")}, video ini ≈ {hargaLabel(total)}. Isi saldo dulu supaya tidak terhenti di tengah.
+                      <TombolIsiSaldo support={support} ws={ws} jumlahUsd={total} /></>}
+              </div>
+            );
+          })()}
+          {err && <PesanGagal err={err} support={support} ws={ws} />}
           <div className="row" style={{ gap: 8 }}>
             <button type="button" className="btn btn2" disabled={!!busy} onClick={() => setLangkah("siapa")} data-tip="Ganti orang atau produk.">← Kembali</button>
             <button type="button" className="btn" disabled={!!busy} onClick={susun}
@@ -398,7 +471,7 @@ export function BuatVideo({ ws, refresh, tick }) {
             </>
           )}
           <Rincian jenis={jenis} md={md} detik={jenis === "ugc" ? estSeconds(draft.ugc.script) : fit.total} shots={fit.each} />
-          {err && <div className="msg-err mb3">{err}</div>}
+          {err && <PesanGagal err={err} support={support} ws={ws} />}
           <div className="row" style={{ gap: 8, flexWrap: "wrap" }}>
             <button type="button" className="btn" disabled={!!busy} onClick={buat}
               data-tip={jenis === "ugc"
@@ -415,6 +488,19 @@ export function BuatVideo({ ws, refresh, tick }) {
           </p>
         </div>
       )}
+    </div>
+  );
+}
+
+// Kotak error wizard. Penolakan saldo dari server menyuruh "isi kredit di
+// Settings" yang tidak punya tombol isinya, jadi tombolnya ditaruh langsung di
+// bawah pesannya. Dicocokkan lewat teks karena server belum mengirim kode
+// error — ganti dengan kodenya begitu ada.
+function PesanGagal({ err, support, ws }) {
+  return (
+    <div className="msg-err mb3">
+      {rupiahkanPesan(err)}
+      {String(err).includes("Kredit tidak cukup") && <TombolIsiSaldo support={support} ws={ws} />}
     </div>
   );
 }
