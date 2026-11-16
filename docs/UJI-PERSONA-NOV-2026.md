@@ -319,3 +319,75 @@ yang hanya bisa deploy via Actions.
   indikator job global via poll + judul tab; draf wizard di localStorage;
   label "TIDAK DIPOSTING"; `effectiveCost`. Ukur: video kedua dalam 7 hari;
   penolakan saldo vs top-up. Baru putuskan realtime, push, laporan besar.
+
+---
+
+## Debat dan titik temu (16 Nov 2026)
+
+Dua agen berdebat dua ronde: peninjau UX di atas melawan "tech lead +
+pembela pemilik". Fakta kode yang dipakai sudah dicek langsung: ke-63 grid
+memakai `className="grid"` (`index.html:61`), sidebar `className="sidebar"`
+(`src/main.jsx:634`), kartu saldo ada **di dalam** sidebar
+(`src/main.jsx:660-666`), harga akses Rp 7,5 jt / 15 jt seumur hidup dengan
+margin saldo 30 % (`docs/OPERASI.md:25-46`).
+
+**Yang diubah oleh debat.**
+
+| Soal | Posisi awal UX | Argumen balik | Hasil |
+|---|---|---|---|
+| Kerangka manfaat | "lindungi pelanggan dari belanja ulang" | Akses seumur hidup → tidak ada pendapatan perpanjangan; margin hanya dari saldo. Retensi (belanja saldo 30 hari per workspace) adalah ukurannya | **Diterima.** Yang dipotong hanya belanja yang tidak menghasilkan video terpakai |
+| Estimasi ponsel | 4–7 hari | Semua grid punya kelas; satu blok `@media` + `!important` cukup | **Diterima**: 2–3 hari, termasuk bar saldo atas (karena saldo ikut tersembunyi) dan ⓘ bisa diketuk |
+| Log event minggu 1 | Perlu | `production_jobs`, `job_audit`, `text_usage`, `credits_ledger` sudah mengukur langkah berbayar; hindari migrasi | **Dicoret** |
+| `effectiveCost` di tombol | Tampilkan | Tiap klik ditagih estimasi, bukan estimasi × percobaan; melanggar "Rp tampil = Rp terpotong" | **Dicoret**; catatan kaki "biasanya perlu ±2×" hanya kalau `triesPerResult > 1` |
+| Konfirmasi ulang video | Modal | Modal memotong belanja ulang yang bermargin | **Inline**: Rp + satu baris "apa yang berubah"; ukur sebelum/sesudah |
+| Banner gagal per proyek | Per proyek | Satu daftar Status lebih murah dan menangkap job MCP/cron | **Kompromi**: satu Status + satu baris inline di proyek ("gagal, tidak ditagih → Status") supaya orang tidak bayar dua kali |
+| Label "TIDAK DIPOSTING" | Minggu 3–4 | Tidak butuh keputusan pemilik; bug kejujuran Laporan | **Fase 1** |
+| Isi saldo | Perlu kanal baru | Jalur manual sudah ada (`customer_topup`, migrasi 0043); WA berisi jumlah cukup untuk ±50 pelanggan pertama | **Diterima**; Doku/QRIS saat waktu operator terasa |
+| Keputusan pemilik | Banyak yang memblokir | Nomor WA, kanal top-up, tarif draf → NULL = fitur tersembunyi | **Diterima**; yang memblokir hanya app Meta, Doku live, kanal push |
+| Rute wizard khusus ponsel | — | Akan mem-fork `ugc.jsx` | **Ditolak bersama** |
+
+**Rencana yang ditandatangani kedua agen.**
+
+*Fase 1 — klien saja, tanpa migrasi, ≈ 6 hari*
+
+| Item | Hari | Ukuran keberhasilan |
+|---|---|---|
+| Perbaiki crash `usd` + tes asap Laporan (atau cek build di CI kalau runner React terlalu mahal) | 0,5–1 | Nol error boundary di `/reports` |
+| CSS ponsel (`.grid`, `.sidebar`, padding, lebar tetap) + bar saldo atas + ⓘ bisa diketuk | 2–3 | Pengguna uji mencapai "Tinjau" di HP 360 px |
+| Cek saldo/jatah di langkah 3 + "Isi saldo" ke WA (tersembunyi saat NULL) + kata "jatah 0" | 1–1,5 | Penolakan "Kredit tidak cukup" per percobaan bayar turun |
+| Foto produk 0 = penghalang + harga ulang video inline | 0,5–1 | Job pratinjau tanpa foto produk → 0 |
+| Poller membaca `error` + baris "gagal, tidak ditagih → Status" (dipindah dari Fase 2 atas usul tech lead: ini kebocoran bayar dua kali) | 1 | Job ulang berbayar < 10 menit setelah gagal |
+| Label "TIDAK DIPOSTING" + dikeluarkan dari Laporan | 0,5 | Jumlah "published" = job tanpa `external_post_id` berawalan `mock_` |
+
+*Fase 2 — amati dulu, lalu bangun, ≈ 5 hari*
+
+| Item | Hari | Ukuran |
+|---|---|---|
+| Uji 3–5 orang sungguhan di HP sendiri | 2 (kalender) | Di langkah mana berhenti; Rp tampil vs Rp terpotong |
+| Daftar Status + kalimat tetap dari `job_failure_kind` + badge judul tab (poll 30 detik) | 1,5–2 | Pesan "videonya mana / uang hilang" ke admin |
+| Web Share di layar hasil + draf wizard di localStorage | 1 | Video kedua dalam 7 hari |
+| Rupiah di semua string klien + catatan "±2×" | 0,5–1 | grep `$` bersih di `src/` |
+
+*Fase 3 — sesuai bukti dan keputusan pemilik*
+- Error server berkode, diformat rupiah di klien (migrasi + Actions), 2–3 hari.
+- Doku/QRIS saat waktu operator untuk top-up manual terasa; ukur median
+  "minta isi → saldo masuk".
+- Tabel event hanya kalau uji Fase 2 tidak menjelaskan drop-off, 1 hari.
+- PWA lalu push setelah pemilik memilih kanal, 3–5 hari.
+- Laporan per video/per orang/CSV, 3–5 hari, kalau workspace 3 kursi memintanya.
+
+**Risiko estimasi Fase 1 (dari tech lead).** Tes asap Laporan: repo belum
+punya runner React sama sekali, jadi tes pertama = memasang runner; kalau
+mahal, cukup cek build. Cek jatah anggota di langkah 3 mungkin butuh query
+kedua, dan nomor WA mungkin belum bisa dibaca browser pelanggan → satu aksi
+kecil di `app/index.ts` lewat Actions; item itu tidak lagi "klien saja".
+
+**Yang masih belum sepakat, dan apa yang menyelesaikannya.**
+1. *Siapa yang sungguh membeli.* Kalau tipe Bu Sari/Rina tidak ada di
+   workspace berbayar (termasuk sebagai anggota agensi), poles ponsel di
+   luar Fase 1 tidak sepadan. Hitung: anggota dan porsi sesi layar sempit per
+   workspace berbayar. Rencana di atas berlaku apa pun hasilnya.
+2. *Harga inline vs modal untuk ulang video.* Bandingkan laju ulang pada
+   video yang percobaan sebelumnya sukses + belanja 30 hari, sebelum dan
+   sesudah Fase 1. Kalau laju ulang datar dan keluhan hasil jelek berlanjut,
+   pindah ke modal.
