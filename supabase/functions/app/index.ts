@@ -10,6 +10,12 @@
 // Deploy dengan verify_jwt=false KARENA signup terjadi sebelum ada JWT —
 // aksi admin diautentikasi manual via Authorization.
 import { createClient } from "npm:@supabase/supabase-js@2";
+// Diimpor statis, bukan dibaca dengan Deno.readTextFile: impor ikut dibundel
+// saat `supabase functions deploy`, sedangkan berkas yang dibaca saat jalan
+// harus didaftarkan sendiri di config.toml (static_files) — dan berkas yang
+// lupa didaftarkan baru ketahuan saat operator menekan tombolnya.
+// Dibuat ulang dengan `npm run seed:bantuan`; jangan disunting tangan.
+import BANTUAN_SEED from "./bantuan-seed.json" with { type: "json" };
 
 const SB_URL = Deno.env.get("SUPABASE_URL")!;
 const admin = createClient(SB_URL, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!, { auth: { persistSession: false } });
@@ -1200,6 +1206,133 @@ Deno.serve(async (req) => {
           }
         }
         return json({ ok: true, granted_usd: amount, balance: Number(row?.out_balance || 0), promo: promoApplied });
+      }
+      // ---------- Asisten bantuan: basis pengetahuan (operator platform) ----------
+      //
+      // Artikel ditulis lewat aksi ini saja (service role), tidak lewat RLS:
+      // help_articles sengaja tanpa policy tulis — sama dengan service_config.
+      // Isinya yang dibaca asisten saat menjawab pelanggan, jadi artikel yang
+      // salah adalah jawaban salah yang terdengar yakin.
+      if (body.action === "help_articles_list") {
+        await requirePlatformAdmin(req);
+        // Termasuk yang nonaktif: operator perlu melihat yang ia matikan
+        // supaya bisa menyalakannya lagi.
+        const { data, error } = await admin.from("help_articles")
+          .select("id, slug, judul, isi, tags, aktif, urutan, updated_at, updated_by")
+          .order("urutan").order("judul");
+        if (error) throw new Error(error.message);
+        return json({ ok: true, articles: data || [] });
+      }
+      if (body.action === "help_articles_upsert") {
+        const c = await requirePlatformAdmin(req);
+        const slug = String(body.slug || "").trim().toLowerCase();
+        if (!/^[a-z0-9-]{2,60}$/.test(slug)) {
+          throw new Error("Slug: 2–60 karakter, huruf kecil/angka/tanda hubung saja, mis. \"isi-saldo\".");
+        }
+        const judul = String(body.judul || "").trim();
+        if (!judul) throw new Error("Judul wajib diisi.");
+        if (judul.length > 120) throw new Error("Judul terlalu panjang — maksimal 120 karakter.");
+        const isi = String(body.isi || "").trim();
+        if (!isi) throw new Error("Isi artikel wajib diisi.");
+        if (isi.length > 20000) throw new Error("Isi artikel terlalu panjang — maksimal 20.000 karakter. Pecah jadi beberapa artikel.");
+        const tags = (Array.isArray(body.tags) ? body.tags : String(body.tags || "").split(","))
+          .map((t: unknown) => String(t || "").trim().toLowerCase()).filter(Boolean).slice(0, 20);
+        const urutan = Number(body.urutan ?? 0);
+        if (!Number.isInteger(urutan)) throw new Error("Urutan harus bilangan bulat.");
+        // updated_by selalu diisi di sini: itulah penanda "sudah disunting
+        // operator" yang membuat help_articles_seed tidak menimpanya lagi.
+        const row = {
+          slug, judul, isi, tags, urutan,
+          aktif: body.aktif !== false,
+          updated_at: new Date().toISOString(),
+          updated_by: c.user.id,
+        };
+        const q = body.id
+          ? admin.from("help_articles").update(row).eq("id", String(body.id)).select("id").maybeSingle()
+          : admin.from("help_articles").insert(row).select("id").single();
+        const { data, error } = await q;
+        if (error) {
+          if (error.code === "23505") throw new Error(`Slug "${slug}" sudah dipakai artikel lain. Pilih slug lain.`);
+          throw new Error(error.message);
+        }
+        if (!data) throw new Error("Artikel tidak ditemukan — mungkin sudah dihapus. Muat ulang daftarnya.");
+        return json({ ok: true, id: data.id, created: !body.id });
+      }
+      if (body.action === "help_articles_delete") {
+        await requirePlatformAdmin(req);
+        const id = String(body.id || "");
+        if (!id) throw new Error("id artikel wajib diisi.");
+        const { error } = await admin.from("help_articles").delete().eq("id", id);
+        if (error) throw new Error(error.message);
+        return json({ ok: true });
+      }
+      if (body.action === "help_articles_seed") {
+        // Mengisi/menyegarkan artikel dari dokumen bawaan (bantuan-seed.json,
+        // hasil scripts/gen-bantuan-seed.mjs). Tidak lewat migrasi: isinya
+        // berubah setiap dokumen berubah, dan migrasi dijalankan manual.
+        //
+        // Artikel yang updated_by-nya terisi TIDAK disentuh — operator sudah
+        // memperbaikinya dengan tangan, dan dokumen yang dibuat ulang tidak
+        // tahu perbaikan itu. Begitu juga `aktif`: artikel seed yang dimatikan
+        // operator tercatat sebagai suntingan, jadi tidak hidup lagi diam-diam.
+        await requirePlatformAdmin(req);
+        const seed = (BANTUAN_SEED as Array<Record<string, unknown>>)
+          .filter((a) => /^[a-z0-9-]{2,60}$/.test(String(a.slug || "")) && a.judul && a.isi);
+        const { data: ada, error: adaErr } = await admin.from("help_articles").select("slug, updated_by");
+        if (adaErr) throw new Error(adaErr.message);
+        const lama = new Map((ada || []).map((r) => [String(r.slug), r.updated_by as string | null]));
+
+        const baru = seed.filter((a) => !lama.has(String(a.slug)));
+        const segarkan = seed.filter((a) => lama.has(String(a.slug)) && !lama.get(String(a.slug)));
+        const dilewati = seed.length - baru.length - segarkan.length;
+        const kolom = (a: Record<string, unknown>) => ({
+          slug: String(a.slug),
+          judul: String(a.judul).slice(0, 120),
+          isi: String(a.isi).slice(0, 20000),
+          tags: Array.isArray(a.tags) ? a.tags.map(String) : [],
+          urutan: Number.isInteger(a.urutan) ? Number(a.urutan) : 0,
+          updated_at: new Date().toISOString(),
+        });
+
+        if (baru.length) {
+          // ignoreDuplicates: kalau operator menyimpan slug yang sama di sela
+          // pembacaan di atas dan baris ini, miliknya yang menang.
+          const { error } = await admin.from("help_articles")
+            .upsert(baru.map(kolom), { onConflict: "slug", ignoreDuplicates: true });
+          if (error) throw new Error(error.message);
+        }
+        // Satu per satu dengan syarat updated_by IS NULL di dalam UPDATE-nya,
+        // bukan upsert massal: syarat "jangan timpa suntingan operator" harus
+        // berlaku saat baris ditulis, bukan saat dibaca tadi.
+        let diperbarui = 0;
+        for (const a of segarkan) {
+          const { data, error } = await admin.from("help_articles")
+            .update(kolom(a)).eq("slug", String(a.slug)).is("updated_by", null).select("id");
+          if (error) throw new Error(error.message);
+          diperbarui += (data || []).length;
+        }
+        return json({
+          ok: true,
+          ditambah: baru.length,
+          diperbarui,
+          dilewati: dilewati + (segarkan.length - diperbarui),
+          total_seed: seed.length,
+        });
+      }
+      if (body.action === "help_stats") {
+        // Biaya asisten ditanggung operator (migrasi 0059), jadi angka ini
+        // satu-satunya tempat ia terlihat: tidak ada di saldo pelanggan mana pun.
+        await requirePlatformAdmin(req);
+        const { data, error } = await admin.rpc("help_usage_stats", { hari: 7 });
+        if (error) throw new Error(error.message);
+        const r = (Array.isArray(data) ? data[0] : data) || {};
+        return json({
+          ok: true,
+          hari: 7,
+          pertanyaan: Number(r.pertanyaan || 0),
+          operator_cost_usd: Number(r.operator_cost_usd || 0),
+          tokens: Number(r.tokens || 0),
+        });
       }
       if (body.action === "signup") {
         const email = String(body.email || "").trim().toLowerCase();

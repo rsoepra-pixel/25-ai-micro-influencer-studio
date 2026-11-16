@@ -4,7 +4,8 @@
   "type": "module",
   "scripts": {
     "build": "vite build && node scripts/gen-redirects.mjs",
-    "test": "node --test src/*.test.mjs"
+    "test": "node --test src/*.test.mjs",
+    "seed:bantuan": "node scripts/gen-bantuan-seed.mjs"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.45.0",
