@@ -355,6 +355,7 @@ berbeda dari yang pertama.
 bisa dikembalikan dengan memasang ulang versi sebelumnya; ia pantas dijalankan
 sadar-sadar, bukan sebagai efek samping sebuah merge. File di
 `supabase/migrations/` adalah salinan resmi dari yang sudah diterapkan.
+Sejak 16 Nov 2026 migrasi dijalankan lewat **Actions → Apply migration (manual) → Run workflow** dengan nama berkasnya (secret `SUPABASE_DB_TOKEN`, token berizin Database + Migrations, kedaluwarsa 90 hari — buat ulang kalau run gagal 401). Tetap satu berkas per jalan, tetap disengaja.
 
 ### Kunci internal
 `generate` menerima `x-internal-key` hanya untuk aksi tertentu:
@@ -440,6 +441,7 @@ memengaruhi fungsi.
 | `0056` | `storyboards.ref_photo_urls` — foto milik user untuk storyboard-dari-foto: bahan adegan dan referensi tambahan gambar pembuka. **Jalankan sebelum merge** perubahan Storyboard yang menyimpannya, kalau tidak insert storyboard ditolak karena kolomnya tidak ada. Belum dihitung `media_refs()`. |
 | `0055` | `provider_models.ref_video_field` / `ref_video_multi` untuk video sumber Seedance reference-to-video (multi-angle), dan dua kolom itu ditambahkan di akhir `provider_models_ranked`. Field `video_urls` **belum diuji** ke fal. Awalnya bernomor `0051` dan diganti karena bertabrakan dengan `0051_new_workspace_live`. |
 | `0057` | `provider_models.voice_price_usd` (tarif bila suara klon diikat — **kosong**, pemilik yang mengisi); `model_scorecard` + `provider_models_ranked` ditambah `billed_usd`, `usd_per_result_billed`, `failed_estimate_usd`, `voice_price_usd` di ujung; `job_failure_kind` mengenali saldo provider habis dan "Model not exist" sebagai `config`; rem `production_jobs_throttle_provider_lock` menahan job baru selama job selesai terakhir provider itu gagal karena saldo habis (jendela `service_config.provider_lock_mins`, bawaan 15). Kode yang menyertainya aman dijalankan sebelum maupun sesudah migrasi ini. |
+| `0058` | `provider_models.extra_input` MiniMax Speech-02 HD ditambah `language_boost: Indonesian` (PR #90; semula bernomor 0057, diganti karena 0057 sudah dipakai). Belum diuji langsung ke fal: kalau job TTS pertama sesudahnya gagal 422, jalankan bagian "Batalkan" di akhir berkas. |
 | `0059` | asisten bantuan. `help_articles` (basis pengetahuan; dibaca siapa pun yang login, ditulis hanya lewat aksi `app` operator), `help_questions` (service role saja), `cari_bantuan()`, `help_usage_stats()`. Penagihan: `text_usage.billed` + `operator_cost_usd`; keperluan di `service_config.text_operator_purposes` (bawaan `bantuan`) **ditanggung operator** — `charge_text` mencatat `cost_usd = 0` tanpa baris ledger, `text_precheck` (kini 4 argumen, `purpose` opsional; versi 3-argumen dihapus) melewati gerbang langganan/jatah dan menggantinya dengan batas `help_rate_per_min` per orang per menit (bawaan 10). Pemanggil lama tetap jalan. **Jalankan sebelum** `bantuan_tanya` (PR 2) dipasang — ia memanggil precheck 4-argumen — dan sebelum tombol "Isi dari dokumen bawaan" dipakai. |
 
 ### Nama migrasi: repo vs ledger produksi
