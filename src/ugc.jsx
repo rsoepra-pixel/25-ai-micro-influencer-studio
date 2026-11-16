@@ -37,6 +37,7 @@ import { useProducts, NewProduct } from "./products.jsx";
 import { waitForJob, GagalTerakhir } from "./storyboard.jsx";
 import { Info } from "./tips.jsx";
 import { modelHidup } from "./routing.js";
+import { TombolBagikan, salinCaption, namaBerkasDari } from "./bagikan.jsx";
 import { bacaGagal, catatGagal, hapusGagal } from "./gagal.js";
 
 export const PLATFORMS = [
@@ -972,7 +973,7 @@ function StepHasil({ project, inf, product, setStep, patchProject }) {
   const [copied, setCopied] = useState(false);
   const captionText = [project.caption, (project.hashtags || []).map((h) => `#${h}`).join(" ")].filter(Boolean).join("\n\n");
   async function copyCaption() {
-    try { await navigator.clipboard.writeText(captionText); setCopied(true); setTimeout(() => setCopied(false), 1500); } catch { /* clipboard ditolak browser */ }
+    if (await salinCaption(captionText)) { setCopied(true); setTimeout(() => setCopied(false), 1500); }
   }
   return (
     <div>
@@ -980,6 +981,11 @@ function StepHasil({ project, inf, product, setStep, patchProject }) {
         <div className="card p4">
           <video src={project.video_url} controls playsInline style={{ width: "100%", borderRadius: 10, background: "#000" }} />
           <div className="row mt3" style={{ gap: 8 }}>
+            {/* Bagikan jadi tombol utama: unggah ke TikTok/IG lewat share sheet HP
+                adalah jalur publikasi yang dipakai (sambungan akun sosial tidak
+                ditawarkan). Unduh tetap ada untuk yang mau menyimpan saja. */}
+            <TombolBagikan url={project.video_url} caption={captionText}
+              namaBerkas={namaBerkasDari(inf?.name, product?.name)} />
             <a className="btn btn2" href={project.video_url} download target="_blank" rel="noreferrer">Unduh</a>
             <button className="btn btn2" onClick={() => setStep("produksi")}>Buat ulang</button>
           </div>
