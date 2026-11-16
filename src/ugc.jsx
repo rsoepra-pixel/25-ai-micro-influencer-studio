@@ -34,9 +34,10 @@ import { supa, callGenerate } from "./supa.js";
 import { useQuery, unwrap, Badge, byPrice, priceLabel, recordBadge} from "./views.jsx";
 import { LibraryPicker } from "./library.jsx";
 import { useProducts, NewProduct } from "./products.jsx";
-import { waitForJob } from "./storyboard.jsx";
+import { waitForJob, GagalTerakhir } from "./storyboard.jsx";
 import { Info } from "./tips.jsx";
 import { modelHidup } from "./routing.js";
+import { bacaGagal, catatGagal, hapusGagal } from "./gagal.js";
 
 export const PLATFORMS = [
   ["tiktok", "TikTok"],
@@ -494,6 +495,13 @@ function ProjectDetail({ id, models, influencers, products, mode, autoPratinjau,
   // tampilnya layar Produksi: kalau pratinjaunya gagal lalu orang bolak-balik
   // ke Naskah, kembali ke Produksi tidak boleh mengirim job berbayar lagi.
   const [auto, setAuto] = useState(!!autoPratinjau);
+  // Kegagalan terakhir per slot ("keyframe", "audio", "video"), dari poller
+  // maupun dari tombol yang ditunggu di halaman — dua jalur, satu catatan.
+  const kunciGagal = `ugc:gagal:${id}`;
+  const [gagalTerakhir, setGagalTerakhir] = useState(() => bacaGagal(kunciGagal));
+  useEffect(() => { setGagalTerakhir(bacaGagal(kunciGagal)); }, [kunciGagal]);
+  const catatGagalSlot = (slot, error) => setGagalTerakhir(catatGagal(kunciGagal, slot, error));
+  const lupakanGagal = (slot) => setGagalTerakhir(hapusGagal(kunciGagal, slot));
 
   const load = useCallback(async () => {
     const { data } = await supa.from("ugc_projects").select("*").eq("id", id).maybeSingle();
@@ -530,7 +538,9 @@ function ProjectDetail({ id, models, influencers, products, mode, autoPratinjau,
 
   // Jaring pengaman untuk job yang ditinggal saat halaman ditutup: lanjutkan
   // mencatat hasilnya, dan lepaskan job yang gagal supaya tombolnya tidak
-  // memakai ulang job mati.
+  // memakai ulang job mati. Alasan gagalnya dicatat dulu: setelah id-nya
+  // dilepas, layar hanya bisa bilang "belum dibuat", dan orang membayar lagi
+  // tanpa tahu kenapa yang pertama gagal.
   const pendingIds = [
     pending.keyframe ? project.keyframe_job_id : null,
     pending.audio ? project.audio_job_id : null,
@@ -541,15 +551,18 @@ function ProjectDetail({ id, models, influencers, products, mode, autoPratinjau,
     let alive = true;
     const timer = setInterval(async () => {
       await callGenerate({ action: "poll" }).catch(() => {});
-      const { data: jobs } = await supa.from("production_jobs").select("id, status, output_url").in("id", pendingIds);
+      const { data: jobs } = await supa.from("production_jobs").select("id, status, output_url, error").in("id", pendingIds);
       if (!alive || !jobs?.length) return;
       const patch = {};
       for (const j of jobs) {
         const slot = j.id === project.keyframe_job_id ? "keyframe" : j.id === project.audio_job_id ? "audio" : j.id === project.video_job_id ? "video" : null;
         if (!slot) continue;
-        if (j.status === "failed") patch[`${slot}_job_id`] = null;
-        else if (j.status === "succeeded" && j.output_url) {
+        if (j.status === "failed") {
+          patch[`${slot}_job_id`] = null;
+          catatGagalSlot(slot, j.error);
+        } else if (j.status === "succeeded" && j.output_url) {
           patch[`${slot}_url`] = j.output_url;
+          lupakanGagal(slot);
           if (slot === "video") patch.status = "done";
         }
       }
@@ -567,7 +580,7 @@ function ProjectDetail({ id, models, influencers, products, mode, autoPratinjau,
 
   if (!project || !step) return <div className="card p6">Memuat proyek…</div>;
 
-  const shared = { project, inf, product, refCount, models, mode, patchProject, load, refresh, setErr, setStep };
+  const shared = { project, inf, product, refCount, models, mode, patchProject, load, refresh, setErr, setStep, gagalTerakhir, catatGagalSlot, lupakanGagal };
 
   return (
     <div>
@@ -648,7 +661,7 @@ function StepNaskah({ project, inf, product, refCount, models, patchProject, set
   );
 }
 
-function StepProduksi({ project, inf, product, refCount, models, mode, pending, patchProject, load, refresh, setErr, setStep, autoPratinjau, pakaiAuto }) {
+function StepProduksi({ project, inf, product, refCount, models, mode, pending, patchProject, load, refresh, setErr, setStep, autoPratinjau, pakaiAuto, gagalTerakhir = {}, catatGagalSlot, lupakanGagal }) {
   const r = plan({ project, inf, product, refCount, models });
   const [imgId, setImgId] = useState(project.image_model_id || "");
   const [ttsId, setTtsId] = useState(project.tts_model_id || "");
@@ -682,6 +695,20 @@ function StepProduksi({ project, inf, product, refCount, models, mode, pending, 
     if (Object.keys(patch).length) await patchProject(patch);
   }
 
+  // Menunggu satu slot, dan mencatat hasilnya di catatan kegagalan: dihapus
+  // kalau jadi, ditulis kalau job-nya gagal. Batas waktu BUKAN gagal — job-nya
+  // masih jalan dan poller di ProjectDetail yang akan menyelesaikannya.
+  async function tungguSlot(slot, jobId, timeoutMs) {
+    try {
+      const url = await waitForJob(jobId, { timeoutMs, tempat: "proyek ini", onTick: (_, sec) => tandai(slot, sec) });
+      lupakanGagal?.(slot);
+      return url;
+    } catch (e) {
+      if (e.jobGagal !== undefined) catatGagalSlot?.(slot, e.jobGagal);
+      throw e;
+    }
+  }
+
   // Job yang tercatat di proyek dipakai lagi selama belum gagal — membuka
   // ulang halaman atau menekan dua kali tidak boleh membayar dua kali.
   async function jobMasihHidup(jobId) {
@@ -705,7 +732,7 @@ function StepProduksi({ project, inf, product, refCount, models, mode, pending, 
         jobId = res.job_id;
         await patchProject({ keyframe_job_id: jobId, keyframe_url: null });
       }
-      const url = await waitForJob(jobId, { timeoutMs: 240000, onTick: (_, sec) => tandai("keyframe", sec) });
+      const url = await tungguSlot("keyframe", jobId, 240000);
       await patchProject({ keyframe_url: url, status: "producing" });
     } finally { lepas("keyframe"); }
   }
@@ -728,7 +755,7 @@ function StepProduksi({ project, inf, product, refCount, models, mode, pending, 
         aJob = res.job_id;
         await patchProject({ audio_job_id: aJob, audio_url: null });
       }
-      const url = await waitForJob(aJob, { timeoutMs: 240000, onTick: (_, sec) => tandai("audio", sec) });
+      const url = await tungguSlot("audio", aJob, 240000);
       await patchProject({ audio_url: url });
     } finally { lepas("audio"); }
   }
@@ -784,7 +811,7 @@ function StepProduksi({ project, inf, product, refCount, models, mode, pending, 
         vJob = res.job_id;
         await patchProject({ video_job_id: vJob, video_url: null });
       }
-      const vurl = await waitForJob(vJob, { timeoutMs: 900000, onTick: (_, sec) => tandai("video", sec) });
+      const vurl = await tungguSlot("video", vJob, 900000);
       await patchProject({ video_url: vurl, status: "done" });
       refresh?.();
       setStep("hasil");
@@ -842,6 +869,8 @@ function StepProduksi({ project, inf, product, refCount, models, mode, pending, 
             </p>
           </div>
         </div>
+        {!project.keyframe_url && !jalanGambar && <GagalTerakhir rec={gagalTerakhir.keyframe} label="gambar" />}
+        {!project.audio_url && !jalanSuara && <GagalTerakhir rec={gagalTerakhir.audio} label="suara" />}
         <div className="row" style={{ gap: 8, flexWrap: "wrap" }}>
           {!pratinjauSiap && (
             <button className="btn" disabled={blocked || sibuk || (jalanGambar && jalanSuara)} onClick={() => pratinjau()}>
@@ -873,6 +902,7 @@ function StepProduksi({ project, inf, product, refCount, models, mode, pending, 
         <p className="tiny muted mb2">
           Bagian termahal: gambar di atas digerakkan mengikuti suaranya. Ditagih per detik yang dihasilkan, jadi angkanya perkiraan.
         </p>
+        {!project.video_url && running.video === undefined && !pending.video && <GagalTerakhir rec={gagalTerakhir.video} label="video" />}
         <div className="row">
           <button className="btn" disabled={blocked || !pratinjauSiap || sibuk || pending.video} onClick={makeVideo}>
             {running.video !== undefined
