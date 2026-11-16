@@ -137,9 +137,13 @@ jobs:
           # gerbang JWT tiap fungsi. Flag di baris perintah adalah tempat kedua,
           # dan tempat kedua soal keamanan adalah tempat yang cepat atau lambat
           # berbeda dari yang pertama.
+          # --yes: sejak CLI v2 akhir 2026, deploy meminta konfirmasi dan tidak
+          # bisa bertanya karena stdout bukan terminal; tanpa flag ini ia
+          # keluar 1 dengan "Nothing was changed" (run #24, 16 Nov 2026) dan
+          # fungsi yang sudah di-merge diam-diam tidak terpasang.
           for fn in $DAFTAR; do
             echo "::group::deploy $fn"
-            supabase functions deploy "$fn" --project-ref "$PROJECT_REF"
+            supabase functions deploy "$fn" --project-ref "$PROJECT_REF" --yes
             echo "::endgroup::"
           done
 
