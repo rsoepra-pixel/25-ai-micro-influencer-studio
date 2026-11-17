@@ -24,6 +24,7 @@ import { useProducts, NewProduct } from "./products.jsx";
 import { isAvatarModel, estSeconds, WORDS_PER_SEC, MAX_SECONDS, DEFAULT_SCENE, DEFAULT_DELIVERY } from "./ugc.jsx";
 import { fitShotDurations } from "./storyboard.jsx";
 import { Info, TIP_PENULIS_AI } from "./tips.jsx";
+import { GAYA_VIDEO, GAYA_BAWAAN, pasangGaya } from "./gaya-video.js";
 import { hargaLabel, tampilanAktif, biayaNaskahLabel, biayaNaskahUsd, bagiAdegan, POLA_CERITA } from "./harga.js";
 import { TombolIsiSaldo, rupiahkanPesan } from "./bantuan.jsx";
 
@@ -74,6 +75,7 @@ export function BuatVideo({ ws, refresh, tick, spend, support }) {
   const [jenis, setJenis] = useState("ugc");          // ugc | storyboard
   const [ide, setIde] = useState("");
   const [pola, setPola] = useState("masalah_produk_hasil");
+  const [gaya, setGaya] = useState(GAYA_BAWAAN); // lihat gaya-video.js
   const [foto, setFoto] = useState([]); // foto HP untuk jalur cerita, maks 8
   async function tambahFoto(e) {
     const files = Array.from(e.target.files || []);
@@ -211,7 +213,7 @@ export function BuatVideo({ ws, refresh, tick, spend, support }) {
         // dari formulir. Total detik dan daftar durasi model ikut supaya
         // hasilnya langsung muat.
         const r = await callGenerate({ action: "write", kind: "storyboard", influencer_id: inf.id, idea: ide.trim(),
-          platform: "tiktok", pattern: pola, total_seconds: detik, ...(foto.length ? { photos: foto } : {}) });
+          platform: "tiktok", pattern: pola, total_seconds: detik, gaya, ...(foto.length ? { photos: foto } : {}) });
         setDraft({ storyboard: r.storyboard });
       }
       setLangkah("tinjau");
@@ -245,7 +247,9 @@ export function BuatVideo({ ws, refresh, tick, spend, support }) {
         const d = draft.storyboard;
         const { data: board, error: e1 } = await supa.from("storyboards").insert({
           workspace_id: ws.id, influencer_id: inf.id, content_item_id: null,
-          title: d.title, logline: d.logline, continuity: d.continuity || null, platform: "tiktok",
+          title: d.title, logline: d.logline, // Gaya tidak punya kolom: disimpan sebagai awalan kontinuitas supaya
+          // ikut ke prompt setiap shot lewat jalur yang sudah ada (gaya-video.js).
+          continuity: pasangGaya(gaya, d.continuity) || null, platform: "tiktok",
           ref_photo_urls: d.photo_urls || [],
         }).select("id").single();
         if (e1) throw new Error(e1.message);
@@ -311,6 +315,17 @@ export function BuatVideo({ ws, refresh, tick, spend, support }) {
                     style={{ textAlign: "left", padding: "10px 12px", borderRadius: 10, cursor: "pointer",
                       border: `2px solid ${pola === p.key ? "var(--brand)" : "var(--border)"}`, background: pola === p.key ? "var(--brand-soft)" : "var(--card)" }}>
                     <div className="small bold">{p.ikon} {p.label}</div>
+                  </button>
+                ))}
+              </div>
+              <label className="label">Gaya gambarnya<Info tip="Tampilan seluruh video. Gaya ditempelkan ke prompt setiap adegan dan ke gambar pembuka; harganya sama." /></label>
+              <div className="grid mb3" style={{ gridTemplateColumns: "repeat(auto-fit,minmax(200px,1fr))", gap: 8 }}>
+                {GAYA_VIDEO.map((g) => (
+                  <button key={g.key} type="button" onClick={() => { setGaya(g.key); setDraft(null); }} data-tip={g.petunjukNaskah || g.ket}
+                    style={{ textAlign: "left", padding: "10px 12px", borderRadius: 10, cursor: "pointer",
+                      border: `2px solid ${gaya === g.key ? "var(--brand)" : "var(--border)"}`, background: gaya === g.key ? "var(--brand-soft)" : "var(--card)" }}>
+                    <div className="small bold">{g.ikon} {g.label}</div>
+                    <div className="tiny muted mt1">{g.ket}</div>
                   </button>
                 ))}
               </div>
