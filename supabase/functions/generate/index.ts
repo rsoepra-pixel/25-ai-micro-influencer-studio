@@ -771,6 +771,30 @@ function pickDuration(
 // pagar adalah batas bulanan. Satu nol kelebihan saat mengetik sudah cukup.
 const MAX_DURATION_SECONDS = 30;
 
+// Gaya visual video cerita. SALINAN dari src/gaya-video.js — ubah keduanya
+// bersamaan. `kontinuitas` harus SAMA PERSIS dengan klien: klien menyimpannya
+// sebagai awalan storyboards.continuity, dan submit_multishot mengenalinya
+// lewat startsWith untuk mempertahankannya saat memangkas prompt per shot.
+// `petunjukNaskah` hanya ada di sini: teks yang dikirim ke penulis AI dipegang
+// server, bukan diterima dari body. "nyata" (bawaan) sengaja tidak ada.
+const GAYA_SERVER: Record<string, { kontinuitas: string; petunjukNaskah: string }> = {
+  vox: {
+    kontinuitas:
+      "Vox-style paper collage: warm off-white grainy paper, torn hand-cut shapes, bold black key-word labels, drop-shadowed layers, no 3D, no captions",
+    // Angka kata di sini bukan selera: blok gaya (144 byte) + narasi ikut
+    // dalam anggaran 400 byte per shot, jadi visual yang 25-50 kata akan
+    // terpotong di hampir setiap shot.
+    petunjukNaskah:
+      "GAYA VISUAL: video penjelasan kolase kertas gaya Vox (gaya kertasnya ditempelkan otomatis, JANGAN ditulis ulang). " +
+      "Register EXPLAINER: buka dengan detail yang bikin \"lho, kok?\", beri konteks, satu twist, lalu takeaway; " +
+      "tanpa hiperbola. Tiap kalimat narasi = satu visual kertas yang LITERAL dan konkret di \"visual_prompt\" " +
+      "(mis. masalah → sobekan merah bergerigi, bukti → angka tebal dicap di kotak label, hemat → label harga terkelupas), " +
+      "dengan satu kata kunci 1-3 kata tercetak di label. Talent tampil sebagai potongan FOTO dengan tepi kertas putih sobek. " +
+      "Kecualikan aturan 2 dan 1 soal panjang: \"visual_prompt\" 15-25 kata, \"continuity\" 10-20 kata " +
+      "(sebut pakaian talent, satu warna aksen, dan satu warna kontras). Narasi kalimat pendek.",
+  },
+};
+
 // Aturan klaim untuk SEMUA penulis yang menghasilkan kata-kata yang diucapkan
 // atau dipasang influencer (naskah, hook, caption, ide, rencana).
 //
@@ -1400,6 +1424,13 @@ Deno.serve(async (req) => {
             ? (body.photos as unknown[]).filter((x) => typeof x === "string").slice(0, 8) as string[]
             : [];
 
+          // Gaya visual dari wizard Buat Video. Teks yang dikirim ke penulis
+          // dipegang SERVER (bukan dikirim klien) supaya body tidak bisa
+          // menyelundupkan instruksi bebas ke prompt berbayar. Hanya kunci yang
+          // dikenal GAYA_SERVER yang berpengaruh; sisanya diabaikan diam-diam
+          // karena "nyata" (bawaan) memang tanpa tambahan.
+          const gayaTulis = typeof body.gaya === "string" ? GAYA_SERVER[body.gaya] : undefined;
+
           const system =
             `Kamu sutradara video short-form untuk ${platformLabel}, pasar Indonesia. ` +
             `Kamu memecah satu ide menjadi shot list yang langsung bisa diproduksi model AI. ` +
@@ -1449,6 +1480,7 @@ Deno.serve(async (req) => {
             `7. Variasikan jarak kamera antar shot (close-up, medium, wide) — ` +
             `${shotCount} shot dengan framing identik terlihat seperti satu klip yang dipotong-potong.\n` +
             `8. Hindari klaim medis, kesehatan, atau finansial yang spesifik.\n` +
+            (gayaTulis ? `\n${gayaTulis.petunjukNaskah}\n` : "") +
             `\nFormat JSON: {"title": "judul video", "logline": "1 kalimat bahasa Indonesia isi videonya", ` +
             `"continuity": "...", "shots": [{"beat": "nama beat singkat bahasa Indonesia", ` +
             `"visual_prompt": "...", "narration": "...", "camera": "close-up | medium | wide", ` +
@@ -2732,8 +2764,9 @@ Deno.serve(async (req) => {
           return (atWord.length >= out.length * 0.6 ? atWord : out) + "...";
         };
         const continuity = board.continuity ? String(board.continuity).trim() : "";
-        // Urutan prioritas: visual dan kalimat yang diucapkan tidak pernah
-        // dikorbankan untuk kontinuitas; kontinuitas dipangkas dulu, dan kalau
+        // Urutan prioritas: kalimat yang diucapkan > blok gaya (kalau ada,
+        // lihat gayaBlok di bawah) > visual > sisa kontinuitas. Visual tidak
+        // pernah dikorbankan untuk kontinuitas biasa; kontinuitas dipangkas dulu, dan kalau
         // tetap tidak muat, dihilangkan dari shot itu. Tidak ada tempat lain
         // untuknya: `prompt` tingkat atas ditolak Kling kalau `multi_prompt` ada.
         // Pemangkasan di bawah ini dulu terjadi DIAM-DIAM: orang menulis
@@ -2743,23 +2776,36 @@ Deno.serve(async (req) => {
         // jejak job, lalu ditampilkan di layar. Yang dipangkas boleh dipangkas;
         // yang tidak boleh adalah orangnya tidak pernah tahu.
         const trim: { shot: number; apa: string; sisa_byte?: number }[] = [];
+        // Gaya visual (mis. Vox) disimpan sebagai AWALAN kontinuitas. Kalau
+        // ikut dipangkas seperti kontinuitas biasa, shot yang visualnya panjang
+        // kehilangan gayanya dan videonya berpindah dari kolase kertas ke
+        // rekaman nyata di tengah jalan. Jadi blok gaya diperlakukan seperti
+        // kalimat yang diucapkan: tetap utuh, dan VISUAL yang dipangkas dulu.
+        // Sisa kontinuitas (baju, warna aksen) tetap prioritas terakhir.
+        const gayaBlok = Object.values(GAYA_SERVER).map((g) => g.kontinuitas)
+          .find((b) => b && continuity.startsWith(b)) || "";
+        const sisaKontinuitas = gayaBlok ? continuity.slice(gayaBlok.length).replace(/^[\s.,;]+/, "") : continuity;
         const multi = shots.map((s, i) => {
           const spoken = String(s.narration || "").trim();
           const visual = `@Element1 ${String(s.visual_prompt || "").trim()}`;
           const speak = spoken ? `, speaking in Indonesian: "${spoken}"` : "";
+          // Blok gaya hanya dipertahankan kalau visual masih kebagian >= 40
+          // byte; kalau tidak, perilaku lama berlaku (dicatat gaya_hilang).
+          const gaya = gayaBlok && blen(gayaBlok) + 2 + blen(speak) + 40 <= MULTI_BUDGET ? `, ${gayaBlok}` : "";
+          if (gayaBlok && !gaya) trim.push({ shot: i + 1, apa: "gaya_hilang" });
           let prompt: string;
-          if (blen(visual + speak) > MULTI_BUDGET) {
-            prompt = cutBytes(visual, Math.max(MULTI_BUDGET - blen(speak), 40)) + speak;
+          if (blen(visual + gaya + speak) > MULTI_BUDGET) {
+            prompt = cutBytes(visual, Math.max(MULTI_BUDGET - blen(gaya + speak), 40)) + gaya + speak;
             // Yang paling perlu diketahui: deskripsi adegannya sendiri terpotong.
             trim.push({ shot: i + 1, apa: "visual_dipotong" });
           } else {
-            prompt = visual + speak;
-            if (continuity) {
+            prompt = visual + gaya + speak;
+            if (sisaKontinuitas) {
               const room = MULTI_BUDGET - blen(prompt) - 2;
               if (room >= 24) {
-                const potong = cutBytes(continuity, room);
-                prompt = `${visual}, ${potong}${speak}`;
-                if (potong !== continuity) {
+                const potong = cutBytes(sisaKontinuitas, room);
+                prompt = `${visual}${gaya}, ${potong}${speak}`;
+                if (potong !== sisaKontinuitas) {
                   trim.push({ shot: i + 1, apa: "kontinuitas_dipangkas", sisa_byte: room });
                 }
               } else {

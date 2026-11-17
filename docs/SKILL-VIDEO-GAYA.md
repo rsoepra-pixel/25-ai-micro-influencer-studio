@@ -101,6 +101,30 @@ skill. Skill gaya merujuk ke berkas itu dengan satu kalimat.
 otomatis terbaca. Tempel isi `SKILL.md` + berkas pipeline sebagai instruksi
 Project di claude.ai; tool yang dipanggil sama persis.
 
+### Di aplikasi web (sejak 17 Nov 2026)
+
+Gaya Vox juga bisa dipilih di **Buat Video → Cerita beberapa adegan → Gaya
+gambarnya**, tanpa Claude. Bedanya dengan skill: jalur web memakai mesin
+Storyboard (satu video multi-shot Kling dengan wajah + suara klon influencer),
+bukan keyframe-per-klip + TTS. Influencer tampil sebagai cutout foto, sesuai
+§2 skill.
+
+- Gayanya data di `src/gaya-video.js` (`GAYA_VIDEO`): `kontinuitas` (blok gaya
+  pendek, ≤ `GAYA_BYTE_MAX` = 160 byte, disimpan sebagai awalan
+  `storyboards.continuity`), `framePrefix` (awalan prompt gambar pembuka),
+  dan teks tampilan. Tidak ada kolom/tabel baru; nanti bisa pindah ke tabel
+  `video_styles` (RENCANA 1.7) tanpa mengubah pemanggil.
+- Petunjuk untuk penulis AI dipegang server: `GAYA_SERVER` di
+  `supabase/functions/generate/index.ts` (blok `kontinuitas` harus sama
+  persis dengan klien — diuji `src/gaya-video.test.mjs`).
+- `submit_multishot` mengenali blok itu lewat `startsWith` dan
+  mempertahankannya; visual yang dipangkas dulu.
+
+**Menambah gaya berikutnya ke web:** tambah satu entri di `GAYA_VIDEO`
+(blok bahasa Inggris pendek, tanpa nama font, larang caption), tambah entri
+dengan kunci sama di `GAYA_SERVER` (blok identik + `petunjukNaskah`), jalankan
+`npm test`, lalu uji **satu gambar pembuka** dulu sebelum video.
+
 ## 4. Menambah gaya baru (claymation, whiteboard, kinetic typography, pixel, …)
 
 1. Salin `docs/TEMPLATE-SKILL-VIDEO-GAYA.md` ke

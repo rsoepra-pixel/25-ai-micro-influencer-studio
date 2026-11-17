@@ -199,6 +199,12 @@ dalam rupiah, **sebelum** apa pun berbayar berangkat.
    memutuskan jumlah adegan dan detik tiap adegan (pembuka pendek, inti lebih
    panjang); tidak ada angka yang ditanya. Perkiraan harga 15 dan 30 detik
    sudah tertulis di sini.
+   Masih di jalur cerita ada **gaya gambar**: **Foto nyata** (bawaan) atau
+   **Kolase kertas (gaya Vox)** — video penjelasan dengan kertas sobek, label
+   kata kunci tebal, dan kamu tampil sebagai potongan foto bertepi kertas
+   (wajah dan suara tetap dari profilmu). Gaya Vox membuat penulis AI menulis
+   dengan register penjelasan (buka dengan "lho, kok?", tiap kalimat satu
+   visual kertas). Harganya sama dengan Foto nyata.
 2. **Siapa** — profil dari halaman Profil saya (pemilih muncul kalau ada
    lebih dari satu), dan untuk jalur UGC: produknya (bisa membuat produk baru
    di tempat). Yang belum siap — foto wajah, suara, produk — disebut di sini
@@ -470,6 +476,14 @@ video multi-shot hanya menerima satu gambar awal; foto mengarahkan tulisan
 dan gambar pembuka. Penulis AI membagi adegannya. Yang mau menentukan
 sendiri jumlah shot dan detik per shot memilih **Atur sendiri** di pemilih
 yang sama — cara lama tetap ada, hanya tidak lagi ditanya duluan.
+
+**Gaya gambar.** Storyboard yang dibuat dari Buat Video dengan gaya **Kolase
+kertas (gaya Vox)** tidak punya kolom gaya sendiri: blok gayanya (bahasa
+Inggris, diawali "Vox-style paper collage") ditaruh di **awal** kolom
+**Kontinuitas**, jadi ikut ke prompt setiap shot, dan gambar pembuka diberi
+awalan gaya kertas yang sama. Menghapus awalan itu dari Kontinuitas =
+kembali ke foto nyata. Saat prompt per shot harus dipangkas, blok gaya
+dipertahankan dan deskripsi adegan yang dipendekkan duluan.
 
 **Alurnya tiga langkah, dan urutannya dipaksakan:**
 

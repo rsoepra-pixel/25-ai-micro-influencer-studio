@@ -2167,6 +2167,9 @@ const TRIM_LABEL = {
   visual_dipotong: ["Deskripsi adegan terpotong", "var(--warn-strong)"],
   kontinuitas_dipangkas: ["Kontinuitas dipangkas", "var(--ink-2)"],
   kontinuitas_hilang: ["Kontinuitas tidak muat sama sekali", "var(--warn-strong)"],
+  // Blok gaya (mis. Vox) dipertahankan sebelum visual; hilang hanya kalau
+  // narasinya sendiri hampir memenuhi anggaran shot.
+  gaya_hilang: ["Gaya visual tidak muat — shot ini tanpa gaya", "var(--warn-strong)"],
 };
 
 function TrimRow({ composed }) {

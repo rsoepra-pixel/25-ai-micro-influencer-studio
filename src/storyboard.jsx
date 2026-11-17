@@ -25,6 +25,7 @@ import { ModelPicker, byPrice, priceLabel, Badge, useQuery, unwrap, recordBadge,
 import { LibraryPicker } from "./library.jsx";
 import { Info } from "./tips.jsx";
 import { POLA_CERITA, biayaNaskahLabel } from "./harga.js";
+import { framePrefixUntuk, gayaDariKontinuitas } from "./gaya-video.js";
 import { modelHidup, hargaSatuan, modelMaxSeconds, modelCeritaBawaan } from "./routing.js";
 export { modelMaxSeconds };
 import { jenisGagal, kalimatGagal, bacaGagal, catatGagal, hapusGagal } from "./gagal.js";
@@ -990,18 +991,23 @@ const PANGKAS_BUDGET = 400;
 const byteLen = (t) => new TextEncoder().encode(String(t || "")).length;
 
 function perkiraanPangkas(shots, continuity) {
-  const cont = String(continuity || "").trim();
+  const full = String(continuity || "").trim();
+  // Blok gaya (mis. Vox) dipertahankan server dan memakan anggaran duluan —
+  // urutan yang sama dengan gayaBlok di submit_multishot.
+  const blok = gayaDariKontinuitas(full).kontinuitas;
+  const cont = blok ? full.slice(blok.length).replace(/^[\s.,;]+/, "") : full;
   let visualDipotong = 0, kontinuitasHilang = 0, kontinuitasDipangkas = 0;
   for (const s of shots) {
     const spoken = String(s.narration || "").trim();
     const visual = `@Element1 ${String(s.visual_prompt || "").trim()}`;
     const speak = spoken ? `, speaking in Indonesian: "${spoken}"` : "";
-    if (byteLen(visual + speak) > PANGKAS_BUDGET) {
+    const gaya = blok && byteLen(blok) + 2 + byteLen(speak) + 40 <= PANGKAS_BUDGET ? `, ${blok}` : "";
+    if (byteLen(visual + gaya + speak) > PANGKAS_BUDGET) {
       visualDipotong++;
       continue;
     }
     if (!cont) continue;
-    const room = PANGKAS_BUDGET - byteLen(visual + speak) - 2;
+    const room = PANGKAS_BUDGET - byteLen(visual + gaya + speak) - 2;
     if (room < 24) kontinuitasHilang++;
     else if (byteLen(cont) > room) kontinuitasDipangkas++;
   }
@@ -1134,7 +1140,8 @@ function StepProduksi({ board, shots, inf, refCount, models, mode, frameReady, p
         const res = await callGenerate({
           action: "submit", origin: "storyboard", task: "image", model_id: imgModel.id,
           influencer_id: board.influencer_id, content_item_id: board.content_item_id || null,
-          prompt: shotPrompt(first, board.continuity) + (refs.length ? ", keep the product packaging identical to the reference photos" : ""),
+          // Gaya (mis. Vox) harus sudah ada di frame pertama: Kling meneruskan dunia gambar ini.
+          prompt: framePrefixUntuk(board.continuity) + shotPrompt(first, board.continuity) + (refs.length ? ", keep the product packaging identical to the reference photos" : ""),
           extra_ref_urls: refs,
           label: `${board.title} — frame pembuka`,
         });
@@ -1167,7 +1174,7 @@ function StepProduksi({ board, shots, inf, refCount, models, mode, frameReady, p
           const res = await callGenerate({
             action: "submit", origin: "storyboard", task: "image", model_id: imgModel.id,
             influencer_id: board.influencer_id, content_item_id: board.content_item_id || null,
-            prompt: shotPrompt(first, board.continuity),
+            prompt: framePrefixUntuk(board.continuity) + shotPrompt(first, board.continuity),
             label: `${board.title} — frame pembuka`,
           });
           jobId = res.job_id;
