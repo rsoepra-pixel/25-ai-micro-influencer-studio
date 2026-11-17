@@ -112,6 +112,29 @@ export const byEffectivePrice = (a, b) =>
   (isDeadModel(a) - isDeadModel(b))
   || effectiveCost(a, a.est_price_usd) - effectiveCost(b, b.est_price_usd);
 
+// ---------- Video cerita (multi-shot): model bawaan dan batas detiknya ----------
+//
+// SATU aturan untuk wizard Buat Video DAN layar produksi Storyboard. Dulu
+// keduanya berbeda: wizard memakai batas TERLONGGAR di seluruh katalog (30,
+// karena Seedance 2.5 ada di sana) sementara produksi memakai batas model yang
+// benar-benar dipilih (Kling 3 Pro: 15), dan urutannya pun lain (wizard per
+// harga efektif, produksi per harga panggilan). Akibatnya wizard mengutip harga
+// "30 detik" lalu produksi diam-diam memangkasnya jadi 15 (tinjauan 16 Nov
+// 2026). Kutipan harus dihitung dari model yang AKAN menagih.
+//
+// Batas durasi satu model dibaca dari katalog, bukan dipaku 15: Seedance 2.5
+// sampai 30 detik, dan kalau batasnya dipaku, kemampuan yang dibayar per detik
+// itu tidak pernah terpakai. Tapi batas yang DIKUTIP harus batas model yang
+// akan dipakai, bukan model terpanjang di katalog.
+export function modelMaxSeconds(model) {
+  const vals = Array.isArray(model?.duration_values) ? model.duration_values : [];
+  const secs = vals.map((v) => parseFloat(String(v))).filter(Number.isFinite);
+  return secs.length ? Math.max(...secs) : 15;
+}
+
+export const modelCeritaBawaan = (models) =>
+  modelHidup((models || []).filter((m) => m.multishot_field).slice().sort(byEffectivePrice))[0] || null;
+
 // Harga per satuan yang benar-benar ditagih. Bila suara hasil klon diikat ke
 // job dan katalog punya tarifnya (voice_price_usd, 0057 — mis. Kling 3 Pro
 // $0,196/detik dengan voice_id, bukan $0,168), tarif itu yang dipakai — sama

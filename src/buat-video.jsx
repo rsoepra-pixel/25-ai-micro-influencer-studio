@@ -19,10 +19,10 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { supa, callGenerate } from "./supa.js";
 import { useQuery, unwrap, Badge, byPrice, downscaleToDataUri } from "./views.jsx";
-import { estimateFor, byEffectivePrice, modelHidup } from "./routing.js";
+import { estimateFor, byEffectivePrice, modelHidup, modelCeritaBawaan, modelMaxSeconds } from "./routing.js";
 import { useProducts, NewProduct } from "./products.jsx";
 import { isAvatarModel, estSeconds, WORDS_PER_SEC, MAX_SECONDS, DEFAULT_SCENE, DEFAULT_DELIVERY } from "./ugc.jsx";
-import { catalogMaxSeconds, fitShotDurations } from "./storyboard.jsx";
+import { fitShotDurations } from "./storyboard.jsx";
 import { Info, TIP_PENULIS_AI } from "./tips.jsx";
 import { hargaLabel, tampilanAktif, biayaNaskahLabel, biayaNaskahUsd, bagiAdegan, POLA_CERITA } from "./harga.js";
 import { TombolIsiSaldo, rupiahkanPesan } from "./bantuan.jsx";
@@ -50,8 +50,7 @@ export function modelDefault(models, inf) {
   const ttsModel = tts.find((m) => voice[m.model_key]) || null;
   const avatars = modelHidup(all.filter(isAvatarModel).sort(byPrice));
   const avatarModel = avatars.find((m) => m.prompt_field) || avatars[0] || null;
-  const video = modelHidup(all.filter((m) => m.multishot_field).sort(byEffectivePrice));
-  const videoModel = video[0] || null;
+  const videoModel = modelCeritaBawaan(all);
   // Suara klon Kling ikut ke video multi-shot (elements) — tarifnya bisa lain.
   const suaraKlon = !!voice.kling_voice_id && videoModel?.multishot_field !== "prompt";
   return { imgModel, ttsModel, avatarModel, videoModel, suaraKlon };
@@ -154,7 +153,10 @@ export function BuatVideo({ ws, refresh, tick, spend, support }) {
   const jatahNol = ditagih && jatah?.kuota === 0;
 
   const md = useMemo(() => modelDefault(models, inf), [models, inf]);
-  const maxSb = useMemo(() => catalogMaxSeconds(models || []), [models]);
+  // Batas model cerita YANG AKAN DIPAKAI, bukan yang terlonggar di katalog —
+  // lihat routing.js modelCeritaBawaan untuk kenapa.
+  const maxSb = useMemo(() => modelMaxSeconds(md.videoModel), [md.videoModel]);
+  const lewatBatas = (s) => jenis === "storyboard" && md.videoModel && s > maxSb;
   // Sebelum naskah ada: adegan 5 detik rata hanya untuk PERKIRAAN harga.
   // Sesudah penulis AI menjawab (mode pola), ritme adegannya yang dipakai.
   const fitAwal = useMemo(() => fitShotDurations(bagiAdegan(detik), maxSb), [detik, maxSb]);
@@ -339,8 +341,10 @@ export function BuatVideo({ ws, refresh, tick, spend, support }) {
             placeholder={jenis === "ugc" ? "mis. keripik singkong saya, renyah dan tidak berminyak, untuk camilan keluarga" : "mis. pagi di dapur, menggoreng keripik, dikemas, sampai ke tangan pembeli"} />
           {models && inf && (
             <p className="tiny muted mb3">
-              Perkiraan harga<Info tip="Dihitung dari katalog model untuk gambar, suara, dan video. Ditulis ≈ karena yang ditagih adalah durasi yang dihasilkan model, bukan yang diminta. Belum termasuk ulangan kalau gambar pertamanya kurang pas." />: 15 detik ≈ <b>{hargaLabel(hargaUntuk(15))}</b> · 30 detik ≈ <b>{hargaLabel(hargaUntuk(30))}</b>
-              {jenis === "storyboard" && fitShotDurations(bagiAdegan(30), maxSb).total < 30 ? ` (model video saat ini paling panjang ${maxSb} detik)` : ""}.
+              Perkiraan harga<Info tip="Dihitung dari katalog model untuk gambar, suara, dan video. Ditulis ≈ karena yang ditagih adalah durasi yang dihasilkan model, bukan yang diminta. Belum termasuk ulangan kalau gambar pertamanya kurang pas." />: 15 detik ≈ <b>{hargaLabel(hargaUntuk(15))}</b>
+              {lewatBatas(30)
+                ? <> · paling panjang {maxSb} detik untuk video cerita saat ini</>
+                : <> · 30 detik ≈ <b>{hargaLabel(hargaUntuk(30))}</b></>}.
               Ditambah naskah{biayaNaskahLabel() || " (gratis)"}.
             </p>
           )}
@@ -406,12 +410,19 @@ export function BuatVideo({ ws, refresh, tick, spend, support }) {
           <label className="label">Berapa lama videonya?<Info tip="Target untuk penulis naskah (≈ 2,3 kata per detik). Video bicara mengikuti panjang naskah yang dibacakan; video cerita dibagi penulis AI jadi 3–6 adegan mengikuti bentuk cerita yang kamu pilih. Maksimal 30 detik per video — pagar yang dipasang supaya satu salah ketik tidak menghabiskan saldo." /></label>
           <div className="row mb2" style={{ gap: 8, flexWrap: "wrap" }}>
             {PILIHAN_DETIK.map((s) => (
-              <button key={s} type="button" className={detik === s ? "btn" : "btn btn2"} onClick={() => { setDetik(s); setDraft(null); }}
+              <button key={s} type="button" className={detik === s ? "btn" : "btn btn2"} disabled={lewatBatas(s)} onClick={() => { setDetik(s); setDraft(null); }}
                 data-tip={jenis === "ugc" ? `Sekitar ${Math.round(s * WORDS_PER_SEC)} kata diucapkan. Harga di tombol adalah perkiraan total untuk durasi ini.` : `${s} detik dibagi penulis AI jadi 3–6 adegan. Harga di tombol adalah perkiraan total.`}>
-                {s} detik · {models ? hargaLabel(hargaUntuk(s)) : "…"}
+                {s} detik · {lewatBatas(s) ? "—" : models ? hargaLabel(hargaUntuk(s)) : "…"}
               </button>
             ))}
           </div>
+          {/* Ditulis terlihat, bukan di tooltip: tombol yang mati tidak pernah
+              menampilkan tooltip di ponsel. */}
+          {PILIHAN_DETIK.some(lewatBatas) && (
+            <p className="tiny mb2" style={{ color: "var(--warn-strong)" }}>
+              Model video cerita saat ini paling panjang {maxSb} detik. Untuk video lebih panjang, buat dua video lalu gabungkan.
+            </p>
+          )}
           <p className="tiny muted mb3">
             {jenis === "ugc"
               ? `Kira-kira ${Math.round(detik * WORDS_PER_SEC)} kata. Panjang video mengikuti naskah yang dibacakan, jadi harganya dihitung dari naskah itu.`

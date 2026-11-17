@@ -25,7 +25,8 @@ import { ModelPicker, byPrice, priceLabel, Badge, useQuery, unwrap, recordBadge,
 import { LibraryPicker } from "./library.jsx";
 import { Info } from "./tips.jsx";
 import { POLA_CERITA, biayaNaskahLabel } from "./harga.js";
-import { modelHidup, hargaSatuan } from "./routing.js";
+import { modelHidup, hargaSatuan, modelMaxSeconds, modelCeritaBawaan } from "./routing.js";
+export { modelMaxSeconds };
 import { jenisGagal, kalimatGagal, bacaGagal, catatGagal, hapusGagal } from "./gagal.js";
 import { TombolBagikan, namaBerkasDari } from "./bagikan.jsx";
 
@@ -672,25 +673,6 @@ function NewBoard({ ws, influencers, onCreated }) {
 // shot dan total detik yang ditagih — sama dengan yang benar-benar dikirim.
 // Kalau versi server berubah, ubah ini juga; keduanya sengaja tidak dibagi
 // lewat satu modul karena edge function dan browser tidak berbagi build.
-// Batas durasi satu model, dibaca dari katalog — bukan dipaku 15.
-//
-// Angka 15 itu batas Kling 3 Pro, dan dulu satu-satunya model multi-shot.
-// Seedance 2.5 sampai 30 detik; kalau batasnya tetap 15, separuh kemampuan
-// yang dibayar per detik itu tidak pernah bisa dipakai, dan storyboard 6
-// shot @5 detik selalu dipangkas padahal modelnya muat.
-export function modelMaxSeconds(model) {
-  const vals = Array.isArray(model?.duration_values) ? model.duration_values : [];
-  const secs = vals.map((v) => parseFloat(String(v))).filter(Number.isFinite);
-  return secs.length ? Math.max(...secs) : 15;
-}
-// Batas paling longgar di antara semua model multi-shot yang aktif — dipakai
-// SEBELUM modelnya dipilih (langkah Naskah), supaya peringatan "dipangkas"
-// tidak muncul untuk durasi yang sebenarnya masih muat di salah satu model.
-export function catalogMaxSeconds(models) {
-  const ms = (models || []).filter((m) => m.multishot_field).map(modelMaxSeconds);
-  return ms.length ? Math.max(...ms) : 15;
-}
-
 export function fitShotDurations(wanted, maxTotal = 15) {
   const n = wanted.length;
   if (!n) return { each: [], total: 0 };
@@ -951,7 +933,7 @@ function BoardDetail({ id, models, influencers, mode, onBack, refresh }) {
 // dan Produksi (yang menegakkan) tidak pernah berbeda pendapat.
 function readiness({ board, shots, inf, refCount, models }) {
   const videoModels = (models || []).filter((m) => m.multishot_field);
-  const fit = fitShotDurations(shots.map((s) => Number(s.seconds) || 5), catalogMaxSeconds(models));
+  const fit = fitShotDurations(shots.map((s) => Number(s.seconds) || 5), modelMaxSeconds(modelCeritaBawaan(models)));
   const blockers = [];
   if (!shots.length) blockers.push({ text: "Belum ada shot." });
   if (!board.influencer_id) {
@@ -973,7 +955,7 @@ function readiness({ board, shots, inf, refCount, models }) {
     });
   }
   if (fit.raw > fit.total) {
-    warnings.push({ text: `Diminta ${fit.raw} detik, dipangkas ke ${fit.total} — batas model terpanjang di katalog. Durasi tiap shot diperkecil proporsional (${fit.each.join("+")}).` });
+    warnings.push({ text: `Diminta ${fit.raw} detik, dipangkas ke ${fit.total} — batas model video cerita bawaan (bisa diganti di layar Produksi). Durasi tiap shot diperkecil proporsional (${fit.each.join("+")}).` });
   }
   return { blockers, warnings, fit, voiceReady, videoModels };
 }
@@ -1104,7 +1086,9 @@ function StepProduksi({ board, shots, inf, refCount, models, mode, frameReady, p
   // yang termurah untuk video. Bisa diganti, tapi tidak harus dipilih.
   const identityModel = modelHidup(imgModels).find((m) => m.keeps_identity);
   const imgModel = imgModels.find((m) => m.id === imgId) || (refCount > 0 && identityModel) || imgModels[0];
-  const vidModel = videoModels.find((m) => m.id === vidId) || modelHidup(videoModels)[0];
+  // Bawaan dari aturan yang sama dengan wizard (routing.js), supaya harga dan
+  // durasi yang dikutip di Buat Video sama dengan yang dijalankan di sini.
+  const vidModel = videoModels.find((m) => m.id === vidId) || modelCeritaBawaan(videoModels);
 
   // Seedance reference-to-video (multishot_field = "prompt") mengunci wajah
   // dari foto Identity Kit dan tidak memakai frame pembuka sama sekali —
@@ -1351,7 +1335,7 @@ function StepProduksi({ board, shots, inf, refCount, models, mode, frameReady, p
 }
 
 function StepHasil({ board, shots, inf, models, setStep }) {
-  const fit = fitShotDurations(shots.map((s) => Number(s.seconds) || 5), catalogMaxSeconds(models));
+  const fit = fitShotDurations(shots.map((s) => Number(s.seconds) || 5), modelMaxSeconds(modelCeritaBawaan(models)));
   // "Buat versi lain": salin storyboard ini — gambar pembuka IKUT disalin
   // (gratis, wajah tetap sama), video tidak — lalu buka salinannya di
   // langkah Naskah. Dengan instruksi, narasinya ditulis ulang sekali jalan.
