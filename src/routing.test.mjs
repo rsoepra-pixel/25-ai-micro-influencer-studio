@@ -5,7 +5,7 @@
 // contoh yang dikarang agar lulus.
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { nextTierUp, estimateFor, triesPerResult, byEffectivePrice, isDeadModel, modelHidup, hargaSatuan } from "./routing.js";
+import { nextTierUp, estimateFor, triesPerResult, byEffectivePrice, isDeadModel, modelHidup, hargaSatuan, modelCeritaBawaan, modelMaxSeconds } from "./routing.js";
 
 const M = (o) => ({ attempts: 0, succeeded: 0, keeps_identity: false, ...o });
 
@@ -162,4 +162,21 @@ test("hargaSatuan: tarif suara klon hanya bila diisi dan suaranya ikut", () => {
   assert.equal(hargaSatuan(k3v, { suaraKlon: false }), 0.168);
   assert.ok(Math.abs(estimateFor(k3v, { seconds: 10, suaraKlon: true }) - 1.96) < 1e-9);
   assert.ok(Math.abs(estimateFor(k3v, { seconds: 10 }) - 1.68) < 1e-9);
+});
+
+// Bug 16 Nov 2026: wizard mengutip batas terlonggar di katalog (Seedance 2.5,
+// 30 dtk) padahal produksi memakai Kling 3 Pro (15 dtk). Kutipan dan produksi
+// kini membaca model bawaan yang sama; batasnya batas model itu.
+test("video cerita: batas yang dikutip = batas model bawaan, bukan terlonggar", () => {
+  const kling = M({ id: "k", model_key: "fal-ai/kling-video/v3/pro", multishot_field: "multi_prompt",
+    duration_values: ["3", "5", "10", "15"], est_price_usd: 0.168, unit: "per_second", attempts: 8, succeeded: 1 });
+  const seedance = M({ id: "s", model_key: "bytedance/seedance-2.5/reference", multishot_field: "prompt",
+    duration_values: ["15", "30"], est_price_usd: 0.30, unit: "per_second", attempts: 0, succeeded: 0 });
+  const bukanCerita = M({ id: "x", task: "video", duration_values: ["60"], est_price_usd: 0.01 });
+  const bawaan = modelCeritaBawaan([seedance, kling, bukanCerita]);
+  assert.ok(bawaan && bawaan.multishot_field, "hanya model multi-shot yang dipertimbangkan");
+  assert.equal(modelMaxSeconds(bawaan), Math.max(...bawaan.duration_values.map(Number)));
+  assert.equal(modelMaxSeconds(kling), 15);
+  assert.equal(modelMaxSeconds({}), 15, "tanpa duration_values jatuh ke 15");
+  assert.equal(modelCeritaBawaan([]), null);
 });
