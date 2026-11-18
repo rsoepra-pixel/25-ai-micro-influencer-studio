@@ -325,7 +325,7 @@ function StartHere({ d }) {
     {
       // Hanya influencer pertama yang dicek, sama dengan langkah foto dan
       // suara di atas: daftar ini untuk orang yang baru punya satu tokoh.
-      ok: !!pertama && s.blueprints.includes(pertama.id), href: "/arah", judul: "Jawab 12 pertanyaan arah konten",
+      ok: !!pertama && s.blueprints.includes(pertama.id), href: "/arah", judul: "Jawab 12 pertanyaan Arah Konten",
       tip: "Siapa kamu, untuk siapa, dan apa yang dijual — disusun jadi blueprint yang membuat ide dan naskah tidak generik. ± 8 menit.",
     },
     {
@@ -359,7 +359,7 @@ function StartHere({ d }) {
         </a>
       )}
       <a href="#/mulai" className="tiny mb2" style={{ display: "inline-block", color: "var(--brand-strong)", fontWeight: 600 }}
-        data-tip="Satu halaman infografis: tiga langkah, kapan uang keluar, apa yang perlu disiapkan. Bisa dicetak.">❓ Baru pertama kali? Lihat Cara mulai (1 halaman)</a>
+        data-tip="Satu halaman infografis: empat langkah, kapan uang keluar, apa yang perlu disiapkan. Bisa dicetak.">❓ Baru pertama kali? Lihat Cara mulai (1 halaman)</a>
       <div className="grid" style={{ gridTemplateColumns: "repeat(auto-fill,minmax(220px,1fr))", gap: 8 }}>
         {langkah.map((l, i) => (
           <a key={l.judul} href={`#${l.href}`} data-tip={l.tip} className="row small"
