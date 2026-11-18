@@ -3463,6 +3463,59 @@ const DRIVE_KINDS = [
   ["audio", "🎧 Suara"],
 ];
 
+// "2 jam lalu". Cukup kasar untuk menjawab "yang mana tadi", yang memang
+// satu-satunya pertanyaan di daftar Sedang dibuat.
+function umurLalu(iso) {
+  const menit = Math.max(0, Math.round((Date.now() - new Date(iso).getTime()) / 60000));
+  if (menit < 1) return "baru saja";
+  if (menit < 60) return `${menit} menit lalu`;
+  const jam = Math.round(menit / 60);
+  if (jam < 24) return `${jam} jam lalu`;
+  return `${Math.round(jam / 24)} hari lalu`;
+}
+
+// Video yang belum jadi. Buat Video menyerahkan orang ke #/ugc atau
+// #/storyboard, dan Karya hanya berisi berkas yang sudah jadi — jadi orang
+// yang menutup tab di tengah produksi tidak punya jalan kembali ke videonya
+// selain menebak menu Video UGC / Storyboard, dua nama yang justru
+// disembunyikan wizard (TINJAUAN-PLATFORM-NOV-2026 masalah #1).
+//
+// "Belum jadi" = video_url masih kosong — patokan yang sama dengan layar
+// produksinya sendiri (ugc.jsx videoReady, storyboard.jsx videoReady), bukan
+// `status`: status "done" ditulis BERSAMA video_url, jadi keduanya sama, tapi
+// video_url yang benar-benar dibaca layar itu. Yang diarsipkan disembunyikan.
+// Disaring per workspace aktif secara eksplisit, tidak hanya mengandalkan
+// RLS: orang yang anggota beberapa workspace (operator, agensi) lolos RLS di
+// semuanya, dan video workspace lain tidak boleh muncul di Karya yang ini.
+function SedangDibuat({ ws, tick }) {
+  const [rows, , loadError] = useQuery(async () => {
+    const [u, s] = await Promise.all([
+      supa.from("ugc_projects").select("id,title,created_at").eq("workspace_id", ws.id).is("video_url", null).neq("status", "archived")
+        .order("created_at", { ascending: false }).limit(10),
+      supa.from("storyboards").select("id,title,created_at").eq("workspace_id", ws.id).is("video_url", null).neq("status", "archived")
+        .order("created_at", { ascending: false }).limit(10),
+    ]);
+    return [
+      ...unwrap(u).map((r) => ({ ...r, label: "Video bicara", href: `#/ugc?project=${r.id}` })),
+      ...unwrap(s).map((r) => ({ ...r, label: "Video cerita", href: `#/storyboard?board=${r.id}` })),
+    ].sort((a, b) => String(b.created_at).localeCompare(String(a.created_at))).slice(0, 10);
+  }, [ws.id, tick]);
+  if (loadError) return <div className="msg-err mb4">Daftar video yang sedang dibuat tidak bisa dimuat. Muat ulang halaman sebentar lagi; video yang sudah jadi tetap ada di bawah.</div>;
+  if (!rows?.length) return null;
+  return (
+    <div className="card p4 mb4">
+      <div className="bold mb2">Sedang dibuat<span className="tiny muted" style={{ marginLeft: 6, fontWeight: 400 }}>video yang belum selesai — buka untuk melanjutkan</span></div>
+      {rows.map((r) => (
+        <a key={r.href} href={r.href} className="row" data-tip="Buka layar produksinya. Tidak ada yang dibayar hanya dengan membukanya."
+          style={{ justifyContent: "space-between", gap: 8, padding: "6px 0", borderTop: "1px solid var(--line-soft)", color: "inherit", textDecoration: "none" }}>
+          <span className="small" style={{ minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{r.title}</span>
+          <span className="tiny muted" style={{ flexShrink: 0 }}>{r.label} · {umurLalu(r.created_at)} →</span>
+        </a>
+      ))}
+    </div>
+  );
+}
+
 export function Drive({ ws, refresh, tick }) {
   // Filternya ikut ke QUERY, bukan menyaring larik yang sudah sampai di
   // browser — dan itu bukan soal rapi-rapian.
@@ -3520,6 +3573,7 @@ export function Drive({ ws, refresh, tick }) {
     <div>
       <h1 style={{ fontSize: 24, fontWeight: 800 }}>Drive</h1>
       <p className="muted small mb3">Semua hasil produksi. Foto terbaik bisa dijadikan referensi identity kit influencer.</p>
+      <SedangDibuat ws={ws} tick={tick} />
       {/* Bentuknya tombol btn/btn2, sama dengan penyaring periode di Laporan
           dan pengalih Papan/Kalender di Planner. Ini penyaring, bukan
           perpindahan halaman, jadi sengaja TIDAK memakai TabStrip — tab
