@@ -27,7 +27,9 @@ for (const f of readdirSync(dir).filter((x) => /^\d{4}_.*\.sql$/.test(x)).sort()
     baris.push([f, "view", m[1].toLowerCase(), null]);
   for (const m of sql.matchAll(/create\s+(?:unique\s+)?index\s+(?:concurrently\s+)?(?:if\s+not\s+exists\s+)?([a-z_][a-z0-9_]*)/gi))
     baris.push([f, "index", m[1].toLowerCase(), null]);
-  for (const m of sql.matchAll(/create\s+(?:or\s+replace\s+)?(?:constraint\s+)?trigger\s+([a-z_][a-z0-9_]*)[\s\S]*?\son\s+(?:public\.)?([a-z_][a-z0-9_]*)/gi))
+  for (const m of sql.matchAll(/create\s+(?:or\s+replace\s+)?(?:constraint\s+)?trigger\s+([a-z_][a-z0-9_]*)[\s\S]*?\son\s+(?:(?:public|auth|storage)\.)?([a-z_][a-z0-9_]*)/gi))
+    // Skema auth/storage dilewati supaya `on auth.users` terbaca sebagai
+    // tabel "users", bukan "auth" (positif palsu di run pertama).
     baris.push([f, "trigger", m[2].toLowerCase(), m[1].toLowerCase()]);
   for (const m of sql.matchAll(/create\s+policy\s+"?([a-z_][a-z0-9_ ]*?)"?\s+on\s+(?:public\.)?([a-z_][a-z0-9_]*)/gi))
     baris.push([f, "policy", m[2].toLowerCase(), m[1]]);
