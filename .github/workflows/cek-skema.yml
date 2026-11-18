@@ -6,10 +6,13 @@
 # saat pelanggan menekan tombol. Jalankan setelah menambah migrasi, atau kapan
 # pun ragu.
 #
-# Hasil kosong = semua tabel/kolom/fungsi yang tertulis di migrasi ada.
-# Bukan bukti lengkap: isi data, policy, dan trigger tidak diperiksa.
+# Dua bagian. (1) Database: tabel, kolom, fungsi, view, index, trigger,
+# policy, jadwal cron, dan kunci service_config dari migrasi — hasil kosong =
+# semuanya ada. Perubahan DATA (update baris katalog) tidak diperiksa.
+# (2) Fungsi server: fungsi yang kodenya di main lebih baru dari waktu
+# terakhir dipasang ditandai TERTINGGAL.
 
-name: Cek skema (baca-saja)
+name: Cek skema & fungsi (baca-saja)
 
 on:
   workflow_dispatch:
@@ -22,6 +25,10 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          # Riwayat penuh: dipakai untuk membandingkan commit terakhir tiap
+          # fungsi dengan waktu fungsi itu terakhir dipasang.
+          fetch-depth: 0
       - name: Bandingkan migrasi dengan database
         env:
           SUPABASE_DB_TOKEN: ${{ secrets.SUPABASE_DB_TOKEN }}
@@ -52,3 +59,40 @@ jobs:
           } >> "$GITHUB_STEP_SUMMARY"
           echo "BELUM ADA: $n"
           jq -r '.[] | "BELUM: \(.berkas) \(.jenis) \(.nama) \(.kolom // "")"' /tmp/resp.json
+
+      # Fungsi yang kodenya berubah SETELAH terakhir dipasang = tertinggal.
+      # Run deploy bisa gagal diam-diam (16 Nov 2026: CLI minta --yes,
+      # rate limit setup-cli) dan fungsi yang berubah tidak terpasang.
+      # Memakai token deploy (izin Edge Functions), bukan token database.
+      - name: Bandingkan fungsi terpasang dengan kode di main
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+        run: |
+          set -euo pipefail
+          http=$(curl -sS -o /tmp/fn.json -w '%{http_code}' \
+            "https://api.supabase.com/v1/projects/$PROJECT_REF/functions" \
+            -H "Authorization: Bearer $SUPABASE_ACCESS_TOKEN")
+          echo "HTTP $http"
+          if [ "$http" -lt 200 ] || [ "$http" -ge 300 ]; then
+            head -c 1000 /tmp/fn.json; echo
+            echo "::error::Daftar fungsi tidak bisa dibaca (HTTP $http)." >&2; exit 1
+          fi
+          tertinggal=0
+          {
+            echo; echo "### Fungsi server"; echo
+            echo "| fungsi | terpasang | commit terakhir | status |"; echo "|---|---|---|---|"
+          } >> "$GITHUB_STEP_SUMMARY"
+          for dir in supabase/functions/*/; do
+            fn=$(basename "$dir")
+            kode=$(git log -1 --format=%ct -- "$dir")
+            pasang_ms=$(jq -r --arg s "$fn" '.[] | select(.slug==$s) | .updated_at // empty' /tmp/fn.json)
+            if [ -z "$pasang_ms" ]; then status="TIDAK TERPASANG"; tertinggal=$((tertinggal+1)); pasang="-"
+            else
+              pasang=$(( pasang_ms / 1000 ))
+              if [ "$pasang" -lt "$kode" ]; then status="TERTINGGAL"; tertinggal=$((tertinggal+1)); else status="ok"; fi
+              pasang=$(date -u -d "@$pasang" +%Y-%m-%dT%H:%MZ)
+            fi
+            echo "FUNGSI: $fn $status (terpasang $pasang, kode $(date -u -d "@$kode" +%Y-%m-%dT%H:%MZ))"
+            echo "| $fn | $pasang | $(date -u -d "@$kode" +%Y-%m-%dT%H:%MZ) | $status |" >> "$GITHUB_STEP_SUMMARY"
+          done
+          echo "FUNGSI TERTINGGAL: $tertinggal"

@@ -112,8 +112,12 @@ jobs:
               if git diff --name-only "$sebelum" "$SHA_SEKARANG" | grep -q '^supabase/config\.toml$'; then
                 daftar="$(semua)"
               else
+                # `|| true`: push yang hanya mengubah berkas workflow tidak
+                # punya fungsi yang berubah; tanpa ini grep keluar 1 di bawah
+                # pipefail dan run tampil merah padahal tidak ada yang perlu
+                # dipasang (run 16 Nov 2026, commit 3b2b3e0).
                 daftar="$(git diff --name-only "$sebelum" "$SHA_SEKARANG" \
-                  | grep '^supabase/functions/' \
+                  | { grep '^supabase/functions/' || true; } \
                   | cut -d/ -f3 | sort -u | tr '\n' ' ')"
               fi
             fi
