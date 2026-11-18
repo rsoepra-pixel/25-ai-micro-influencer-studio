@@ -510,3 +510,72 @@ siapa pun. Begitu pembeli menyadarinya, yang hilang adalah kepercayaannya.
 statis (4.4) dan form isian performa manual ke `post_metrics` (4.5). Semua
 janji lain sudah ditegakkan oleh tabel, trigger, dan fungsi yang ada. Yang
 masih kurang hanya angka yang memang milik pemilik.
+
+---
+
+## 5. Penempatan menu: "Arah Konten"
+
+Fitur ini ditambahkan ke aplikasi yang sudah ada, bukan produk terpisah.
+Semua rujukan harga di §1–§4 **tidak berlaku** untuk bagian ini; biaya hanya
+muncul sebagai lencana "Memakai saldo" yang sudah dipakai halaman lain.
+
+### 5.1 Tiga cara yang dipertimbangkan
+
+| | Cara | Kelebihan | Kekurangan |
+|---|---|---|---|
+| A | **Menu baru di menu ringkas** | Fungsinya terbaca dari sidebar; terpisah jelas dari Buat Video; alur 3 tahap punya rumah sendiri | Menu ringkas jadi 7 (teks "enam menu" di `mulai.jsx:126`, tip `main.jsx:743`, dan `PANDUAN-APLIKASI.md` harus ikut diubah) |
+| B | Tab baru di **Rencana** (Content Planner) | Tidak menambah menu; Planner sudah punya pilar, ide, dan "tulis dengan AI" | Blueprint 12 pertanyaan tenggelam di bawah tab kalender; pengguna baru tidak menemukannya; Planner makin padat |
+| C | Bagian baru di **Profil saya** | Dekat dengan "siapa kamu" | Profil saya sengaja bukan menu kerja (`PANDUAN-APLIKASI.md` §Profil saya); ide dan naskah tidak cocok di sana |
+
+**Pilihan: A.** Menu ringkas menjadi
+🏠 Beranda · **🧭 Arah Konten** · 🎬 Buat Video · 📁 Karya · 🗓️ Rencana · 📊 Laporan · ⚙️ Pengaturan.
+Diletakkan sebelum Buat Video karena urutannya memang begitu: tahu arah dulu,
+baru bikin video. Label menyebut fungsi ("arah konten"), dan halaman pertamanya
+menyebut tiga hasil akhirnya.
+
+### 5.2 Pemisahan dari Buat Video
+
+Aturan satu kalimat, ditulis di subjudul halaman: *"Siapa kamu, konten apa
+yang kamu buat, dan naskahnya. Tidak membuat video — itu tugas Buat Video."*
+
+- Arah Konten **hanya menghasilkan teks**: blueprint, ide, naskah, caption.
+  Tidak ada tombol yang membuat gambar, suara, atau video.
+- Naskah berakhir di dua tombol serah-terima: "Jadwalkan di Rencana" dan
+  "Buat videonya →" (membawa naskah ke wizard Buat Video). Setelah itu
+  tanggung jawab pindah.
+- Rencana tetap pemilik kalender dan status tayang. "Terapkan pilar ke
+  Rencana" menulis `content_pillars`; Arah Konten tidak punya kalender sendiri
+  (menggantikan "Content Calendar Generator" di §2 U6 — cukup `calendar_fill`
+  dipanggil dari Rencana).
+
+### 5.3 Tiga hasil akhir yang ditampilkan di halaman depan menu
+
+1. 🧬 **Blueprint brand** — satu halaman: positioning, audiens, 3–5 pilar,
+   gaya bicara, ritme Kenalan/Percaya/Beli.
+2. 💡 **Ide konten** — 10 ide sekali klik, tiap ide punya pilar dan tujuan.
+3. 🎙️ **Naskah siap baca** — pembuka, isi, ajakan, caption terpisah.
+
+Istilah TOFU/MOFU/BOFU **tidak dipakai di UI**; diganti Kenalan · Percaya ·
+Beli, dengan tooltip satu kalimat.
+
+### 5.4 Ponsel
+
+Bilah bawah sekarang 4 tab tetap (`main.jsx` ~783) dan tidak bisa mencapai
+Rencana, Laporan, maupun Cara mulai. Usulan: 5 tab —
+🏠 Beranda · 🧭 Arah · 🎬 Buat Video · 📁 Karya · ☰ Lainnya — dengan
+"Lainnya" membuka daftar Rencana · Laporan · Saldo & Pengaturan · Cara mulai.
+Ini sekaligus menutup celah navigasi ponsel yang sudah ada. Setiap langkah
+Arah Konten satu pertanyaan per layar, jawaban tersimpan otomatis, bisa
+berhenti dan lanjut.
+
+### 5.5 Yang ikut berubah kalau A dipilih
+
+- `NAV_RINGKAS` dan `NAV` di `src/main.jsx:114-135`; bilah bawah `~783`.
+- Teks "enam menu" di `src/mulai.jsx:126` dan tip di `src/main.jsx:743`.
+- `docs/PANDUAN-APLIKASI.md`: tambah bagian "🧭 Arah Konten" dengan
+  paragraf "Untuk apa." mengikuti pola menu lain.
+- Kartu "Mulai dari sini" di Beranda: tambah langkah "Jawab 12 pertanyaan
+  arah konten" setelah "Siapkan suara".
+
+Prototipe UI (HTML, bisa diklik): lihat tautan artifact di percakapan ini;
+salinannya tidak disimpan di repo.
