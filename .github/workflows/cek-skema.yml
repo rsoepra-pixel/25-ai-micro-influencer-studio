@@ -1,0 +1,54 @@
+# Cek skema produksi: objek dari migrasi mana yang BELUM ada di database.
+#
+# Baca-saja (satu SELECT dari supabase/checks/cek-skema.sql, yang dihasilkan
+# scripts/gen-cek-skema.mjs dari berkas migrasi). Dibuat 18 Nov 2026 setelah
+# 0060 dan 0056 ketahuan tidak pernah diterapkan — masing-masing baru terlihat
+# saat pelanggan menekan tombol. Jalankan setelah menambah migrasi, atau kapan
+# pun ragu.
+#
+# Hasil kosong = semua tabel/kolom/fungsi yang tertulis di migrasi ada.
+# Bukan bukti lengkap: isi data, policy, dan trigger tidak diperiksa.
+
+name: Cek skema (baca-saja)
+
+on:
+  workflow_dispatch:
+
+env:
+  PROJECT_REF: kheibvzbvnmhdeokokrw
+
+jobs:
+  cek:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Bandingkan migrasi dengan database
+        env:
+          SUPABASE_DB_TOKEN: ${{ secrets.SUPABASE_DB_TOKEN }}
+        run: |
+          set -euo pipefail
+          node scripts/gen-cek-skema.mjs
+          jq -Rs '{query: ., read_only: true}' supabase/checks/cek-skema.sql > /tmp/body.json
+          http=$(curl -sS -o /tmp/resp.json -w '%{http_code}' \
+            -X POST "https://api.supabase.com/v1/projects/$PROJECT_REF/database/query" \
+            -H "Authorization: Bearer $SUPABASE_DB_TOKEN" \
+            -H "Content-Type: application/json" \
+            --data-binary @/tmp/body.json)
+          echo "HTTP $http"
+          if [ "$http" -lt 200 ] || [ "$http" -ge 300 ]; then
+            head -c 2000 /tmp/resp.json; echo
+            echo "::error::Query ditolak (HTTP $http)." >&2; exit 1
+          fi
+          n=$(jq 'length' /tmp/resp.json)
+          {
+            echo "### Cek skema"
+            echo
+            if [ "$n" = "0" ]; then echo "Semua objek dari migrasi ada di database."
+            else
+              echo "**$n objek belum ada:**"; echo
+              echo "| berkas | jenis | nama | kolom |"; echo "|---|---|---|---|"
+              jq -r '.[] | "| \(.berkas) | \(.jenis) | \(.nama) | \(.kolom // "") |"' /tmp/resp.json
+            fi
+          } >> "$GITHUB_STEP_SUMMARY"
+          echo "BELUM ADA: $n"
+          jq -r '.[] | "BELUM: \(.berkas) \(.jenis) \(.nama) \(.kolom // "")"' /tmp/resp.json
