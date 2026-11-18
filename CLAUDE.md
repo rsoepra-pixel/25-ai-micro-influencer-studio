@@ -29,6 +29,9 @@ saat merge ke `main` — **pakai itu**, jangan deploy manual.
 **2. `generate/index.ts` ±190 KB — tidak bisa dipasang lewat tool MCP
 `deploy_edge_function`** (melebihi batas satu panggilan). Satu-satunya jalur
 yang bekerja adalah Actions. Jangan habiskan waktu mencoba menyalinnya.
+Sebelum merge PR yang menyentuh `supabase/functions/`, pastikan workflow
+"Check edge functions" hijau (atau jalankan `npm run check:functions`) — jangan
+mengandalkan run deploy sebagai type check pertama.
 
 **3. Lokal menyentuh produksi.** `src/supa.js` menaruh URL project dan anon key
 langsung di kode, tanpa env var. Tidak ada database staging. Apa pun yang kamu

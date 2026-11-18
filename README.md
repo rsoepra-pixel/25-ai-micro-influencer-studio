@@ -124,6 +124,13 @@ direktori kerja. Tanpanya CLI memakai default `verify_jwt = true` dan
 diam-diam memutus cron poller serta server MCP — penjelasan lengkapnya di
 [`docs/OPERASI.md` §7](docs/OPERASI.md).
 
+Deploy di atas adalah jalur pasang, bukan pemeriksaan. Type check edge function
+berjalan **sebelum** merge: setiap PR yang menyentuh `supabase/functions/` atau
+`supabase/config.toml` otomatis menjalankan workflow **Check edge functions**
+(`deno check` per fungsi, tanpa secret, tanpa deploy). Di laptop jalankan
+`npm run check:functions` — butuh Deno terpasang; kalau `deno` tidak ada di
+PATH, arahkan `DENO_BIN` ke binary-nya (mis. dari `npm i deno`).
+
 ---
 
 ## Konvensi
