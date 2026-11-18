@@ -19,7 +19,7 @@ with harap(berkas, jenis, nama, kolom) as (values
   ('0001_initial_schema.sql','fungsi','is_member',null),
   ('0001_initial_schema.sql','fungsi','handle_new_user',null),
   ('0001_initial_schema.sql','fungsi','get_generation_mode',null),
-  ('0001_initial_schema.sql','trigger','auth','on_auth_user_created'),
+  ('0001_initial_schema.sql','trigger','users','on_auth_user_created'),
   ('0001_initial_schema.sql','policy','workspaces','ws_select'),
   ('0001_initial_schema.sql','policy','workspace_members','wm_select'),
   ('0001_initial_schema.sql','policy','influencers','inf_all'),
