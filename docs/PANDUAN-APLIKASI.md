@@ -305,6 +305,17 @@ muncul di atas dan pilihannya ikut ke Buat Video dan Profil saya.
    sesuai tujuan. Pembuka, isi, ajakan, dan **caption** (kartu terpisah —
    dibaca, bukan dibacakan) bisa diubah; perkiraan "± N detik" ikut berubah.
    **Simpan** menulis ke konten yang sama yang dibaca Rencana.
+
+   **Remix dari video yang kamu suka** (lipatan di bawah Pilih pembuka) —
+   tempel transkrip atau tulis garis besar video orang lain: pembukanya
+   bilang apa, isinya urut bagaimana, ajakannya apa. Tempel **teksnya, bukan
+   link**: aplikasi tidak mengunduh video dari TikTok/IG (caption/transkrip
+   TikTok dan YouTube bisa disalin). Penulis AI membaca **polanya**, lalu
+   menulis pembuka, naskah, dan caption baru untuk ide ini dengan gaya
+   bicaramu — kalimat aslinya tidak dipakai. Pola yang dibaca tampil sebagai
+   "Pola yang diambil" di atas naskah; sisanya (ubah, Simpan, Buat videonya)
+   sama dengan naskah biasa. Minimal beberapa kalimat, maksimal 4.000 huruf;
+   biayanya sama dengan menulis satu naskah.
 7. **Serah-terima** — di bawah naskah: **🗓️ Lihat di Rencana** (menjadwalkan)
    dan **🎬 Buat videonya →**, yang membuka Buat Video dengan naskah ini
    sudah terisi (perubahan yang belum disimpan disimpan dulu). Arah Konten
@@ -318,7 +329,7 @@ di Rencana (lihat [Laporan](#-laporan)) untuk menyalin views dan follower baru
 dari aplikasi TikTok/IG setelah videonya tayang.
 
 **Yang memakai uang.** "Susun blueprint", "Susun ulang", "10 ide", "Beri 5
-pembuka", dan "Tulis naskahnya" (penulis AI, harganya tertulis di tombol).
+pembuka", "Tulis naskahnya", dan "Tulis ulang dengan polanya" (penulis AI, harganya tertulis di tombol).
 Menjawab pertanyaan, mengubah blueprint atau naskah, menyimpan ide, dan
 menerapkan pilar gratis.
 
@@ -328,8 +339,8 @@ Buat Video, Video UGC, Storyboard (termasuk "Buat versi lain"), dan Rencana
 yang dihindari, dan pilar. Tidak ada langkah tambahan; influencer tanpa
 blueprint tetap ditulis seperti sebelumnya.
 
-**Yang belum ada.** "Isi 30 hari" ke kalender, remix dari transkrip, dan
-pustaka hook statis.
+**Yang belum ada.** Pustaka hook statis. (Mengisi sebulan ke kalender ada di
+Rencana — lihat [Rencanakan sebulan dengan AI](#-rencanakan-sebulan-dengan-ai).)
 
 ---
 
