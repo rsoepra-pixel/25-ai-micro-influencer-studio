@@ -23,7 +23,7 @@ sini:
 
 ## Isi
 
-**Menu di sidebar** — [Cara mulai](#-cara-mulai) · [Dashboard](#-dashboard) · [Buat Video](#-buat-video) · [Profil saya](#-profil-saya) (dari Dashboard) ·
+**Menu di sidebar** — [Cara mulai](#-cara-mulai) · [Dashboard](#-dashboard) · [Arah Konten](#-arah-konten) · [Buat Video](#-buat-video) · [Profil saya](#-profil-saya) (dari Dashboard) ·
 [Influencers](#-influencers) · [Product Kit](#-product-kit) ·
 [Production Studio](#-production-studio) · [Storyboard](#-storyboard) ·
 [Video UGC](#-video-ugc) · [Content Planner](#-content-planner) ·
@@ -80,10 +80,12 @@ Apa pun halaman yang dibuka, tiga hal ini tetap di tempatnya.
 Dua susunan, dipilih lewat tombol kecil di bawah daftar menu dan diingat per
 perangkat:
 
-- **Menu ringkas (default):** Beranda · **Buat Video** · Karya (Drive) ·
-  Rencana (Content Planner) · Laporan · Pengaturan. Enam, bukan lima seperti
-  rencana awal — Beranda dipertahankan karena kartu "Mulai dari sini" ada di
-  sana. Nama menunya menyebut *tujuan*, bukan nama alat.
+- **Menu ringkas (default):** Beranda · **Arah Konten** · **Buat Video** ·
+  Karya (Drive) · Rencana (Content Planner) · Laporan · Pengaturan. Tujuh —
+  Beranda dipertahankan karena kartu "Mulai dari sini" ada di sana, dan Arah
+  Konten (Nov 2026) diletakkan sebelum Buat Video karena urutannya memang
+  begitu: tahu arah dulu, baru bikin video. Nama menunya menyebut *tujuan*,
+  bukan nama alat.
 - **Semua menu:** dua belas menu lama, diurutkan menurut alur kerja: dua aset
   yang dipakai berulang (**siapa** dan **apa**) di atas, alat produksi di
   bawahnya, lalu perencanaan, pengukuran, dan pengaturan. Tidak ada yang
@@ -92,6 +94,10 @@ perangkat:
 
 Kenapa ada dua: uji persona Okt 2026 — sebelas menu dengan nama alat memaksa
 orang memilih alat sebelum tahu bedanya.
+
+**Di ponsel** sidebar disembunyikan dan diganti bilah bawah berisi lima tab:
+🏠 Beranda · 🧭 Arah · 🎬 Buat Video · 🗂 Karya · 💳 Saldo (ke Pengaturan).
+Petunjuk tiap tab sama dengan petunjuk menu ringkasnya.
 
 ### Kartu saldo di kiri bawah
 
@@ -128,8 +134,8 @@ sebelum uang keluar tetap tertulis terlihat di halaman.
 tanpa membuka lima halaman. Isinya ringkasan, bukan tempat bekerja.
 
 **Mulai dari sini.** Selama workspace belum lengkap, kartu paling atas berisi
-lima langkah awal: buat influencer, tambah foto Identity Kit, siapkan suara,
-simpan produk, dan buat video pertama. Tiap langkah dicentang **otomatis dari
+enam langkah awal: buat influencer, tambah foto Identity Kit, siapkan suara,
+jawab 12 pertanyaan arah konten, simpan produk, dan buat video pertama. Tiap langkah dicentang **otomatis dari
 datanya**, bukan manual, dan kartunya hilang sendiri begitu semuanya beres.
 Langkah keenam yang dulu ada, "hubungkan akun sosial", dihapus 16 Nov 2026
 bersama koneksi sosialnya (lihat [Koneksi](#koneksi)) — tanpa itu kartunya
@@ -209,13 +215,34 @@ dalam rupiah, **sebelum** apa pun berbayar berangkat.
    lebih dari satu), dan untuk jalur UGC: produknya (bisa membuat produk baru
    di tempat). Yang belum siap — foto wajah, suara, produk — disebut di sini
    dengan tautan ke tempat memperbaikinya, bukan setelah naskah dibayar.
+   Kalau tombol **Lanjut** belum bisa ditekan, alasannya tertulis di bawah
+   tombolnya (bukan hanya di tooltip, yang tidak muncul di ponsel).
 3. **Berapa lama** — 10, 15, 20, atau 30 detik, masing-masing dengan harganya.
    Lebih dari 30 detik **belum bisa** (batas per job; versi panjang menunggu
    perakitan klip di server). Tombol "Tulis naskahnya" memanggil penulis AI
    (≈ Rp 40, tertulis di tombol).
 4. **Tinjau & harga** — naskah yang akan diucapkan (atau daftar adegan),
    rincian biaya per bagian dan totalnya dalam rupiah, lalu **Ya, buat video
-   ini**.
+   ini**. Di jalur bicara ke kamera, naskah, caption, dan tagar bisa **diubah
+   langsung** di sini tanpa biaya; rincian harga ikut menyesuaikan panjang
+   naskah yang diubah. Daftar adegan jalur cerita diubah nanti di layar
+   Storyboard.
+
+**Isian diingat.** Cerita, jenis video, bentuk cerita, gaya, durasi, produk,
+dan langkah terakhir disimpan di perangkat ini per workspace, jadi pindah ke
+Profil saya atau Product Kit untuk memperbaiki penghalang tidak menghapus
+ceritamu. Saat kembali muncul baris "Melanjutkan isian terakhirmu · Mulai
+baru". Foto untuk jalur cerita dan naskah dari penulis AI tidak ikut diingat;
+isiannya dihapus begitu proyek berhasil dibuat.
+
+**Datang dari Arah Konten.** "🎬 Buat videonya →" membuka wizard ini dengan
+ide dan profil dari konten itu; kalau naskahnya sudah ada, wizard langsung ke
+**Tinjau** dengan naskah itu (menulis ulang tetap bisa, memakai saldo), dan
+video yang dibuat tercatat untuk ide tersebut — proyek Video UGC-nya
+menampilkan tautan "Dari ide: … →". Kalau workspace hanya punya satu produk,
+produk itu langsung dipilih; kalau ada beberapa (atau foto wajah/suara belum
+siap), wizard berhenti dulu di **Siapa**, dan "Lanjut" dari sana langsung ke
+Tinjau tanpa langkah Berapa lama.
 
 Sesudah "Ya", wizard menyimpan proyek yang **sama persis** dengan yang dibuat
 formulir Video UGC atau Storyboard dan membuka alur produksinya
@@ -228,6 +255,81 @@ aturan yang sama dengan wizard UGC dan Storyboard (penjaga wajah yang menerima
 foto produk, avatar termurah yang menerima prompt, model multi-shot termurah
 yang terbukti), dan "Naik kelas" tetap ada di riwayat job. Harga yang tampil
 adalah perkiraan: yang ditagih adalah durasi yang dihasilkan model.
+
+---
+
+## 🧭 Arah Konten
+
+**Untuk apa.** Menjawab "konten apa yang harus aku buat?" sebelum membuat
+video. Subjudul halamannya sekaligus batasnya: *siapa kamu, konten apa yang
+kamu buat, dan naskahnya — tidak membuat video, itu tugas Buat Video.* Tidak
+ada tombol di sini yang membuat gambar, suara, atau video.
+
+1. **12 pertanyaan** (± 8 menit), satu per layar: siapa kamu, siapa yang kamu
+   bantu, masalah dan keinginan mereka, kenapa kamu, apa yang kamu jual dan
+   kisaran harganya, gaya bicara, topik yang dikuasai dan dihindari, platform,
+   dan kreator yang kamu kagumi (opsional). Setiap pertanyaan punya pilihan
+   **"Belum tahu"** — pemula tanpa followers dan belum jualan tetap bisa
+   mengisi. Yang wajib hanya pertanyaan 1, 2, dan 6. Jawaban tersimpan
+   otomatis di perangkat, jadi bisa berhenti dan lanjut.
+2. **Susun blueprint** — penulis AI mengolah jawabanmu jadi satu halaman:
+   positioning (1 kalimat), 3 keunggulan, audiens (siapa, masalahnya,
+   keinginannya, kata-kata mereka), 3–5 pilar konten, gaya bicara (kata yang
+   dipakai dan dihindari), ritme **Kenalan · Percaya · Beli** per minggu, dan
+   3 ide monetisasi. Rasionya diusulkan dari jawabanmu, bukan angka bawaan.
+3. **Ubah bagian mana pun.** Hasil editanmu yang dipakai seterusnya.
+   "Susun ulang dari jawaban" menjalankan AI lagi tanpa mengisi ulang
+   (editanmu ikut diberikan supaya dipertahankan); "Ulangi 12 pertanyaan"
+   membuka pertanyaannya lagi, terisi jawaban yang sekarang.
+4. **Terapkan pilar ke Rencana** — menambahkan pilar blueprint ke Content
+   Pillars untuk influencer itu. Pilar yang namanya sudah ada dilewati; porsi
+   (Target %) diatur di Rencana.
+
+Blueprint disimpan **per influencer**; kalau ada lebih dari satu, pemilihnya
+muncul di atas dan pilihannya ikut ke Buat Video dan Profil saya.
+
+5. **Ide konten** — kartu "💡 Ide konten" membuka daftar ide. Saring per
+   **Pilar** (dari blueprint dan Content Pillars) dan **Tujuan** (Kenalan ·
+   Percaya · Beli), lalu tekan **10 ide**: tiap usulan punya judul kerja,
+   pilar, tujuan, dan satu kalimat kenapa audiensmu peduli. Usulan belum
+   tersimpan — pilih **Simpan** per ide atau **Simpan semua**, yang tidak
+   cocok tinggal dihapus. Pilar yang belum ada di Rencana ikut dibuat. Tanpa
+   filter, tujuan dibagi mengikuti ritme di blueprint; judul yang sudah
+   tersimpan tidak diulang. Belum mengisi 12 pertanyaan? Ide tetap ditulis
+   dari profilmu, dengan catatan bahwa hasilnya masih umum.
+6. **Naskah** — "Tulis naskah →" di sebuah ide. Pertama **Pilih pembuka**: 5
+   kalimat pembuka dari jenis berbeda (Cerita, Pertanyaan, Angka, Kontras,
+   Pengakuan, Janji), atau tulis sendiri. Lalu pilih durasi (10/15/20/30
+   detik) dan **Tulis naskahnya**: pembuka dipakai persis, diikuti isi yang
+   ditulis untuk didengar (kalimat pendek, "..." untuk jeda) dan ajakan yang
+   sesuai tujuan. Pembuka, isi, ajakan, dan **caption** (kartu terpisah —
+   dibaca, bukan dibacakan) bisa diubah; perkiraan "± N detik" ikut berubah.
+   **Simpan** menulis ke konten yang sama yang dibaca Rencana.
+7. **Serah-terima** — di bawah naskah: **🗓️ Lihat di Rencana** (menjadwalkan)
+   dan **🎬 Buat videonya →**, yang membuka Buat Video dengan naskah ini
+   sudah terisi (perubahan yang belum disimpan disimpan dulu). Arah Konten
+   berhenti di naskah.
+
+Ide dan naskah dari halaman ini adalah konten yang sama dengan di **Rencana**
+— muncul di papan dan kalender Rencana, dan naskah yang ditulis di Rencana
+juga terbuka di sini. Kartu "🎙️ Naskah siap baca" di halaman depan
+menampilkan naskah terbaru. Di bawah tiap judulnya ada **📈 Catat angka** — form yang sama dengan
+di Rencana (lihat [Laporan](#-laporan)) untuk menyalin views dan follower baru
+dari aplikasi TikTok/IG setelah videonya tayang.
+
+**Yang memakai uang.** "Susun blueprint", "Susun ulang", "10 ide", "Beri 5
+pembuka", dan "Tulis naskahnya" (penulis AI, harganya tertulis di tombol).
+Menjawab pertanyaan, mengubah blueprint atau naskah, menyimpan ide, dan
+menerapkan pilar gratis.
+
+**Dipakai otomatis di tempat lain.** Begitu blueprint ada, penulis AI di
+Buat Video, Video UGC, Storyboard (termasuk "Buat versi lain"), dan Rencana
+(ide, naskah, rencana konten) membacanya sendiri — audiens, gaya bicara, kata
+yang dihindari, dan pilar. Tidak ada langkah tambahan; influencer tanpa
+blueprint tetap ditulis seperti sebelumnya.
+
+**Yang belum ada.** "Isi 30 hari" ke kalender, remix dari transkrip, dan
+pustaka hook statis.
 
 ---
 
@@ -692,6 +794,43 @@ biaya aktual kalau sudah tercatat dan estimasi kalau belum. Job yang gagal tetap
 bisa memakan uang di sisi provider, jadi angka di sini adalah biaya **hasil**,
 bukan seluruh pengeluaran.
 
+**Kartu "Per pilar & tujuan"** (di bawah grafik, ikut filter periode) menjawab
+*pilar dan tujuan mana yang benar-benar menambah pengikut, dan berapa biaya
+tiap ide.* Isinya konten periode itu yang punya pilar atau tujuan:
+
+- **Tabel per pilar** dan **tabel per tujuan** (Kenalan · Percaya · Beli),
+  masing-masing dengan kolom: jumlah konten · **biaya** (job produksi yang
+  terhubung ke ide itu, dalam satuan yang sama dengan kartu biaya di atas;
+  "—" kalau tidak ada) · **klik** link pendek · **views** · **follower baru**.
+- Diurutkan berdasarkan **follower baru**, bukan views — yang ditonton banyak
+  tapi tidak menambah pengikut adalah dua hal berbeda.
+- **Ide dengan follower baru terbanyak** — lima teratas, judulnya membuka Arah
+  Konten.
+
+Tiga jenis angka, tiga sifat yang berbeda:
+
+| Angka | Dari mana | Kalau kosong |
+|---|---|---|
+| Biaya | Job produksi yang dibuat dari Arah Konten/Rencana (membawa id idenya) | "—": tidak ada job terhubung. Video yang dibuat tanpa lewat ide tidak ikut. |
+| Klik | Link pendek, **otomatis** (bot pratinjau WhatsApp dsb. disaring) | 0 berarti benar-benar nol — atau kontennya belum diberi link pendek |
+| Views, follower baru | **Kamu salin sendiri** lewat 📈 Catat angka | "belum dicatat" — **bukan 0**. Jumlahnya hanya dari konten yang tercatat, dan di bawahnya tertulis "n dari m tercatat" |
+
+**Mencatat angka.** Aplikasi tidak lagi memposting ke akun sosial, jadi angka
+dari TikTok/IG tidak masuk sendiri. Tekan **📈 Catat angka** di kartu
+**Published** di Rencana, atau di daftar **Naskah siap baca** di Arah Konten,
+lalu salin dari aplikasinya: views, likes, komentar, share, simpan, follower
+baru, dan (opsional) link post-nya. Yang perlu diingat:
+
+- **Kosongkan yang belum kamu tahu.** Kolom kosong disimpan sebagai "belum
+  dicatat"; isi **0** hanya kalau aplikasinya memang menunjukkan 0.
+- Angka abu-abu di kolom adalah **catatan terakhir**, bukan isian. Ketik ulang
+  kalau ingin mencatatnya lagi hari ini.
+- Satu catatan per konten per platform **per hari**. Mencatat lagi di hari
+  yang sama menggabung: kolom yang kamu isi menggantikan, yang kosong tetap.
+  Hari berikutnya jadi catatan baru, dan Laporan memakai yang terakhir.
+- Angka ditulis utuh (1200 atau 1.200), bukan "1,2rb".
+- Gratis — tidak memakai saldo.
+
 ---
 
 ## ✅ Tasks
@@ -719,6 +858,12 @@ Penyaringannya dikerjakan di query, bukan di browser. Bedanya terasa saat
 asetmu sudah lebih dari 60: menyaring di browser akan menampilkan video yang
 kebetulan masuk 60 terbaru lalu berhenti, tanpa tanda apa pun bahwa sisanya
 ada. Dengan filter di query, menekan Video berarti 60 video terbaru.
+
+**Sedang dibuat.** Di atas daftar berkas ada kartu berisi sampai 10 video
+bicara dan video cerita yang videonya belum jadi, terbaru dulu, dengan
+umurnya. Menekan satu baris membuka layar produksinya — jalan kembali ke
+video yang ditinggal di tengah jalan setelah Buat Video. Kartunya tidak
+muncul kalau tidak ada yang sedang dibuat.
 
 **Fitur yang mudah terlewat:** foto terbaik bisa **ditandai sebagai referensi
 Identity Kit** seorang influencer langsung dari sini. Kalau influencer itu belum
@@ -994,6 +1139,7 @@ lewat tool MCP yang sama: keyframe (gambar) → klip (image-to-video) → narasi
 - ✨ Bantu buat influencer dengan AI, dan ✨ Perbaiki deskripsi
 - ✨ Pencari prompt di Production Studio
 - ✨ Rencanakan sebulan dengan AI, dan ✨ Tulis dengan AI di Planner
+- Susun blueprint dan Susun ulang di Arah Konten
 - Penulis naskah di wizard Storyboard dan Video UGC
 
 **Tidak memakai uang:**

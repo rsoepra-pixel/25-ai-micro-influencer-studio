@@ -594,6 +594,7 @@ function ProjectDetail({ id, models, influencers, products, mode, autoPratinjau,
         {" · ≈ "}{estSeconds(project.script)} detik
         {mode === "mock" && " · MODE MOCK (hasil contoh, tidak ditagih)"}
       </p>
+      <DariIde itemId={project.content_item_id} />
 
       <Stepper current={step} reached={reached} onGo={setStep} />
       {err && <div className="msg-err mb3" style={{ whiteSpace: "pre-wrap" }}>{err}</div>}
@@ -602,6 +603,26 @@ function ProjectDetail({ id, models, influencers, products, mode, autoPratinjau,
       {step === "produksi" && <StepProduksi {...shared} pending={pending} autoPratinjau={auto} pakaiAuto={() => setAuto(false)} />}
       {step === "hasil" && <StepHasil {...shared} />}
     </div>
+  );
+}
+
+// Tautan balik ke ide di Arah Konten (spek §6 tautan 3), hanya untuk proyek
+// yang dibuat dari sebuah ide. Satu select per proyek yang dibuka — sengaja
+// tidak dipasang di daftar proyek, yang akan butuh satu query per baris.
+export function DariIde({ itemId }) {
+  const [judul, setJudul] = useState(null);
+  useEffect(() => {
+    if (!itemId) { setJudul(null); return undefined; }
+    let alive = true;
+    supa.from("content_items").select("title").eq("id", itemId).maybeSingle()
+      .then(({ data }) => { if (alive) setJudul(data?.title || null); });
+    return () => { alive = false; };
+  }, [itemId]);
+  if (!judul) return null;
+  return (
+    <p className="tiny mb3" style={{ marginTop: -8 }}>
+      <a href="#/arah" style={{ color: "var(--brand-strong)", fontWeight: 700 }}>Dari ide: {judul} →</a>
+    </p>
   );
 }
 

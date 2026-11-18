@@ -6,6 +6,7 @@ import { supa, callGenerate, callSocial, callCalendar, callApp, callLinks, callM
 import { recordBadge, recordSentence, byEffectivePrice, estimateFor, nextTierUp } from "./routing.js";
 import { Info, TIP_PENULIS_AI, TIP_BERBAYAR } from "./tips.jsx";
 import { hargaLabel, biayaNaskahLabel } from "./harga.js";
+import { CatatAngka } from "./catat-angka.jsx";
 
 const linkBtn = { background: "none", border: "none", padding: 0, cursor: "pointer", fontWeight: 700, fontSize: 11 };
 
@@ -299,6 +300,12 @@ function StartHere({ d }) {
       tip: "Tanpa suara, Video UGC ditolak di langkah audio. Klon suara dari rekaman di halaman detail influencer.",
     },
     {
+      // Hanya influencer pertama yang dicek, sama dengan langkah foto dan
+      // suara di atas: daftar ini untuk orang yang baru punya satu tokoh.
+      ok: !!pertama && s.blueprints.includes(pertama.id), href: "/arah", judul: "Jawab 12 pertanyaan arah konten",
+      tip: "Siapa kamu, untuk siapa, dan apa yang dijual — disusun jadi blueprint yang membuat ide dan naskah tidak generik. ± 8 menit.",
+    },
+    {
       ok: s.products > 0, href: "/products", judul: "Simpan foto produk (kalau mau endorse)",
       tip: "Hanya perlu untuk video yang membicarakan produk. Pakai foto produk asli, bukan hasil AI.",
     },
@@ -349,7 +356,7 @@ function StartHere({ d }) {
 // ---------- Dashboard ----------
 export function Dashboard({ ws, tick }) {
   const [d, reload, error] = useQuery(async () => {
-    const [inf, jobs, items, assets, tasks, refs, products, done] = await Promise.all([
+    const [inf, jobs, items, assets, tasks, refs, products, done, blueprints] = await Promise.all([
       supa.from("influencers").select("id,name,status,avatar_url,voice").order("created_at").limit(25),
       supa.from("production_jobs").select("*").order("created_at", { ascending: false }).limit(5),
       supa.from("content_items").select("id,title,status").order("created_at", { ascending: false }).limit(5),
@@ -362,10 +369,17 @@ export function Dashboard({ ws, tick }) {
       // tapi langkahnya berbunyi "buat video pertama".
       supa.from("production_jobs").select("id", { count: "exact", head: true })
         .eq("status", "succeeded").in("task", ["video", "lipsync"]),
+      // Influencer mana yang sudah punya blueprint Arah Konten. Kalau tabelnya
+      // belum ada (migrasi 0060 belum dijalankan), error-nya diabaikan dan
+      // langkahnya sekadar belum tercentang — Beranda tidak ikut gagal.
+      supa.from("brand_blueprints").select("influencer_id").not("blueprint", "is", null),
     ]);
     return {
       inf: unwrap(inf), jobs: unwrap(jobs), items: unwrap(items), assets: unwrap(assets), tasks: unwrap(tasks),
-      start: { refs: refs.count || 0, products: products.count || 0, done: done.count || 0 },
+      start: {
+        refs: refs.count || 0, products: products.count || 0, done: done.count || 0,
+        blueprints: (blueprints.data || []).map((b) => b.influencer_id),
+      },
     };
   }, [ws.id, tick]);
   if (!d) return error ? <div className="msg-err">Gagal memuat dashboard: {error}</div> : <div className="muted">Memuat…</div>;
@@ -2743,7 +2757,7 @@ function PlannerCalendar({ items, pillars, month, setMonth }) {
 // bukan style. Harus hex literal: `var(--…)` kehilangan artinya begitu
 // nilainya keluar dari konteks CSS app (ekspor, laporan, klien lain).
 // Enam hue yang saling terbedakan, diselaraskan dengan palet merek.
-const PLAN_COLORS = ["#7c3aed", "#2563eb", "#ea580c", "#0f7b56", "#b0308f", "#b45309"];
+export const PLAN_COLORS = ["#7c3aed", "#2563eb", "#ea580c", "#0f7b56", "#b0308f", "#b45309"];
 
 // Slot hari per minggu untuk tiap frekuensi. Sengaja tidak beruntun agar ada
 // jeda produksi, dan menyisakan akhir pekan hanya saat frekuensinya memang tinggi.
@@ -3356,6 +3370,10 @@ export function Planner({ ws, refresh, tick }) {
                         onClick={() => setPublishOpenId(c.id)}>📤 Publish ke sosial</button>
                     )
                   )}
+                  {/* Hanya untuk yang sudah tayang: sebelum itu tidak ada angka
+                      untuk disalin. Statusnya diubah tangan lewat pemilih di
+                      atas, karena posting dilakukan orangnya sendiri. */}
+                  {c.status === "published" && <CatatAngka item={c} />}
                 </div>
               ))}
             </div>
@@ -3463,6 +3481,59 @@ const DRIVE_KINDS = [
   ["audio", "🎧 Suara"],
 ];
 
+// "2 jam lalu". Cukup kasar untuk menjawab "yang mana tadi", yang memang
+// satu-satunya pertanyaan di daftar Sedang dibuat.
+function umurLalu(iso) {
+  const menit = Math.max(0, Math.round((Date.now() - new Date(iso).getTime()) / 60000));
+  if (menit < 1) return "baru saja";
+  if (menit < 60) return `${menit} menit lalu`;
+  const jam = Math.round(menit / 60);
+  if (jam < 24) return `${jam} jam lalu`;
+  return `${Math.round(jam / 24)} hari lalu`;
+}
+
+// Video yang belum jadi. Buat Video menyerahkan orang ke #/ugc atau
+// #/storyboard, dan Karya hanya berisi berkas yang sudah jadi — jadi orang
+// yang menutup tab di tengah produksi tidak punya jalan kembali ke videonya
+// selain menebak menu Video UGC / Storyboard, dua nama yang justru
+// disembunyikan wizard (TINJAUAN-PLATFORM-NOV-2026 masalah #1).
+//
+// "Belum jadi" = video_url masih kosong — patokan yang sama dengan layar
+// produksinya sendiri (ugc.jsx videoReady, storyboard.jsx videoReady), bukan
+// `status`: status "done" ditulis BERSAMA video_url, jadi keduanya sama, tapi
+// video_url yang benar-benar dibaca layar itu. Yang diarsipkan disembunyikan.
+// Disaring per workspace aktif secara eksplisit, tidak hanya mengandalkan
+// RLS: orang yang anggota beberapa workspace (operator, agensi) lolos RLS di
+// semuanya, dan video workspace lain tidak boleh muncul di Karya yang ini.
+function SedangDibuat({ ws, tick }) {
+  const [rows, , loadError] = useQuery(async () => {
+    const [u, s] = await Promise.all([
+      supa.from("ugc_projects").select("id,title,created_at").eq("workspace_id", ws.id).is("video_url", null).neq("status", "archived")
+        .order("created_at", { ascending: false }).limit(10),
+      supa.from("storyboards").select("id,title,created_at").eq("workspace_id", ws.id).is("video_url", null).neq("status", "archived")
+        .order("created_at", { ascending: false }).limit(10),
+    ]);
+    return [
+      ...unwrap(u).map((r) => ({ ...r, label: "Video bicara", href: `#/ugc?project=${r.id}` })),
+      ...unwrap(s).map((r) => ({ ...r, label: "Video cerita", href: `#/storyboard?board=${r.id}` })),
+    ].sort((a, b) => String(b.created_at).localeCompare(String(a.created_at))).slice(0, 10);
+  }, [ws.id, tick]);
+  if (loadError) return <div className="msg-err mb4">Daftar video yang sedang dibuat tidak bisa dimuat. Muat ulang halaman sebentar lagi; video yang sudah jadi tetap ada di bawah.</div>;
+  if (!rows?.length) return null;
+  return (
+    <div className="card p4 mb4">
+      <div className="bold mb2">Sedang dibuat<span className="tiny muted" style={{ marginLeft: 6, fontWeight: 400 }}>video yang belum selesai — buka untuk melanjutkan</span></div>
+      {rows.map((r) => (
+        <a key={r.href} href={r.href} className="row" data-tip="Buka layar produksinya. Tidak ada yang dibayar hanya dengan membukanya."
+          style={{ justifyContent: "space-between", gap: 8, padding: "6px 0", borderTop: "1px solid var(--line-soft)", color: "inherit", textDecoration: "none" }}>
+          <span className="small" style={{ minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{r.title}</span>
+          <span className="tiny muted" style={{ flexShrink: 0 }}>{r.label} · {umurLalu(r.created_at)} →</span>
+        </a>
+      ))}
+    </div>
+  );
+}
+
 export function Drive({ ws, refresh, tick }) {
   // Filternya ikut ke QUERY, bukan menyaring larik yang sudah sampai di
   // browser — dan itu bukan soal rapi-rapian.
@@ -3520,6 +3591,7 @@ export function Drive({ ws, refresh, tick }) {
     <div>
       <h1 style={{ fontSize: 24, fontWeight: 800 }}>Drive</h1>
       <p className="muted small mb3">Semua hasil produksi. Foto terbaik bisa dijadikan referensi identity kit influencer.</p>
+      <SedangDibuat ws={ws} tick={tick} />
       {/* Bentuknya tombol btn/btn2, sama dengan penyaring periode di Laporan
           dan pengalih Papan/Kalender di Planner. Ini penyaring, bukan
           perpindahan halaman, jadi sengaja TIDAK memakai TabStrip — tab

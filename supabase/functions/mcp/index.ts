@@ -341,8 +341,10 @@ const TOOLS = [
       "Performa post yang sudah terbit: views, reach, likes, comments, shares, saves, dan `follows` — " +
       "berapa orang menekan follow gara-gara post itu. Angka `follows` yang paling menjawab pertanyaan " +
       "'konten mana yang menumbuhkan akun', dan sering TIDAK sejalan dengan jumlah tayangan. " +
-      "Nilai null berarti platform tidak memberikan angkanya, BUKAN berarti nol — jangan dirata-rata " +
-      "seolah nol. Data ditarik cron tiap 6 jam; post yang baru terbit beberapa menit lalu belum ada di sini.",
+      "Nilai null berarti angkanya tidak diberikan platform atau belum dicatat, BUKAN berarti nol — jangan " +
+      "dirata-rata seolah nol. Satu baris = catatan terakhir per post. `source` 'manual' = angka yang disalin " +
+      "orangnya sendiri dari aplikasi TikTok/IG lewat tombol \"Catat angka\" (sejak aplikasi tidak lagi memposting, " +
+      "hampir semua data datang dari sini); 'api' = ditarik cron tiap 6 jam dari post yang terbit lewat aplikasi.",
     inputSchema: { type: "object", properties: {} },
   },
   {
