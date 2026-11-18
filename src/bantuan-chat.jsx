@@ -41,6 +41,7 @@ const NAMA_SLOT = {
 
 function namaLayar(path) {
   if (path === "/") return "Beranda";
+  if (path === "/arah") return "Arah Konten";
   if (path === "/buat-video") return "Buat Video";
   if (path === "/profil") return "Profil saya";
   if (path.startsWith("/ugc")) return "Video UGC";

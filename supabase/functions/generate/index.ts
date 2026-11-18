@@ -826,6 +826,77 @@ ATURAN KLAIM (wajib, mengalahkan instruksi lain):
   `tragedi atau kematian sungguhan, SARA, dan politik praktis.
 `;
 
+// Blueprint brand (tabel brand_blueprints, migrasi 0060) → blok "PROFIL BRAND"
+// untuk system prompt.
+//
+// KENAPA SATU HELPER
+//
+// Blueprint adalah satu-satunya hal yang membuat tulisan penulis AI tidak
+// generik: tanpa tahu siapa audiensnya, apa sakitnya, dan apa yang dijual,
+// model jatuh ke ide yang cocok untuk siapa saja — artinya tidak cocok untuk
+// siapa pun. Semua penulis kelak (ide, naskah, UGC, storyboard, rencana)
+// membaca blok yang SAMA dari sini; menyusunnya per cabang berarti cepat atau
+// lambat satu cabang membaca pilar tapi lupa nada bicaranya.
+//
+// Yang dibaca adalah blueprint yang SUDAH diedit pengguna, apa adanya. Bagian
+// yang kosong dilewati, bukan diisi tebakan. Mengembalikan "" kalau belum ada
+// blueprint, supaya pemanggil bisa menempelkannya tanpa memeriksa dulu.
+function blueprintKeSystem(bp: unknown): string {
+  if (!bp || typeof bp !== "object") return "";
+  const b = bp as Record<string, unknown>;
+  const teks = (v: unknown) => (typeof v === "string" ? v.trim() : "");
+  const daftar = (v: unknown) => (Array.isArray(v) ? v.map((x) => teks(x)).filter(Boolean) : []);
+  const baris: string[] = [];
+
+  if (teks(b.positioning)) baris.push(`- Positioning: ${teks(b.positioning)}`);
+  const usp = daftar(b.usp);
+  if (usp.length) baris.push(`- Keunggulan (USP): ${usp.join("; ")}`);
+
+  const a = (b.audience && typeof b.audience === "object" ? b.audience : {}) as Record<string, unknown>;
+  const aud = [
+    teks(a.who) && `siapa: ${teks(a.who)}`,
+    teks(a.pain) && `masalah terbesar: ${teks(a.pain)}`,
+    teks(a.desire) && `yang diinginkan: ${teks(a.desire)}`,
+    teks(a.language) && `cara mereka bicara: ${teks(a.language)}`,
+  ].filter(Boolean);
+  if (aud.length) baris.push(`- Audiens — ${aud.join("; ")}`);
+
+  const pilar = Array.isArray(b.pillars)
+    ? (b.pillars as unknown[]).map((p) => {
+        const o = (p && typeof p === "object" ? p : {}) as Record<string, unknown>;
+        const nama = teks(o.name);
+        return nama ? (teks(o.why) ? `${nama} (${teks(o.why)})` : nama) : "";
+      }).filter(Boolean)
+    : [];
+  if (pilar.length) baris.push(`- Pilar konten: ${pilar.join("; ")}`);
+
+  const t = (b.tone && typeof b.tone === "object" ? b.tone : {}) as Record<string, unknown>;
+  if (teks(t.style)) baris.push(`- Gaya bicara: ${teks(t.style)}`);
+  if (daftar(t.do).length) baris.push(`- Kata/istilah yang dipakai: ${daftar(t.do).join(", ")}`);
+  if (daftar(t.avoid).length) baris.push(`- Kata/istilah yang DIHINDARI: ${daftar(t.avoid).join(", ")}`);
+
+  // Rasio hanya ditulis kalau ada di blueprint. Tidak ada angka bawaan di
+  // sini: rasionya usulan AI dari jawaban pengguna, lalu pengguna yang
+  // menyetujui atau mengubahnya.
+  const f = (b.funnel_ratio && typeof b.funnel_ratio === "object" ? b.funnel_ratio : null) as Record<string, unknown> | null;
+  if (f && [f.tofu, f.mofu, f.bofu].some((x) => Number(x) > 0)) {
+    baris.push(
+      `- Ritme konten per minggu: ${Number(f.tofu) || 0} konten kenalan (menarik orang baru), ` +
+      `${Number(f.mofu) || 0} konten percaya (membangun keyakinan), ${Number(f.bofu) || 0} konten ajakan beli`,
+    );
+  }
+
+  const mon = Array.isArray(b.monetization)
+    ? (b.monetization as unknown[]).map((m) => {
+        const o = (m && typeof m === "object" ? m : {}) as Record<string, unknown>;
+        return teks(o.idea);
+      }).filter(Boolean)
+    : [];
+  if (mon.length) baris.push(`- Yang dijual / cara menghasilkan: ${mon.join("; ")}`);
+
+  return baris.length ? `\n\nPROFIL BRAND (disusun dan disetujui pemiliknya — ikuti):\n${baris.join("\n")}\n` : "";
+}
+
 // Sekitar berapa kata yang muat dalam sedetik ucapan. Sama dengan WORDS_PER_SEC
 // di src/ugc.jsx dan dengan rasio yang dipakai penulis naskah (write kind=ugc).
 // Dipakai HANYA untuk menyusun pesan error yang bisa ditindaklanjuti, tidak
@@ -1234,10 +1305,159 @@ Deno.serve(async (req) => {
         return json({ ok: true, mode: m });
       }
       case "write": {
-        // Penulis AI: kind = script | ideas | persona | lookalike | plan | storyboard | ugc | shot.
-        const kind = ["ideas", "persona", "lookalike", "plan", "storyboard", "ugc", "shot", "variant"].includes(body.kind) ? body.kind : "script";
+        // Penulis AI: kind = script | ideas | persona | lookalike | plan | storyboard | ugc | shot | variant | blueprint.
+        const kind = ["ideas", "persona", "lookalike", "plan", "storyboard", "ugc", "shot", "variant", "blueprint"].includes(body.kind) ? body.kind : "script";
         // Pelaku + keperluan, dibawa ke setiap panggilan chat() di bawah ini.
         const penulis = { actor, purpose: String(kind) };
+
+        // blueprint: 12 jawaban "Arah Konten" → satu profil brand yang dipakai
+        // penulis lain sebagai konteks (lihat blueprintKeSystem).
+        //
+        // KENAPA JAWABAN DAN BLUEPRINT DISIMPAN TERPISAH
+        //
+        // Jawaban adalah bahan mentah dari orangnya; blueprint adalah olahan
+        // AI yang kemudian ia edit. "Susun ulang" menjalankan AI lagi dari
+        // jawaban yang tersimpan, tanpa menyuruh orangnya mengisi 12
+        // pertanyaan dari awal. Jawaban disimpan SEBELUM AI dipanggil: kalau
+        // panggilannya gagal (saldo habis, provider menolak), delapan menit
+        // mengisi tidak ikut hilang.
+        //
+        // Rasio Kenalan/Percaya/Beli (funnel_ratio) sengaja diusulkan AI dari
+        // jawaban, bukan diisi angka bawaan: angka bawaan adalah keputusan
+        // pemilik yang belum diambil, dan pengguna tetap bisa mengubahnya.
+        if (kind === "blueprint") {
+          if (!body.influencer_id) throw new Error("Pilih dulu influencer yang mau disusun arah kontennya.");
+          const { data: inf } = await admin.from("influencers")
+            .select("id,name,niche,persona,language,workspace_id").eq("id", body.influencer_id).maybeSingle();
+          if (!inf || inf.workspace_id !== ws) throw new Error("Influencer tidak ditemukan di workspace ini. Pilih ulang influencernya lalu coba lagi.");
+          const ilang = inf.language === "en" ? "English" : inf.language === "mix" ? "campuran Indonesia-Inggris" : "Indonesia";
+
+          // Label ringkas pertanyaan, supaya model tahu jawaban mana menjawab
+          // apa. Teks lengkapnya (dengan penjelasan) ada di src/brand.jsx;
+          // yang di sini cukup untuk model dan tidak bergantung pada label
+          // yang dikirim browser.
+          const PERTANYAAN: Record<string, string> = {
+            q1: "Siapa kamu & apa yang kamu kerjakan",
+            q2: "Siapa yang mau kamu bantu (target audiens)",
+            q3: "Masalah terbesar audiens itu",
+            q4: "Hasil yang mereka inginkan",
+            q5: "Kenapa kamu, bukan orang lain (pengalaman/bukti)",
+            q6: "Apa yang kamu jual / ingin jual",
+            q7: "Rentang harga produk/jasa",
+            q8: "Gaya bicara yang nyaman",
+            q9: "Topik yang kamu kuasai",
+            q10: "Topik yang sengaja kamu hindari",
+            q11: "Platform utama & format",
+            q12: "Kreator yang kamu kagumi + alasannya",
+          };
+          const mentah = (body.answers && typeof body.answers === "object" ? body.answers : {}) as Record<string, unknown>;
+          const answers: Record<string, string> = {};
+          for (const k of Object.keys(PERTANYAAN)) {
+            const v = typeof mentah[k] === "string" ? (mentah[k] as string).trim().slice(0, 800) : "";
+            if (v) answers[k] = v;
+          }
+          const kurang = ["q1", "q2", "q6"].filter((k) => !answers[k]);
+          if (kurang.length) {
+            throw new Error(
+              `Jawabanmu belum cukup untuk disusun; isi minimal pertanyaan 1, 2, dan 6 ` +
+              `(yang masih kosong: ${kurang.map((k) => k.slice(1)).join(", ")}). Jawaban "belum tahu" atau "belum ada" boleh.`,
+            );
+          }
+
+          const { data: lama } = await admin.from("brand_blueprints")
+            .select("blueprint, blueprint_edited_at").eq("influencer_id", inf.id).maybeSingle();
+
+          const { error: simpanJawabanErr } = await admin.from("brand_blueprints").upsert(
+            { workspace_id: ws, influencer_id: inf.id, answers, created_by: actor, updated_at: new Date().toISOString() },
+            { onConflict: "influencer_id" },
+          );
+          if (simpanJawabanErr) throw new Error(`Jawabanmu belum bisa disimpan: ${simpanJawabanErr.message}`);
+
+          // Kalau pengguna sudah mengedit blueprint sebelumnya, editannya ikut
+          // diberikan ke model. Tanpa ini "Susun ulang" diam-diam membuang
+          // nama pilar yang sudah ia rapikan atau rasio yang sudah ia ubah —
+          // dan baru ketahuan saat ide-idenya tiba-tiba berbeda arah.
+          const editanLama = lama?.blueprint_edited_at ? blueprintKeSystem(lama.blueprint) : "";
+
+          const system =
+            `Kamu brand strategist untuk kreator short-form video (TikTok, Reels, Shorts) di Indonesia. ` +
+            `Kamu menyusun profil brand yang jujur dan spesifik dari jawaban kreatornya sendiri — ` +
+            `bukan template yang cocok untuk siapa saja. Tulis semua NILAI dalam bahasa ${ilang}; ` +
+            `nama key JSON tetap persis seperti format. Jawab HANYA dengan JSON valid, tanpa penjelasan lain.` +
+            ATURAN_KLAIM;
+
+          const daftarJawaban = Object.entries(PERTANYAAN)
+            .map(([k, label], i) => `${i + 1}. ${label}: ${answers[k] || "(tidak diisi)"}`)
+            .join("\n");
+          const user =
+            `Kreator: ${inf.name}${inf.niche ? `, niche ${inf.niche}` : ""}.\n` +
+            `Jawaban 12 pertanyaan:\n${daftarJawaban}\n` +
+            (editanLama
+              ? `\nIni profil yang sedang dipakai dan SUDAH diedit kreatornya. Pertahankan editannya ` +
+                `kecuali jelas bertentangan dengan jawaban di atas:${editanLama}\n`
+              : "") +
+            `\nAturan:\n` +
+            `- Jawaban "belum tahu", "belum ada", atau kosong berarti memang belum diputuskan. Usulkan yang paling masuk akal ` +
+            `dari jawaban lain, tapi JANGAN mengarang pengalaman, prestasi, jumlah pengikut, atau bukti yang tidak disebut.\n` +
+            `- "positioning": tepat 1 kalimat — untuk siapa, membantu apa, dengan cara apa.\n` +
+            `- "usp": tepat 3 poin pendek, diturunkan dari jawaban 1, 5, dan 9.\n` +
+            `- "audience.language": kata atau ungkapan yang dipakai audiens itu sendiri saat mengeluhkan masalahnya.\n` +
+            `- "pillars": 3-5 pilar konten, masing-masing dengan "why" 1 kalimat: kenapa audiens ini peduli. ` +
+            `Jangan pakai topik yang ingin dihindari (jawaban 10).\n` +
+            `- "tone.style": 1 kalimat. "tone.do" dan "tone.avoid": masing-masing 3-6 kata/istilah pendek.\n` +
+            `- "funnel_ratio": usulkan jumlah konten per minggu untuk tiap tahap — "tofu" (kenalan: menarik orang baru), ` +
+            `"mofu" (percaya: membangun keyakinan), "bofu" (ajakan beli) — bilangan bulat 0-7, ` +
+            `disesuaikan dengan jawaban 6 dan 7 (kalau belum ada yang dijual, "bofu" boleh 0).\n` +
+            `- "monetization": tepat 3 ide yang cocok, masing-masing dengan "fit" 1 kalimat kenapa cocok untuknya.\n\n` +
+            `Format JSON: {"positioning": "...", "usp": ["...", "...", "..."], ` +
+            `"audience": {"who": "...", "pain": "...", "desire": "...", "language": "..."}, ` +
+            `"pillars": [{"name": "...", "why": "..."}], "tone": {"style": "...", "do": ["..."], "avoid": ["..."]}, ` +
+            `"funnel_ratio": {"tofu": 0, "mofu": 0, "bofu": 0}, "monetization": [{"idea": "...", "fit": "..."}]}`;
+
+          const parsed = parseJsonLoose(await chat(ws, penulis, system, user, undefined, 1500)) as Record<string, unknown>;
+
+          // Dirapikan ke skema §3.1 apa adanya: bagian yang tidak dikirim
+          // model jadi kosong, bukan diisi tebakan di sini.
+          const s = (v: unknown, n = 400) => (typeof v === "string" ? v.trim().slice(0, n) : "");
+          const ls = (v: unknown, max: number) => (Array.isArray(v) ? v.map((x) => s(x, 120)).filter(Boolean).slice(0, max) : []);
+          const obj = (v: unknown) => (v && typeof v === "object" && !Array.isArray(v) ? v as Record<string, unknown> : {});
+          const aud = obj(parsed.audience);
+          const tone = obj(parsed.tone);
+          const fr = obj(parsed.funnel_ratio);
+          const bulat = (v: unknown) => Math.min(Math.max(Math.round(Number(v) || 0), 0), 7);
+          const rasio = { tofu: bulat(fr.tofu), mofu: bulat(fr.mofu), bofu: bulat(fr.bofu) };
+          const blueprint = {
+            positioning: s(parsed.positioning),
+            usp: ls(parsed.usp, 3),
+            audience: { who: s(aud.who), pain: s(aud.pain), desire: s(aud.desire), language: s(aud.language) },
+            pillars: (Array.isArray(parsed.pillars) ? parsed.pillars : [])
+              .map((p: unknown) => ({ name: s(obj(p).name, 60), why: s(obj(p).why, 300) }))
+              .filter((p: { name: string }) => p.name)
+              .slice(0, 5),
+            tone: { style: s(tone.style), do: ls(tone.do, 8), avoid: ls(tone.avoid, 8) },
+            // Tanpa usulan yang terbaca → null, bukan angka bawaan.
+            funnel_ratio: rasio.tofu + rasio.mofu + rasio.bofu > 0 ? rasio : null,
+            monetization: (Array.isArray(parsed.monetization) ? parsed.monetization : [])
+              .map((m: unknown) => ({ idea: s(obj(m).idea, 200), fit: s(obj(m).fit, 300) }))
+              .filter((m: { idea: string }) => m.idea)
+              .slice(0, 3),
+          };
+          if (!blueprint.positioning || !blueprint.pillars.length) {
+            throw new Error("Penulis AI belum berhasil menyusun blueprint dari jawabanmu. Jawabanmu sudah tersimpan — coba tekan Susun blueprint sekali lagi.");
+          }
+
+          const { error: simpanErr } = await admin.from("brand_blueprints").upsert(
+            {
+              workspace_id: ws, influencer_id: inf.id, answers, blueprint,
+              // Versi baru dari AI: belum ada editan pengguna di atasnya.
+              blueprint_edited_at: null,
+              generated_at: new Date().toISOString(), created_by: actor, updated_at: new Date().toISOString(),
+            },
+            { onConflict: "influencer_id" },
+          );
+          if (simpanErr) throw new Error(`Blueprint sudah jadi tapi belum bisa disimpan: ${simpanErr.message}`);
+          return json({ ok: true, blueprint });
+        }
 
         // storyboard: satu ide → daftar shot yang siap diproduksi.
         //

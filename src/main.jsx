@@ -11,6 +11,7 @@ import { Products } from "./products.jsx";
 import { Ugc } from "./ugc.jsx";
 import { Profil } from "./profil.jsx";
 import { BuatVideo } from "./buat-video.jsx";
+import { ArahKonten } from "./brand.jsx";
 import { Mulai, MulaiClaude } from "./mulai.jsx";
 import { TipLayer, Info } from "./tips.jsx";
 import { TombolIsiSaldo } from "./bantuan.jsx";
@@ -113,6 +114,9 @@ const legalHref = (page) => {
 // perangkat; tidak ada yang dihapus.
 const NAV_RINGKAS = [
   ["/", "🏠 Beranda", "Ringkasan dan langkah awal."],
+  // Sebelum Buat Video karena urutannya memang begitu: tahu arah dulu, baru
+  // bikin video (docs/SPEK-TOOLS-KREATOR.md §5.1).
+  ["/arah", "🧭 Arah Konten", "Siapa kamu dan arah kontenmu: 12 pertanyaan, lalu blueprint."],
   ["/buat-video", "🎬 Buat Video", "Empat pertanyaan, harga dalam rupiah, lalu videonya dibuat."],
   ["/drive", "📁 Karya", "Semua video, gambar, dan suara yang sudah jadi."],
   ["/planner", "🗓️ Rencana", "Jadwal konten dan tempat memposting ke sosial."],
@@ -121,6 +125,7 @@ const NAV_RINGKAS = [
 ];
 const NAV = [
   ["/", "🏠 Dashboard", "Ringkasan workspace dan langkah awal kalau kamu baru mulai."],
+  ["/arah", "🧭 Arah Konten", "Siapa kamu dan arah kontenmu: 12 pertanyaan, lalu blueprint."],
   ["/buat-video", "🎬 Buat Video", "Empat pertanyaan, harga dalam rupiah, lalu videonya dibuat lewat UGC atau Storyboard."],
   // Dua aset yang dipakai ulang (siapa, apa) di atas; alat produksi di bawahnya.
   ["/influencers", "👥 Influencers", "Karakter AI-mu: wajah, suara, kepribadian. Mulai dari sini."],
@@ -706,6 +711,7 @@ function App() {
   else if (routePath.startsWith("/influencers/")) view = <InfluencerDetail {...props} key={routePath.split("/")[2]} id={routePath.split("/")[2]} />;
   else if (routePath === "/studio") view = <Studio {...props} query={routeQuery} />;
   else if (routePath === "/storyboard") view = <Storyboard {...props} query={routeQuery} />;
+  else if (routePath === "/arah") view = <ArahKonten {...props} spend={spend} support={support} />;
   else if (routePath === "/buat-video") view = <BuatVideo {...props} spend={spend} support={support} />;
   else if (routePath === "/mulai") view = <Mulai />;
   else if (routePath === "/mulai-claude") view = <MulaiClaude />;
@@ -740,7 +746,7 @@ function App() {
               data-tip={tip} data-tip-side="right">{label}</a>
           ))}
           <button type="button" onClick={gantiMenu} className="tiny muted mt2"
-            data-tip={menuLengkap ? "Kembali ke enam menu utama." : "Tampilkan juga Influencers, Product Kit, Production Studio, Storyboard, Video UGC, dan Tasks."}
+            data-tip={menuLengkap ? "Kembali ke tujuh menu utama." : "Tampilkan juga Influencers, Product Kit, Production Studio, Storyboard, Video UGC, dan Tasks."}
             data-tip-side="right"
             style={{ background: "none", border: "none", cursor: "pointer", padding: "6px 12px", textAlign: "left", width: "100%" }}>
             {menuLengkap ? "▴ Menu ringkas" : "▾ Semua menu"}
@@ -776,18 +782,20 @@ function App() {
           <ViewBoundary resetKey={routePath}>{view}</ViewBoundary>
         </main>
       </div>
-      {/* Tab bawah ponsel: empat tujuan yang paling sering dicari dengan ibu
+      {/* Tab bawah ponsel: lima tujuan yang paling sering dicari dengan ibu
           jari. "Saldo" menunjuk ke Settings sampai ada halaman saldo
           sendiri. Kelas `nav active` sama dengan sidebar, jadi halaman aktif
           ditandai dengan cara yang sama. Petunjuknya diambil dari menu
-          ringkas supaya tidak ada dua kalimat untuk menu yang sama. */}
+          ringkas — dicari lewat href, bukan nomor urut, supaya menambah menu
+          tidak diam-diam menukar petunjuk tab yang lain. */}
       <nav className="tab-bawah" aria-label="Menu utama">
         {[
-          ["/", "🏠", "Beranda", NAV_RINGKAS[0][2]],
-          ["/buat-video", "🎬", "Buat Video", NAV_RINGKAS[1][2]],
-          ["/drive", "🗂", "Karya", NAV_RINGKAS[2][2]],
-          ["/settings", "💳", "Saldo", NAV_RINGKAS[5][2]],
-        ].map(([href, ikon, label, tip]) => (
+          ["/", "🏠", "Beranda"],
+          ["/arah", "🧭", "Arah"],
+          ["/buat-video", "🎬", "Buat Video"],
+          ["/drive", "🗂", "Karya"],
+          ["/settings", "💳", "Saldo"],
+        ].map(([href, ikon, label]) => [href, ikon, label, NAV_RINGKAS.find(([h]) => h === href)?.[2]]).map(([href, ikon, label, tip]) => (
           <a key={href} href={`#${href}`} className={`nav ${routePath === href ? "active" : ""}`} data-tip={tip}>
             <span style={{ fontSize: 18 }} aria-hidden="true">{ikon}</span>{label}
           </a>
