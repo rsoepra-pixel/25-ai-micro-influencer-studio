@@ -60,6 +60,18 @@ di `app/index.ts` dan `lanjutPulih` di `main.jsx`.
 
 ---
 
+## Pemakaian model saat mendelegasikan
+
+Kalau pekerjaan bisa dipecah ke sub-agen, pakai **Opus atau model yang lebih
+murah** (Sonnet, Haiku) untuk sub-agen itu: menelusuri kode, meringkas
+dokumen, menulis draf, membangun prototipe dari brief yang jelas. Model
+utama (Fable) hanya untuk yang memang butuh: keputusan arsitektur, meninjau
+dan memverifikasi hasil sub-agen, dan pekerjaan yang briefnya tidak bisa
+ditulis jelas. Hasil sub-agen tetap diperiksa — nama tabel, fungsi, dan
+nomor migrasi yang dikutipnya dicek ada di repo sebelum dipakai.
+
+---
+
 ## Yang tidak boleh diubah tanpa diminta
 
 - **Allowlist kunci internal** di `generate/index.ts`:

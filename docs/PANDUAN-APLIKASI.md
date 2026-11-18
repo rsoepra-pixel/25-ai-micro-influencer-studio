@@ -209,13 +209,25 @@ dalam rupiah, **sebelum** apa pun berbayar berangkat.
    lebih dari satu), dan untuk jalur UGC: produknya (bisa membuat produk baru
    di tempat). Yang belum siap — foto wajah, suara, produk — disebut di sini
    dengan tautan ke tempat memperbaikinya, bukan setelah naskah dibayar.
+   Kalau tombol **Lanjut** belum bisa ditekan, alasannya tertulis di bawah
+   tombolnya (bukan hanya di tooltip, yang tidak muncul di ponsel).
 3. **Berapa lama** — 10, 15, 20, atau 30 detik, masing-masing dengan harganya.
    Lebih dari 30 detik **belum bisa** (batas per job; versi panjang menunggu
    perakitan klip di server). Tombol "Tulis naskahnya" memanggil penulis AI
    (≈ Rp 40, tertulis di tombol).
 4. **Tinjau & harga** — naskah yang akan diucapkan (atau daftar adegan),
    rincian biaya per bagian dan totalnya dalam rupiah, lalu **Ya, buat video
-   ini**.
+   ini**. Di jalur bicara ke kamera, naskah, caption, dan tagar bisa **diubah
+   langsung** di sini tanpa biaya; rincian harga ikut menyesuaikan panjang
+   naskah yang diubah. Daftar adegan jalur cerita diubah nanti di layar
+   Storyboard.
+
+**Isian diingat.** Cerita, jenis video, bentuk cerita, gaya, durasi, produk,
+dan langkah terakhir disimpan di perangkat ini per workspace, jadi pindah ke
+Profil saya atau Product Kit untuk memperbaiki penghalang tidak menghapus
+ceritamu. Saat kembali muncul baris "Melanjutkan isian terakhirmu · Mulai
+baru". Foto untuk jalur cerita dan naskah dari penulis AI tidak ikut diingat;
+isiannya dihapus begitu proyek berhasil dibuat.
 
 Sesudah "Ya", wizard menyimpan proyek yang **sama persis** dengan yang dibuat
 formulir Video UGC atau Storyboard dan membuka alur produksinya
@@ -719,6 +731,12 @@ Penyaringannya dikerjakan di query, bukan di browser. Bedanya terasa saat
 asetmu sudah lebih dari 60: menyaring di browser akan menampilkan video yang
 kebetulan masuk 60 terbaru lalu berhenti, tanpa tanda apa pun bahwa sisanya
 ada. Dengan filter di query, menekan Video berarti 60 video terbaru.
+
+**Sedang dibuat.** Di atas daftar berkas ada kartu berisi sampai 10 video
+bicara dan video cerita yang videonya belum jadi, terbaru dulu, dengan
+umurnya. Menekan satu baris membuka layar produksinya — jalan kembali ke
+video yang ditinggal di tengah jalan setelah Buat Video. Kartunya tidak
+muncul kalau tidak ada yang sedang dibuat.
 
 **Fitur yang mudah terlewat:** foto terbaik bisa **ditandai sebagai referensi
 Identity Kit** seorang influencer langsung dari sini. Kalau influencer itu belum
