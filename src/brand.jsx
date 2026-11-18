@@ -20,7 +20,7 @@
 // nilainya tetap `tofu`/`mofu`/`bofu`; di layar: Kenalan · Percaya · Beli.
 import React, { useEffect, useState } from "react";
 import { supa, callGenerate } from "./supa.js";
-import { useQuery, unwrap, PLAN_COLORS, Badge } from "./views.jsx";
+import { useQuery, unwrap, PLAN_COLORS, Badge, TUJUAN, labelTujuan, PilTujuan } from "./views.jsx";
 import { WORDS_PER_SEC } from "./ugc.jsx";
 import { Info, TIP_PENULIS_AI } from "./tips.jsx";
 import { biayaNaskahLabel } from "./harga.js";
@@ -271,6 +271,8 @@ function Depan({ ws, inf, row, items, onMulai, onLihat, onIde, onNaskah }) {
             {items === null ? "Memuat…" : nIde ? `✓ ${nIde} ide tersimpan` : "Belum ada ide tersimpan"}
           </div>
           <button type="button" className={row?.blueprint ? "btn mt3" : "btn btn2 mt3"} onClick={onIde}>Buka ide →</button>
+          {/* Kalender milik Rencana (spek §5.2): di sini cukup jalan ke sana. */}
+          <div className="tiny mt2"><a href="#/planner" style={{ color: "var(--blue-strong)", fontWeight: 600 }}>Isi sebulan di Rencana →</a></div>
         </div>
         <div className="card p4">
           <div className="bold">🎙️ Naskah siap baca</div>
@@ -706,13 +708,8 @@ function EditorPasangan({ isi, onChange, labelA, labelB, maks }) {
 //
 // Tujuan disimpan sebagai tofu/mofu/bofu (0060), ditampilkan sebagai
 // Kenalan · Percaya · Beli. Ketiga istilah teknis itu tidak pernah tampil.
-const TUJUAN = [["tofu", "Kenalan", "blue"], ["mofu", "Percaya", "violet"], ["bofu", "Beli", "green"]];
-const labelTujuan = (v) => (TUJUAN.find(([k]) => k === v) || [])[1] || "";
-
-function PilTujuan({ v }) {
-  const t = TUJUAN.find(([k]) => k === v);
-  return t ? <Badge tone={t[2]}>{t[1]}</Badge> : null;
-}
+// TUJUAN, labelTujuan, dan PilTujuan dipakai bersama dengan Rencana — lihat
+// views.jsx.
 
 // Satu baris chip filter/pilihan. `nilai` "" = Semua (kalau `semua` diberi).
 function Chips({ pilihan, nilai, onPilih, semua }) {

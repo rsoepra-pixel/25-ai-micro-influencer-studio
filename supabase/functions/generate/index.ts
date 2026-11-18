@@ -859,6 +859,12 @@ ATURAN KLAIM (wajib, mengalahkan instruksi lain):
   `tragedi atau kematian sungguhan, SARA, dan politik praktis.
 `;
 
+// Label baris ritme di blok PROFIL BRAND. Satu konstanta karena cabang
+// `plan` memeriksa keberadaannya untuk memutuskan apakah model disuruh
+// mengikuti ritme atau menimbang sendiri — kalau teksnya diubah di satu
+// tempat saja, `plan` diam-diam berhenti mengikuti ritme.
+const RITME_LABEL = "Ritme konten per minggu";
+
 // Blueprint brand (tabel brand_blueprints, migrasi 0060) → blok "PROFIL BRAND"
 // untuk system prompt.
 //
@@ -914,7 +920,7 @@ function blueprintKeSystem(bp: unknown): string {
   const f = (b.funnel_ratio && typeof b.funnel_ratio === "object" ? b.funnel_ratio : null) as Record<string, unknown> | null;
   if (f && [f.tofu, f.mofu, f.bofu].some((x) => Number(x) > 0)) {
     baris.push(
-      `- Ritme konten per minggu: ${Number(f.tofu) || 0} konten kenalan (menarik orang baru), ` +
+      `- ${RITME_LABEL}: ${Number(f.tofu) || 0} konten kenalan (menarik orang baru), ` +
       `${Number(f.mofu) || 0} konten percaya (membangun keyakinan), ${Number(f.bofu) || 0} konten ajakan beli`,
     );
   }
@@ -2040,15 +2046,76 @@ Deno.serve(async (req) => {
         // TANGGAL sengaja TIDAK diminta ke model: model bahasa buruk soal kalender
         // (sering meleset hari/tanggal). Model hanya memberi urutan + `weekday_hint`,
         // penjadwalan tanggalnya dihitung deterministik di klien.
+        // plan: "Rencanakan sebulan dengan AI" di Rencana (spek U6 /
+        // `calendar_fill`). Sengaja perluasan kind ini, bukan kind baru:
+        // dua pengisi bulan dengan aturan berbeda berarti dua tempat yang
+        // harus dijaga tetap sepakat soal pilar, series, dan batas jualan.
+        //
+        // DUA BENTUK PERMINTAAN
+        //
+        // Lama — `weeks` + `per_week` saja. Model memberi urutan ide +
+        // `weekday_hint`, klien yang menaruh tanggal. Tetap dilayani untuk
+        // pemanggil lama dan klien yang belum diperbarui.
+        //
+        // Baru — klien juga mengirim `dates`: tanggal KOSONG yang sudah ia
+        // hitung (lewat hari istirahat dan tanggal yang sudah berisi konten
+        // dilewati). Satu ide per tanggal, tanggalnya ditempel di sini, bukan
+        // dipilih model: model bahasa sering salah memasangkan tanggal dengan
+        // hari, dan satu tanggal yang meleset berarti menimpa konten yang
+        // sudah ada — justru yang dijanjikan tidak terjadi (§3.5 no. 4 belum
+        // diputuskan pemilik; sementara: hanya tanggal kosong). `days_off`
+        // dan `occupied_dates` dipakai untuk menyaring `dates` sekali lagi,
+        // supaya klien yang keliru menghitung tidak bisa menjadwalkan di hari
+        // libur atau tanggal terisi.
+        //
+        // Hanya ide + hook, tanpa naskah: sebulan tetap satu panggilan chat().
         if (kind === "plan") {
           const weeks = Math.min(Math.max(Number(body.weeks) || 4, 1), 8);
           const perWeek = Math.min(Math.max(Number(body.per_week) || 4, 1), 7);
-          const total = Math.min(weeks * perWeek, 40);
           const platform = ["tiktok", "instagram", "youtube"].includes(body.platform) ? body.platform : "tiktok";
           const focus = String(body.focus || "").slice(0, 300);
           const makePillars = body.make_pillars !== false;
           const existing: string[] = Array.isArray(body.pillars)
             ? body.pillars.map((p: unknown) => String(p)).slice(0, 8) : [];
+
+          // Tanggal: "YYYY-MM-DD" yang benar-benar ada (2026-02-30 ditolak).
+          // Hari dihitung di UTC dari tanggal kalender, jadi tidak bergeser
+          // oleh zona waktu server. 0 = Senin … 6 = Minggu, sama dengan
+          // `weekday_hint` dan WEEK_SLOTS di src/views.jsx.
+          const tglSah = (v: unknown) => {
+            const t = String(v || "");
+            if (!/^\d{4}-\d{2}-\d{2}$/.test(t)) return null;
+            const d = new Date(`${t}T00:00:00Z`);
+            return !isNaN(d.getTime()) && d.toISOString().slice(0, 10) === t ? t : null;
+          };
+          const hariKe = (t: string) => (new Date(`${t}T00:00:00Z`).getUTCDay() + 6) % 7;
+          const NAMA_HARI = ["Senin", "Selasa", "Rabu", "Kamis", "Jumat", "Sabtu", "Minggu"];
+          const libur = Array.isArray(body.days_off) ? body.days_off as unknown[] : [];
+          const hariLibur = new Set(libur.map((x) => (typeof x === "number" || /^\d$/.test(String(x)) ? Number(x) : -1))
+            .filter((n) => Number.isInteger(n) && n >= 0 && n <= 6));
+          const tglLibur = new Set(libur.map(tglSah).filter(Boolean) as string[]);
+          const terisi = new Set((Array.isArray(body.occupied_dates) ? body.occupied_dates as unknown[] : [])
+            .map(tglSah).filter(Boolean) as string[]);
+          const pakaiTanggal = Array.isArray(body.dates);
+          const slot: string[] = pakaiTanggal
+            ? [...new Set((body.dates as unknown[]).map(tglSah).filter(Boolean) as string[])]
+              .filter((t) => !terisi.has(t) && !tglLibur.has(t) && !hariLibur.has(hariKe(t)))
+              .sort().slice(0, 40)
+            : [];
+          if (pakaiTanggal && !slot.length) {
+            // Ditolak SEBELUM chat(): tidak ada tanggal = tidak ada yang perlu
+            // ditulis, jadi tidak ada alasan memotong saldo.
+            throw new Error("Tidak ada tanggal kosong di periode ini — semua sudah berisi konten atau jatuh di hari istirahat. Pilih periode lebih panjang atau kurangi hari istirahat.");
+          }
+          const total = pakaiTanggal ? slot.length : Math.min(weeks * perWeek, 40);
+
+          // Minggu = blok 7 hari dari tanggal mulai klien (hari ini di
+          // perangkatnya), bukan Senin–Minggu: rencana yang dibuat Kamis
+          // tidak kehilangan separuh minggu pertamanya.
+          const mulai = tglSah(body.start_date) || slot[0] || "";
+          const mingguKe = (t: string) =>
+            Math.max(Math.floor((Date.parse(`${t}T00:00:00Z`) - Date.parse(`${mulai}T00:00:00Z`)) / 86_400_000 / 7), 0) + 1;
+          const daftarSlot = slot.map((t, i) => `${i + 1}. ${t} (${NAMA_HARI[hariKe(t)]}, minggu ke-${mingguKe(t)})`).join("\n");
 
           let iname = "kreator", iniche = "", ibio = "", ilang = "Indonesia";
           if (body.influencer_id) {
@@ -2086,8 +2153,20 @@ Deno.serve(async (req) => {
                 : "")
             : `1. "pillars": kembalikan array kosong []. Pakai pillar yang sudah ada: ${existing.join(", ")}.\n`;
 
+          // Tujuan per minggu ikut ritme blueprint kalau ada. Tanpa ritme,
+          // model yang menimbang — sengaja tanpa rasio bawaan di kode (rasio
+          // default adalah keputusan pemilik yang belum diambil, spek §3.5
+          // no. 1). Sama dengan cabang `ideas`.
+          const aturanTujuan = bpPlan.includes(RITME_LABEL)
+            ? `Bagi "funnel_stage" di SETIAP minggu mengikuti ${RITME_LABEL.toLowerCase()} di PROFIL BRAND. ` +
+              `Kalau jumlah ide minggu itu berbeda dari jumlah dalam ritme, pertahankan perbandingannya (bulatkan).`
+            : `Pilih sendiri campuran tujuan per minggu yang paling masuk akal untuk kreator ini.`;
+
           const user =
-            `Susun rencana konten untuk ${weeks} minggu ke depan, ${perWeek} post per minggu (total TEPAT ${total} ide).\n` +
+            (pakaiTanggal
+              ? `Susun rencana konten untuk tanggal-tanggal kosong di bawah, SATU ide per tanggal (total TEPAT ${total} ide). ` +
+                `Tanggal lain sudah berisi konten atau hari istirahat — jangan disentuh.\n${daftarSlot}\n`
+              : `Susun rencana konten untuk ${weeks} minggu ke depan, ${perWeek} post per minggu (total TEPAT ${total} ide).\n`) +
             (focus ? `Fokus/tema periode ini: ${focus}\n` : "") +
             (existing.length ? `Pillar yang sudah dipakai: ${existing.join(", ")}\n` : "") +
             `\nAturan yang harus dipatuhi:\n` +
@@ -2099,20 +2178,58 @@ Deno.serve(async (req) => {
             `"pillar" (harus persis salah satu nama pillar), ` +
             `"content_type" (talking | broll | photo | carousel), ` +
             `"series" (nama format berulang atau string kosong), ` +
-            `"weekday_hint" (0=Senin … 6=Minggu; satu series sebaiknya jatuh di hari yang sama tiap minggu).\n` +
+            `"funnel_stage" (tofu = kenalan, menarik orang baru | mofu = percaya, membuat yang sudah kenal jadi yakin | bofu = beli, mengajak pesan), ` +
+            (pakaiTanggal
+              ? `"slot" (nomor tanggal dari daftar di atas, 1-${total}, tiap nomor dipakai sekali; satu series sebaiknya jatuh di hari yang sama tiap minggu).\n`
+              : `"weekday_hint" (0=Senin … 6=Minggu; satu series sebaiknya jatuh di hari yang sama tiap minggu).\n`) +
             `4. Sebaran pillar di "items" harus mendekati target_ratio-nya, bukan asal rata.\n` +
             `5. Variasikan content_type — jangan semua talking head. Sisipkan broll/carousel untuk selingan produksi.\n` +
             `6. Judul tidak boleh mirip satu sama lain; tiap ide harus berdiri sendiri.\n` +
             `7. Taruh ide paling kuat di urutan awal (dipublikasikan lebih dulu).\n` +
             `8. Hindari klaim medis, kesehatan, atau finansial yang spesifik.\n` +
+            `9. ${aturanTujuan}\n` +
+            `10. Hanya ide dan hook — JANGAN menulis naskah.\n` +
             `\nFormat JSON: {"pillars": [{"name": "...", "target_ratio": 40, "why": "1 kalimat kenapa pillar ini"}], ` +
             `"series": [{"name": "...", "format": "1 kalimat cara eksekusinya"}], ` +
-            `"items": [{"title": "...", "hook": "...", "pillar": "...", "content_type": "talking", "series": "", "weekday_hint": 0}]}`;
+            `"items": [{"title": "...", "hook": "...", "pillar": "...", "content_type": "talking", "series": "", "funnel_stage": "tofu", ` +
+            (pakaiTanggal ? `"slot": 1}]}` : `"weekday_hint": 0}]}`);
 
           const parsed = parseJsonLoose(await chat(ws, penulis, system, user, undefined, 4000)) as Record<string, unknown>;
-          const rawItems = Array.isArray(parsed.items) ? parsed.items : [];
+          const rawItems = (Array.isArray(parsed.items) ? parsed.items : []) as Array<Record<string, unknown>>;
           const rawPillars = Array.isArray(parsed.pillars) ? parsed.pillars : [];
           const TYPES = ["talking", "broll", "photo", "carousel"];
+          const tujuanDari = (v: unknown) => {
+            const t = String(v || "").trim().toLowerCase();
+            return ["tofu", "mofu", "bofu"].includes(t) ? t : null;
+          };
+
+          // Tanggal ditempel di sini. `slot` dari model dipakai kalau sah dan
+          // belum terpakai; selain itu ide mengambil tanggal kosong pertama
+          // yang tersisa. Ide lebih dari jumlah tanggal dibuang — tidak ada
+          // ide yang boleh jatuh di tanggal yang tidak dikirim klien.
+          const terpakai = new Set<number>();
+          const tanggalUntuk = (it: Record<string, unknown>) => {
+            const n = Math.floor(Number(it?.slot)) - 1;
+            const k = n >= 0 && n < slot.length && !terpakai.has(n) ? n : slot.findIndex((_, i) => !terpakai.has(i));
+            if (k < 0) return null;
+            terpakai.add(k);
+            return slot[k];
+          };
+
+          const items = rawItems.filter((it) => String(it?.title || "").trim()).slice(0, total).map((it) => {
+            const date = pakaiTanggal ? tanggalUntuk(it) : null;
+            return {
+              title: String(it?.title || "").slice(0, 200),
+              hook: String(it?.hook || "").slice(0, 300),
+              pillar: String(it?.pillar || "").slice(0, 60),
+              content_type: TYPES.includes(String(it?.content_type)) ? String(it?.content_type) : "talking",
+              series: String(it?.series || "").slice(0, 60),
+              weekday_hint: date ? hariKe(date) : Math.min(Math.max(Number(it?.weekday_hint) || 0, 0), 6),
+              funnel_stage: tujuanDari(it?.funnel_stage),
+              ...(pakaiTanggal ? { date } : {}),
+            };
+          });
+          if (pakaiTanggal) items.sort((x, y) => String(x.date).localeCompare(String(y.date)));
           return json({
             ok: true,
             plan: {
@@ -2126,14 +2243,7 @@ Deno.serve(async (req) => {
                   name: String(s?.name || "").slice(0, 60),
                   format: String(s?.format || "").slice(0, 200),
                 })).filter((s) => s.name),
-              items: rawItems.slice(0, total).map((it: Record<string, unknown>) => ({
-                title: String(it?.title || "").slice(0, 200),
-                hook: String(it?.hook || "").slice(0, 300),
-                pillar: String(it?.pillar || "").slice(0, 60),
-                content_type: TYPES.includes(String(it?.content_type)) ? String(it?.content_type) : "talking",
-                series: String(it?.series || "").slice(0, 60),
-                weekday_hint: Math.min(Math.max(Number(it?.weekday_hint) || 0, 0), 6),
-              })).filter((it) => it.title),
+              items,
             },
           });
         }
