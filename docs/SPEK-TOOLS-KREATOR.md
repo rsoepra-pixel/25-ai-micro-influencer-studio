@@ -579,3 +579,49 @@ berhenti dan lanjut.
 
 Prototipe UI (HTML, bisa diklik): lihat tautan artifact di percakapan ini;
 salinannya tidak disimpan di repo.
+
+---
+
+## 6. Tautan Arah Konten ↔ alat video (penilaian, belum dibangun)
+
+Hasil telusur `buat-video.jsx`, `ugc.jsx`, `storyboard.jsx`, Planner, dan
+aksi `write`. Rantai penelusuran video → ide **sudah ada di skema** tapi
+hampir tidak pernah terisi: `production_jobs`, `assets`, `ugc_projects`,
+`storyboards`, `short_links`, `post_metrics` semua punya `content_item_id`.
+Buat Video tidak pernah mengisinya (`buat-video.jsx:251` menulis `null`),
+UGC `NewProject` juga tidak; hanya pemilih "Ambil dari planner" di Storyboard
+yang mengisinya. Planner tidak punya tombol menuju video.
+
+### Yang jelas berguna
+
+1. **Blueprint masuk ke semua prompt naskah** (paling kuat, tanpa UI baru).
+   Kind `script`, `ugc`, `storyboard`, `plan` kini hanya menyuntik nama,
+   niche, `persona.bio`, dan bahasa (`generate/index.ts` ~1946, 1561, 1395,
+   1745). Satu helper bersama yang menambahkan audiens, gaya bicara, kata
+   yang dihindari, dan pilar membuat setiap video dari Buat Video otomatis
+   bersuara seperti brand-nya.
+2. **Serah-terima naskah lewat `content_item_id`, bukan teks.** Tombol
+   "Buat videonya →" membawa id; Buat Video mengisi ide dan influencer dari
+   item itu dan menulis id ke `ugc_projects`/`storyboards`, sisanya terisi
+   lewat `submit` (`generate/index.ts:3103`). Dua celah:
+   - kind `ugc` tidak menerima `content_item_id`, jadi akan menulis ulang
+     naskah yang sudah disetujui; untuk UGC isi langsung `ugc_projects.script`
+     dan lewati langkah draf;
+   - `script` tetap 15 detik (`draftSeconds`), Buat Video 10–30 detik; durasi
+     harus dibawa dua arah atau naskahnya ditulis ulang.
+3. **Tautan balik dari video ke idenya.** Storyboard sudah punya
+   "Ke planner →" (`storyboard.jsx:1404`); UGC dan Karya belum. Hanya berguna
+   setelah no. 2 mengisi id.
+4. **Laporan per pilar dan tujuan.** `reports.jsx` membaca job tanpa
+   `content_item_id` dan hanya menghitung item per pilar. Dengan rantai
+   terisi, laporan bisa menunjukkan biaya per ide dan, lewat link pendek +
+   `post_metrics`, pilar/tujuan mana yang menambah follower. Butuh kolom
+   funnel baru (belum ada di mana pun; grep "funnel"/"corong" kosong).
+
+### Yang sengaja tidak ditautkan
+
+- **Kalender → produksi otomatis.** Membakar saldo tanpa persetujuan per
+  video yang memang disyaratkan aplikasi. Tetap satu klik per video.
+- **Blueprint digabung dengan persona influencer.** Persona = tokoh AI
+  (wajah, bio) dan dipakai prompt gambar; blueprint = usaha dan audiens
+  manusianya. Boleh "isi bio dari blueprint" satu arah, jangan digabung.
