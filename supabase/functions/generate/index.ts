@@ -897,6 +897,50 @@ function blueprintKeSystem(bp: unknown): string {
   return baris.length ? `\n\nPROFIL BRAND (disusun dan disetujui pemiliknya — ikuti):\n${baris.join("\n")}\n` : "";
 }
 
+// Blok PROFIL BRAND untuk penulis naskah (script, ideas, ugc, storyboard,
+// plan, variant) — spek Arah Konten §3.6 langkah 4 / §6 tautan 1.
+//
+// KENAPA SATU PEMUAT UNTUK SEMUA PENULIS
+//
+// Satu video sering lewat tiga penulis: ide dari Rencana, naskah dari
+// planner, lalu storyboard atau UGC, kadang "Buat versi lain". Kalau tiap
+// cabang memuat blueprint sendiri, cepat atau lambat satu cabang membaca
+// pilar tapi lupa kata yang dihindari, dan videonya berganti suara di tengah
+// jalan. Satu pemuat + satu blueprintKeSystem = semua penulis melihat profil
+// yang sama, kata per kata. Dibaca SEKALI per permintaan (di system prompt),
+// bukan per shot.
+//
+// KENAPA GAGAL DIAM-DIAM
+//
+// Blueprint opsional: workspace lama dan influencer yang belum mengisi Arah
+// Konten tidak punya baris, dan fungsi ini bisa terpasang sebelum migrasi
+// 0060 dijalankan (migrasi manual, deploy otomatis — lihat CLAUDE.md). Di
+// semua kasus itu penulis harus bekerja persis seperti sebelumnya, bukan
+// menolak: naskah tanpa profil masih lebih baik daripada tombol yang error.
+// Galat Supabase tidak dilempar (dikembalikan di `error`), jadi cukup
+// dibaca sebagai "tidak ada".
+//
+// workspace_id ikut disaring: influencer_id datang dari body, dan tanpa
+// saringan ini id influencer workspace lain akan menyelundupkan profil
+// brand orang lain ke naskah yang dibayar workspace ini.
+async function blokBlueprint(ws: string, infId: unknown): Promise<string> {
+  if (!infId) return "";
+  try {
+    const { data } = await admin.from("brand_blueprints").select("blueprint")
+      .eq("influencer_id", String(infId)).eq("workspace_id", ws).maybeSingle();
+    return blueprintKeSystem(data?.blueprint);
+  } catch {
+    return "";
+  }
+}
+
+// Kalimat pendamping blok di atas, hanya ditempel kalau bloknya ada (tanpa
+// blueprint, prompt sama persis dengan sebelumnya). Diletakkan sebelum
+// ATURAN_KLAIM, jadi aturan klaim tetap yang terakhir dan tetap menang.
+const IKUTI_PROFIL =
+  `Ikuti PROFIL BRAND di atas: tulis untuk audiens itu, pakai gaya bicaranya, jangan pakai kata yang dihindari, ` +
+  `dan tetap di dalam pilar kontennya.\n`;
+
 // Sekitar berapa kata yang muat dalam sedetik ucapan. Sama dengan WORDS_PER_SEC
 // di src/ugc.jsx dan dengan rasio yang dipakai penulis naskah (write kind=ugc).
 // Dipakai HANYA untuk menyusun pesan error yang bisa ditindaklanjuti, tidak
@@ -1493,10 +1537,16 @@ Deno.serve(async (req) => {
             const { data: inf } = await admin.from("influencers").select("language").eq("id", board.influencer_id).maybeSingle();
             ilang = inf?.language === "en" ? "English" : inf?.language === "mix" ? "campuran Indonesia-Inggris" : "Indonesia";
           }
+          // Versi lain menulis ulang narasi — persis bagian yang paling terasa
+          // kalau nadanya bukan nada brand. Permintaan user tetap didahulukan
+          // ("lebih lucu", "bahasa Inggris" sah walau beda dari profil).
+          const bpVariant = await blokBlueprint(ws, board.influencer_id);
           const system =
             `Kamu penulis naskah video short-form. Kamu menulis VERSI LAIN dari narasi sebuah storyboard: visual tiap shot ` +
             `sudah final dan tidak boleh diubah, yang berubah hanya kata-kata yang diucapkan (dan judul). ` +
-            `Jawab HANYA dengan JSON valid, tanpa penjelasan lain.` + ATURAN_KLAIM;
+            `Jawab HANYA dengan JSON valid, tanpa penjelasan lain.` +
+            (bpVariant ? bpVariant + IKUTI_PROFIL + `Kalau permintaan user untuk versi ini meminta nada atau bahasa lain, ikuti permintaan user.\n` : "") +
+            ATURAN_KLAIM;
           const user =
             `Video: "${board.title}" — ${board.logline || ""}\n` +
             `Bahasa bawaan narasi: ${ilang}. Kalau permintaan user menyebut bahasa lain, ikuti permintaan user.\n` +
@@ -1651,6 +1701,11 @@ Deno.serve(async (req) => {
           // karena "nyata" (bawaan) memang tanpa tambahan.
           const gayaTulis = typeof body.gaya === "string" ? GAYA_SERVER[body.gaya] : undefined;
 
+          // Berlaku juga untuk storyboard dari planner (existingScript): naskahnya
+          // dipakai apa adanya, tapi narasi yang dipadatkan per shot tetap harus
+          // bernada brand.
+          const bpStoryboard = await blokBlueprint(ws, body.influencer_id);
+
           const system =
             `Kamu sutradara video short-form untuk ${platformLabel}, pasar Indonesia. ` +
             `Kamu memecah satu ide menjadi shot list yang langsung bisa diproduksi model AI. ` +
@@ -1660,7 +1715,9 @@ Deno.serve(async (req) => {
               ? `Kamu diberi ${photos.length} foto milik user, berurutan. Deskripsikan yang TERLIHAT di tiap foto secara faktual ` +
                 `(tempat, benda, aksi, suasana) — JANGAN menebak identitas atau mendeskripsikan wajah orang di foto. `
               : "") +
-            `Jawab HANYA dengan JSON valid, tanpa penjelasan lain.` + ATURAN_KLAIM;
+            `Jawab HANYA dengan JSON valid, tanpa penjelasan lain.` +
+            (bpStoryboard ? bpStoryboard + IKUTI_PROFIL : "") +
+            ATURAN_KLAIM;
 
           const user =
             `Ide video: "${idea}"\n` +
@@ -1809,6 +1866,7 @@ Deno.serve(async (req) => {
               .not("scene", "is", null).order("created_at", { ascending: false }).limit(5);
             avoidScenes = (prev || []).map((r) => String(r.scene || "").slice(0, 90).trim()).filter(Boolean);
           }
+          const bpUgc = await blokBlueprint(ws, body.influencer_id);
 
           const system =
             `Kamu penulis konten UGC (user-generated content) untuk ${platformLabel}, pasar Indonesia. ` +
@@ -1821,7 +1879,9 @@ Deno.serve(async (req) => {
             `DUA field output, "scene_en" dan "delivery_en", WAJIB ditulis dalam BAHASA INGGRIS. ` +
             `Keduanya bukan untuk dibaca manusia: keduanya dikirim langsung ke model gambar yang hanya ` +
             `memahami bahasa Inggris dengan baik. Field lainnya bahasa ${ilang}. ` +
-            `Jawab HANYA dengan JSON valid, tanpa penjelasan lain.` + ATURAN_KLAIM;
+            `Jawab HANYA dengan JSON valid, tanpa penjelasan lain.` +
+            (bpUgc ? bpUgc + IKUTI_PROFIL : "") +
+            ATURAN_KLAIM;
 
           const user =
             `Produk: ${product.name}\n` +
@@ -1967,17 +2027,29 @@ Deno.serve(async (req) => {
             }
           }
           const platformLabel = platform === "instagram" ? "Instagram Reels" : platform === "youtube" ? "YouTube Shorts" : "TikTok";
+          const bpPlan = await blokBlueprint(ws, body.influencer_id);
 
           const system =
             `Kamu content strategist short-form video berpengalaman untuk pasar Indonesia. ` +
             `Kamu menyusun rencana konten satu periode penuh untuk ${iname}${iniche ? `, niche ${iniche}` : ""}, ` +
             `platform utama ${platformLabel}, bahasa ${ilang}. ` +
             (ibio ? `Persona kreator: ${ibio} ` : "") +
-            `Jawab HANYA dengan JSON valid, tanpa penjelasan lain.` + ATURAN_KLAIM;
+            `Jawab HANYA dengan JSON valid, tanpa penjelasan lain.` +
+            (bpPlan ? bpPlan + IKUTI_PROFIL + `Ide baru diambil dari pilar konten PROFIL BRAND lebih dulu.\n` : "") +
+            ATURAN_KLAIM;
 
+          // Pilar dari blueprint dipakai ulang namanya, bukan dikarang baru:
+          // "Terapkan pilar ke Rencana" di Arah Konten mencocokkan pilar lewat
+          // NAMA, jadi nama yang sedikit berbeda ("Tips Kulit" vs "Tips
+          // Skincare") menjadi dua pilar di Rencana. Hanya instruksi; nama
+          // yang dikembalikan model tidak dipaksa di kode.
           const pillarRule = makePillars
             ? `1. "pillars": 3-4 content pillar. Salah satunya WAJIB pillar jualan/promosi dengan "target_ratio" ` +
-              `maksimal 20 — sisanya nilai edukasi/hiburan. Jumlah semua target_ratio HARUS tepat 100.\n`
+              `maksimal 20 — sisanya nilai edukasi/hiburan. Jumlah semua target_ratio HARUS tepat 100.\n` +
+              (bpPlan
+                ? `   Kalau PROFIL BRAND menyebut pilar konten, pakai NAMA pilar itu persis seperti tertulis, jangan mengarang nama baru ` +
+                  `(boleh menambah satu pilar jualan kalau belum ada di sana).\n`
+                : "")
             : `1. "pillars": kembalikan array kosong []. Pakai pillar yang sudah ada: ${existing.join(", ")}.\n`;
 
           const user =
@@ -2159,16 +2231,20 @@ Deno.serve(async (req) => {
             language = inf.language === "en" ? "English" : inf.language === "mix" ? "campuran Indonesia-Inggris" : "Indonesia";
           }
         }
+        const bpTulis = await blokBlueprint(ws, body.influencer_id);
         const system =
           `Kamu penulis konten short-form video untuk kreator ${name}${niche ? ` di niche ${niche}` : ""}. ` +
           `Tulis dalam bahasa ${language}, gaya santai dan natural seperti orang bicara, bukan bahasa iklan. ` +
           `Hindari klaim medis/kesehatan/finansial yang spesifik. Jawab HANYA dengan JSON valid, tanpa penjelasan lain.` +
-          (persona ? ` Persona kreator: ${persona}` : "") + ATURAN_KLAIM;
+          (persona ? ` Persona kreator: ${persona}` : "") +
+          (bpTulis ? bpTulis + IKUTI_PROFIL : "") +
+          ATURAN_KLAIM;
 
         if (kind === "ideas") {
           const n = Math.min(Math.max(Number(body.n) || 5, 1), 10);
           const user =
             `Buat ${n} ide konten baru${body.topic ? ` seputar: ${body.topic}` : ""}. ` +
+            (bpTulis ? `Ambil sudut ide dari pilar konten PROFIL BRAND lebih dulu. ` : "") +
             `Format JSON: [{"title": "judul singkat", "hook": "kalimat pembuka 1-3 detik", "angle": "sudut pandang singkat"}]`;
           const parsed = parseJsonLoose(await chat(ws, penulis, system, user));
           return json({ ok: true, ideas: Array.isArray(parsed) ? parsed : [] });

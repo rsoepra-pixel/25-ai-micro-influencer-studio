@@ -283,10 +283,15 @@ muncul di atas dan pilihannya ikut ke Buat Video dan Profil saya.
 sama seperti naskah). Menjawab pertanyaan, mengubah blueprint, dan menerapkan
 pilar gratis.
 
+**Dipakai otomatis di tempat lain.** Begitu blueprint ada, penulis AI di
+Buat Video, Video UGC, Storyboard (termasuk "Buat versi lain"), dan Rencana
+(ide, naskah, rencana konten) membacanya sendiri — audiens, gaya bicara, kata
+yang dihindari, dan pilar. Tidak ada langkah tambahan; influencer tanpa
+blueprint tetap ditulis seperti sebelumnya.
+
 **Yang belum ada.** Ide konten dan naskah dari blueprint belum dibangun di
 halaman ini — kartunya mengarah ke Rencana, tempat ide dan naskah ditulis
-sekarang. Penulis lain (ide, naskah, UGC, storyboard) **belum** membaca
-blueprint; itu tahap berikutnya.
+sekarang.
 
 ---
 
