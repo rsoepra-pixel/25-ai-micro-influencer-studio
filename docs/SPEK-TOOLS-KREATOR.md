@@ -287,7 +287,10 @@ Semua tombol yang memanggil AI memakai pola tooltip biaya yang sudah ada di
 3. Bahasa output: Indonesia saja, atau ikut `influencers.language` yang
    sudah ada.
 4. Apakah "Isi 30 hari" boleh dipanggil ulang bebas (menimpa) atau hanya
-   mengisi tanggal kosong.
+   mengisi tanggal kosong. — *Jawaban sementara (2026-11-18, menunggu
+   pemilik): **hanya tanggal kosong**. Ditulis di layar wizard; konten yang
+   sudah ada ikut dihitung dalam frekuensi per minggu, jadi memanggil ulang
+   tidak menggandakan jadwal.*
 
 ### 3.6 Urutan pengerjaan
 
@@ -304,7 +307,16 @@ Semua tombol yang memanggil AI memakai pola tooltip biaya yang sudah ada di
    `src/brand.jsx` (bukan di Planner seperti tabel §3.3 — lihat §5).
    Penyimpangan dari §3.2: tanpa blueprint, `ideas` tetap menulis dan
    mengembalikan `tanpa_blueprint: true` (keputusan §6), bukan menolak.
-5. `calendar_fill`, lalu `remix`.
+5. `calendar_fill`, lalu `remix`. — **`calendar_fill` selesai 2026-11-18**,
+   diimplementasikan sebagai perluasan `plan`, bukan kind baru: wizard
+   "Rencanakan sebulan dengan AI" di Rencana (§5.2) menghitung tanggal kosong
+   (lewat hari istirahat dan tanggal yang sudah berisi konten) dan
+   mengirimnya sebagai `dates` bersama `days_off`/`occupied_dates`; server
+   menyaring ulang, meminta satu ide per tanggal dengan `funnel_stage`
+   mengikuti ritme blueprint (tanpa rasio bawaan), lalu menempelkan
+   tanggalnya sendiri. Bentuk lama (`weeks`/`per_week` saja) tetap dilayani.
+   Label tujuan tampil di kalender dan kartu papan, dan bisa diganti di kartu.
+   `remix` belum.
 6. Berkas statis hook/glosarium + `referensi.jsx`.
 7. Laporan: tambah pivot per `funnel_stage` di `reports.jsx`, urut
    berdasarkan follower baru. — **Selesai 2026-11-18**: kartu "Per pilar & tujuan" (pivot

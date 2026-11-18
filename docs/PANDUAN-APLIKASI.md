@@ -725,7 +725,29 @@ bukan dijalankan manusia. Tulis caption pendek sendiri, jangan salin script.
 
 Memberi brief sekali, lalu AI menyusun jadwal beberapa minggu ke depan. Kamu
 memilih ide mana yang disimpan ke papan. **Memanggil provider teks, memotong
-saldo.**
+saldo** — sekali per susunan; isinya hanya ide dan hook, naskah ditulis nanti
+per ide.
+
+- **Hanya tanggal yang masih kosong yang diisi; yang sudah ada tidak
+  disentuh.** Periodenya dihitung mulai hari ini (blok 7 hari). Konten yang
+  sudah terjadwal untuk influencer yang sama ikut dihitung dalam frekuensi:
+  4× per minggu dengan satu konten yang sudah ada berarti 3 ide baru minggu
+  itu. Jadi menekan tombol ini dua kali tidak menggandakan jadwal. Tanpa
+  influencer, semua konten di workspace dihitung.
+- **Hari istirahat** — centang hari yang tidak boleh diisi (bawaannya tidak
+  ada yang dicentang). Kalau hari yang biasa dipakai frekuensi itu jatuh di
+  hari istirahat atau sudah terisi, dipakai hari lain yang kosong di minggu
+  yang sama. Layar menyebut berapa tanggal kosong yang akan diisi sebelum kamu
+  menekan apa pun; kalau tidak ada, tombolnya mati dan saldo tidak terpotong.
+- **Ritme tujuan** — kalau blueprint influencer di
+  [Arah Konten](#-arah-konten) punya ritme Kenalan · Percaya · Beli, wizard
+  menampilkannya ("Ritme dari Arah Konten: 3 Kenalan · 2 Percaya · 1 Beli per
+  minggu") dan AI membagi tujuan ide tiap minggu dengan perbandingan itu.
+  Tanpa ritme, AI yang menimbang campurannya. Tujuan tiap ide bisa diganti di
+  tabel sebelum disimpan.
+
+Pertanyaan "boleh menimpa tanggal yang sudah terisi atau tidak" belum
+diputuskan; sampai diputuskan, jawabannya tidak.
 
 ### ✨ Tulis dengan AI (per ide)
 
@@ -737,6 +759,11 @@ disimpan. **Memanggil provider teks, memotong saldo.**
 - **🗂 Papan** — kolom per status (ide, script, produksi, review, terjadwal,
   published).
 - **📅 Kalender** — konten pada tanggal jadwalnya.
+
+Di kedua tampilan, konten yang punya tujuan diberi label kecil **Kenalan**,
+**Percaya**, atau **Beli** — label dan warnanya sama dengan di Arah Konten.
+Di kartu papan, tujuan bisa diganti lewat pilihan **Tujuan** di bawah status;
+Laporan "Per pilar & tujuan" membaca nilai yang sama.
 
 ### 📤 Publish ke sosial
 
