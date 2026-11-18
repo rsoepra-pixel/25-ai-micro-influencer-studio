@@ -304,3 +304,209 @@ Semua tombol yang memanggil AI memakai pola tooltip biaya yang sudah ada di
 
 Tiap langkah bisa di-merge sendiri; langkah 1–3 sudah memberi alur
 "15 menit" yang dijanjikan halaman aslinya.
+
+---
+
+## 4. Alternatif untuk tiap celah janji
+
+Bagian ini menjawab daftar "Yang lemah / patut dicurigai" di §1 satu per satu.
+Untuk tiap celah ada janji yang bisa kita pegang di halaman jualan kita sendiri
+dan bagian repo yang menegakkannya. Prinsipnya sama dengan `OPERASI.md`: kalau
+yang menegakkan sebuah janji bukan database, janji itu jangan ditulis.
+
+Semua kalimat di blok "Janji pengganti" sengaja ditulis tanpa angka. Tempat
+yang butuh angka diberi tanda `[…]`, dan angkanya diisi pemilik, bukan penulis
+halaman.
+
+### 4.1 "Seumur hidup, tanpa batas, update selamanya"
+
+**Janji asli:** sekali bayar, akses seumur hidup, pemakaian tanpa batas, update selamanya.
+
+**Kenapa tidak bisa dipegang:** setiap tulisan AI ada biayanya ke provider.
+Sekali bayar ditambah pemakaian tanpa batas berarti penjual menanggung biaya
+yang terus bertambah tanpa batas atas. Ujungnya ada kuota tersembunyi, atau
+layanannya berhenti.
+
+**Janji pengganti yang bisa dipegang:**
+> "Akses aplikasi berlaku [masa akses]. Pemakaian AI dibayar dari saldo, dan
+> perkiraan biayanya tertulis di tombol sebelum kamu menekannya. Kalau
+> prosesnya gagal, kamu tidak ditagih."
+
+**Mekanisme (sudah ada):**
+- Akses dan saldo memang dipisah. `subscription_plans.months` memberi masa
+  akses sebagai angka. "Lifetime" di paket kita sendiri artinya 240 bulan
+  (`OPERASI.md` §1). Karena kita juga memakai kata itu, halaman jualan wajib
+  menyebut masa sebenarnya di samping labelnya. Kalau tidak, kita mengulang
+  celah yang sedang kita kritik.
+- Tiap tulisan AI lewat `chat()`. Di sana `text_precheck()` dijalankan sebelum
+  provider dihubungi, `charge_text()` sesudah berhasil, lalu tercatat di
+  `text_usage` (`OPERASI.md` §3 dan §6).
+- Biaya tampil di tombol lewat `biayaNaskahLabel()` (`src/harga.js`) dan
+  tooltip `TIP_PENULIS_AI` / `TIP_BERBAYAR` (`src/tips.jsx`). Job gagal tampil
+  "Rp 0 · tidak ditagih" (`biayaJobLabel()` di `src/views.jsx`, dasarnya
+  migrasi `0048`).
+- Owner bisa memasang rem sendiri lewat `budget_settings.spend_cap_usd`
+  (`0053`).
+- "Update" berarti satu aplikasi web yang sama untuk semua pelanggan,
+  dipasang otomatis lewat GitHub Actions. Yang bisa dijanjikan: "perbaikan
+  masuk tanpa kamu mengunduh apa pun selama masa akses". Jangan janjikan
+  fitur yang belum ada.
+
+**Angka yang harus diputuskan pemilik:**
+- Harga paket "sistem konten" dan masa aksesnya (`price_idr`, `months`).
+- Apakah paket itu ikut memberi saldo awal. `OPERASI.md` §1 sengaja memasang
+  `credit_grant_usd = 0` supaya margin saldo tidak tercampur ke harga akses.
+  Mengubahnya keputusan pemilik.
+- Kurs dan margin saldo sudah ada di Settings → Lanjutan. Tidak ada angka
+  baru di sini.
+
+### 4.2 Platform, login, kuota, model AI, dan cara akses tidak disebut
+
+**Janji asli:** tidak ada penjelasan. Halaman tidak menyebut platformnya, cara
+login, batas pemakaian, model yang dipakai, atau kapan akses diterima setelah
+membayar.
+
+**Kenapa tidak bisa dipegang:** sesuatu yang tidak ditulis tidak bisa ditagih.
+Pembeli baru tahu batasnya sesudah uangnya masuk.
+
+**Janji pengganti yang bisa dipegang:**
+> "Aplikasi web, dibuka dari browser HP atau laptop. Masuk dengan Google atau
+> link akses yang kami kirim. Penulis AI memakai model [nama model], dan
+> setiap tulisan tercatat lengkap: siapa yang menulis, untuk apa, model apa,
+> dan berapa biayanya. Akses aktif paling lambat [waktu aktivasi] setelah
+> pembayaran kami konfirmasi."
+
+**Mekanisme:**
+- Login: Google (`OPERASI.md` §7) dan link akses `customer_access_link` di
+  `app/index.ts`, yang ditukar lewat `lanjutPulih` (`main.jsx`). Link ini
+  aman dari pemindai link (CLAUDE.md jebakan no. 6).
+- Kuota: kita tidak punya kuota tersembunyi. Yang membatasi hanya saldo,
+  jatah anggota (`set_member_quota()`), dan batas belanja owner. Semuanya
+  terlihat di Settings.
+- Model: `text_usage` mencatat model per panggilan. Kolom **Penulis AI** di
+  Settings → Tim & Kursi menampilkan jumlah panggilan dan biayanya per orang.
+- Aktivasi: selama webhook `pay` belum menerima notifikasi Doku di produksi,
+  pembayaran diaktifkan **manual** dari halaman Pelanggan (`src/customers.jsx`).
+  Karena itu waktu aktivasi harus ditulis sebagai jam layanan manusia, bukan
+  "otomatis", sampai jalur itu terbukti jalan.
+
+**Angka yang harus diputuskan pemilik:**
+- Waktu aktivasi yang dijanjikan (dan jam layanannya).
+- Apakah nama model ditulis di halaman jualan. Model teks bisa berganti.
+  Lihat catatan alias `qwen-plus` di `OPERASI.md` §8.
+
+### 4.3 "Video to Script" (unduh video viral → naskah)
+
+**Janji asli:** unggah atau tautkan video viral, naskahnya diekstrak, lalu
+di-remix ke topikmu.
+
+**Kenapa tidak bisa dipegang:** mengunduh dari TikTok/IG melanggar aturan
+platform dan mudah rusak. Transkripsi menambah biaya per menit. Kita juga
+belum punya jalur transkripsi (§3.4).
+
+**Janji pengganti yang bisa dipegang:**
+> "Tempel transkrip atau garis besar video yang kamu suka. AI membaca
+> polanya (pembuka, isi, ajakan), lalu menulis ulang dengan topik, audiens,
+> dan gaya bicaramu sendiri."
+
+**Mekanisme:**
+- Aksi `write/remix` (**baru**, sudah direncanakan di §3.2). Aksi ini lewat
+  `chat()`, jadi otomatis terukur dan tertagih di `text_usage`. Hasilnya
+  memakai blok PROFIL BRAND dari `blueprintKeSystem()`.
+- Tidak ada unduhan atau transkripsi. Kalau nanti dibutuhkan, tambahkan
+  sebagai job `transcribe` di `production_jobs` supaya semua gerbang uang
+  ikut berlaku (§3.4).
+
+**Angka yang harus diputuskan pemilik:** tidak ada. Batas panjang transkrip
+yang diterima adalah batas teknis (`maxTokens`), bukan kebijakan.
+
+### 4.4 Testimoni berupa gambar
+
+**Janji asli:** tangkapan layar testimoni, tanpa nama akun yang bisa dicek.
+
+**Kenapa tidak bisa dipegang:** gambar tidak bisa dibedakan dari karangan.
+Bukti sosial yang tidak bisa dicek tidak membuktikan apa-apa.
+
+**Janji pengganti yang bisa dipegang:**
+> "Lihat contoh nyata: jawaban profil brand, blueprint yang dihasilkan, dan
+> naskahnya, tanpa disunting. Testimoni hanya kami tampilkan dengan tautan
+> ke akun publik pemiliknya, atas izin mereka."
+
+**Mekanisme:**
+- Contoh nyata: satu influencer contoh di workspace operator dijalankan
+  lewat alur 15 menit (§2). Jawaban `brand_blueprints.answers` dan hasil
+  `blueprint` serta `content_items` ditampilkan apa adanya.
+  **Bagian baru:** halaman statis yang memuat salinannya. Halaman ini tidak
+  boleh membaca database produksi tanpa login.
+- Waktu "15 menit" bisa dibuktikan, tidak perlu diklaim. Ukur dari selisih
+  waktu `brand_blueprints` dibuat sampai baris `text_usage` naskah pertama
+  pelaku yang sama. Angkanya diumumkan sesudah diukur.
+- Testimoni: belum ada mekanisme di repo dan tidak perlu tabel. Yang perlu
+  aturan, yaitu izin tertulis dan tautan akun.
+
+**Angka yang harus diputuskan pemilik:** tidak ada. Klaim waktu dan jumlah
+pengguna hanya boleh dimuat setelah diukur.
+
+### 4.5 "Tracker performa 18 data per post, laporan bulanan otomatis"
+
+**Janji asli:** 18 data per post dan laporan bulanan otomatis, tanpa sambungan
+ke platform.
+
+**Kenapa tidak bisa dipegang:** tanpa API platform, data itu diisi tangan.
+"Otomatis" hanya berlaku untuk rekapnya, bukan untuk pengambilan datanya.
+
+**Janji pengganti yang bisa dipegang:**
+> "Klik dari link di caption tercatat otomatis per konten. Angka lain
+> (views, like, follower baru) kamu salin dari aplikasi TikTok/IG, dan
+> laporan bulanan menunjukkan konten mana yang paling menambah follower."
+
+**Mekanisme:**
+- Klik otomatis: link pendek `links` / `r`. Setiap klik masuk ke
+  `link_clicks`, dengan bot pratinjau WhatsApp dan sejenisnya disaring
+  (`BOT_RE` di `r/index.ts`). Link dibuat per `content_item_id`.
+- Fungsi `metrics` memang bisa menarik angka dari IG/TikTok, tapi **hanya
+  untuk post yang terbit lewat aplikasi** (`publish_jobs`). Sejak keputusan
+  pemilik 16 Nov 2026, sambungan ke akun sosial tidak ditawarkan
+  (`src/bagikan.jsx`), jadi jalur itu praktis kosong. Baris "Performa post →
+  `metrics` function" di tabel §3.1 perlu dibaca dengan catatan ini.
+- **Bagian baru:** form isian manual per post yang menulis ke `post_metrics`.
+  Field yang kosong disimpan `null`, bukan 0, mengikuti aturan di
+  `metrics/index.ts`. Laporannya menambah pivot `funnel_stage` di
+  `reports.jsx`, diurutkan berdasarkan `follows` (§3.6 langkah 7).
+- Jangan menjanjikan "18 data". Cukup sebut field yang memang ada di U8.
+
+**Angka yang harus diputuskan pemilik:** tidak ada.
+
+### 4.6 "Nilai Rp 15.405.000, hemat 99%"
+
+**Janji asli:** daftar "nilai" per tool dijumlahkan menjadi Rp 15.405.000,
+lalu dibandingkan dengan harga jual.
+
+**Kenapa tidak bisa dipegang:** angka itu bukan harga yang pernah dibayar
+siapa pun. Begitu pembeli menyadarinya, yang hilang adalah kepercayaannya.
+
+**Janji pengganti yang bisa dipegang:**
+> "Yang kamu bayar ada dua: akses aplikasi [harga dan masa], dan saldo yang
+> terpakai hanya saat AI menulis atau membuat media. Naskah rata-rata saat
+> ini memotong sekitar Rp 40, dan perkiraannya selalu tampil sebelum
+> tombol ditekan."
+
+**Mekanisme:**
+- Angka Rp 40 per naskah sudah ada di `OPERASI.md` §6 (biaya provider
+  apa adanya, dengan margin di kurs). Di halaman jualan, angka ini harus
+  diambil dari `biayaNaskahLabel()` pada kurs yang sedang berlaku, bukan
+  disalin tetap. Angkanya ikut berubah kalau kurs, tarif, atau model teks
+  berubah.
+- Riwayat saldo per orang ada di `credits_ledger` (dengan `actor_user_id`).
+  Pembeli bisa mencocokkan janji ini dengan pemakaiannya sendiri.
+
+**Angka yang harus diputuskan pemilik:**
+- Harga akses paket "sistem konten" (sama dengan 4.1).
+- Apakah ada nominal saldo minimum saat membeli, dan berapa.
+
+---
+
+**Ringkasan bagian baru yang dibutuhkan** (di luar §3): halaman contoh
+statis (4.4) dan form isian performa manual ke `post_metrics` (4.5). Semua
+janji lain sudah ditegakkan oleh tabel, trigger, dan fungsi yang ada. Yang
+masih kurang hanya angka yang memang milik pemilik.
