@@ -45,6 +45,11 @@ jobs:
           deno-version: v2.1.x
 
       - name: deno check per fungsi
+        # package.json di akar repo (milik SPA Vite) membuat Deno 2 masuk mode
+        # kompatibilitas Node dan menuntut node_modules untuk impor `npm:`.
+        # Edge Runtime tidak begitu; variabel ini menyuruh Deno mengabaikannya.
+        env:
+          DENO_NO_PACKAGE_JSON: "1"
         run: |
           set -uo pipefail
           gagal=""

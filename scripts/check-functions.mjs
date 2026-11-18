@@ -25,7 +25,11 @@ const fungsi = readdirSync(akar, { withFileTypes: true })
 
 for (const fn of fungsi) {
   console.log(`— deno check ${fn}`);
-  const r = spawnSync(deno, ["check", join(akar, fn, "index.ts")], { stdio: "inherit" });
+  // package.json di akar repo membuat Deno menuntut node_modules untuk impor
+  // `npm:`; Edge Runtime tidak begitu. Sama dengan env di workflow-nya.
+  const r = spawnSync(deno, ["check", join(akar, fn, "index.ts")], {
+    stdio: "inherit", env: { ...process.env, DENO_NO_PACKAGE_JSON: "1" },
+  });
   if (r.status !== 0) {
     console.error(`\nType check gagal di fungsi '${fn}' (${akar}/${fn}/index.ts).`);
     process.exit(r.status || 1);
