@@ -19,6 +19,7 @@ import { supa, callGenerate } from "./supa.js";
 import { useQuery, unwrap, Badge, downscaleToDataUri, fileToDataUri, mediaDuration } from "./views.jsx";
 import { Info, TIP_PENULIS_AI } from "./tips.jsx";
 import { biayaNaskahLabel } from "./harga.js";
+import { keWav } from "./wav.js";
 
 const TTS_KEY = "fal-ai/minimax/speech-02-hd";
 const KUNCI_PILIHAN = "profil_influencer_id";
@@ -249,8 +250,10 @@ function KartuFoto({ ws, saya, refs, onDone }) {
 // clone_voice — orangnya tidak perlu tahu ada dua provider.
 //
 // Rekaman dari browser keluar sebagai audio/webm (Chrome/Android) atau audio/mp4
-// (Safari/iOS). Penerimaan webm oleh MiniMax lewat fal BELUM diverifikasi; kalau
-// klon gagal dari rekaman browser, tombol unggah berkas tetap ada.
+// (Safari/iOS). Webm ditolak (terbukti 18 Nov 2026 dari ponsel pemilik), jadi
+// setiap rekaman — dan berkas unggahan yang bukan mp3/wav/mp4/mov — diubah ke
+// WAV di perangkat lewat src/wav.js sebelum dikirim. Kalau browser tidak bisa
+// mendekodenya, berkas asli yang dikirim dan tombol unggah tetap jalan keluar.
 function KartuSuara({ saya, models, adaUgc, adaStoryboard, onDone }) {
   const bisaStoryboard = models.some((m) => m.multishot_field);
   const bisaUgc = models.some((m) => m.model_key === TTS_KEY);
@@ -281,9 +284,12 @@ function KartuSuara({ saya, models, adaUgc, adaStoryboard, onDone }) {
       const r = new MediaRecorder(stream, mime ? { mimeType: mime } : undefined);
       potongan.current = [];
       r.ondataavailable = (e) => { if (e.data.size) potongan.current.push(e.data); };
-      r.onstop = () => {
+      r.onstop = async () => {
         stream.getTracks().forEach((t) => t.stop());
-        siapkan(new Blob(potongan.current, { type: r.mimeType || mime || "audio/webm" }));
+        const mentah = new Blob(potongan.current, { type: r.mimeType || mime || "audio/webm" });
+        const { blob: wav, detik: dWav } = await keWav(mentah);
+        if (dWav) setDetik(dWav);
+        siapkan(wav);
       };
       rec.current = r;
       r.start();
@@ -312,9 +318,13 @@ function KartuSuara({ saya, models, adaUgc, adaStoryboard, onDone }) {
     if (!f) return;
     setErr(null); setOk(null);
     if (f.size > 25 * 1024 * 1024) { setErr("Berkasnya lebih dari 25 MB. Potong dulu jadi 10–30 detik."); return; }
-    const d = await mediaDuration(f);
+    // Berkas yang penyedia tidak jamin terima (webm, ogg, m4a/aac dari
+    // sebagian ponsel) diubah ke WAV dulu; mp3/wav/mp4/mov dikirim apa adanya.
+    const aman = /\.(mp3|wav|mp4|mov)$/i.test(f.name) || /^(audio\/(mpeg|wav|x-wav|mp4)|video\/(mp4|quicktime))$/i.test(f.type);
+    const { blob: siap, detik: dWav } = aman ? { blob: f, detik: null } : await keWav(f);
+    const d = dWav || await mediaDuration(siap);
     setDetik(d || 0);
-    siapkan(f);
+    siapkan(siap);
   }
 
   async function simpan() {
