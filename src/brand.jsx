@@ -8,15 +8,20 @@
 // menemukannya (§5.1). Halaman ini sengaja HANYA menghasilkan teks — tidak
 // ada tombol yang membuat gambar, suara, atau video; itu tugas Buat Video.
 //
-// Yang dibangun di sini baru langkah 1–3 dari §3.6: pertanyaan, blueprint,
-// dan editornya. Ide dan naskah masih ditulis di Rencana; kartunya di halaman
-// depan mengarah ke sana, bukan berpura-pura sudah ada di sini.
+// Tiga hasil akhir (§5.3): blueprint, ide, naskah. Ide dan naskah disimpan
+// di `content_items` yang SAMA dengan Rencana — bukan tabel sendiri — jadi
+// ide yang disimpan di sini langsung muncul di papan Rencana, dan naskah yang
+// ditulis di Rencana bisa dibuka di sini. Naskah berhenti di dua tombol
+// serah-terima (§5.2): "Lihat di Rencana" dan "Buat videonya →", yang membawa
+// id kontennya (bukan teksnya) ke Buat Video (§6 tautan 2), supaya video yang
+// jadi bisa ditelusuri balik ke idenya.
 //
 // Istilah TOFU/MOFU/BOFU sengaja tidak pernah muncul di layar. Di database
 // nilainya tetap `tofu`/`mofu`/`bofu`; di layar: Kenalan · Percaya · Beli.
 import React, { useEffect, useState } from "react";
 import { supa, callGenerate } from "./supa.js";
-import { useQuery, unwrap, PLAN_COLORS } from "./views.jsx";
+import { useQuery, unwrap, PLAN_COLORS, Badge } from "./views.jsx";
+import { WORDS_PER_SEC } from "./ugc.jsx";
 import { Info, TIP_PENULIS_AI } from "./tips.jsx";
 import { biayaNaskahLabel } from "./harga.js";
 import { TombolIsiSaldo, rupiahkanPesan } from "./bantuan.jsx";
@@ -87,7 +92,7 @@ function tanggal(iso) {
 
 export function ArahKonten({ ws, refresh, tick, spend, support }) {
   const [influencers, , infErr] = useQuery(async () =>
-    unwrap(await supa.from("influencers").select("id,name,language").order("created_at")), [ws.id, tick]);
+    unwrap(await supa.from("influencers").select("id,name,language,platforms").order("created_at")), [ws.id, tick]);
   const [infId, setInfId] = useState(() => { try { return localStorage.getItem(KUNCI_PROFIL) || ""; } catch { return ""; } });
   // Influencer yang tersimpan bisa sudah dihapus, atau milik workspace lain di
   // perangkat yang sama: jatuh ke yang pertama.
@@ -105,24 +110,43 @@ export function ArahKonten({ ws, refresh, tick, spend, support }) {
   const [row, setRow] = useState(undefined);
   const [rowErr, setRowErr] = useState(null);
   const [pilarAda, setPilarAda] = useState([]);
+  // Pilar lengkap (id, nama) dan konten influencer ini. Dimuat ulang sendiri
+  // setelah ide/naskah disimpan — alasan yang sama dengan `row` di atas.
+  const [pilarRows, setPilarRows] = useState([]);
+  const [items, setItems] = useState(null);
+  const [itemsErr, setItemsErr] = useState(null);
+  async function muatKonten(id = aktif?.id) {
+    if (!id) return;
+    const [cp, ci] = await Promise.all([
+      supa.from("content_pillars").select("id,name,color").eq("influencer_id", id),
+      supa.from("content_items")
+        .select("id,title,pillar_id,funnel_stage,status,hook,script,caption,hashtags,platform,created_at")
+        .eq("influencer_id", id).order("created_at", { ascending: false }).limit(200),
+    ]);
+    if (cp.error || ci.error) { setItemsErr((cp.error || ci.error).message); return; }
+    setItemsErr(null);
+    setPilarRows(cp.data || []);
+    setPilarAda((cp.data || []).map((p) => p.name));
+    setItems(ci.data || []);
+  }
   useEffect(() => {
     if (!aktif) return;
     let batal = false;
-    setRow(undefined); setRowErr(null);
+    setRow(undefined); setRowErr(null); setItems(null);
     (async () => {
-      const [bp, cp] = await Promise.all([
-        supa.from("brand_blueprints").select("*").eq("influencer_id", aktif.id).maybeSingle(),
-        supa.from("content_pillars").select("name").eq("influencer_id", aktif.id),
-      ]);
+      const bp = await supa.from("brand_blueprints").select("*").eq("influencer_id", aktif.id).maybeSingle();
       if (batal) return;
       if (bp.error) { setRowErr(bp.error.message); return; }
       setRow(bp.data || null);
-      setPilarAda((cp.data || []).map((p) => p.name));
+      await muatKonten(aktif.id);
     })();
     return () => { batal = true; };
-  }, [aktif?.id, tick]);
+  }, [aktif?.id, tick]); // eslint-disable-line
 
-  const [layar, setLayar] = useState("depan"); // depan | tanya | blueprint
+  const [layar, setLayar] = useState("depan"); // depan | tanya | blueprint | ide | naskah
+  const [itemId, setItemId] = useState(null); // konten yang dibuka di layar naskah
+  const bukaNaskah = (id) => { setItemId(id); setLayar("naskah"); window.scrollTo?.(0, 0); };
+  const itemDibuka = (items || []).find((i) => i.id === itemId) || null;
 
   if (infErr) return <Kerangka><div className="msg-err">Gagal memuat influencer: {infErr}</div></Kerangka>;
   if (!influencers) return <Kerangka><div className="muted">Memuat…</div></Kerangka>;
@@ -164,8 +188,19 @@ export function ArahKonten({ ws, refresh, tick, spend, support }) {
               simpanDraf(ws.id, aktif.id, { jawaban: row.answers || {}, langkah: 0 });
               setLayar("tanya");
             }} />
+        ) : layar === "ide" ? (
+          <Ide ws={ws} inf={aktif} row={row} pilarRows={pilarRows} items={items} itemsErr={itemsErr} support={support}
+            muatKonten={() => muatKonten()} refresh={refresh} onTulis={bukaNaskah} onKembali={() => setLayar("depan")}
+            onIsiProfil={() => setLayar("tanya")} />
+        ) : layar === "naskah" && itemDibuka ? (
+          <Naskah key={itemDibuka.id} ws={ws} inf={aktif} item={itemDibuka} pilarRows={pilarRows} support={support}
+            muatKonten={() => muatKonten()} refresh={refresh} onKembali={() => setLayar("depan")} />
         ) : (
-          <Depan ws={ws} inf={aktif} row={row} onMulai={() => setLayar("tanya")} onLihat={() => setLayar("blueprint")} />
+          <>
+          {itemsErr && <div className="msg-err mb3">Ide dan naskah belum bisa dimuat: {itemsErr}</div>}
+          <Depan ws={ws} inf={aktif} row={row} items={items} onMulai={() => setLayar("tanya")} onLihat={() => setLayar("blueprint")}
+            onIde={() => setLayar("ide")} onNaskah={bukaNaskah} />
+          </>
         )}
     </Kerangka>
   );
@@ -184,54 +219,79 @@ function Kerangka({ children }) {
 }
 
 // ---------- Halaman depan: tiga hasil akhir (§5.3) ----------
-function Depan({ ws, inf, row, onMulai, onLihat }) {
+//
+// Kartu ide dan naskah tetap tampil walau blueprint belum ada: penulis AI
+// bekerja tanpa profil (lebih generik, tapi jalan — spek §6), dan menghadang
+// orang yang cuma ingin satu ide hari ini dengan 12 pertanyaan dulu membuat
+// ia pergi, bukan mengisi.
+function Depan({ ws, inf, row, items, onMulai, onLihat, onIde, onNaskah }) {
   const draf = bacaDraf(ws.id, inf.id);
   const terisi = draf ? PERTANYAAN.filter((p) => String(draf.jawaban?.[p.k] || "").trim()).length : 0;
+  const nIde = (items || []).filter((i) => i.status === "idea").length;
+  const naskah = (items || []).filter((i) => String(i.script || "").trim());
 
-  if (!row?.blueprint) {
-    return (
-      <div className="card p6" style={{ borderColor: "var(--brand-line)" }}>
-        <div className="bold" style={{ fontSize: 17 }}>🧬 Mulai dari 12 pertanyaan (± 8 menit)</div>
-        <p className="small muted mt1">
-          Satu pertanyaan per layar: siapa kamu, siapa yang kamu bantu, apa yang kamu jual. Belum punya followers atau
-          belum jualan apa-apa? Tetap bisa — setiap pertanyaan punya pilihan "Belum tahu".
-        </p>
-        <p className="small muted mt1">
-          Hasilnya satu halaman <b>blueprint brand</b>: positioning, audiens, 3–5 pilar konten, gaya bicara, dan ritme
-          Kenalan · Percaya · Beli<Info tip={TIP_FUNNEL} />. Penulis AI memakainya supaya ide dan naskahmu tidak generik.
-        </p>
-        <button type="button" className="btn mt3" onClick={onMulai}
-          data-tip="Jawaban tersimpan otomatis di perangkat ini; kamu bisa berhenti dan lanjut kapan saja. Belum ada yang memakai saldo sampai kamu menekan Susun blueprint di akhir.">
-          {terisi ? `Lanjutkan (${terisi} dari 12 terisi) →` : "Mulai →"}
-        </button>
-      </div>
-    );
-  }
-
-  const status = row.blueprint_edited_at
-    ? `Kamu ubah ${tanggal(row.blueprint_edited_at)}`
-    : `Disusun ${tanggal(row.generated_at)}`;
-  return (
-    <div className="grid" style={{ gridTemplateColumns: "repeat(auto-fit,minmax(220px,1fr))", gap: 12 }}>
-      <div className="card p4" style={{ borderColor: "var(--brand-line)" }}>
-        <div className="bold">🧬 Blueprint brand</div>
-        <div className="tiny muted mt1">Positioning, audiens, pilar, gaya bicara, ritme Kenalan · Percaya · Beli.</div>
-        <div className="tiny mt2" style={{ color: "var(--ok)", fontWeight: 700 }}>✓ {status}</div>
-        <button type="button" className="btn mt3" onClick={onLihat}>Lihat & ubah →</button>
-      </div>
-      <div className="card p4">
-        <div className="bold">💡 Ide konten</div>
-        <div className="tiny muted mt1">Ide per pilar, masing-masing dengan tujuannya.</div>
-        <div className="tiny muted mt2">Ide dan naskah ditulis di Rencana.</div>
-        <a href="#/planner" className="btn btn2 mt3">Buka Rencana →</a>
-      </div>
-      <div className="card p4">
-        <div className="bold">🎙️ Naskah siap baca</div>
-        <div className="tiny muted mt1">Pembuka, isi, ajakan, dan caption terpisah.</div>
-        <div className="tiny muted mt2">Ide dan naskah ditulis di Rencana.</div>
-        <a href="#/planner" className="btn btn2 mt3">Buka Rencana →</a>
-      </div>
+  const kartuBlueprint = !row?.blueprint ? (
+    <div className="card p6 mb3" style={{ borderColor: "var(--brand-line)" }}>
+      <div className="bold" style={{ fontSize: 17 }}>🧬 Mulai dari 12 pertanyaan (± 8 menit)</div>
+      <p className="small muted mt1">
+        Satu pertanyaan per layar: siapa kamu, siapa yang kamu bantu, apa yang kamu jual. Belum punya followers atau
+        belum jualan apa-apa? Tetap bisa — setiap pertanyaan punya pilihan "Belum tahu".
+      </p>
+      <p className="small muted mt1">
+        Hasilnya satu halaman <b>blueprint brand</b>: positioning, audiens, 3–5 pilar konten, gaya bicara, dan ritme
+        Kenalan · Percaya · Beli<Info tip={TIP_FUNNEL} />. Penulis AI memakainya supaya ide dan naskahmu tidak generik.
+      </p>
+      <button type="button" className="btn mt3" onClick={onMulai}
+        data-tip="Jawaban tersimpan otomatis di perangkat ini; kamu bisa berhenti dan lanjut kapan saja. Belum ada yang memakai saldo sampai kamu menekan Susun blueprint di akhir.">
+        {terisi ? `Lanjutkan (${terisi} dari 12 terisi) →` : "Mulai →"}
+      </button>
     </div>
+  ) : null;
+
+  const status = row?.blueprint_edited_at
+    ? `Kamu ubah ${tanggal(row.blueprint_edited_at)}`
+    : `Disusun ${tanggal(row?.generated_at)}`;
+  return (
+    <>
+      {kartuBlueprint}
+      <div className="grid" style={{ gridTemplateColumns: "repeat(auto-fit,minmax(220px,1fr))", gap: 12 }}>
+        {row?.blueprint && (
+          <div className="card p4" style={{ borderColor: "var(--brand-line)" }}>
+            <div className="bold">🧬 Blueprint brand</div>
+            <div className="tiny muted mt1">Positioning, audiens, pilar, gaya bicara, ritme Kenalan · Percaya · Beli.</div>
+            <div className="tiny mt2" style={{ color: "var(--ok)", fontWeight: 700 }}>✓ {status}</div>
+            <button type="button" className="btn mt3" onClick={onLihat}>Lihat & ubah →</button>
+          </div>
+        )}
+        <div className="card p4">
+          <div className="bold">💡 Ide konten</div>
+          <div className="tiny muted mt1">10 ide sekali klik, masing-masing dengan pilar dan tujuannya.</div>
+          <div className="tiny mt2" style={nIde ? { color: "var(--ok)", fontWeight: 700 } : { color: "var(--muted)" }}>
+            {items === null ? "Memuat…" : nIde ? `✓ ${nIde} ide tersimpan` : "Belum ada ide tersimpan"}
+          </div>
+          <button type="button" className={row?.blueprint ? "btn mt3" : "btn btn2 mt3"} onClick={onIde}>Buka ide →</button>
+        </div>
+        <div className="card p4">
+          <div className="bold">🎙️ Naskah siap baca</div>
+          <div className="tiny muted mt1">Pembuka, isi, ajakan, dan caption terpisah.</div>
+          {items === null ? <div className="tiny muted mt2">Memuat…</div>
+            : naskah.length ? (
+              <>
+                <div className="tiny mt2" style={{ color: "var(--ok)", fontWeight: 700 }}>✓ {naskah.length} naskah</div>
+                <div className="mt2" style={{ display: "grid", gap: 4 }}>
+                  {naskah.slice(0, 5).map((i) => (
+                    <button key={i.id} type="button" onClick={() => onNaskah(i.id)} className="small"
+                      style={{ textAlign: "left", background: "none", border: 0, padding: 0, cursor: "pointer", color: "var(--brand-strong)", fontWeight: 600 }}>
+                      {i.title} →
+                    </button>
+                  ))}
+                </div>
+                {naskah.length > 5 && <div className="tiny muted mt1">Sisanya ada di Ide (bertanda ✓ naskah) dan di Rencana.</div>}
+              </>
+            ) : <div className="tiny muted mt2">Belum ada. Pilih satu ide, lalu "Tulis naskah →".</div>}
+        </div>
+      </div>
+    </>
   );
 }
 
@@ -630,6 +690,413 @@ function EditorPasangan({ isi, onChange, labelA, labelB, maks }) {
       {isi.length < maks && (
         <button type="button" className="btn btn2" style={{ justifySelf: "start" }} onClick={() => onChange([...isi, { a: "", b: "" }])}>+ Tambah</button>
       )}
+    </div>
+  );
+}
+
+// ---------- Ide dan naskah (spek U3, U4) ----------
+//
+// Tujuan disimpan sebagai tofu/mofu/bofu (0060), ditampilkan sebagai
+// Kenalan · Percaya · Beli. Ketiga istilah teknis itu tidak pernah tampil.
+const TUJUAN = [["tofu", "Kenalan", "blue"], ["mofu", "Percaya", "violet"], ["bofu", "Beli", "green"]];
+const labelTujuan = (v) => (TUJUAN.find(([k]) => k === v) || [])[1] || "";
+
+function PilTujuan({ v }) {
+  const t = TUJUAN.find(([k]) => k === v);
+  return t ? <Badge tone={t[2]}>{t[1]}</Badge> : null;
+}
+
+// Satu baris chip filter/pilihan. `nilai` "" = Semua (kalau `semua` diberi).
+function Chips({ pilihan, nilai, onPilih, semua }) {
+  const semuaPilihan = semua ? [["", semua], ...pilihan] : pilihan;
+  return (
+    <div className="row" style={{ gap: 6, flexWrap: "wrap" }}>
+      {semuaPilihan.map(([k, l]) => (
+        <button key={k || "_semua"} type="button" onClick={() => onPilih(k)}
+          style={{ border: `1px solid ${nilai === k ? "var(--brand)" : "var(--border)"}`, borderRadius: 999,
+            padding: "4px 12px", fontSize: 12, fontWeight: 600, cursor: "pointer",
+            background: nilai === k ? "var(--brand-soft)" : "var(--card)", color: nilai === k ? "var(--brand-strong)" : "var(--ink-2)" }}>
+          {l}
+        </button>
+      ))}
+    </div>
+  );
+}
+
+function KotakGagal({ err, ws, support }) {
+  if (!err) return null;
+  return (
+    <div className="msg-err mt3">
+      {rupiahkanPesan(err)}
+      {String(err).includes("Kredit tidak cukup") && <TombolIsiSaldo support={support} ws={ws} />}
+    </div>
+  );
+}
+
+const PLATFORM_KONTEN = ["tiktok", "instagram", "youtube"];
+
+function Ide({ ws, inf, row, pilarRows, items, itemsErr, support, muatKonten, onTulis, onKembali, onIsiProfil }) {
+  const [fPilar, setFPilar] = useState("");
+  const [fTujuan, setFTujuan] = useState("");
+  // Hasil penulis AI hidup di layar saja sampai disimpan. `why` sengaja tidak
+  // punya kolom: alasannya berguna saat memilih, sesudah itu judul dan
+  // pilarnya yang dipakai.
+  const [hasil, setHasil] = useState(null);
+  const [tanpaBp, setTanpaBp] = useState(false);
+  const [busy, setBusy] = useState(null);
+  const [err, setErr] = useState(null);
+
+  const namaPilar = [];
+  for (const n of [...(row?.blueprint?.pillars || []).map((p) => p?.name), ...pilarRows.map((p) => p.name)]) {
+    const s = String(n || "").trim();
+    if (s && !namaPilar.some((x) => x.toLowerCase() === s.toLowerCase())) namaPilar.push(s);
+  }
+  const pilarById = Object.fromEntries(pilarRows.map((p) => [p.id, p]));
+
+  async function minta() {
+    setBusy("ide"); setErr(null);
+    try {
+      const r = await callGenerate({
+        action: "write", kind: "ideas", influencer_id: inf.id, n: 10,
+        ...(fPilar ? { pillar: fPilar } : {}), ...(fTujuan ? { funnel_stage: fTujuan } : {}),
+      });
+      const t = Date.now();
+      setHasil((r.ideas || []).map((x, i) => ({ ...x, _k: `${t}-${i}` })));
+      setTanpaBp(!!r.tanpa_blueprint);
+    } catch (e) { setErr(e.message); }
+    setBusy(null);
+  }
+
+  async function simpan(daftar) {
+    setBusy("simpan"); setErr(null);
+    try {
+      // Pilar dicocokkan ke server (bukan daftar yang dimuat di layar) dengan
+      // nama tanpa beda huruf besar-kecil — alasan yang sama dengan "Terapkan
+      // pilar": pilar kembar memecah sebaran per pilar di Rencana. Disimpan
+      // berurutan, bukan paralel, supaya "Simpan semua" tidak membuat pilar
+      // baru yang sama dua kali.
+      const { data: ada, error: e1 } = await supa.from("content_pillars").select("id,name").eq("influencer_id", inf.id);
+      if (e1) throw new Error(e1.message);
+      const peta = new Map((ada || []).map((p) => [p.name.toLowerCase(), p.id]));
+      let jumlah = (ada || []).length;
+      const p0 = String(inf.platforms?.[0] || "").toLowerCase();
+      const platform = PLATFORM_KONTEN.includes(p0) ? p0 : "tiktok";
+      for (const x of daftar) {
+        const nama = String(x.pillar || "").trim();
+        let pillar_id = nama ? peta.get(nama.toLowerCase()) || null : null;
+        if (nama && !pillar_id) {
+          const { data: baru, error: e2 } = await supa.from("content_pillars").insert({
+            workspace_id: ws.id, influencer_id: inf.id, name: nama, color: PLAN_COLORS[jumlah % PLAN_COLORS.length],
+          }).select("id").single();
+          if (e2) throw new Error(e2.message);
+          pillar_id = baru.id; peta.set(nama.toLowerCase(), baru.id); jumlah++;
+        }
+        // created_by diisi default database (auth.uid(), 0041).
+        const { error: e3 } = await supa.from("content_items").insert({
+          workspace_id: ws.id, influencer_id: inf.id, title: x.title, pillar_id,
+          funnel_stage: x.funnel_stage || null, status: "idea", platform, content_type: "talking",
+        });
+        if (e3) throw new Error(e3.message);
+        setHasil((h) => (h || []).filter((y) => y._k !== x._k));
+      }
+      await muatKonten();
+    } catch (e) { setErr(`Ide belum tersimpan: ${e.message}`); await muatKonten(); }
+    setBusy(null);
+  }
+
+  const tersimpan = (items || []).filter((i) => i.status === "idea")
+    .filter((i) => !fPilar || (pilarById[i.pillar_id]?.name || "").toLowerCase() === fPilar.toLowerCase())
+    .filter((i) => !fTujuan || i.funnel_stage === fTujuan);
+
+  return (
+    <div>
+      <div className="row mb3" style={{ justifyContent: "space-between", gap: 8, flexWrap: "wrap" }}>
+        <button type="button" className="btn btn2" onClick={onKembali}>← Arah Konten</button>
+      </div>
+
+      <div className="card p4 mb3">
+        <div className="bold mb2">💡 Ide konten</div>
+        {namaPilar.length > 0 && (
+          <div className="mb2">
+            <div className="label">Pilar</div>
+            <Chips pilihan={namaPilar.map((n) => [n, n])} nilai={fPilar} onPilih={setFPilar} semua="Semua" />
+          </div>
+        )}
+        <div className="mb3">
+          <div className="label">Tujuan<Info tip={TIP_FUNNEL} /></div>
+          <Chips pilihan={TUJUAN.map(([k, l]) => [k, l])} nilai={fTujuan} onPilih={setFTujuan} semua="Semua" />
+        </div>
+        <button type="button" className="btn" disabled={!!busy} onClick={minta}
+          data-tip={`Penulis AI menulis 10 ide${fPilar ? ` untuk pilar ${fPilar}` : ""}${fTujuan ? ` dengan tujuan ${labelTujuan(fTujuan)}` : ""}, menghindari judul yang sudah tersimpan. ${TIP_PENULIS_AI}`}>
+          {busy === "ide" ? "Menulis ide…" : `${hasil ? "10 ide lagi" : "10 ide"}${biayaNaskahLabel()}`}
+        </button>
+        <div className="tiny muted mt1">Hasilnya kamu pilih dulu, yang nggak cocok tinggal dihapus.</div>
+        <KotakGagal err={err} ws={ws} support={support} />
+      </div>
+
+      {hasil && (
+        <div className="card p4 mb3" style={{ borderColor: "var(--brand-line)" }}>
+          <div className="row mb2" style={{ justifyContent: "space-between", gap: 8, flexWrap: "wrap" }}>
+            <div className="bold">Usulan ({hasil.length})</div>
+            {hasil.length > 1 && (
+              <button type="button" className="btn btn2" disabled={!!busy} onClick={() => simpan(hasil)}
+                data-tip="Simpan semua usulan yang tersisa sebagai ide. Pilar yang belum ada di Rencana ikut dibuat. Gratis.">
+                {busy === "simpan" ? "Menyimpan…" : "Simpan semua"}
+              </button>
+            )}
+          </div>
+          {tanpaBp && (
+            <p className="tiny muted mb2">
+              Ide ini ditulis tanpa blueprint brand, jadi masih umum.{" "}
+              <button type="button" onClick={onIsiProfil} className="tiny"
+                style={{ background: "none", border: 0, padding: 0, color: "var(--brand-strong)", fontWeight: 700, cursor: "pointer" }}>
+                Jawab 12 pertanyaan
+              </button>{" "}supaya lebih pas.
+            </p>
+          )}
+          {hasil.length === 0 && <div className="small muted">Semua usulan sudah disimpan atau dihapus.</div>}
+          <div style={{ display: "grid", gap: 8 }}>
+            {hasil.map((x) => (
+              <div key={x._k} style={{ border: "1px solid var(--border)", borderRadius: 10, padding: "10px 12px" }}>
+                <div className="row" style={{ justifyContent: "space-between", gap: 8, alignItems: "flex-start" }}>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div className="small bold">{x.title}</div>
+                    <div className="row mt1" style={{ gap: 6, flexWrap: "wrap", alignItems: "center" }}>
+                      {x.pillar && <span className="tiny muted">{x.pillar}</span>}
+                      <PilTujuan v={x.funnel_stage} />
+                    </div>
+                    {x.why && <div className="tiny muted mt1">{x.why}</div>}
+                  </div>
+                  <div className="row" style={{ gap: 4, flexShrink: 0 }}>
+                    <button type="button" className="btn btn2 tiny" disabled={!!busy} onClick={() => simpan([x])}
+                      data-tip="Simpan ide ini. Ia muncul di daftar di bawah dan di Rencana. Gratis.">Simpan</button>
+                    <button type="button" title="Hapus" aria-label="Hapus" disabled={!!busy}
+                      onClick={() => setHasil((h) => h.filter((y) => y._k !== x._k))}
+                      style={{ background: "none", border: 0, cursor: "pointer", color: "var(--muted)", fontSize: 16, padding: 6 }}>×</button>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      <div className="card p4">
+        <div className="bold mb2">Ide tersimpan{items ? ` (${tersimpan.length})` : ""}</div>
+        {itemsErr ? <div className="msg-err">Gagal memuat ide: {itemsErr}</div>
+          : items === null ? <div className="small muted">Memuat…</div>
+          : tersimpan.length === 0 ? (
+            <div className="small muted">{fPilar || fTujuan ? "Tidak ada ide dengan filter ini." : "Belum ada ide tersimpan. Tekan \"10 ide\" di atas."}</div>
+          ) : (
+            <div style={{ display: "grid", gap: 6 }}>
+              {tersimpan.map((i) => {
+                const adaNaskah = !!String(i.script || "").trim();
+                return (
+                  <div key={i.id} className="row" style={{ justifyContent: "space-between", gap: 8, borderBottom: "1px solid var(--line-soft)", padding: "6px 0", flexWrap: "wrap" }}>
+                    <div style={{ flex: "1 1 220px", minWidth: 0 }}>
+                      <div className="small">{i.title}</div>
+                      <div className="row mt1" style={{ gap: 6, flexWrap: "wrap", alignItems: "center" }}>
+                        {pilarById[i.pillar_id] && <span className="tiny muted">{pilarById[i.pillar_id].name}</span>}
+                        <PilTujuan v={i.funnel_stage} />
+                        {adaNaskah && <span className="tiny" style={{ color: "var(--ok)", fontWeight: 700 }}>✓ naskah</span>}
+                      </div>
+                    </div>
+                    <button type="button" className="btn btn2 tiny" onClick={() => onTulis(i.id)}>
+                      {adaNaskah ? "Buka naskah →" : "Tulis naskah →"}
+                    </button>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+      </div>
+    </div>
+  );
+}
+
+const PILIHAN_DETIK_NASKAH = [10, 15, 20, 30];
+const hitungKata = (t) => String(t || "").split(/\s+/).filter(Boolean).length;
+const pisahTagar = (t) => String(t || "").split(/[\s,]+/).map((h) => h.replace(/^#+/, "")).filter(Boolean).slice(0, 30);
+
+// Naskah yang sudah tersimpan dibuka lagi sebagai pembuka + isi. Kolom
+// `script` menyimpan teks lengkap yang DIBACAKAN (pembuka ikut di dalamnya —
+// itulah yang dibaca Buat Video dan UGC), jadi pembukanya dilepas dari depan
+// supaya tidak tampil dua kali. Ajakan tidak bisa dipisahkan lagi dengan
+// pasti; ia ikut di isi.
+function bukaNaskahTersimpan(item) {
+  const script = String(item.script || "").trim();
+  if (!script) return null;
+  const hook = String(item.hook || "").trim();
+  const isi = hook && script.startsWith(hook) ? script.slice(hook.length).trim() : script;
+  return { hook, isi, cta: "", caption: item.caption || "", tagar: (item.hashtags || []).join(" ") };
+}
+
+function Naskah({ ws, inf, item, pilarRows, support, muatKonten, onKembali }) {
+  const [tujuan, setTujuan] = useState(item.funnel_stage || "");
+  const [hooks, setHooks] = useState(null);
+  const [pembuka, setPembuka] = useState(item.hook || "");
+  const [detik, setDetik] = useState(15);
+  const [d, setD] = useState(() => bukaNaskahTersimpan(item));
+  const [versiTersimpan, setVersiTersimpan] = useState(() => JSON.stringify(bukaNaskahTersimpan(item)));
+  const [busy, setBusy] = useState(null);
+  const [err, setErr] = useState(null);
+  const [pesan, setPesan] = useState(null);
+
+  const pilar = pilarRows.find((p) => p.id === item.pillar_id);
+  const berubah = d && (JSON.stringify(d) !== versiTersimpan || tujuan !== (item.funnel_stage || ""));
+  const teksLengkap = d ? [d.hook, d.isi, d.cta].map((x) => String(x || "").trim()).filter(Boolean).join("\n") : "";
+  const perkiraanDetik = Math.max(1, Math.round(hitungKata(teksLengkap) / WORDS_PER_SEC));
+
+  async function mintaPembuka() {
+    setBusy("hooks"); setErr(null); setPesan(null);
+    try {
+      const r = await callGenerate({ action: "write", kind: "hooks", influencer_id: inf.id, idea: item.title, ...(tujuan ? { funnel_stage: tujuan } : {}) });
+      setHooks(r.hooks || []);
+    } catch (e) { setErr(e.message); }
+    setBusy(null);
+  }
+
+  async function tulis() {
+    if (!pembuka.trim()) { setErr("Pilih atau tulis pembukanya dulu — naskah dilanjutkan dari kalimat itu."); return; }
+    setBusy("naskah"); setErr(null); setPesan(null);
+    try {
+      const r = await callGenerate({
+        action: "write", kind: "script", content_item_id: item.id, influencer_id: inf.id,
+        hook: pembuka.trim(), target_seconds: detik, ...(tujuan ? { funnel_stage: tujuan } : {}),
+      });
+      const x = r.draft || {};
+      setD({ hook: x.hook || pembuka.trim(), isi: x.body ?? x.script ?? "", cta: x.cta || "", caption: x.caption || "", tagar: (x.hashtags || []).join(" ") });
+    } catch (e) { setErr(e.message); }
+    setBusy(null);
+  }
+
+  // Disimpan lewat apply_draft — aksi yang sama dengan "Tulis dengan AI" di
+  // Rencana — supaya kedua layar membaca kolom yang sama persis.
+  async function simpan() {
+    setBusy("simpan"); setErr(null); setPesan(null);
+    try {
+      await callGenerate({
+        action: "apply_draft", content_item_id: item.id,
+        hook: String(d.hook || "").trim(), script: teksLengkap,
+        caption: String(d.caption || "").trim(), hashtags: pisahTagar(d.tagar),
+      });
+      if (tujuan !== (item.funnel_stage || "")) {
+        const { error } = await supa.from("content_items").update({ funnel_stage: tujuan || null }).eq("id", item.id);
+        if (error) throw new Error(error.message);
+      }
+      setVersiTersimpan(JSON.stringify(d));
+      setPesan("Naskah tersimpan. Rencana menampilkan naskah yang sama.");
+      await muatKonten();
+      setBusy(null);
+      return true;
+    } catch (e) { setErr(`Naskah belum tersimpan: ${e.message}`); setBusy(null); return false; }
+  }
+
+  // Buat Video membaca naskah dari database lewat id, jadi perubahan yang
+  // belum disimpan akan tertinggal. Disimpan dulu, baru pindah.
+  async function buatVideo() {
+    if (berubah && !(await simpan())) return;
+    window.location.hash = `#/buat-video?item=${item.id}`;
+  }
+
+  return (
+    <div>
+      <div className="row mb3" style={{ justifyContent: "space-between", gap: 8, flexWrap: "wrap" }}>
+        <button type="button" className="btn btn2" onClick={onKembali}>← Arah Konten</button>
+      </div>
+
+      <div className="card p4 mb3">
+        <div className="bold" style={{ fontSize: 17 }}>{item.title}</div>
+        <div className="row mt1 mb3" style={{ gap: 6, flexWrap: "wrap", alignItems: "center" }}>
+          {pilar && <span className="tiny muted">{pilar.name}</span>}
+        </div>
+        <div className="label">Tujuan<Info tip={TIP_FUNNEL} /></div>
+        <Chips pilihan={TUJUAN.map(([k, l]) => [k, l])} nilai={tujuan} onPilih={setTujuan} semua="Belum ditentukan" />
+      </div>
+
+      <div className="card p4 mb3">
+        <div className="bold mb1">1. Pilih pembuka</div>
+        <p className="tiny muted mb2">Kalimat 1–3 detik pertama yang membuat orang berhenti scroll. Naskahnya dilanjutkan persis dari kalimat ini.</p>
+        <button type="button" className="btn btn2 mb2" disabled={!!busy} onClick={mintaPembuka}
+          data-tip={`Penulis AI menulis 5 pembuka dari jenis berbeda (cerita, pertanyaan, angka, …) untuk ide ini. ${TIP_PENULIS_AI}`}>
+          {busy === "hooks" ? "Menulis pembuka…" : `${hooks ? "5 pembuka lain" : "Beri 5 pembuka"}${biayaNaskahLabel()}`}
+        </button>
+        {hooks && (
+          <div style={{ display: "grid", gap: 6 }} className="mb2">
+            {hooks.map((h, i) => {
+              const dipilih = pembuka.trim() === h.text;
+              return (
+                <button key={i} type="button" onClick={() => setPembuka(h.text)} role="radio" aria-checked={dipilih}
+                  style={{ textAlign: "left", padding: "8px 12px", borderRadius: 10, cursor: "pointer",
+                    border: `2px solid ${dipilih ? "var(--brand)" : "var(--border)"}`, background: dipilih ? "var(--brand-soft)" : "var(--card)" }}>
+                  {h.category && <div className="tiny muted" style={{ fontWeight: 700 }}>{h.category}</div>}
+                  <div className="small">{h.text}</div>
+                </button>
+              );
+            })}
+          </div>
+        )}
+        <label className="label">Pembuka yang dipakai<Info tip="Boleh diubah atau ditulis sendiri — menulis sendiri gratis." /></label>
+        <input className="input" value={pembuka} onChange={(e) => setPembuka(e.target.value)} placeholder="Tulis sendiri, atau pilih salah satu di atas" />
+      </div>
+
+      <div className="card p4 mb3">
+        <div className="bold mb1">2. Naskah</div>
+        <div className="label">Berapa lama?<Info tip={`Target untuk penulis naskah, ± ${WORDS_PER_SEC.toString().replace(".", ",")} kata per detik. Pilih durasi yang sama dengan video yang akan kamu buat supaya naskahnya tidak perlu ditulis ulang di Buat Video.`} /></div>
+        <Chips pilihan={PILIHAN_DETIK_NASKAH.map((s) => [s, `${s} detik`])} nilai={detik} onPilih={setDetik} />
+        <button type="button" className="btn mt3" disabled={!!busy || !pembuka.trim()} onClick={tulis}
+          data-tip={`Penulis AI menulis isi, ajakan sesuai tujuan, dan caption pendek, melanjutkan pembuka di atas. ${d ? "Isi yang sekarang di bawah ikut terganti. " : ""}${TIP_PENULIS_AI}`}>
+          {busy === "naskah" ? "Menulis naskah…" : `${d ? "Tulis ulang naskah" : "Tulis naskahnya"}${biayaNaskahLabel()}`}
+        </button>
+        {!pembuka.trim() && <div className="tiny muted mt1">Pilih atau tulis pembukanya dulu.</div>}
+
+        {d && (
+          <div className="mt3">
+            <div className="row mb2" style={{ justifyContent: "space-between", gap: 8 }}>
+              <span className="tiny bold muted">Yang dibacakan</span>
+              <Badge tone="violet">± {perkiraanDetik} detik</Badge>
+            </div>
+            <label className="label">Pembuka</label>
+            <textarea className="input mb2" rows={2} value={d.hook} onChange={(e) => setD({ ...d, hook: e.target.value })} />
+            <label className="label">Isi</label>
+            <textarea className="input mb2" rows={7} value={d.isi} onChange={(e) => setD({ ...d, isi: e.target.value })} />
+            <label className="label">Ajakan</label>
+            <textarea className="input" rows={2} value={d.cta} onChange={(e) => setD({ ...d, cta: e.target.value })} />
+            <p className="tiny muted mt1">Mengubah naskah di sini gratis.</p>
+          </div>
+        )}
+      </div>
+
+      {d && (
+        <div className="card p4 mb3">
+          <div className="bold mb1">Caption (dibaca, bukan dibacakan)<Info tip="Teks di bawah postingan. Sengaja pendek dan berbeda dari naskah — caption berisi naskah lengkap adalah tanda paling jelas akun dijalankan mesin." /></div>
+          <textarea className="input mb2" rows={3} maxLength={2000} value={d.caption} onChange={(e) => setD({ ...d, caption: e.target.value })} />
+          <label className="label">Tagar</label>
+          <input className="input" value={d.tagar} onChange={(e) => setD({ ...d, tagar: e.target.value })} placeholder="dipisah spasi, tanda # boleh ditulis atau tidak" />
+        </div>
+      )}
+
+      {pesan && <div className="msg-ok mb3">{pesan}</div>}
+      <KotakGagal err={err} ws={ws} support={support} />
+
+      <div className="card p4 mt3">
+        <div className="row" style={{ gap: 8, flexWrap: "wrap" }}>
+          {d && (
+            <button type="button" className="btn" disabled={!!busy || !berubah || !teksLengkap} onClick={simpan}
+              data-tip="Menyimpan pembuka, naskah, caption, dan tagar ke konten ini. Rencana menampilkan isi yang sama. Gratis.">
+              {busy === "simpan" ? "Menyimpan…" : berubah ? "Simpan" : "✓ Tersimpan"}
+            </button>
+          )}
+          <a className="btn btn2" href="#/planner" data-tip="Buka Rencana untuk menjadwalkan konten ini. Ide dan naskahnya sudah ada di sana.">🗓️ Lihat di Rencana</a>
+          <button type="button" className="btn" disabled={!!busy || !d || !teksLengkap} onClick={buatVideo}
+            data-tip={berubah
+              ? "Menyimpan naskah ini dulu, lalu membuka Buat Video dengan naskah ini sudah terisi. Belum ada yang dibayar sampai kamu menekan Ya di sana."
+              : "Membuka Buat Video dengan naskah ini sudah terisi. Belum ada yang dibayar sampai kamu menekan Ya di sana."}>
+            🎬 Buat videonya →
+          </button>
+        </div>
+        <div className="tiny muted mt2">Arah Konten berhenti di naskah. Gambar, suara, dan video dibuat di Buat Video.</div>
+      </div>
     </div>
   );
 }

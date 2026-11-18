@@ -712,7 +712,7 @@ function App() {
   else if (routePath === "/studio") view = <Studio {...props} query={routeQuery} />;
   else if (routePath === "/storyboard") view = <Storyboard {...props} query={routeQuery} />;
   else if (routePath === "/arah") view = <ArahKonten {...props} spend={spend} support={support} />;
-  else if (routePath === "/buat-video") view = <BuatVideo {...props} spend={spend} support={support} />;
+  else if (routePath === "/buat-video") view = <BuatVideo {...props} spend={spend} support={support} query={routeQuery} />;
   else if (routePath === "/mulai") view = <Mulai />;
   else if (routePath === "/mulai-claude") view = <MulaiClaude />;
   else if (routePath === "/ugc") view = <Ugc {...props} query={routeQuery} />;
