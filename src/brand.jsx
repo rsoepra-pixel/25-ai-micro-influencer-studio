@@ -508,8 +508,8 @@ function Blueprint({ ws, inf, row, setRow, support, pilarAda, setPilarAda, refre
           </div>
         )} />
 
-      <Bagian judul={<>Ritme Kenalan · Percaya · Beli<Info tip={TIP_FUNNEL} /></>}
-        tip="Berapa konten tiap jenis dalam seminggu. Diusulkan dari jawabanmu; ubah sesukamu."
+      <Bagian judul="Ritme Kenalan · Percaya · Beli"
+        tip={`${TIP_FUNNEL} Angkanya: berapa konten tiap jenis dalam seminggu, diusulkan dari jawabanmu; ubah sesukamu.`}
         nilai={{ tofu: fr?.tofu ?? "", mofu: fr?.mofu ?? "", bofu: fr?.bofu ?? "" }}
         onSimpan={(d) => {
           const n = (v) => Math.min(Math.max(Math.round(Number(v) || 0), 0), 7);
