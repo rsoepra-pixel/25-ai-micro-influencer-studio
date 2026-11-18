@@ -388,9 +388,11 @@ kamera tetap butuh satu produk di Product Kit.
 ada pemilih "profil yang diatur" di atas; pilihannya disimpan di perangkat.
 Semua yang disimpan di sini **sama persis** dengan yang dibuat lewat halaman
 Influencers — Profil saya hanya jalan pendeknya, dan **Pengaturan lengkap**
-membawa ke halaman detail yang sama. Penerimaan rekaman browser (format webm
-di Chrome/Android) oleh penyedia klon suara **belum diverifikasi**; kalau
-ditolak, pesan penyedia ditampilkan dan tombol unggah berkas tetap ada.
+membawa ke halaman detail yang sama. Rekaman browser (webm di Chrome/Android)
+**ditolak** penyedia klon suara — terbukti 18 Nov 2026 — jadi sejak itu setiap
+rekaman, dan unggahan yang bukan mp3/wav/mp4/mov, diubah ke WAV mono di ponsel
+sebelum dikirim (`src/wav.js`). Kalau browser tidak bisa mengubahnya, berkas
+asli yang dikirim dan tombol unggah tetap ada.
 
 ---
 
