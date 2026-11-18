@@ -376,6 +376,35 @@ function potongJsonPertama(body: string): string | null {
   return null;
 }
 
+// Array yang terpotong di tengah: ambil objek tingkat pertama yang sudah
+// tertutup, buang sisanya. Hanya untuk array; objek tunggal yang terpotong
+// tidak bisa diselamatkan dengan jujur.
+function selamatkanArray(body: string): unknown[] | null {
+  const start = body.indexOf("[");
+  if (start < 0 || /^[^[]*\{/.test(body.slice(0, start))) return null;
+  let depth = 0, inStr = false, esc = false, akhirObjek = -1;
+  for (let i = start; i < body.length; i++) {
+    const c = body[i];
+    if (inStr) {
+      if (esc) esc = false;
+      else if (c === "\\") esc = true;
+      else if (c === '"') inStr = false;
+      continue;
+    }
+    if (c === '"') inStr = true;
+    else if (c === "[" || c === "{") depth++;
+    else if (c === "]" || c === "}") {
+      depth--;
+      if (depth === 1 && c === "}") akhirObjek = i;
+    }
+  }
+  if (akhirObjek < 0) return null;
+  try {
+    const arr = JSON.parse(body.slice(start, akhirObjek + 1) + "]");
+    return Array.isArray(arr) && arr.length ? arr : null;
+  } catch { return null; }
+}
+
 function parseJsonLoose(s: string): unknown {
   const fenced = s.match(/```(?:json)?\s*([\s\S]*?)```/);
   const body = (fenced ? fenced[1] : s).trim();
@@ -398,7 +427,14 @@ function parseJsonLoose(s: string): unknown {
   for (const c of calon) {
     try { return JSON.parse(c); } catch (e) { galat = e; }
   }
-  if (!calon.length) throw new Error("JSON dari AI tidak lengkap.");
+  // Balasan terpotong batas token (array tidak pernah ditutup): selamatkan
+  // objek yang sudah lengkap. 8 dari 10 ide lebih berguna daripada error —
+  // dan token jawabannya sudah dibayar.
+  if (!calon.length) {
+    const sel = selamatkanArray(body) ?? (body.includes('\\"') ? selamatkanArray(body.replace(/\\"/g, '"')) : null);
+    if (sel) return sel;
+    throw new Error("Jawaban penulis AI terpotong. Coba tekan tombolnya sekali lagi.");
+  }
   // Pesan untuk orangnya, bukan teks parser: yang bisa ia lakukan adalah
   // mencoba lagi. Detail parser tetap di log.
   console.error("parseJsonLoose gagal:", (galat as Error)?.message, body.slice(0, 300));
@@ -2481,7 +2517,10 @@ Deno.serve(async (req) => {
             `"title" = judul kerja singkat (maksimal 12 kata), spesifik, bukan judul clickbait.\n` +
             (judulLama.length ? `Jangan mengulang atau memparafrasekan ide yang sudah ada ini:\n${judulLama.map((t) => `- ${t}`).join("\n")}\n` : "") +
             `Format JSON: [{"title": "...", "pillar": "...", "funnel_stage": "tofu|mofu|bofu", "why": "..."}]`;
-          const parsed = parseJsonLoose(await chat(ws, penulis, system, user)) as unknown;
+          // 2500, bukan bawaan 1200: sepuluh ide berbahasa Indonesia dengan "why"
+          // pernah terpotong di tengah array (18 Nov 2026). Ditagih per token
+          // yang terpakai, jadi batas lebih longgar tidak menambah biaya.
+          const parsed = parseJsonLoose(await chat(ws, penulis, system, user, undefined, 2500)) as unknown;
           const mentah = Array.isArray(parsed) ? parsed
             : Array.isArray((parsed as { ideas?: unknown })?.ideas) ? (parsed as { ideas: unknown[] }).ideas : [];
           const ideas = (mentah as Array<Record<string, unknown>>)
