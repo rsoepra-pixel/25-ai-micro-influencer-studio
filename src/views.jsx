@@ -197,14 +197,37 @@ export function useQuery(fn, deps) {
 
 const ErrBanner = ({ error }) => error ? <div className="msg-err mb3">Gagal memuat data: {error}</div> : null;
 
+const BADGE_TONES = {
+  green: ["var(--ok-line)", "var(--ok)"], red: ["var(--err-line)", "var(--err-strong)"],
+  amber: ["var(--warn-soft)", "var(--warn)"], violet: ["var(--brand-soft)", "var(--brand-strong)"],
+  blue: ["var(--blue-line)", "var(--blue-strong)"], zinc: ["var(--subtle-2)", "var(--ink-3)"],
+};
 export function Badge({ children, tone = "zinc" }) {
-  const tones = {
-    green: ["var(--ok-line)", "var(--ok)"], red: ["var(--err-line)", "var(--err-strong)"],
-    amber: ["var(--warn-soft)", "var(--warn)"], violet: ["var(--brand-soft)", "var(--brand-strong)"],
-    blue: ["var(--blue-line)", "var(--blue-strong)"], zinc: ["var(--subtle-2)", "var(--ink-3)"],
-  };
-  const [bg, fg] = tones[tone] || tones.zinc;
+  const [bg, fg] = BADGE_TONES[tone] || BADGE_TONES.zinc;
   return <span className="badge" style={{ background: bg, color: fg }}>{children}</span>;
+}
+
+// ---------- Tujuan konten (Kenalan · Percaya · Beli) ----------
+// Disimpan sebagai tofu/mofu/bofu (content_items.funnel_stage, 0060),
+// ditampilkan sebagai Kenalan · Percaya · Beli. Istilah teknisnya tidak pernah
+// tampil di layar. Tinggal di sini, bukan di brand.jsx, karena Arah Konten dan
+// Rencana menampilkan ide yang SAMA: kalau warna atau labelnya beda di dua
+// halaman, orang membacanya sebagai dua hal yang berbeda. (brand.jsx sudah
+// mengimpor dari views.jsx; arah sebaliknya akan membuat impor melingkar.)
+export const TUJUAN = [["tofu", "Kenalan", "blue"], ["mofu", "Percaya", "violet"], ["bofu", "Beli", "green"]];
+export const labelTujuan = (v) => (TUJUAN.find(([k]) => k === v) || [])[1] || "";
+
+// `kecil`: versi untuk sel kalender, yang lebarnya sepertujuh layar.
+export function PilTujuan({ v, kecil }) {
+  const t = TUJUAN.find(([k]) => k === v);
+  if (!t) return null;
+  if (!kecil) return <Badge tone={t[2]}>{t[1]}</Badge>;
+  const [bg, fg] = BADGE_TONES[t[2]];
+  return (
+    <span style={{ background: bg, color: fg, borderRadius: 99, padding: "0 5px", fontSize: 10, fontWeight: 700, flexShrink: 0, lineHeight: "15px" }}>
+      {t[1]}
+    </span>
+  );
 }
 
 const statusTone = (s) =>
@@ -302,7 +325,7 @@ function StartHere({ d }) {
     {
       // Hanya influencer pertama yang dicek, sama dengan langkah foto dan
       // suara di atas: daftar ini untuk orang yang baru punya satu tokoh.
-      ok: !!pertama && s.blueprints.includes(pertama.id), href: "/arah", judul: "Jawab 12 pertanyaan arah konten",
+      ok: !!pertama && s.blueprints.includes(pertama.id), href: "/arah", judul: "Jawab 12 pertanyaan Arah Konten",
       tip: "Siapa kamu, untuk siapa, dan apa yang dijual — disusun jadi blueprint yang membuat ide dan naskah tidak generik. ± 8 menit.",
     },
     {
@@ -336,7 +359,7 @@ function StartHere({ d }) {
         </a>
       )}
       <a href="#/mulai" className="tiny mb2" style={{ display: "inline-block", color: "var(--brand-strong)", fontWeight: 600 }}
-        data-tip="Satu halaman infografis: tiga langkah, kapan uang keluar, apa yang perlu disiapkan. Bisa dicetak.">❓ Baru pertama kali? Lihat Cara mulai (1 halaman)</a>
+        data-tip="Satu halaman infografis: empat langkah, kapan uang keluar, apa yang perlu disiapkan. Bisa dicetak.">❓ Baru pertama kali? Lihat Cara mulai (1 halaman)</a>
       <div className="grid" style={{ gridTemplateColumns: "repeat(auto-fill,minmax(220px,1fr))", gap: 8 }}>
         {langkah.map((l, i) => (
           <a key={l.judul} href={`#${l.href}`} data-tip={l.tip} className="row small"
@@ -2732,13 +2755,14 @@ function PlannerCalendar({ items, pillars, month, setMonth }) {
                 marginBottom: 2,
               }}>{day.getDate()}{iso === todayIso ? " · hari ini" : ""}</div>
               {dayItems.map((it) => (
-                <div key={it.id} className="tiny row" title={`${it.title} — ${it.influencers?.name || "tanpa influencer"} · ${STATUS_LABELS[it.status]}${it.platform ? ` · ${it.platform}` : ""}`}
+                <div key={it.id} className="tiny row" title={`${it.title} — ${it.influencers?.name || "tanpa influencer"} · ${STATUS_LABELS[it.status]}${it.platform ? ` · ${it.platform}` : ""}${it.funnel_stage ? ` · tujuan ${labelTujuan(it.funnel_stage)}` : ""}`}
                   style={{
                     gap: 4, alignItems: "center", borderRadius: 6, padding: "2px 4px", marginBottom: 2,
                     background: it.status === "published" ? "var(--ok-soft)" : "var(--brand-soft)",
                   }}>
                   <span style={{ width: 7, height: 7, borderRadius: 99, flexShrink: 0, background: pillarColor[it.pillar_id] || "var(--dim)" }} />
                   <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", textDecoration: it.status === "published" ? "line-through" : "none" }}>{it.title}</span>
+                  <PilTujuan v={it.funnel_stage} kecil />
                   {it.status === "published" && <span style={{ color: "var(--ok)", flexShrink: 0 }}>✓</span>}
                 </div>
               ))}
@@ -2746,7 +2770,7 @@ function PlannerCalendar({ items, pillars, month, setMonth }) {
           );
         })}
       </div>
-      <div className="tiny muted mt2">● warna titik = pillar konten. {unscheduled > 0 ? `${unscheduled} konten aktif belum punya tanggal — atur lewat papan atau form di atas.` : "Semua konten aktif sudah terjadwal."}</div>
+      <div className="tiny muted mt2">● warna titik = pillar konten; label Kenalan · Percaya · Beli = tujuan kontennya. {unscheduled > 0 ? `${unscheduled} konten aktif belum punya tanggal — atur lewat papan atau form di atas.` : "Semua konten aktif sudah terjadwal."}</div>
     </div>
   );
 }
@@ -2766,57 +2790,94 @@ const WEEK_SLOTS = {
   1: [2], 2: [1, 4], 3: [0, 2, 4], 4: [0, 2, 4, 6],
   5: [0, 1, 2, 4, 6], 6: [0, 1, 2, 3, 4, 6], 7: [0, 1, 2, 3, 4, 5, 6],
 };
+const HARI_SENIN = ["Sen", "Sel", "Rab", "Kam", "Jum", "Sab", "Min"];
+const hariSenin = (d) => (d.getDay() + 6) % 7;            // Minggu(0) → 6
 
 const ymd = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
 
-// Penjadwalan dihitung di sini, BUKAN oleh model — model bahasa sering salah
-// memasangkan tanggal dengan hari. Model hanya memberi urutan + weekday_hint,
-// dan hint itu dipakai kalau slot harinya memang tersedia minggu itu (supaya
-// satu series jatuh di hari yang sama tiap minggu).
-function buildSchedule(items, weeks, perWeek, from = new Date()) {
-  const slots = WEEK_SLOTS[perWeek] || WEEK_SLOTS[4];
+// Tanggal KOSONG yang akan diisi wizard. Dihitung di sini, bukan oleh model:
+// model bahasa sering salah memasangkan tanggal dengan hari, dan di sini satu
+// tanggal yang meleset berarti menimpa konten yang sudah ada. Server menerima
+// daftar ini (`dates`), menyaringnya sekali lagi, dan menempelkan satu ide
+// per tanggal.
+//
+// Aturan (spek §3.5 no. 4 belum diputuskan pemilik; sementara "hanya tanggal
+// kosong", tertulis di layar):
+// - Periode = `weeks` blok 7 hari mulai HARI INI, bukan Senin–Minggu, supaya
+//   rencana yang dibuat Kamis tidak kehilangan separuh minggu pertamanya.
+// - Tanggal yang sudah berisi konten tidak disentuh, dan ikut dihitung dalam
+//   frekuensi minggu itu: 4× per minggu dengan 1 konten yang sudah ada = 3
+//   ide baru. Tanpa itu "isi sebulan" dua kali berturut-turut melipatgandakan
+//   frekuensi yang dipilih orangnya.
+// - Hari istirahat tidak pernah diisi. Kalau hari yang biasanya dipakai
+//   frekuensi itu (WEEK_SLOTS) libur atau terisi, diganti hari lain yang
+//   kosong di minggu yang sama.
+// - Maksimal 40 tanggal, sama dengan batas server.
+function tanggalKosong({ weeks, perWeek, daysOff, occupied, from = new Date() }) {
   const start = new Date(from.getFullYear(), from.getMonth(), from.getDate());
-  const mondayOffset = (start.getDay() + 6) % 7;            // Minggu(0) → 6
-  const week0 = new Date(start); week0.setDate(start.getDate() - mondayOffset);
-
-  // Kumpulkan tanggal sampai cukup untuk SEMUA ide. Minggu berjalan biasanya
-  // sudah kehilangan sebagian slot (harinya lewat), jadi periode digeser maju
-  // alih-alih membuang ide yang tidak kebagian tanggal.
-  const dates = [];
-  for (let w = 0; dates.length < items.length && w < weeks + 6; w++) {
-    for (const s of slots) {
-      const d = new Date(week0); d.setDate(week0.getDate() + w * 7 + s);
-      if (d >= start) dates.push(d);
-    }
-  }
-
-  // Urutan ide dipertahankan, tapi dalam jendela satu minggu ide boleh menyalip
-  // kalau weekday_hint-nya cocok — supaya satu series jatuh di hari yang sama.
-  const pool = items.map((it) => it);
+  const libur = new Set(daysOff);
+  const slotFrek = WEEK_SLOTS[perWeek] || WEEK_SLOTS[4];
+  const urutan = [...slotFrek, ...[0, 1, 2, 3, 4, 5, 6].filter((h) => !slotFrek.includes(h))];
   const out = [];
-  for (const d of dates) {
-    if (!pool.length) break;
-    const wd = (d.getDay() + 6) % 7;
-    const win = Math.min(pool.length, perWeek);
-    let pick = pool.slice(0, win).findIndex((it) => it.weekday_hint === wd);
-    if (pick < 0) pick = 0;
-    out.push({ ...pool.splice(pick, 1)[0], date: ymd(d) });
+  for (let w = 0; w < weeks; w++) {
+    const hari = [];
+    for (let k = 0; k < 7; k++) { const d = new Date(start); d.setDate(start.getDate() + w * 7 + k); hari.push(d); }
+    const sudahAda = hari.filter((d) => occupied.has(ymd(d))).length;
+    const kuota = Math.max(perWeek - sudahAda, 0);
+    const pilih = hari
+      .filter((d) => !libur.has(hariSenin(d)) && !occupied.has(ymd(d)))
+      .sort((x, y) => urutan.indexOf(hariSenin(x)) - urutan.indexOf(hariSenin(y)))
+      .slice(0, kuota)
+      .sort((x, y) => x - y);
+    out.push(...pilih.map(ymd));
   }
-  for (const rest of pool) out.push({ ...rest, date: "" });  // jaring pengaman
-  return out;
+  return out.slice(0, 40);
 }
 
-function PlanWizard({ ws, influencers, pillars, onClose, onSaved }) {
+function PlanWizard({ ws, influencers, pillars, items, onClose, onSaved }) {
   const [step, setStep] = useState(1);
   const [brief, setBrief] = useState({
     influencer_id: influencers[0]?.id || "", weeks: 4, per_week: 4,
     platform: "tiktok", focus: "", make_pillars: pillars.length === 0,
+    // Tidak ada hari istirahat bawaan: berapa hari libur adalah keputusan
+    // orangnya (dan pemilik produk belum menetapkan default apa pun).
+    days_off: [],
   });
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState(null);
-  const [plan, setPlan] = useState(null);      // { pillars:[{name,target_ratio,why,color}], series, items:[{…,date,_on}] }
+  const [plan, setPlan] = useState(null);      // { pillars:[{name,target_ratio,why,color}], series, items:[{…,date,funnel_stage,_on}] }
+  const [ritme, setRitme] = useState(null);    // funnel_ratio dari blueprint influencer terpilih, kalau ada
 
-  const total = Math.min(brief.weeks * brief.per_week, 40);
+  // Ritme Kenalan/Percaya/Beli dari Arah Konten, hanya untuk ditampilkan —
+  // server membacanya sendiri lewat blokBlueprint. Gagal = tidak ditampilkan
+  // (influencer tanpa blueprint, atau migrasi 0060 belum diterapkan).
+  useEffect(() => {
+    let batal = false;
+    setRitme(null);
+    if (!brief.influencer_id) return undefined;
+    supa.from("brand_blueprints").select("blueprint").eq("influencer_id", brief.influencer_id).maybeSingle()
+      .then(({ data }) => {
+        const fr = data?.blueprint?.funnel_ratio;
+        if (!batal && fr && [fr.tofu, fr.mofu, fr.bofu].some((x) => Number(x) > 0)) setRitme(fr);
+      }, () => {});
+    return () => { batal = true; };
+  }, [brief.influencer_id]);
+
+  // Tanggal terisi: konten influencer yang sama (atau semua konten kalau
+  // tanpa influencer). Konten influencer lain tidak menutup tanggal — dua
+  // tokoh boleh tayang di hari yang sama.
+  const periodeAwal = ymd(new Date());
+  const terisi = new Set((items || [])
+    .filter((it) => it.scheduled_date && (!brief.influencer_id || it.influencer_id === brief.influencer_id))
+    .map((it) => it.scheduled_date));
+  const slots = tanggalKosong({ weeks: brief.weeks, perWeek: brief.per_week, daysOff: brief.days_off, occupied: terisi });
+  const periodeAkhir = (() => { const d = new Date(); d.setDate(d.getDate() + brief.weeks * 7 - 1); return ymd(d); })();
+  const terisiDiPeriode = [...terisi].filter((t) => t >= periodeAwal && t <= periodeAkhir).sort();
+  const total = slots.length;
+
+  function toggleLibur(h) {
+    setBrief((b) => ({ ...b, days_off: b.days_off.includes(h) ? b.days_off.filter((x) => x !== h) : [...b.days_off, h].sort() }));
+  }
 
   async function generate() {
     setBusy(true); setErr(null);
@@ -2827,12 +2888,18 @@ function PlanWizard({ ws, influencers, pillars, onClose, onSaved }) {
         weeks: brief.weeks, per_week: brief.per_week, platform: brief.platform,
         focus: brief.focus, make_pillars: brief.make_pillars,
         pillars: pillars.map((p) => p.name),
+        days_off: brief.days_off, occupied_dates: terisiDiPeriode,
+        dates: slots, start_date: periodeAwal,
       });
       const p = r.plan || {};
+      // Server menempelkan `date` per ide. Server versi lama tidak — saat itu
+      // ide dipasangkan ke tanggal kosong berurutan, dan sisanya tanpa tanggal.
       setPlan({
         series: p.series || [],
         pillars: (p.pillars || []).map((x, i) => ({ ...x, color: PLAN_COLORS[i % PLAN_COLORS.length] })),
-        items: buildSchedule(p.items || [], brief.weeks, brief.per_week).map((it) => ({ ...it, _on: true })),
+        items: (p.items || []).map((it, i) => ({
+          ...it, date: it.date || slots[i] || "", funnel_stage: it.funnel_stage || "", _on: true,
+        })),
       });
       setStep(2);
     } catch (e) { setErr(e.message); }
@@ -2883,6 +2950,7 @@ function PlanWizard({ ws, influencers, pillars, onClose, onSaved }) {
         pillar_id: byName[(it.pillar || "").toLowerCase()] || null,
         content_type: it.content_type, platform: brief.platform,
         scheduled_date: it.date || null, hook: it.hook, status: "idea",
+        funnel_stage: it.funnel_stage || null,
       }));
       if (!rows.length) throw new Error("Tidak ada item yang dicentang.");
       const { error: e2 } = await supa.from("content_items").insert(rows);
@@ -2939,6 +3007,27 @@ function PlanWizard({ ws, influencers, pillars, onClose, onSaved }) {
                 </select>
               </div>
             </div>
+            <label className="label">Hari istirahat<Info tip="Hari yang tidak pernah diisi ide. Kalau hari yang biasanya dipakai jatuh di hari istirahat, AI memakai hari lain yang kosong di minggu yang sama." /></label>
+            <div className="row mb2" style={{ gap: 12, flexWrap: "wrap" }}>
+              {HARI_SENIN.map((h, i) => (
+                <label key={h} className="row small" style={{ gap: 4, cursor: "pointer" }}>
+                  <input type="checkbox" checked={brief.days_off.includes(i)} onChange={() => toggleLibur(i)} /> {h}
+                </label>
+              ))}
+            </div>
+            <p className="small mb1"><b>Hanya tanggal yang masih kosong yang diisi; yang sudah ada tidak disentuh.</b></p>
+            <p className="tiny muted mb3">
+              {total
+                ? `${total} tanggal kosong antara ${periodeAwal} dan ${periodeAkhir} akan diisi.`
+                : `Tidak ada tanggal kosong antara ${periodeAwal} dan ${periodeAkhir}.`}
+              {terisiDiPeriode.length > 0 && ` ${terisiDiPeriode.length} tanggal sudah berisi konten${brief.influencer_id ? " influencer ini" : ""} dan ikut dihitung dalam frekuensi per minggu.`}
+            </p>
+            {ritme && (
+              <p className="tiny mb3">
+                Ritme dari Arah Konten: {Number(ritme.tofu) || 0} Kenalan · {Number(ritme.mofu) || 0} Percaya · {Number(ritme.bofu) || 0} Beli per minggu
+                <Info tip="Tujuan ide tiap minggu dibagi dengan perbandingan ini. Kalau frekuensimu berbeda dari jumlahnya, perbandingannya yang dipertahankan. Ubah ritmenya di Arah Konten → Blueprint." />
+              </p>
+            )}
             <label className="label">Fokus periode ini (opsional)</label>
             <input className="input mb1" value={brief.focus}
               onChange={(e) => setBrief({ ...brief, focus: e.target.value })}
@@ -2958,11 +3047,13 @@ function PlanWizard({ ws, influencers, pillars, onClose, onSaved }) {
                 <li>2-3 format berulang bernama, jatuh di hari yang sama tiap minggu</li>
                 <li>Tipe konten divariasikan, tidak 100% talking head</li>
                 <li>Sebaran pillar mengikuti target %, dan ditampilkan sebelum disimpan</li>
+                <li>{ritme ? "Tujuan Kenalan · Percaya · Beli tiap minggu mengikuti ritme di Arah Konten" : "Tiap ide diberi tujuan Kenalan · Percaya · Beli (belum ada ritme di Arah Konten, jadi AI yang menimbang campurannya)"}</li>
+                <li>Hanya ide dan hook — naskah ditulis nanti per ide, supaya sebulan tetap satu kali panggilan</li>
               </ul>
             </div>
             {err && <div className="msg-err mb3">{err}</div>}
             <div className="row" style={{ gap: 8 }}>
-              <button type="button" className="btn" disabled={busy} onClick={generate}>
+              <button type="button" className="btn" disabled={busy || !total} onClick={generate}>
                 {busy ? `Menyusun ${total} ide…` : `Susun rencana (${total} ide)`}
               </button>
               <button type="button" className="btn btn2" onClick={onClose}>Batal</button>
@@ -3009,6 +3100,17 @@ function PlanWizard({ ws, influencers, pillars, onClose, onSaved }) {
               </div>
             )}
 
+            {chosen.some((it) => it.funnel_stage) && (
+              <p className="small mb3" style={{ display: "flex", gap: 6, flexWrap: "wrap", alignItems: "center" }}>
+                Tujuan ide yang dicentang:
+                {TUJUAN.map(([k, l]) => {
+                  const n = chosen.filter((it) => it.funnel_stage === k).length;
+                  return n ? <span key={k}><PilTujuan v={k} /> <span className="tiny muted">×{n}</span></span> : null;
+                })}
+                {ritme && <span className="tiny muted">— ritme Arah Konten {Number(ritme.tofu) || 0} · {Number(ritme.mofu) || 0} · {Number(ritme.bofu) || 0} per minggu</span>}
+              </p>
+            )}
+
             {mix.length > 0 && (
               <div className="card p4 mb3" style={{ background: "var(--subtle)" }}>
                 <div className="label" style={{ margin: "0 0 6px" }}>Sebaran nyata vs target</div>
@@ -3034,7 +3136,7 @@ function PlanWizard({ ws, influencers, pillars, onClose, onSaved }) {
 
             <div style={{ maxHeight: "38vh", overflowY: "auto" }}>
               <table>
-                <thead><tr><th style={{ width: 28 }}></th><th style={{ width: 120 }}>Tanggal</th><th>Judul & hook</th><th style={{ width: 150 }}>Pillar</th><th style={{ width: 110 }}>Tipe</th></tr></thead>
+                <thead><tr><th style={{ width: 28 }}></th><th style={{ width: 120 }}>Tanggal</th><th>Judul & hook</th><th style={{ width: 150 }}>Pillar</th><th style={{ width: 110 }}>Tujuan</th><th style={{ width: 110 }}>Tipe</th></tr></thead>
                 <tbody>
                   {plan.items.map((it, i) => (
                     <tr key={i} style={{ opacity: it._on ? 1 : 0.45 }}>
@@ -3053,6 +3155,13 @@ function PlanWizard({ ws, influencers, pillars, onClose, onSaved }) {
                           value={it.pillar} onChange={(e) => patchItem(i, { pillar: e.target.value })}>
                           <option value="">—</option>
                           {pillarNames.map((n) => <option key={n} value={n}>{n}</option>)}
+                        </select>
+                      </td>
+                      <td>
+                        <select className="input" style={{ fontSize: 11, padding: "3px 6px" }}
+                          value={it.funnel_stage || ""} onChange={(e) => patchItem(i, { funnel_stage: e.target.value })}>
+                          <option value="">—</option>
+                          {TUJUAN.map(([k, l]) => <option key={k} value={k}>{l}</option>)}
                         </select>
                       </td>
                       <td>
@@ -3185,6 +3294,13 @@ export function Planner({ ws, refresh, tick }) {
       callCalendar({ action: "sync_item", content_item_id: inserted.id }).catch(() => {});
     }
   }
+  // Tujuan ditulis langsung ke baris (RLS anggota workspace mengizinkan);
+  // Laporan "Per pilar & tujuan" membaca kolom yang sama.
+  async function setTujuan(id, funnel_stage) {
+    const { error } = await supa.from("content_items").update({ funnel_stage: funnel_stage || null }).eq("id", id);
+    if (error) { setErr(error.message); return; }
+    reload();
+  }
   async function setStatus(id, status) {
     const { error } = await supa.from("content_items").update({ status }).eq("id", id);
     if (error) { setErr(error.message); return; }
@@ -3228,7 +3344,7 @@ export function Planner({ ws, refresh, tick }) {
       {publishMsg && <div className={publishMsg.startsWith("Publish gagal") ? "msg-err mb3" : "msg-ok mb3"}>{publishMsg}</div>}
 
       {planOpen && (
-        <PlanWizard ws={ws} influencers={d.inf} pillars={d.pillars}
+        <PlanWizard ws={ws} influencers={d.inf} pillars={d.pillars} items={d.items}
           onClose={() => setPlanOpen(false)}
           onSaved={(nItems, nPillars) => {
             setPlanOpen(false);
@@ -3300,9 +3416,19 @@ export function Planner({ ws, refresh, tick }) {
                 <div key={c.id} className="card p4 mb2">
                   <div className="small bold">{c.title}</div>
                   <div className="tiny muted mt1">{c.influencers?.name || "—"} · {TYPE_LABELS[c.content_type]}{c.scheduled_date ? ` · ${c.scheduled_date}` : ""}</div>
-                  {c.ai_disclosure && <Badge tone="blue">AI-label</Badge>}
+                  {(c.ai_disclosure || c.funnel_stage) && (
+                    <div className="row mt1" style={{ gap: 4, flexWrap: "wrap" }}>
+                      <PilTujuan v={c.funnel_stage} />
+                      {c.ai_disclosure && <Badge tone="blue">AI-label</Badge>}
+                    </div>
+                  )}
                   <select className="input mt2" style={{ fontSize: 12, padding: "4px 8px" }} value={c.status} onChange={(e) => setStatus(c.id, e.target.value)}>
                     {BOARD.map((s) => <option key={s} value={s}>{STATUS_LABELS[s]}</option>)}
+                  </select>
+                  <select className="input mt1" style={{ fontSize: 12, padding: "4px 8px" }} value={c.funnel_stage || ""}
+                    aria-label="Tujuan konten" onChange={(e) => setTujuan(c.id, e.target.value)}>
+                    <option value="">Tujuan: belum ditentukan</option>
+                    {TUJUAN.map(([k, l]) => <option key={k} value={k}>Tujuan: {l}</option>)}
                   </select>
                   <button type="button" className="tiny mt2" style={{ background: "none", border: "none", color: "var(--brand)", fontWeight: 700, cursor: "pointer", padding: 0, display: "block" }}
                     data-tip={`Langsung menulis draf hook, script, dan caption. ${TIP_PENULIS_AI}`}

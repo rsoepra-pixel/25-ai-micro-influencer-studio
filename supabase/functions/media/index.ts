@@ -137,7 +137,11 @@ async function planDelete(kind: string, row: Record<string, unknown>, ws: string
 // `character_assets` TIDAK punya kolom workspace_id — hanya influencer_id. Jadi
 // kepemilikannya diperiksa lewat influencer-nya. Tanpa join ini, satu id yang
 // bocor cukup untuk menghapus foto Identity Kit workspace mana pun.
-async function loadOwned(kind: string, id: string, ws: string) {
+// Tipe kembalian ditulis eksplisit: tanpa itu TypeScript menyimpulkan gabungan
+// tiga bentuk baris (asset | job | character_asset), dan setiap `row.output_url`
+// di bawah — yang sudah dijaga `kind === "job"` — ditolak `deno check`. Bentuk
+// sebenarnya ditentukan `kind`, bukan oleh tipe.
+async function loadOwned(kind: string, id: string, ws: string): Promise<Record<string, any> | null> {
   if (kind === "asset") {
     const { data } = await admin.from("assets")
       .select("id, url, name, kind, content_item_id")

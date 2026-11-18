@@ -287,7 +287,10 @@ Semua tombol yang memanggil AI memakai pola tooltip biaya yang sudah ada di
 3. Bahasa output: Indonesia saja, atau ikut `influencers.language` yang
    sudah ada.
 4. Apakah "Isi 30 hari" boleh dipanggil ulang bebas (menimpa) atau hanya
-   mengisi tanggal kosong.
+   mengisi tanggal kosong. — *Jawaban sementara (2026-11-18, menunggu
+   pemilik): **hanya tanggal kosong**. Ditulis di layar wizard; konten yang
+   sudah ada ikut dihitung dalam frekuensi per minggu, jadi memanggil ulang
+   tidak menggandakan jadwal.*
 
 ### 3.6 Urutan pengerjaan
 
@@ -304,7 +307,21 @@ Semua tombol yang memanggil AI memakai pola tooltip biaya yang sudah ada di
    `src/brand.jsx` (bukan di Planner seperti tabel §3.3 — lihat §5).
    Penyimpangan dari §3.2: tanpa blueprint, `ideas` tetap menulis dan
    mengembalikan `tanpa_blueprint: true` (keputusan §6), bukan menolak.
-5. `calendar_fill`, lalu `remix`.
+5. `calendar_fill`, lalu `remix`. — **`calendar_fill` selesai 2026-11-18**,
+   diimplementasikan sebagai perluasan `plan`, bukan kind baru: wizard
+   "Rencanakan sebulan dengan AI" di Rencana (§5.2) menghitung tanggal kosong
+   (lewat hari istirahat dan tanggal yang sudah berisi konten) dan
+   mengirimnya sebagai `dates` bersama `days_off`/`occupied_dates`; server
+   menyaring ulang, meminta satu ide per tanggal dengan `funnel_stage`
+   mengikuti ritme blueprint (tanpa rasio bawaan), lalu menempelkan
+   tanggalnya sendiri. Bentuk lama (`weeks`/`per_week` saja) tetap dilayani.
+   Label tujuan tampil di kalender dan kartu papan, dan bisa diganti di kartu.
+   **`remix` selesai 2026-11-18** sebagai kind baru di `write`: transkrip
+   tempel 100–4.000 karakter + `content_item_id` (topik bawaan = judul ide),
+   satu panggilan `chat()` yang menulis `structure_notes` (pola, bukan
+   kalimat) lalu naskah baru dengan bentuk `draft` yang sama dengan `script`.
+   Di layar ia lipatan "Remix dari video yang kamu suka" di langkah pembuka
+   Naskah (`src/brand.jsx`), bukan tab terpisah seperti tabel §3.3.
 6. Berkas statis hook/glosarium + `referensi.jsx`.
 7. Laporan: tambah pivot per `funnel_stage` di `reports.jsx`, urut
    berdasarkan follower baru. — **Selesai 2026-11-18**: kartu "Per pilar & tujuan" (pivot
@@ -429,6 +446,8 @@ belum punya jalur transkripsi (§3.4).
 
 **Angka yang harus diputuskan pemilik:** tidak ada. Batas panjang transkrip
 yang diterima adalah batas teknis (`maxTokens`), bukan kebijakan.
+
+**Selesai 2026-11-18:** `write/remix` + lipatan "Remix dari video yang kamu suka" di Naskah — tempel teks, bukan link (§3.6 langkah 5).
 
 ### 4.4 Testimoni berupa gambar
 
@@ -632,6 +651,10 @@ yang mengisinya. Planner tidak punya tombol menuju video.
    terisi, laporan bisa menunjukkan biaya per ide dan, lewat link pendek +
    `post_metrics`, pilar/tujuan mana yang menambah follower. Butuh kolom
    funnel baru (belum ada di mana pun; grep "funnel"/"corong" kosong).
+   *Celah yang ketemu saat mengerjakan ini:* RPC `short_link_stats` dan
+   `post_metrics_latest` (sumber data Laporan) tidak memeriksa keanggotaan —
+   pengguna yang login bisa membaca angka workspace lain. Ditutup oleh
+   migrasi `0061_stats_rpc_member_check.sql` (**belum diterapkan**, manual).
 
 ### Yang sengaja tidak ditautkan
 

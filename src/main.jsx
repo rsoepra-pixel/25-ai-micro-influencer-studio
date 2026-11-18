@@ -740,7 +740,7 @@ function App() {
               apa pun, dan di bawah daftar menu ia tenggelam — terutama saat
               "Semua menu" terbuka dan daftarnya jadi dua belas baris. */}
           <a href="#/mulai" className={`nav ${routePath === "/mulai" ? "active" : ""}`} style={{ marginBottom: 6 }}
-            data-tip="Satu halaman: tiga langkah, kapan uang keluar, apa yang perlu disiapkan." data-tip-side="right">💡 Cara mulai</a>
+            data-tip="Satu halaman: empat langkah, kapan uang keluar, apa yang perlu disiapkan." data-tip-side="right">💡 Cara mulai</a>
           {(menuLengkap ? NAV : NAV_RINGKAS).map(([href, label, tip]) => (
             <a key={href} href={`#${href}`} className={`nav ${routePath === href ? "active" : ""}`}
               data-tip={tip} data-tip-side="right">{label}</a>

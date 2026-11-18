@@ -168,9 +168,12 @@ function tambah({ slug, judul, isi, tags }) {
     .map(([j, k]) => `- **${j}** — ${k}`);
   if (langkah.length && biaya.length && siap.length) {
     tambah({
+      // Slug tetap "tiga-langkah" walau kini empat langkah: "Isi dari
+      // dokumen bawaan" menyegarkan artikel per slug, jadi slug baru akan
+      // menambah artikel kedua dan yang lama (3 langkah) tetap hidup.
       slug: "cara-mulai-tiga-langkah",
-      judul: "Cara mulai — 3 langkah video pertama",
-      isi: `Video pertama dalam ± 15 menit.\n\n${langkah.join("\n")}\n\n` +
+      judul: "Cara mulai — 4 langkah video pertama",
+      isi: `Video pertama dalam ± 25–30 menit; langkah 1 dan 2 cukup sekali.\n\n${langkah.join("\n")}\n\n` +
         `Kapan uang keluar (dari yang gratis ke yang paling mahal; angka pastinya tampil di tiap tombol):\n${biaya.join("\n")}\n\n` +
         `Siapkan dulu:\n${siap.join("\n")}\n\n` +
         `Tidak ada yang otomatis bayar: semua yang berbayar menyebut harganya di tombolnya dan tidak jalan sebelum ditekan.`,

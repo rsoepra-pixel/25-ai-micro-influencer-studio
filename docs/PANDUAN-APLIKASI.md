@@ -135,7 +135,7 @@ tanpa membuka lima halaman. Isinya ringkasan, bukan tempat bekerja.
 
 **Mulai dari sini.** Selama workspace belum lengkap, kartu paling atas berisi
 enam langkah awal: buat influencer, tambah foto Identity Kit, siapkan suara,
-jawab 12 pertanyaan arah konten, simpan produk, dan buat video pertama. Tiap langkah dicentang **otomatis dari
+jawab 12 pertanyaan Arah Konten, simpan produk, dan buat video pertama. Tiap langkah dicentang **otomatis dari
 datanya**, bukan manual, dan kartunya hilang sendiri begitu semuanya beres.
 Langkah keenam yang dulu ada, "hubungkan akun sosial", dihapus 16 Nov 2026
 bersama koneksi sosialnya (lihat [Koneksi](#koneksi)) — tanpa itu kartunya
@@ -164,18 +164,30 @@ menghapus media di sini **permanen** — sama seperti di halaman Drive. Lihat
 ## 💡 Cara mulai
 
 **Untuk apa.** Satu halaman infografis untuk orang yang baru pertama kali
-membuka aplikasi: tiga langkah (Profil saya → Buat Video → Tonton & bagikan),
-garis "kapan uang keluar" dari yang gratis sampai yang paling mahal, daftar
-"siapkan dulu", dan "kalau bingung". Ada di sidebar (💡 Cara mulai, paling atas di kedua
+membuka aplikasi: empat langkah (Arah Konten → Profil saya → Buat Video →
+Tonton & bagikan), garis "kapan uang keluar" dari yang gratis sampai yang
+paling mahal, daftar "siapkan dulu", dan "kalau bingung". Subjudulnya
+menjanjikan video pertama dalam ± 25–30 menit — jumlah keempat perkiraan
+waktunya — dan langkah 1 dan 2 cukup sekali. Ada di sidebar (💡 Cara mulai, paling atas di kedua
 susunan menu), di kartu Mulai dari sini, dan di `#/mulai`. Tombol **Cetak**
 menyimpannya sebagai PDF satu halaman; sidebar dan tooltip disembunyikan saat
-dicetak.
+dicetak. Di layar lebar keempat kartu sebaris (juga di lembar cetak), di
+layar sedang 2×2, di ponsel satu kolom.
+
+**Kenapa Arah Konten pertama.** Ide dan naskah datang sebelum video, bukan
+sesudahnya: tanpa itu orang tiba di Buat Video tanpa tahu mau bicara apa.
+Blueprint yang disusun di sana juga dibaca sendiri oleh setiap penulis AI
+sesudahnya, jadi semua hasil berikutnya spesifik untuk orangnya. Naskah dari
+Arah Konten langsung terisi di Buat Video lewat tombol **🎬 Buat videonya →**,
+dan langkah 4 menutup lingkarannya: angka yang dicatat di Rencana membuat
+Laporan tahu ide mana yang menambah follower.
 
 **Yang perlu diketahui.** Halaman ini **sengaja tidak menulis angka harga**,
 hanya urutan besarannya (gratis / kecil / paling besar). Tarif berubah dan
 halaman ini dibaca berbulan-bulan; angka pastinya tampil di tombol
 masing-masing, dihitung dari katalog hari itu. Satu-satunya pengecualian:
-biaya penulis AI disebut di tooltip batang "menulis naskah", karena dihitung
+biaya penulis AI disebut di tooltip batang "Menyusun blueprint, ide &
+naskah", karena dihitung
 langsung dari tarif yang berlaku.
 
 ### Cara mulai lewat Claude
@@ -305,6 +317,17 @@ muncul di atas dan pilihannya ikut ke Buat Video dan Profil saya.
    sesuai tujuan. Pembuka, isi, ajakan, dan **caption** (kartu terpisah —
    dibaca, bukan dibacakan) bisa diubah; perkiraan "± N detik" ikut berubah.
    **Simpan** menulis ke konten yang sama yang dibaca Rencana.
+
+   **Remix dari video yang kamu suka** (lipatan di bawah Pilih pembuka) —
+   tempel transkrip atau tulis garis besar video orang lain: pembukanya
+   bilang apa, isinya urut bagaimana, ajakannya apa. Tempel **teksnya, bukan
+   link**: aplikasi tidak mengunduh video dari TikTok/IG (caption/transkrip
+   TikTok dan YouTube bisa disalin). Penulis AI membaca **polanya**, lalu
+   menulis pembuka, naskah, dan caption baru untuk ide ini dengan gaya
+   bicaramu — kalimat aslinya tidak dipakai. Pola yang dibaca tampil sebagai
+   "Pola yang diambil" di atas naskah; sisanya (ubah, Simpan, Buat videonya)
+   sama dengan naskah biasa. Minimal beberapa kalimat, maksimal 4.000 huruf;
+   biayanya sama dengan menulis satu naskah.
 7. **Serah-terima** — di bawah naskah: **🗓️ Lihat di Rencana** (menjadwalkan)
    dan **🎬 Buat videonya →**, yang membuka Buat Video dengan naskah ini
    sudah terisi (perubahan yang belum disimpan disimpan dulu). Arah Konten
@@ -318,7 +341,7 @@ di Rencana (lihat [Laporan](#-laporan)) untuk menyalin views dan follower baru
 dari aplikasi TikTok/IG setelah videonya tayang.
 
 **Yang memakai uang.** "Susun blueprint", "Susun ulang", "10 ide", "Beri 5
-pembuka", dan "Tulis naskahnya" (penulis AI, harganya tertulis di tombol).
+pembuka", "Tulis naskahnya", dan "Tulis ulang dengan polanya" (penulis AI, harganya tertulis di tombol).
 Menjawab pertanyaan, mengubah blueprint atau naskah, menyimpan ide, dan
 menerapkan pilar gratis.
 
@@ -328,8 +351,8 @@ Buat Video, Video UGC, Storyboard (termasuk "Buat versi lain"), dan Rencana
 yang dihindari, dan pilar. Tidak ada langkah tambahan; influencer tanpa
 blueprint tetap ditulis seperti sebelumnya.
 
-**Yang belum ada.** "Isi 30 hari" ke kalender, remix dari transkrip, dan
-pustaka hook statis.
+**Yang belum ada.** Pustaka hook statis. (Mengisi sebulan ke kalender ada di
+Rencana — lihat [Rencanakan sebulan dengan AI](#-rencanakan-sebulan-dengan-ai).)
 
 ---
 
@@ -725,7 +748,29 @@ bukan dijalankan manusia. Tulis caption pendek sendiri, jangan salin script.
 
 Memberi brief sekali, lalu AI menyusun jadwal beberapa minggu ke depan. Kamu
 memilih ide mana yang disimpan ke papan. **Memanggil provider teks, memotong
-saldo.**
+saldo** — sekali per susunan; isinya hanya ide dan hook, naskah ditulis nanti
+per ide.
+
+- **Hanya tanggal yang masih kosong yang diisi; yang sudah ada tidak
+  disentuh.** Periodenya dihitung mulai hari ini (blok 7 hari). Konten yang
+  sudah terjadwal untuk influencer yang sama ikut dihitung dalam frekuensi:
+  4× per minggu dengan satu konten yang sudah ada berarti 3 ide baru minggu
+  itu. Jadi menekan tombol ini dua kali tidak menggandakan jadwal. Tanpa
+  influencer, semua konten di workspace dihitung.
+- **Hari istirahat** — centang hari yang tidak boleh diisi (bawaannya tidak
+  ada yang dicentang). Kalau hari yang biasa dipakai frekuensi itu jatuh di
+  hari istirahat atau sudah terisi, dipakai hari lain yang kosong di minggu
+  yang sama. Layar menyebut berapa tanggal kosong yang akan diisi sebelum kamu
+  menekan apa pun; kalau tidak ada, tombolnya mati dan saldo tidak terpotong.
+- **Ritme tujuan** — kalau blueprint influencer di
+  [Arah Konten](#-arah-konten) punya ritme Kenalan · Percaya · Beli, wizard
+  menampilkannya ("Ritme dari Arah Konten: 3 Kenalan · 2 Percaya · 1 Beli per
+  minggu") dan AI membagi tujuan ide tiap minggu dengan perbandingan itu.
+  Tanpa ritme, AI yang menimbang campurannya. Tujuan tiap ide bisa diganti di
+  tabel sebelum disimpan.
+
+Pertanyaan "boleh menimpa tanggal yang sudah terisi atau tidak" belum
+diputuskan; sampai diputuskan, jawabannya tidak.
 
 ### ✨ Tulis dengan AI (per ide)
 
@@ -737,6 +782,11 @@ disimpan. **Memanggil provider teks, memotong saldo.**
 - **🗂 Papan** — kolom per status (ide, script, produksi, review, terjadwal,
   published).
 - **📅 Kalender** — konten pada tanggal jadwalnya.
+
+Di kedua tampilan, konten yang punya tujuan diberi label kecil **Kenalan**,
+**Percaya**, atau **Beli** — label dan warnanya sama dengan di Arah Konten.
+Di kartu papan, tujuan bisa diganti lewat pilihan **Tujuan** di bawah status;
+Laporan "Per pilar & tujuan" membaca nilai yang sama.
 
 ### 📤 Publish ke sosial
 
