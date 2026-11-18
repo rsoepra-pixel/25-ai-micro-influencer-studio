@@ -1,6 +1,16 @@
 // Cara mulai: satu layar, bentuk infografis, untuk orang yang baru pertama
-// kali membuka aplikasi. Tiga langkah, kapan uang keluar, dan apa yang perlu
+// kali membuka aplikasi. Empat langkah, kapan uang keluar, dan apa yang perlu
 // disiapkan — tanpa istilah teknis, dan setiap bagian punya ⓘ.
+//
+// Arah Konten jadi langkah PERTAMA (Nov 2026), di depan Profil saya. Dulu
+// halaman ini mulai dari wajah dan suara, lalu langsung ke video — dan orang
+// sampai di Buat Video tanpa tahu mau bicara apa, lalu menulis "promosi
+// keripik" seadanya. Ide dan naskah datang sebelum video, bukan sesudahnya;
+// dan blueprint yang disusun di sana dibaca sendiri oleh setiap penulis AI
+// berikutnya (Buat Video, UGC, Storyboard, Rencana), jadi semua hasil sesudah
+// langkah 1 jadi spesifik untuk orangnya, bukan generik. Halaman tetap harus
+// muat satu lembar cetak: empat kartu sebaris di layar lebar, 2×2 di layar
+// sedang (aturan .langkah di index.html), poin tetap tiga per kartu.
 //
 // Sengaja tidak menulis angka harga: tarif berubah, dan halaman ini akan
 // dibaca berbulan-bulan. Yang ditulis adalah URUTAN besarannya (mana yang
@@ -13,24 +23,40 @@ import { biayaNaskahLabel } from "./harga.js";
 
 const LANGKAH = [
   {
-    n: 1, judul: "Isi Profil saya", href: "#/profil", warna: "var(--brand)", soft: "var(--brand-soft)",
+    // Pil waktunya untuk langkah pertama kali: 12 pertanyaan (± 8 menit,
+    // sama dengan yang tertulis di halaman Arah Konten) ditambah memilih satu
+    // ide dan menulis naskahnya. Blueprint cukup sekali; ide dan naskah
+    // diulang tiap video, tapi itu hitungan detik setelah blueprint ada.
+    n: 1, judul: "Arah Konten", href: "#/arah", warna: "var(--orange)", soft: "var(--orange-soft)",
+    poin: ["jawab 12 pertanyaan tentang kamu & daganganmu", "dapat blueprint: untuk siapa, pilar, gaya bicara", "pilih 1 ide, tulis naskahnya"],
+    waktu: "± 10 menit, sekali saja",
+    tip: "Blueprint disusun sekali dan dibaca semua penulis AI sesudahnya, jadi ide dan naskahmu tidak generik. Setiap pertanyaan boleh dijawab 'Belum tahu'. Menyusun blueprint, ide, dan naskah memakai saldo kecil; harganya tertulis di tombolnya.",
+  },
+  {
+    n: 2, judul: "Isi Profil saya", href: "#/profil", warna: "var(--brand)", soft: "var(--brand-soft)",
     poin: ["1–4 foto wajahmu", "rekam suara 10–30 detik", "pilih bahasa"],
     waktu: "± 5 menit, sekali saja",
     tip: "Tiga hal yang dipakai di semua video: wajah, suara, bahasa. Diisi sekali; video berikutnya tinggal pakai.",
   },
   {
-    n: 2, judul: "Buat Video", href: "#/buat-video", warna: "var(--blue)", soft: "var(--blue-soft)",
-    poin: ["pilih: bicara ke kamera / cerita", "ceritakan videonya", "pilih durasi, baca naskah, lihat harga"],
+    // "Langsung terisi" hanya lewat tombol 🎬 Buat videonya → di bawah naskah
+    // Arah Konten (membawa ?item=); tooltip-nya menyebut itu supaya orang yang
+    // masuk dari menu tidak mencari naskahnya.
+    n: 3, judul: "Buat Video", href: "#/buat-video", warna: "var(--blue)", soft: "var(--blue-soft)",
+    poin: ["pilih: bicara ke kamera / cerita", "naskah dari Arah Konten langsung terisi", "pilih durasi, lihat harga"],
     waktu: "± 3 menit",
-    tip: "Empat pertanyaan. Harga total tampil sebelum kamu menekan 'Ya'. Tidak ada yang dibayar sebelum itu.",
+    tip: "Tekan '🎬 Buat videonya →' di bawah naskahmu di Arah Konten: naskahnya langsung terisi. Tanpa naskah, ceritakan videonya dan penulis AI menuliskannya. Harga total tampil sebelum kamu menekan 'Ya'. Tidak ada yang dibayar sebelum itu.",
   },
   {
-    n: 3, judul: "Tonton & bagikan", href: "#/drive", warna: "var(--ok)", soft: "var(--ok-soft)",
+    n: 4, judul: "Tonton & bagikan", href: "#/drive", warna: "var(--ok)", soft: "var(--ok-soft)",
     // Bukan "posting dari Rencana": koneksi akun sosial dimatikan sejak 16 Nov
     // 2026 (KONEKSI_SOSIAL_AKTIF di views.jsx), jadi videonya diunggah sendiri.
-    poin: ["gambar pertama kamu lihat dulu", "lalu suara dan video dibuat", "unduh di Karya, unggah dari galeri ke IG/TikTok"],
+    // Poin ketiga menutup lingkarannya ke langkah 1: angka yang dicatat
+    // membuat Laporan bisa menjawab ide mana yang menambah follower, dan itu
+    // yang dipakai saat memilih ide berikutnya.
+    poin: ["gambar dulu kamu lihat, lalu suara & video", "unduh di Karya, unggah dari galeri ke IG/TikTok", "catat angkanya di Rencana → Laporan tahu ide mana yang nambah follower"],
     waktu: "± 5–10 menit menunggu",
-    tip: "Produksi berjalan di layar yang terbuka setelah 'Ya'. Bagian termurah (gambar) dibuat dulu dan kamu setujui sebelum bagian termahal (video) dibayar.",
+    tip: "Produksi berjalan di layar yang terbuka setelah 'Ya'. Bagian termurah (gambar) dibuat dulu dan kamu setujui sebelum bagian termahal (video) dibayar. Setelah tayang, salin views dan follower baru dari aplikasi TikTok/IG lewat 📈 Catat angka.",
   },
 ];
 
@@ -38,13 +64,17 @@ const LANGKAH = [
 // bukan angka — lihat catatan di atas.
 const BIAYA = [
   { nama: "Foto & rekam suara", lebar: 0, label: "gratis", tip: "Menyimpan foto dan meniru suaramu tidak memotong saldo." },
-  { nama: "Membaca wajah & menulis naskah", lebar: 6, label: "kecil", tip: `Penulis AI, ditagih per naskah${biayaNaskahLabel() ? ` (sekarang${biayaNaskahLabel()})` : ""}. Angkanya selalu tertulis di tombolnya.` },
+  { nama: "Membaca wajah dari foto", lebar: 6, label: "kecil", tip: "Penulis AI membaca foto wajahmu sekali, di Profil saya, supaya wajahnya tetap sama di setiap video." },
+  { nama: "Menyusun blueprint, ide & naskah", lebar: 6, label: "kecil", tip: `Penulis AI, ditagih per pekerjaan: blueprint, satu daftar ide, atau satu naskah${biayaNaskahLabel() ? ` (satu naskah sekarang${biayaNaskahLabel()})` : ""}. Angkanya selalu tertulis di tombolnya.` },
   { nama: "Gambar pertama", lebar: 10, label: "kecil", tip: "Satu gambar diam. Kalau kurang pas, ulangi yang ini — jauh lebih murah daripada mengulang video." },
   { nama: "Suaramu membaca naskah", lebar: 8, label: "kecil", tip: "Berkas suara, bisa didengarkan dulu sebelum video dibuat." },
   { nama: "Video", lebar: 100, label: "paling besar", tip: "Bagian termahal, dibayar terakhir, setelah gambar dan suaranya kamu setujui. Ditagih per detik yang dihasilkan." },
 ];
 
 const SIAP = [
+  // "± 8 menit", bukan lebih pendek: angka yang sama dengan di halaman Arah
+  // Konten dan kartu Mulai dari sini.
+  ["🧠", "± 8 menit untuk 12 pertanyaan", "Tentang kamu dan daganganmu. Setiap pertanyaan boleh dijawab 'Belum tahu'."],
   ["📷", "Foto wajah yang jelas", "Tanpa kacamata hitam, tanpa filter, cahaya cukup. Depan dan samping lebih bagus."],
   ["🤫", "Tempat sunyi 1 menit", "Untuk merekam suara: tanpa musik, tanpa orang lain bicara."],
   ["📦", "Foto kemasan asli", "Untuk video 'bicara ke kamera'. Tanpa foto asli, kemasannya dikarang mesin."],
@@ -56,14 +86,16 @@ export function Mulai() {
     <div style={{ maxWidth: 860 }} className="mulai">
       <div className="row mb1" style={{ justifyContent: "space-between", alignItems: "flex-end", flexWrap: "wrap", gap: 8 }}>
         <div>
-          <h1 style={{ fontSize: 26, fontWeight: 800 }}>Cara mulai — 3 langkah</h1>
-          <p className="muted small mt1">Video pertamamu dalam ± 15 menit. Kalau ragu di mana pun, cari ikon <span className="info-tip" style={{ cursor: "default" }}>i</span>.</p>
+          <h1 style={{ fontSize: 26, fontWeight: 800 }}>Cara mulai — 4 langkah</h1>
+          <p className="muted small mt1">Video pertamamu dalam ± 25–30 menit; langkah 1 dan 2 cukup sekali. Kalau ragu di mana pun, cari ikon <span className="info-tip" style={{ cursor: "default" }}>i</span>.</p>
         </div>
         <button type="button" className="btn btn2 tiny" onClick={() => window.print()} data-tip="Cetak atau simpan sebagai PDF, satu halaman.">🖨 Cetak</button>
       </div>
 
-      {/* Tiga langkah */}
-      <div className="grid mb4" style={{ gridTemplateColumns: "repeat(auto-fit,minmax(220px,1fr))", gap: 12, marginTop: 14 }}>
+      {/* Empat langkah — kolomnya diatur .mulai .langkah di index.html
+          (4 sebaris / 2×2 / satu kolom), bukan auto-fit: auto-fit memberi
+          3 + 1 di lebar tanggung. */}
+      <div className="grid mb4 langkah" style={{ gap: 12, marginTop: 14 }}>
         {LANGKAH.map((l, i) => (
           <a key={l.n} href={l.href} className="card p4" data-tip={l.tip}
             style={{ position: "relative", borderTop: `4px solid ${l.warna}`, textDecoration: "none", color: "var(--text)" }}>
@@ -103,7 +135,7 @@ export function Mulai() {
 
         {/* Siapkan dulu */}
         <div className="card p4">
-          <div className="bold mb1">Siapkan dulu<Info tip="Empat hal yang membuat langkah 1 dan 2 lancar sekali jalan. Tidak ada yang harus sempurna; foto dan suara bisa diganti kapan saja." /></div>
+          <div className="bold mb1">Siapkan dulu<Info tip="Lima hal yang membuat langkah 1 sampai 3 lancar sekali jalan. Tidak ada yang harus sempurna; jawaban, foto, dan suara bisa diganti kapan saja." /></div>
           <p className="tiny muted mb3">Supaya tidak bolak-balik.</p>
           {SIAP.map(([ikon, judul, ket]) => (
             <div key={judul} className="row mb2" style={{ gap: 10, alignItems: "flex-start" }} data-tip={ket}>
@@ -120,15 +152,20 @@ export function Mulai() {
       {/* Kalau bingung */}
       <div className="card p4" style={{ background: "var(--subtle)" }}>
         <div className="bold mb2">Kalau bingung</div>
-        <div className="grid" style={{ gridTemplateColumns: "repeat(auto-fit,minmax(200px,1fr))", gap: 10 }}>
+        {/* minmax 150, bukan 200: lima kolom muat sebaris di layar lebar,
+            jadi baris ini tidak menambah tinggi halaman cetak. */}
+        <div className="grid" style={{ gridTemplateColumns: "repeat(auto-fit,minmax(150px,1fr))", gap: 10 }}>
           {[
+            ["Nggak tahu mau bikin konten apa?", "Buka 🧭 Arah Konten → Blueprint: 12 pertanyaan, lalu ide yang cocok untukmu.", "#/arah", "Buka Arah Konten →",
+              "Blueprint menjawab untuk siapa kontenmu dan apa pilarnya; ide dan naskah disusun dari situ."],
             ["ⓘ di setiap isian", "Ketuk ikonnya: ia menjelaskan isian itu apa, dan apa yang terjadi kalau ditekan."],
             ["Menu ringkas dulu", "Tujuh menu di kiri sudah cukup untuk video pertama. 'Semua menu' di bawahnya membuka pengaturan lengkap."],
             ["Tidak ada yang otomatis bayar", "Semua yang berbayar menyebut harganya di tombolnya, dan tidak jalan sebelum kamu menekannya."],
-            ["Lebih suka ngobrol?", "Kamu bisa memerintah lewat chat Claude, dengan konfirmasi harga sebelum apa pun dibuat.", "#/mulai-claude", "Cara mulai lewat Claude →"],
-          ].map(([j, k, href, cta]) => (
+            ["Lebih suka ngobrol?", "Kamu bisa memerintah lewat chat Claude, dengan konfirmasi harga sebelum apa pun dibuat.", "#/mulai-claude", "Cara mulai lewat Claude →",
+              "Satu halaman: empat langkah penyambungan dan kalimat pertama yang bisa disalin."],
+          ].map(([j, k, href, cta, tip]) => (
             <div key={j}><div className="small bold">{j}</div><div className="tiny muted">{k}</div>
-              {href && <a href={href} className="tiny" style={{ color: "var(--brand-strong)", fontWeight: 700 }} data-tip="Satu halaman: empat langkah penyambungan dan kalimat pertama yang bisa disalin.">{cta}</a>}</div>
+              {href && <a href={href} className="tiny" style={{ color: "var(--brand-strong)", fontWeight: 700 }} data-tip={tip}>{cta}</a>}</div>
           ))}
         </div>
       </div>
@@ -185,7 +222,7 @@ export function MulaiClaude() {
           <p className="muted small mt1">Kalau kamu lebih nyaman mengetik seperti di WhatsApp. Penyambungan dilakukan sekali, sekitar 10 menit — minta bantuan kalau perlu. Sesudah itu kamu mengobrol sendiri.</p>
         </div>
         <div className="row" style={{ gap: 6 }}>
-          <a className="btn btn2 tiny" href="#/mulai" data-tip="Versi aplikasi: tiga langkah tanpa connector.">← Lewat aplikasi</a>
+          <a className="btn btn2 tiny" href="#/mulai" data-tip="Versi aplikasi: empat langkah tanpa connector.">← Lewat aplikasi</a>
           <button type="button" className="btn btn2 tiny" onClick={() => window.print()} data-tip="Cetak atau simpan sebagai PDF, satu halaman.">🖨 Cetak</button>
         </div>
       </div>

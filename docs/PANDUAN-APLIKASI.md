@@ -135,7 +135,7 @@ tanpa membuka lima halaman. Isinya ringkasan, bukan tempat bekerja.
 
 **Mulai dari sini.** Selama workspace belum lengkap, kartu paling atas berisi
 enam langkah awal: buat influencer, tambah foto Identity Kit, siapkan suara,
-jawab 12 pertanyaan arah konten, simpan produk, dan buat video pertama. Tiap langkah dicentang **otomatis dari
+jawab 12 pertanyaan Arah Konten, simpan produk, dan buat video pertama. Tiap langkah dicentang **otomatis dari
 datanya**, bukan manual, dan kartunya hilang sendiri begitu semuanya beres.
 Langkah keenam yang dulu ada, "hubungkan akun sosial", dihapus 16 Nov 2026
 bersama koneksi sosialnya (lihat [Koneksi](#koneksi)) — tanpa itu kartunya
@@ -164,18 +164,30 @@ menghapus media di sini **permanen** — sama seperti di halaman Drive. Lihat
 ## 💡 Cara mulai
 
 **Untuk apa.** Satu halaman infografis untuk orang yang baru pertama kali
-membuka aplikasi: tiga langkah (Profil saya → Buat Video → Tonton & bagikan),
-garis "kapan uang keluar" dari yang gratis sampai yang paling mahal, daftar
-"siapkan dulu", dan "kalau bingung". Ada di sidebar (💡 Cara mulai, paling atas di kedua
+membuka aplikasi: empat langkah (Arah Konten → Profil saya → Buat Video →
+Tonton & bagikan), garis "kapan uang keluar" dari yang gratis sampai yang
+paling mahal, daftar "siapkan dulu", dan "kalau bingung". Subjudulnya
+menjanjikan video pertama dalam ± 25–30 menit — jumlah keempat perkiraan
+waktunya — dan langkah 1 dan 2 cukup sekali. Ada di sidebar (💡 Cara mulai, paling atas di kedua
 susunan menu), di kartu Mulai dari sini, dan di `#/mulai`. Tombol **Cetak**
 menyimpannya sebagai PDF satu halaman; sidebar dan tooltip disembunyikan saat
-dicetak.
+dicetak. Di layar lebar keempat kartu sebaris (juga di lembar cetak), di
+layar sedang 2×2, di ponsel satu kolom.
+
+**Kenapa Arah Konten pertama.** Ide dan naskah datang sebelum video, bukan
+sesudahnya: tanpa itu orang tiba di Buat Video tanpa tahu mau bicara apa.
+Blueprint yang disusun di sana juga dibaca sendiri oleh setiap penulis AI
+sesudahnya, jadi semua hasil berikutnya spesifik untuk orangnya. Naskah dari
+Arah Konten langsung terisi di Buat Video lewat tombol **🎬 Buat videonya →**,
+dan langkah 4 menutup lingkarannya: angka yang dicatat di Rencana membuat
+Laporan tahu ide mana yang menambah follower.
 
 **Yang perlu diketahui.** Halaman ini **sengaja tidak menulis angka harga**,
 hanya urutan besarannya (gratis / kecil / paling besar). Tarif berubah dan
 halaman ini dibaca berbulan-bulan; angka pastinya tampil di tombol
 masing-masing, dihitung dari katalog hari itu. Satu-satunya pengecualian:
-biaya penulis AI disebut di tooltip batang "menulis naskah", karena dihitung
+biaya penulis AI disebut di tooltip batang "Menyusun blueprint, ide &
+naskah", karena dihitung
 langsung dari tarif yang berlaku.
 
 ### Cara mulai lewat Claude

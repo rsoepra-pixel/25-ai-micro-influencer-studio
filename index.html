@@ -73,6 +73,15 @@
       .avatar{border-radius:999px;background:var(--brand-soft);color:var(--brand-strong);font-weight:700;display:flex;align-items:center;justify-content:center;overflow:hidden}
       .avatar img{width:100%;height:100%;object-fit:cover}
       @media print{.sidebar,.tip-layer,.bar-atas,.tab-bawah,.bantuan-fab,.bantuan-panel,.mulai .btn{display:none!important}.mulai{max-width:none!important}.mulai .panah{display:none}.mulai .cetak-saja{display:block!important}body{background:#fff}}
+      /* Cara mulai: empat kartu langkah. Container query, bukan media
+         query, karena lebar yang menentukan adalah isi halaman (sesudah
+         sidebar), bukan layar: 4 sebaris kalau muat (termasuk lembar cetak
+         A4), 2×2 kalau tidak — tidak pernah 3 + 1. Di 2×2 panah kartu ke-2
+         menunjuk ke tepi kosong, jadi disembunyikan. Ponsel: blok
+         max-width:767px di bawah menjadikannya satu kolom. */
+      .mulai{container-type:inline-size}
+      .mulai .langkah{grid-template-columns:repeat(4,minmax(0,1fr))}
+      @container (max-width:679px){.mulai .langkah{grid-template-columns:repeat(2,minmax(0,1fr))}.mulai .langkah>:nth-child(2) .panah{display:none}}
       .sidebar a.nav{display:flex;align-items:center;gap:10px;border-radius:10px;padding:9px 12px;font-weight:500;color:var(--ink-2)}
       .sidebar a.nav:hover{background:var(--brand-soft);color:var(--brand-strong)}
       /* Halaman aktif ditandai dua hal sekaligus — warna DAN garis tepi —
@@ -147,6 +156,7 @@
         .bantuan-fab{bottom:calc(76px + env(safe-area-inset-bottom));right:16px}
         .bantuan-panel{left:0;right:0;bottom:0;width:auto;height:80vh;max-height:80vh;border-radius:16px 16px 0 0;padding-bottom:env(safe-area-inset-bottom)}
         .bantuan-form textarea{font-size:16px}
+        .mulai .panah{display:none}
       }
     </style>
   </head>
