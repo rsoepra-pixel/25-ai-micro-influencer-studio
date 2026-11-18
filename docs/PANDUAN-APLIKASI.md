@@ -239,8 +239,10 @@ isiannya dihapus begitu proyek berhasil dibuat.
 ide dan profil dari konten itu; kalau naskahnya sudah ada, wizard langsung ke
 **Tinjau** dengan naskah itu (menulis ulang tetap bisa, memakai saldo), dan
 video yang dibuat tercatat untuk ide tersebut — proyek Video UGC-nya
-menampilkan tautan "Dari ide: … →". Produk, foto wajah, dan suara yang belum
-siap disebut di Tinjau, dan tombol "Ya" menunggu sampai lengkap.
+menampilkan tautan "Dari ide: … →". Kalau workspace hanya punya satu produk,
+produk itu langsung dipilih; kalau ada beberapa (atau foto wajah/suara belum
+siap), wizard berhenti dulu di **Siapa**, dan "Lanjut" dari sana langsung ke
+Tinjau tanpa langkah Berapa lama.
 
 Sesudah "Ya", wizard menyimpan proyek yang **sama persis** dengan yang dibuat
 formulir Video UGC atau Storyboard dan membuka alur produksinya

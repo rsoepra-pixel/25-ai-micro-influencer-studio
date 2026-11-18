@@ -24,7 +24,12 @@
 // lewat `submit` dan videonya bisa ditelusuri balik ke idenya. Kalau konten
 // itu sudah punya naskah, naskahnya langsung dipakai di langkah Tinjau —
 // menulis ulang tetap tersedia, tapi tidak dipaksa: naskah itu sudah dibayar
-// dan sudah disetujui orangnya.
+// dan sudah disetujui orangnya. Tinjau hanya dibuka langsung kalau tidak ada
+// penghalang; kalau masih ada (biasanya produk belum dipilih — Arah Konten
+// tidak tahu produk), orangnya mendarat di Siapa dan "Lanjut" dari sana
+// melompati Berapa lama, karena durasinya sudah ditentukan naskah itu.
+// Uji ponsel Nov 2026: mendarat di Tinjau dengan tombol Ya mati butuh empat
+// ketukan untuk keluar, dan chip langkahnya mengaku "✓ Siapa".
 import React, { useEffect, useMemo, useState } from "react";
 import { supa, callGenerate } from "./supa.js";
 import { useQuery, unwrap, Badge, byPrice, downscaleToDataUri } from "./views.jsx";
@@ -98,7 +103,8 @@ export function perkiraanUsd(jenis, md, { seconds, chars = 0, shots = [] }) {
 // langkah Berapa lama tidak menghitung 15 detik untuk naskah 25 detik.
 // Naskah tersimpan di content_items → bentuk draf UGC yang sama dengan
 // balasan penulis AI (kind "ugc"), supaya langkah Tinjau tidak perlu tahu
-// asalnya. `dariItem` hanya untuk kalimat penjelas di layar.
+// asalnya. `dariItem` + `itemId` di draf: kalimat penjelas di layar, dan
+// penanda bahwa draf di state sudah naskah konten ITU (lihat pakaiNaskahItem).
 const draftDariItem = (it) => ({ script: String(it.script || "").trim(), caption: it.caption || "", hashtags: it.hashtags || [] });
 const detikUntuk = (script) => PILIHAN_DETIK.find((s) => s >= estSeconds(script)) || PILIHAN_DETIK[PILIHAN_DETIK.length - 1];
 
@@ -146,6 +152,10 @@ export function BuatVideo({ ws, refresh, tick, spend, support, query }) {
   const [tagar, setTagar] = useState("");
   const [busy, setBusy] = useState(null);
   const [err, setErr] = useState(null);
+  // Datang dari Arah Konten dengan naskah: langkah tujuan (Siapa atau Tinjau)
+  // baru bisa diputuskan setelah penghalang bisa dihitung — lihat efek
+  // `arahkan` di bawah penghalang.
+  const [arahkan, setArahkan] = useState(false);
 
   useEffect(() => {
     // Wizard yang belum disentuh tidak ditulis: kunci kosong lebih jujur
@@ -188,27 +198,35 @@ export function BuatVideo({ ws, refresh, tick, spend, support, query }) {
         try { localStorage.setItem(KUNCI_PROFIL, data.influencer_id); } catch { /* abaikan */ }
       }
       if (String(data.script || "").trim()) {
-        setDraft({ ugc: draftDariItem(data), dariItem: true });
+        setDraft({ ugc: draftDariItem(data), dariItem: true, itemId: data.id });
         setTagar((data.hashtags || []).join(", "));
         setDetik(detikUntuk(data.script));
-        setLangkah("tinjau");
+        // Siapa dulu, bukan Tinjau: produk, foto, dan suara belum diketahui.
+        setLangkah("siapa");
+        setArahkan(true);
       }
     })();
     return () => { batal = true; };
   }, [itemId]); // eslint-disable-line
 
   const naskahItem = item && String(item.script || "").trim() ? item : null;
+  // Draf naskah konten yang sama yang masih di state TIDAK dimuat ulang dari
+  // baris database: orangnya mungkin sudah mengedit naskah/caption/tagar di
+  // Tinjau lalu mundur ke sini, dan memuat ulang menghapus suntingan itu tanpa
+  // tanda. Dimuat ulang hanya kalau belum ada draf atau drafnya milik lain.
   function pakaiNaskahItem() {
     setJenis("ugc");
-    setDraft({ ugc: draftDariItem(naskahItem), dariItem: true });
-    setTagar((naskahItem.hashtags || []).join(", "));
+    if (!(draft?.dariItem && draft.itemId === naskahItem.id)) {
+      setDraft({ ugc: draftDariItem(naskahItem), dariItem: true, itemId: naskahItem.id });
+      setTagar((naskahItem.hashtags || []).join(", "));
+    }
     setLangkah("tinjau");
   }
 
   function mulaiBaru() {
     hapusDraf(ws.id);
     setDipulihkan(false);
-    setItemId(""); setItem(null); setItemTerpasang("");
+    setItemId(""); setItem(null); setItemTerpasang(""); setArahkan(false);
     setLangkah("apa"); setJenis("ugc"); setIde(""); setPola("masalah_produk_hasil"); setGaya(GAYA_BAWAAN);
     setDetik(15); setProductId(""); setFoto([]); setDraft(null); setTagar(""); setErr(null);
   }
@@ -220,12 +238,16 @@ export function BuatVideo({ ws, refresh, tick, spend, support, query }) {
   const [products, reloadProducts] = useProducts(ws, tick);
   const inf = (influencers || []).find((i) => i.id === infId) || (influencers || [])[0] || null;
   useEffect(() => { if (inf && inf.id !== infId) setInfId(inf.id); }, [inf?.id]); // eslint-disable-line
-  const [refCount] = useQuery(async () => {
-    if (!inf) return 0;
+  // Hitungan foto dibawa bersama id profilnya: saat profil berganti, angka
+  // profil lama masih ada satu render sebelum dimuat ulang, dan keputusan
+  // `arahkan` tidak boleh memakai angka itu.
+  const [refHasil] = useQuery(async () => {
+    if (!inf) return { untuk: null, n: 0 };
     const { count } = await supa.from("character_assets").select("id", { count: "exact", head: true })
       .eq("influencer_id", inf.id).eq("kind", "reference");
-    return count || 0;
+    return { untuk: inf.id, n: count || 0 };
   }, [inf?.id, tick]);
+  const refCount = refHasil ? refHasil.n : null;
   const product = (products || []).find((p) => p.id === productId) || null;
   // Produk dari isian yang dipulihkan bisa sudah dihapus sejak itu. Tanpa
   // pengecekan ini pemilihnya tampak kosong tapi penghalang "pilih produk"
@@ -330,6 +352,21 @@ export function BuatVideo({ ws, refresh, tick, spend, support, query }) {
   if (jenis === "ugc" && (!md.imgModel || !md.avatarModel)) penghalang.push({ text: "Model gambar atau model video bicara belum aktif di katalog. Hubungi operator." });
   if (jenis === "storyboard" && !md.videoModel) penghalang.push({ text: "Model video beberapa adegan belum aktif di katalog. Hubungi operator." });
 
+  // Keputusan mendarat untuk naskah dari Arah Konten. Diambil sekali, saat
+  // semua yang dibaca penghalang sudah termuat — sebelum itu daftar
+  // penghalang kosong karena datanya belum ada, bukan karena siap.
+  const penghalangTermuat = !!(models && influencers && products && refHasil && refHasil.untuk === (inf?.id || null));
+  useEffect(() => {
+    if (!arahkan || !penghalangTermuat) return;
+    // Satu-satunya produk = tidak ada yang perlu ditanyakan.
+    if (jenis === "ugc" && !productId && products.length === 1) { setProductId(products[0].id); return; }
+    setArahkan(false);
+    if (langkah === "siapa" && draft?.dariItem && penghalang.length === 0) setLangkah("tinjau");
+  }, [arahkan, penghalangTermuat, productId]); // eslint-disable-line
+  // Naskah konten ini sudah ada di state → "Lanjut" dari Siapa langsung ke
+  // Tinjau; durasinya dipilih di Arah Konten, jadi Berapa lama tidak perlu.
+  const naskahSiap = !!(draft?.dariItem && itemId && draft.itemId === itemId && jenis === "ugc");
+
   async function susun() {
     setErr(null); setDraft(null);
     try {
@@ -409,6 +446,10 @@ export function BuatVideo({ ws, refresh, tick, spend, support, query }) {
 
   const idx = LANGKAH.findIndex((l) => l.key === langkah);
   const bisaLanjut = langkah === "apa" ? ide.trim().length > 3 : langkah === "siapa" ? penghalang.length === 0 : true;
+  // ✓ hanya untuk langkah yang benar-benar beres. Posisi saja tidak cukup:
+  // datang dari Arah Konten bisa melompati Siapa, dan "✓ Siapa" di samping
+  // tombol Ya yang mati karena produk belum dipilih itu bohong.
+  const lewat = (l, i) => i < idx && !(l.key === "siapa" && penghalang.length > 0);
 
   return (
     <div style={{ maxWidth: 720 }}>
@@ -437,11 +478,11 @@ export function BuatVideo({ ws, refresh, tick, spend, support, query }) {
       <div className="row mb4" style={{ gap: 6, flexWrap: "wrap" }}>
         {LANGKAH.map((l, i) => (
           <button key={l.key} type="button" disabled={i > idx} onClick={() => setLangkah(l.key)} data-tip={l.tip}
-            style={{ border: `1px solid ${i === idx ? "var(--brand)" : i < idx ? "var(--ok-line)" : "var(--border)"}`,
-              background: i === idx ? "var(--brand-soft)" : i < idx ? "var(--ok-soft)" : "var(--card)",
-              color: i === idx ? "var(--brand-strong)" : i < idx ? "var(--ok)" : "var(--ink-3)",
+            style={{ border: `1px solid ${i === idx ? "var(--brand)" : lewat(l, i) ? "var(--ok-line)" : "var(--border)"}`,
+              background: i === idx ? "var(--brand-soft)" : lewat(l, i) ? "var(--ok-soft)" : "var(--card)",
+              color: i === idx ? "var(--brand-strong)" : lewat(l, i) ? "var(--ok)" : "var(--ink-3)",
               borderRadius: 999, padding: "6px 12px", fontSize: 12, fontWeight: 700, cursor: i > idx ? "default" : "pointer" }}>
-            {i < idx ? "✓ " : `${i + 1}. `}{l.label}
+            {lewat(l, i) ? "✓ " : `${i + 1}. `}{l.label}
           </button>
         ))}
       </div>
@@ -571,10 +612,15 @@ export function BuatVideo({ ws, refresh, tick, spend, support, query }) {
               <span>{b.text}</span>{b.href && <a className="btn btn2 tiny" href={b.href}>{b.cta} →</a>}
             </div>
           ))}
+          {naskahSiap && !arahkan && (
+            <p className="tiny muted mb2">{productId
+              ? "Naskah dari Arah Konten sudah siap; Lanjut membawamu langsung ke Tinjau."
+              : "Naskah dari Arah Konten sudah siap; tinggal pilih produknya."}</p>
+          )}
           <div className="row mt2" style={{ gap: 8 }}>
             <button type="button" className="btn btn2" onClick={() => setLangkah("apa")} data-tip="Ubah jenis video atau ceritanya. Pilihanmu di sini tetap tersimpan.">← Kembali</button>
-            <button type="button" className="btn" disabled={!bisaLanjut} onClick={() => setLangkah("panjang")}
-              data-tip={bisaLanjut ? "Ke langkah Berapa lama." : "Selesaikan dulu yang ditandai di atas."}>Lanjut →</button>
+            <button type="button" className="btn" disabled={!bisaLanjut} onClick={() => setLangkah(naskahSiap ? "tinjau" : "panjang")}
+              data-tip={!bisaLanjut ? "Selesaikan dulu yang ditandai di atas." : naskahSiap ? "Ke Tinjau & harga dengan naskah dari Arah Konten." : "Ke langkah Berapa lama."}>Lanjut →</button>
           </div>
           {/* Terlihat, bukan hanya di tooltip — alasan yang sama dengan langkah "Apa". */}
           {!bisaLanjut && <p className="tiny muted mt1">Selesaikan dulu yang ditandai di atas.</p>}
@@ -673,9 +719,10 @@ export function BuatVideo({ ws, refresh, tick, spend, support, query }) {
             </>
           )}
           <Rincian jenis={jenis} md={md} detik={jenis === "ugc" ? estSeconds(draft.ugc.script) : fit.total} shots={fit.each} />
-          {/* Datang dari Arah Konten dengan naskah jadi berarti langkah Siapa
-              dilompati — produk, foto wajah, dan suara belum diperiksa. Yang
-              kurang disebut di sini, dan tombol Ya ditahan sampai lengkap. */}
+          {/* Datang dari Arah Konten hanya melompati Siapa kalau saat itu tidak
+              ada penghalang, tapi penghalang bisa muncul sesudahnya (foto
+              wajah dihapus di tab lain, profil diganti). Yang kurang disebut
+              di sini, dan tombol Ya ditahan sampai lengkap. */}
           {penghalang.length > 0 && (
             <div className="mb3">
               {penghalang.map((b, i) => (
