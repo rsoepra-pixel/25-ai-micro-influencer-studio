@@ -313,7 +313,9 @@ muncul di atas dan pilihannya ikut ke Buat Video dan Profil saya.
 Ide dan naskah dari halaman ini adalah konten yang sama dengan di **Rencana**
 — muncul di papan dan kalender Rencana, dan naskah yang ditulis di Rencana
 juga terbuka di sini. Kartu "🎙️ Naskah siap baca" di halaman depan
-menampilkan naskah terbaru.
+menampilkan naskah terbaru. Di bawah tiap judulnya ada **📈 Catat angka** — form yang sama dengan
+di Rencana (lihat [Laporan](#-laporan)) untuk menyalin views dan follower baru
+dari aplikasi TikTok/IG setelah videonya tayang.
 
 **Yang memakai uang.** "Susun blueprint", "Susun ulang", "10 ide", "Beri 5
 pembuka", dan "Tulis naskahnya" (penulis AI, harganya tertulis di tombol).
@@ -791,6 +793,43 @@ Bisa disaring per periode: **Bulan ini · 30 hari · 90 hari · Semua**.
 biaya aktual kalau sudah tercatat dan estimasi kalau belum. Job yang gagal tetap
 bisa memakan uang di sisi provider, jadi angka di sini adalah biaya **hasil**,
 bukan seluruh pengeluaran.
+
+**Kartu "Per pilar & tujuan"** (di bawah grafik, ikut filter periode) menjawab
+*pilar dan tujuan mana yang benar-benar menambah pengikut, dan berapa biaya
+tiap ide.* Isinya konten periode itu yang punya pilar atau tujuan:
+
+- **Tabel per pilar** dan **tabel per tujuan** (Kenalan · Percaya · Beli),
+  masing-masing dengan kolom: jumlah konten · **biaya** (job produksi yang
+  terhubung ke ide itu, dalam satuan yang sama dengan kartu biaya di atas;
+  "—" kalau tidak ada) · **klik** link pendek · **views** · **follower baru**.
+- Diurutkan berdasarkan **follower baru**, bukan views — yang ditonton banyak
+  tapi tidak menambah pengikut adalah dua hal berbeda.
+- **Ide dengan follower baru terbanyak** — lima teratas, judulnya membuka Arah
+  Konten.
+
+Tiga jenis angka, tiga sifat yang berbeda:
+
+| Angka | Dari mana | Kalau kosong |
+|---|---|---|
+| Biaya | Job produksi yang dibuat dari Arah Konten/Rencana (membawa id idenya) | "—": tidak ada job terhubung. Video yang dibuat tanpa lewat ide tidak ikut. |
+| Klik | Link pendek, **otomatis** (bot pratinjau WhatsApp dsb. disaring) | 0 berarti benar-benar nol — atau kontennya belum diberi link pendek |
+| Views, follower baru | **Kamu salin sendiri** lewat 📈 Catat angka | "belum dicatat" — **bukan 0**. Jumlahnya hanya dari konten yang tercatat, dan di bawahnya tertulis "n dari m tercatat" |
+
+**Mencatat angka.** Aplikasi tidak lagi memposting ke akun sosial, jadi angka
+dari TikTok/IG tidak masuk sendiri. Tekan **📈 Catat angka** di kartu
+**Published** di Rencana, atau di daftar **Naskah siap baca** di Arah Konten,
+lalu salin dari aplikasinya: views, likes, komentar, share, simpan, follower
+baru, dan (opsional) link post-nya. Yang perlu diingat:
+
+- **Kosongkan yang belum kamu tahu.** Kolom kosong disimpan sebagai "belum
+  dicatat"; isi **0** hanya kalau aplikasinya memang menunjukkan 0.
+- Angka abu-abu di kolom adalah **catatan terakhir**, bukan isian. Ketik ulang
+  kalau ingin mencatatnya lagi hari ini.
+- Satu catatan per konten per platform **per hari**. Mencatat lagi di hari
+  yang sama menggabung: kolom yang kamu isi menggantikan, yang kosong tetap.
+  Hari berikutnya jadi catatan baru, dan Laporan memakai yang terakhir.
+- Angka ditulis utuh (1200 atau 1.200), bukan "1,2rb".
+- Gratis — tidak memakai saldo.
 
 ---
 

@@ -1,8 +1,9 @@
 import React, { useState } from "react";
-import { supa, TYPE_LABELS } from "./supa.js";
+import { supa, TYPE_LABELS, callLinks, callMetrics } from "./supa.js";
 import { hargaLabel } from "./harga.js";
 import { unwrap, useQuery } from "./views.jsx";
 import { Info } from "./tips.jsx";
+import { angkaPerKonten, ringkasKelompok, urutFollower } from "./angka-post.js";
 
 // Warna chart tervalidasi (kontras & colorblind-safe di atas kartu putih):
 // biru = seri utama, biru muda = tahap "belum published" (ramp satu hue),
@@ -166,13 +167,202 @@ function CadenceChart({ weeks }) {
   );
 }
 
+// ---------- Per pilar & tujuan (SPEK-TOOLS-KREATOR §2 U8, §3.6 langkah 7) ----------
+//
+// Pertanyaan yang dijawab: pilar dan tujuan mana yang benar-benar menambah
+// pengikut, dan berapa biaya tiap ide. Diurutkan berdasarkan follower baru,
+// BUKAN views — yang ditonton banyak tapi tidak membuat orang menekan follow
+// adalah konten yang menarik ditonton, bukan alasan untuk diikuti.
+//
+// Tiga sumber, tiga sifat angka yang berbeda — dan perbedaannya ditampilkan,
+// bukan diratakan:
+//   biaya  — production_jobs.cost_actual_usd lewat content_item_id. Hanya video
+//            yang dibuat dari Arah Konten/Rencana yang membawa id idenya; yang
+//            lain tidak ikut (bukan nol, tidak terhubung).
+//   klik   — link pendek, dicatat otomatis. 0 di sini nol sungguhan.
+//   views & follower baru — disalin tangan lewat "Catat angka" (post_metrics).
+//            null = belum dicatat, dan tidak pernah dijumlahkan sebagai 0.
+//
+// Angka performa diambil dari action `list` function metrics (= RPC
+// post_metrics_latest: baris terakhir per post), sumber yang sama dengan
+// get_post_metrics di MCP, supaya Laporan dan agen tidak pernah berselisih.
+const TUJUAN_LAPORAN = [["tofu", "Kenalan"], ["mofu", "Percaya"], ["bofu", "Beli"]];
+const labelTujuanLaporan = (v) => (TUJUAN_LAPORAN.find(([k]) => k === v) || [])[1] || "";
+const TIP_BIAYA_IDE = "Biaya produksi job yang terhubung ke ide ini. Video yang dibuat tanpa lewat Arah Konten/Rencana tidak punya ide dan tidak ikut.";
+const TIP_KLIK_IDE = "Klik manusia di link pendek yang dibuat untuk konten ini, dihitung otomatis (bot pratinjau WhatsApp dan sejenisnya tidak ikut). 0 berarti benar-benar belum ada yang mengklik — atau kontennya belum diberi link pendek.";
+const TIP_ANGKA_IDE = "Disalin tangan lewat tombol Catat angka, catatan terakhir per post. Yang belum dicatat tidak dihitung sebagai 0 — lihat berapa yang tercatat di bawah angkanya.";
+const BATCH_ID = 150;
+const fmtAngka = (n) => Number(n).toLocaleString("id-ID");
+
+function SelAngka({ v, n, m }) {
+  return (
+    <td style={{ fontVariantNumeric: "tabular-nums" }}>
+      {v == null ? <span className="muted">belum dicatat</span> : fmtAngka(v)}
+      {m > 0 && <div className="tiny muted">{n} dari {m} tercatat</div>}
+    </td>
+  );
+}
+
+function TabelKelompok({ head, rows }) {
+  return (
+    <div style={{ overflowX: "auto" }}>
+      <table>
+        <thead>
+          <tr>
+            <th>{head}</th>
+            <th>Konten</th>
+            <th>Biaya<Info tip={TIP_BIAYA_IDE} /></th>
+            <th>Klik<Info tip={TIP_KLIK_IDE} /></th>
+            <th>Views<Info tip={TIP_ANGKA_IDE} /></th>
+            <th>Follower baru<Info tip={TIP_ANGKA_IDE} /></th>
+          </tr>
+        </thead>
+        <tbody>
+          {rows.map((r) => (
+            <tr key={r.key}>
+              <td className="small">
+                {r.swatch && <span style={{ display: "inline-block", width: 8, height: 8, borderRadius: 99, background: r.swatch, marginRight: 6 }} />}
+                {r.label}
+              </td>
+              <td style={{ fontVariantNumeric: "tabular-nums" }}>{r.n}</td>
+              <td style={{ fontVariantNumeric: "tabular-nums" }}>{r.biaya == null ? <span className="muted">—</span> : hargaLabel(r.biaya)}</td>
+              <td style={{ fontVariantNumeric: "tabular-nums" }}>{r.klikErr ? <span className="muted">—</span> : fmtAngka(r.klik)}</td>
+              <SelAngka v={r.views} n={r.nViews} m={r.n} />
+              <SelAngka v={r.follows} n={r.nFollows} m={r.n} />
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
+function PerPilarTujuan({ ws, tick, items, pillars }) {
+  // Hanya konten yang punya pilar ATAU tujuan; sisanya tidak bisa menjawab
+  // pertanyaan kartu ini dan hanya akan menambah baris "tanpa keduanya".
+  const ide = items.filter((it) => it.pillar_id || it.funnel_stage);
+  const ids = ide.map((it) => it.id);
+  const idsKey = ids.join(",");
+
+  const [src, , error] = useQuery(async () => {
+    if (!ids.length) return { biaya: {}, klik: {}, angka: {} };
+    // Satu select per 150 id (biasanya cuma satu): `.in()` dikirim lewat URL,
+    // dan ribuan uuid sekaligus bisa melewati batas panjangnya.
+    const batches = [];
+    for (let i = 0; i < ids.length; i += BATCH_ID) {
+      batches.push(supa.from("production_jobs").select("content_item_id,cost_actual_usd")
+        .eq("workspace_id", ws.id).in("content_item_id", ids.slice(i, i + BATCH_ID))
+        .not("cost_actual_usd", "is", null));
+    }
+    // Link dan metrik lewat edge function, bukan .from(): short_links,
+    // link_clicks, dan post_metrics sengaja tanpa policy RLS untuk browser.
+    // allSettled supaya satu sumber yang gagal tidak menghapus dua lainnya.
+    const [jobsRes, linksRes, metricsRes] = await Promise.allSettled([
+      Promise.all(batches), callLinks({ action: "list" }), callMetrics({ action: "list" }),
+    ]);
+    if (jobsRes.status === "rejected") throw jobsRes.reason;
+    const biaya = {};
+    for (const r of jobsRes.value) {
+      for (const j of unwrap(r)) biaya[j.content_item_id] = (biaya[j.content_item_id] || 0) + Number(j.cost_actual_usd);
+    }
+    const klik = {};
+    if (linksRes.status === "fulfilled") {
+      for (const l of linksRes.value.links || []) {
+        if (l.content_item_id) klik[l.content_item_id] = (klik[l.content_item_id] || 0) + Number(l.clicks || 0);
+      }
+    }
+    return {
+      biaya, klik,
+      angka: metricsRes.status === "fulfilled" ? angkaPerKonten(metricsRes.value.posts) : {},
+      klikErr: linksRes.status === "rejected" ? linksRes.reason?.message || "gagal" : null,
+      angkaErr: metricsRes.status === "rejected" ? metricsRes.reason?.message || "gagal" : null,
+    };
+  }, [ws.id, tick, idsKey]);
+
+  const pilarById = Object.fromEntries(pillars.map((p) => [p.id, p]));
+
+  let isi;
+  if (!ide.length) {
+    isi = <div className="small muted">Belum ada konten dengan pilar atau tujuan di periode ini. Ide dari <a href="#/arah">Arah Konten</a> otomatis membawa keduanya.</div>;
+  } else if (error) {
+    isi = <div className="msg-err">Gagal memuat: {error}</div>;
+  } else if (!src) {
+    isi = <div className="small muted">Memuat…</div>;
+  } else {
+    const kelompok = (keyFn, labelFn) => {
+      const g = {};
+      for (const it of ide) (g[keyFn(it)] ||= []).push(it);
+      return Object.entries(g).map(([key, its]) => ({ key, ...labelFn(key), ...ringkasKelompok(its, src), klikErr: !!src.klikErr }))
+        .sort(urutFollower);
+    };
+    const perPilar = kelompok((it) => it.pillar_id || "none", (k) => k === "none"
+      ? { label: "Tanpa pilar" }
+      : { label: pilarById[k]?.name || "Pilar terhapus", swatch: pilarById[k]?.color });
+    const perTujuan = kelompok((it) => it.funnel_stage || "none", (k) => ({ label: labelTujuanLaporan(k) || "Tujuan belum ditentukan" }));
+
+    const teratas = ide
+      .map((it) => ({ it, follows: src.angka[it.id]?.follows ?? null }))
+      .filter((x) => x.follows != null)
+      .sort(urutFollower)
+      .slice(0, 5);
+
+    isi = (
+      <>
+        {src.angkaErr && <div className="msg-warn tiny mb2">Angka views dan follower baru belum bisa dimuat ({src.angkaErr}); kolomnya tampil "belum dicatat" sampai halaman dimuat ulang.</div>}
+        {src.klikErr && <div className="msg-warn tiny mb2">Klik link pendek belum bisa dimuat ({src.klikErr}).</div>}
+        <TabelKelompok head="Pilar" rows={perPilar} />
+        <p className="tiny muted mt2">Urut berdasarkan follower baru, bukan views — yang ditonton banyak tapi tidak menambah pengikut adalah dua hal berbeda.</p>
+
+        <div className="bold small mt4 mb2">Per tujuan</div>
+        <TabelKelompok head="Tujuan" rows={perTujuan} />
+
+        <div className="bold small mt4 mb2">Ide dengan follower baru terbanyak</div>
+        {teratas.length ? (
+          <div style={{ overflowX: "auto" }}>
+            <table>
+              <thead><tr><th>Ide</th><th>Pilar</th><th>Tujuan</th><th>Follower baru</th><th>Biaya<Info tip={TIP_BIAYA_IDE} /></th></tr></thead>
+              <tbody>
+                {teratas.map(({ it, follows }) => (
+                  <tr key={it.id}>
+                    <td className="small"><a href="#/arah" style={{ color: "var(--blue-strong)", fontWeight: 600 }}>{it.title}</a></td>
+                    <td className="small">{pilarById[it.pillar_id]?.name || <span className="muted">—</span>}</td>
+                    <td className="small">{labelTujuanLaporan(it.funnel_stage) || <span className="muted">—</span>}</td>
+                    <td style={{ fontVariantNumeric: "tabular-nums" }}>{fmtAngka(follows)}</td>
+                    <td style={{ fontVariantNumeric: "tabular-nums" }}>{src.biaya[it.id] == null ? <span className="muted">—</span> : hargaLabel(src.biaya[it.id])}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        ) : (
+          <div className="small muted">
+            Belum ada ide dengan follower baru tercatat di periode ini. Salin angkanya dari aplikasi TikTok/IG lewat
+            📈 <b>Catat angka</b> — di kartu Published di <a href="#/planner">Rencana</a>, atau di Naskah siap baca di <a href="#/arah">Arah Konten</a>.
+          </div>
+        )}
+      </>
+    );
+  }
+
+  return (
+    <div className="card p6 mb4">
+      <div className="bold">Per pilar & tujuan</div>
+      <p className="tiny muted mb3">
+        Pilar dan tujuan (Kenalan · Percaya · Beli) mana yang menambah pengikut, dan berapa biaya tiap ide. Klik tercatat
+        otomatis; views dan follower baru kamu salin sendiri lewat 📈 Catat angka.
+      </p>
+      {isi}
+    </div>
+  );
+}
+
 export function Reports({ ws, tick }) {
   const [period, setPeriod] = useState("30");
   const [d, , error] = useQuery(async () => {
     const [inf, pillars, items, jobs, pubs] = await Promise.all([
       supa.from("influencers").select("id,name"),
       supa.from("content_pillars").select("id,name,color,target_ratio"),
-      supa.from("content_items").select("id,title,status,scheduled_date,created_at,pillar_id,influencer_id,platform").limit(1000),
+      supa.from("content_items").select("id,title,status,scheduled_date,created_at,pillar_id,funnel_stage,influencer_id,platform").limit(1000),
       supa.from("production_jobs").select("id,task,status,cost_actual_usd,cost_estimate_usd,influencer_id,created_at").limit(1000),
       supa.from("publish_jobs").select("id,platform,status,created_at,external_post_id").limit(1000),
     ]);
@@ -314,6 +504,8 @@ export function Reports({ ws, tick }) {
               </div>
             </div>
           </div>
+
+          <PerPilarTujuan ws={ws} tick={tick} items={pItems} pillars={d.pillars} />
         </>
       )}
     </div>

@@ -6,6 +6,7 @@ import { supa, callGenerate, callSocial, callCalendar, callApp, callLinks, callM
 import { recordBadge, recordSentence, byEffectivePrice, estimateFor, nextTierUp } from "./routing.js";
 import { Info, TIP_PENULIS_AI, TIP_BERBAYAR } from "./tips.jsx";
 import { hargaLabel, biayaNaskahLabel } from "./harga.js";
+import { CatatAngka } from "./catat-angka.jsx";
 
 const linkBtn = { background: "none", border: "none", padding: 0, cursor: "pointer", fontWeight: 700, fontSize: 11 };
 
@@ -3369,6 +3370,10 @@ export function Planner({ ws, refresh, tick }) {
                         onClick={() => setPublishOpenId(c.id)}>📤 Publish ke sosial</button>
                     )
                   )}
+                  {/* Hanya untuk yang sudah tayang: sebelum itu tidak ada angka
+                      untuk disalin. Statusnya diubah tangan lewat pemilih di
+                      atas, karena posting dilakukan orangnya sendiri. */}
+                  {c.status === "published" && <CatatAngka item={c} />}
                 </div>
               ))}
             </div>

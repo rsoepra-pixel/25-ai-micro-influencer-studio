@@ -25,6 +25,7 @@ import { WORDS_PER_SEC } from "./ugc.jsx";
 import { Info, TIP_PENULIS_AI } from "./tips.jsx";
 import { biayaNaskahLabel } from "./harga.js";
 import { TombolIsiSaldo, rupiahkanPesan } from "./bantuan.jsx";
+import { CatatAngka } from "./catat-angka.jsx";
 
 // Sama dengan buat-video.jsx dan profil.jsx: influencer yang dipilih di satu
 // halaman ikut terpilih di halaman lain.
@@ -279,11 +280,18 @@ function Depan({ ws, inf, row, items, onMulai, onLihat, onIde, onNaskah }) {
               <>
                 <div className="tiny mt2" style={{ color: "var(--ok)", fontWeight: 700 }}>✓ {naskah.length} naskah</div>
                 <div className="mt2" style={{ display: "grid", gap: 4 }}>
+                  {/* Catat angka di sini juga, bukan hanya di Rencana: orang yang
+                      bekerja dari Arah Konten tidak pernah menggeser kartu ke
+                      "Published", dan tanpa tombol di sini ide-idenya tidak
+                      pernah punya angka untuk Laporan "Per pilar & tujuan". */}
                   {naskah.slice(0, 5).map((i) => (
-                    <button key={i.id} type="button" onClick={() => onNaskah(i.id)} className="small"
-                      style={{ textAlign: "left", background: "none", border: 0, padding: 0, cursor: "pointer", color: "var(--brand-strong)", fontWeight: 600 }}>
-                      {i.title} →
-                    </button>
+                    <div key={i.id}>
+                      <button type="button" onClick={() => onNaskah(i.id)} className="small"
+                        style={{ textAlign: "left", background: "none", border: 0, padding: 0, cursor: "pointer", color: "var(--brand-strong)", fontWeight: 600 }}>
+                        {i.title} →
+                      </button>
+                      <CatatAngka item={i} />
+                    </div>
                   ))}
                 </div>
                 {naskah.length > 5 && <div className="tiny muted mt1">Sisanya ada di Ide (bertanda ✓ naskah) dan di Rencana.</div>}

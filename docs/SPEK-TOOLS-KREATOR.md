@@ -307,7 +307,10 @@ Semua tombol yang memanggil AI memakai pola tooltip biaya yang sudah ada di
 5. `calendar_fill`, lalu `remix`.
 6. Berkas statis hook/glosarium + `referensi.jsx`.
 7. Laporan: tambah pivot per `funnel_stage` di `reports.jsx`, urut
-   berdasarkan follower baru.
+   berdasarkan follower baru. — **Selesai 2026-11-18**: kartu "Per pilar & tujuan" (pivot
+   pilar dan tujuan, biaya per ide lewat `production_jobs.content_item_id`,
+   klik lewat `short_links`, views/follower baru dari `post_metrics`), dengan
+   form isian manual "Catat angka" (§4.5).
 
 Tiap langkah bisa di-merge sendiri; langkah 1–3 sudah memberi alur
 "15 menit" yang dijanjikan halaman aslinya.
@@ -477,6 +480,11 @@ ke platform.
   (`src/bagikan.jsx`), jadi jalur itu praktis kosong. Baris "Performa post →
   `metrics` function" di tabel §3.1 perlu dibaca dengan catatan ini.
 - **Bagian baru:** form isian manual per post yang menulis ke `post_metrics`.
+  *Sudah ada sejak 2026-11-18:* `src/catat-angka.jsx` (tombol "📈 Catat angka"
+  di kartu Published Rencana dan di Naskah siap baca Arah Konten), menulis
+  lewat action `record` di `metrics/index.ts` tanpa migrasi — baris manual
+  dikenali dari `external_post_id` berawalan `manual:`, `publish_job_id`
+  kosong, dan `raw.source = "manual"`; `list` mengembalikan `source`.
   Field yang kosong disimpan `null`, bukan 0, mengikuti aturan di
   `metrics/index.ts`. Laporannya menambah pivot `funnel_stage` di
   `reports.jsx`, diurutkan berdasarkan `follows` (§3.6 langkah 7).
@@ -619,7 +627,7 @@ yang mengisinya. Planner tidak punya tombol menuju video.
 3. **Tautan balik dari video ke idenya.** *Selesai 2026-11-18 untuk Video UGC ("Dari ide: … →" di layar proyek); Karya/Drive belum (butuh satu kueri per baris).* Storyboard sudah punya
    "Ke planner →" (`storyboard.jsx:1404`); UGC dan Karya belum. Hanya berguna
    setelah no. 2 mengisi id.
-4. **Laporan per pilar dan tujuan.** `reports.jsx` membaca job tanpa
+4. **Laporan per pilar dan tujuan.** *Selesai 2026-11-18: kartu "Per pilar & tujuan" di `reports.jsx` plus form "Catat angka" (§4.5). Kolom funnel sudah ada sejak 0060 (`content_items.funnel_stage`).* `reports.jsx` membaca job tanpa
    `content_item_id` dan hanya menghitung item per pilar. Dengan rantai
    terisi, laporan bisa menunjukkan biaya per ide dan, lewat link pendek +
    `post_metrics`, pilar/tujuan mana yang menambah follower. Butuh kolom

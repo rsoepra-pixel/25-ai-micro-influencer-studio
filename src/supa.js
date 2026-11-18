@@ -111,6 +111,27 @@ export async function callLinks(body) {
   return json;
 }
 
+/** Panggil edge function `metrics` (performa post: list, item, record). Tabel
+ *  post_metrics tidak punya policy RLS untuk browser — angka performa yang bisa
+ *  ditulis langsung dari browser berhenti jadi pengukuran — jadi baca dan
+ *  tulisnya lewat function yang memeriksa workspace. */
+export async function callMetrics(body) {
+  const { data: sess } = await supa.auth.getSession();
+  const token = sess?.session?.access_token;
+  const res = await fetch(`${SUPABASE_URL}/functions/v1/metrics`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${token}`,
+      apikey: ANON_KEY,
+    },
+    body: JSON.stringify(body),
+  });
+  const json = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error(json.error || `Error ${res.status}`);
+  return json;
+}
+
 /** Daftar akun via edge function `app` (auto-confirm email, tanpa perlu klik
  *  link konfirmasi), lalu caller tinggal signInWithPassword. */
 export async function signupConfirmed(email, password) {
