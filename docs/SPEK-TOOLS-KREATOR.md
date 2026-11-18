@@ -296,7 +296,9 @@ Semua tombol yang memanggil AI memakai pola tooltip biaya yang sudah ada di
 2. `write/blueprint` + helper `blueprintKeSystem`; uji lewat MCP dengan satu
    influencer uji.
 3. `src/brand.jsx` wizard + editor.
-4. Perluas `ideas`/`script` membaca blueprint; tambah `hooks`.
+4. Perluas `ideas`/`script` membaca blueprint; tambah `hooks`. — **Pembacaan
+   blueprint selesai 2026-11-18** (`ideas`, `script`, `ugc`, `storyboard`,
+   `plan`, `variant` lewat `blokBlueprint`); `hooks` belum.
 5. `calendar_fill`, lalu `remix`.
 6. Berkas statis hook/glosarium + `referensi.jsx`.
 7. Laporan: tambah pivot per `funnel_stage` di `reports.jsx`, urut
@@ -594,7 +596,7 @@ yang mengisinya. Planner tidak punya tombol menuju video.
 
 ### Yang jelas berguna
 
-1. **Blueprint masuk ke semua prompt naskah** (paling kuat, tanpa UI baru).
+1. **Blueprint masuk ke semua prompt naskah** (paling kuat, tanpa UI baru). *Selesai 2026-11-18: `blokBlueprint()` dibaca oleh script, ideas, ugc, storyboard, plan, variant.*
    Kind `script`, `ugc`, `storyboard`, `plan` kini hanya menyuntik nama,
    niche, `persona.bio`, dan bahasa (`generate/index.ts` ~1946, 1561, 1395,
    1745). Satu helper bersama yang menambahkan audiens, gaya bicara, kata
