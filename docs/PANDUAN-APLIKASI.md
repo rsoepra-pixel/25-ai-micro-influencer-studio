@@ -235,6 +235,13 @@ ceritamu. Saat kembali muncul baris "Melanjutkan isian terakhirmu · Mulai
 baru". Foto untuk jalur cerita dan naskah dari penulis AI tidak ikut diingat;
 isiannya dihapus begitu proyek berhasil dibuat.
 
+**Datang dari Arah Konten.** "🎬 Buat videonya →" membuka wizard ini dengan
+ide dan profil dari konten itu; kalau naskahnya sudah ada, wizard langsung ke
+**Tinjau** dengan naskah itu (menulis ulang tetap bisa, memakai saldo), dan
+video yang dibuat tercatat untuk ide tersebut — proyek Video UGC-nya
+menampilkan tautan "Dari ide: … →". Produk, foto wajah, dan suara yang belum
+siap disebut di Tinjau, dan tombol "Ya" menunggu sampai lengkap.
+
 Sesudah "Ya", wizard menyimpan proyek yang **sama persis** dengan yang dibuat
 formulir Video UGC atau Storyboard dan membuka alur produksinya
 (`#/ugc?project=…` atau `#/storyboard?board=…`). Gambar pertama tetap dibuat
@@ -279,9 +286,37 @@ ada tombol di sini yang membuat gambar, suara, atau video.
 Blueprint disimpan **per influencer**; kalau ada lebih dari satu, pemilihnya
 muncul di atas dan pilihannya ikut ke Buat Video dan Profil saya.
 
-**Yang memakai uang.** Hanya "Susun blueprint" dan "Susun ulang" (penulis AI,
-sama seperti naskah). Menjawab pertanyaan, mengubah blueprint, dan menerapkan
-pilar gratis.
+5. **Ide konten** — kartu "💡 Ide konten" membuka daftar ide. Saring per
+   **Pilar** (dari blueprint dan Content Pillars) dan **Tujuan** (Kenalan ·
+   Percaya · Beli), lalu tekan **10 ide**: tiap usulan punya judul kerja,
+   pilar, tujuan, dan satu kalimat kenapa audiensmu peduli. Usulan belum
+   tersimpan — pilih **Simpan** per ide atau **Simpan semua**, yang tidak
+   cocok tinggal dihapus. Pilar yang belum ada di Rencana ikut dibuat. Tanpa
+   filter, tujuan dibagi mengikuti ritme di blueprint; judul yang sudah
+   tersimpan tidak diulang. Belum mengisi 12 pertanyaan? Ide tetap ditulis
+   dari profilmu, dengan catatan bahwa hasilnya masih umum.
+6. **Naskah** — "Tulis naskah →" di sebuah ide. Pertama **Pilih pembuka**: 5
+   kalimat pembuka dari jenis berbeda (Cerita, Pertanyaan, Angka, Kontras,
+   Pengakuan, Janji), atau tulis sendiri. Lalu pilih durasi (10/15/20/30
+   detik) dan **Tulis naskahnya**: pembuka dipakai persis, diikuti isi yang
+   ditulis untuk didengar (kalimat pendek, "..." untuk jeda) dan ajakan yang
+   sesuai tujuan. Pembuka, isi, ajakan, dan **caption** (kartu terpisah —
+   dibaca, bukan dibacakan) bisa diubah; perkiraan "± N detik" ikut berubah.
+   **Simpan** menulis ke konten yang sama yang dibaca Rencana.
+7. **Serah-terima** — di bawah naskah: **🗓️ Lihat di Rencana** (menjadwalkan)
+   dan **🎬 Buat videonya →**, yang membuka Buat Video dengan naskah ini
+   sudah terisi (perubahan yang belum disimpan disimpan dulu). Arah Konten
+   berhenti di naskah.
+
+Ide dan naskah dari halaman ini adalah konten yang sama dengan di **Rencana**
+— muncul di papan dan kalender Rencana, dan naskah yang ditulis di Rencana
+juga terbuka di sini. Kartu "🎙️ Naskah siap baca" di halaman depan
+menampilkan naskah terbaru.
+
+**Yang memakai uang.** "Susun blueprint", "Susun ulang", "10 ide", "Beri 5
+pembuka", dan "Tulis naskahnya" (penulis AI, harganya tertulis di tombol).
+Menjawab pertanyaan, mengubah blueprint atau naskah, menyimpan ide, dan
+menerapkan pilar gratis.
 
 **Dipakai otomatis di tempat lain.** Begitu blueprint ada, penulis AI di
 Buat Video, Video UGC, Storyboard (termasuk "Buat versi lain"), dan Rencana
@@ -289,9 +324,8 @@ Buat Video, Video UGC, Storyboard (termasuk "Buat versi lain"), dan Rencana
 yang dihindari, dan pilar. Tidak ada langkah tambahan; influencer tanpa
 blueprint tetap ditulis seperti sebelumnya.
 
-**Yang belum ada.** Ide konten dan naskah dari blueprint belum dibangun di
-halaman ini — kartunya mengarah ke Rencana, tempat ide dan naskah ditulis
-sekarang.
+**Yang belum ada.** "Isi 30 hari" ke kalender, remix dari transkrip, dan
+pustaka hook statis.
 
 ---
 

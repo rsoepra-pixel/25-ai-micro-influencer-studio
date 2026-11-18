@@ -298,7 +298,12 @@ Semua tombol yang memanggil AI memakai pola tooltip biaya yang sudah ada di
 3. `src/brand.jsx` wizard + editor.
 4. Perluas `ideas`/`script` membaca blueprint; tambah `hooks`. — **Pembacaan
    blueprint selesai 2026-11-18** (`ideas`, `script`, `ugc`, `storyboard`,
-   `plan`, `variant` lewat `blokBlueprint`); `hooks` belum.
+   `plan`, `variant` lewat `blokBlueprint`). **`hooks`, `ideas` dengan
+   pilar/tujuan/alasan, dan `script` dengan pembuka pilihan + durasi + ajakan
+   per tujuan selesai 2026-11-18**, dengan layar Ide dan Naskah di
+   `src/brand.jsx` (bukan di Planner seperti tabel §3.3 — lihat §5).
+   Penyimpangan dari §3.2: tanpa blueprint, `ideas` tetap menulis dan
+   mengembalikan `tanpa_blueprint: true` (keputusan §6), bukan menolak.
 5. `calendar_fill`, lalu `remix`.
 6. Berkas statis hook/glosarium + `referensi.jsx`.
 7. Laporan: tambah pivot per `funnel_stage` di `reports.jsx`, urut
@@ -602,7 +607,7 @@ yang mengisinya. Planner tidak punya tombol menuju video.
    1745). Satu helper bersama yang menambahkan audiens, gaya bicara, kata
    yang dihindari, dan pilar membuat setiap video dari Buat Video otomatis
    bersuara seperti brand-nya.
-2. **Serah-terima naskah lewat `content_item_id`, bukan teks.** Tombol
+2. **Serah-terima naskah lewat `content_item_id`, bukan teks.** *Selesai 2026-11-18: `#/buat-video?item=<id>` mengisi ide dan influencer, memakai naskah yang ada di langkah Tinjau, dan menulis id ke `ugc_projects`/`storyboards`; durasi dipilih di Arah Konten (`script` menerima `target_seconds`).* Tombol
    "Buat videonya →" membawa id; Buat Video mengisi ide dan influencer dari
    item itu dan menulis id ke `ugc_projects`/`storyboards`, sisanya terisi
    lewat `submit` (`generate/index.ts:3103`). Dua celah:
@@ -611,7 +616,7 @@ yang mengisinya. Planner tidak punya tombol menuju video.
      dan lewati langkah draf;
    - `script` tetap 15 detik (`draftSeconds`), Buat Video 10–30 detik; durasi
      harus dibawa dua arah atau naskahnya ditulis ulang.
-3. **Tautan balik dari video ke idenya.** Storyboard sudah punya
+3. **Tautan balik dari video ke idenya.** *Selesai 2026-11-18 untuk Video UGC ("Dari ide: … →" di layar proyek); Karya/Drive belum (butuh satu kueri per baris).* Storyboard sudah punya
    "Ke planner →" (`storyboard.jsx:1404`); UGC dan Karya belum. Hanya berguna
    setelah no. 2 mengisi id.
 4. **Laporan per pilar dan tujuan.** `reports.jsx` membaca job tanpa
