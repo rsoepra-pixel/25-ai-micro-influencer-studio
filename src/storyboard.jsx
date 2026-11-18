@@ -306,7 +306,12 @@ export function Storyboard({ ws, refresh, tick, mode, query }) {
   const [models] = useQuery(async () =>
     unwrap(await supa.from("provider_models_ranked").select("*").eq("active", true).order("task")), [ws.id, tick]);
   const [influencers] = useQuery(async () =>
-    unwrap(await supa.from("influencers").select("id,name,language").order("name")), [ws.id, tick]);
+    // `voice` wajib ikut: readiness() membaca inf.voice.kling_voice_id. Tanpa
+    // kolom ini semua influencer tampil "belum punya suara hasil klon" —
+    // dilaporkan pemilik 18 Nov 2026 untuk Ronny yang sudah punya klon.
+    // Server tetap membaca suara dari database, jadi videonya tidak salah;
+    // yang salah peringatan, label, dan perkiraan tarif suara klon.
+    unwrap(await supa.from("influencers").select("id,name,language,voice").order("name")), [ws.id, tick]);
   const [boards, , error] = useQuery(async () =>
     unwrap(await supa.from("storyboards").select("*").order("created_at", { ascending: false })),
     [ws.id, tick, localTick]);
