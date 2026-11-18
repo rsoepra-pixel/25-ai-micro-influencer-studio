@@ -632,6 +632,10 @@ yang mengisinya. Planner tidak punya tombol menuju video.
    terisi, laporan bisa menunjukkan biaya per ide dan, lewat link pendek +
    `post_metrics`, pilar/tujuan mana yang menambah follower. Butuh kolom
    funnel baru (belum ada di mana pun; grep "funnel"/"corong" kosong).
+   *Celah yang ketemu saat mengerjakan ini:* RPC `short_link_stats` dan
+   `post_metrics_latest` (sumber data Laporan) tidak memeriksa keanggotaan —
+   pengguna yang login bisa membaca angka workspace lain. Ditutup oleh
+   migrasi `0061_stats_rpc_member_check.sql` (**belum diterapkan**, manual).
 
 ### Yang sengaja tidak ditautkan
 
