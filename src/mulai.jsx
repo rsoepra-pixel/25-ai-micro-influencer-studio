@@ -123,7 +123,7 @@ export function Mulai() {
         <div className="grid" style={{ gridTemplateColumns: "repeat(auto-fit,minmax(200px,1fr))", gap: 10 }}>
           {[
             ["ⓘ di setiap isian", "Ketuk ikonnya: ia menjelaskan isian itu apa, dan apa yang terjadi kalau ditekan."],
-            ["Menu ringkas dulu", "Enam menu di kiri sudah cukup untuk video pertama. 'Semua menu' di bawahnya membuka pengaturan lengkap."],
+            ["Menu ringkas dulu", "Tujuh menu di kiri sudah cukup untuk video pertama. 'Semua menu' di bawahnya membuka pengaturan lengkap."],
             ["Tidak ada yang otomatis bayar", "Semua yang berbayar menyebut harganya di tombolnya, dan tidak jalan sebelum kamu menekannya."],
             ["Lebih suka ngobrol?", "Kamu bisa memerintah lewat chat Claude, dengan konfirmasi harga sebelum apa pun dibuat.", "#/mulai-claude", "Cara mulai lewat Claude →"],
           ].map(([j, k, href, cta]) => (

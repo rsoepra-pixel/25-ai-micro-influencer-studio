@@ -23,7 +23,7 @@ sini:
 
 ## Isi
 
-**Menu di sidebar** — [Cara mulai](#-cara-mulai) · [Dashboard](#-dashboard) · [Buat Video](#-buat-video) · [Profil saya](#-profil-saya) (dari Dashboard) ·
+**Menu di sidebar** — [Cara mulai](#-cara-mulai) · [Dashboard](#-dashboard) · [Arah Konten](#-arah-konten) · [Buat Video](#-buat-video) · [Profil saya](#-profil-saya) (dari Dashboard) ·
 [Influencers](#-influencers) · [Product Kit](#-product-kit) ·
 [Production Studio](#-production-studio) · [Storyboard](#-storyboard) ·
 [Video UGC](#-video-ugc) · [Content Planner](#-content-planner) ·
@@ -80,10 +80,12 @@ Apa pun halaman yang dibuka, tiga hal ini tetap di tempatnya.
 Dua susunan, dipilih lewat tombol kecil di bawah daftar menu dan diingat per
 perangkat:
 
-- **Menu ringkas (default):** Beranda · **Buat Video** · Karya (Drive) ·
-  Rencana (Content Planner) · Laporan · Pengaturan. Enam, bukan lima seperti
-  rencana awal — Beranda dipertahankan karena kartu "Mulai dari sini" ada di
-  sana. Nama menunya menyebut *tujuan*, bukan nama alat.
+- **Menu ringkas (default):** Beranda · **Arah Konten** · **Buat Video** ·
+  Karya (Drive) · Rencana (Content Planner) · Laporan · Pengaturan. Tujuh —
+  Beranda dipertahankan karena kartu "Mulai dari sini" ada di sana, dan Arah
+  Konten (Nov 2026) diletakkan sebelum Buat Video karena urutannya memang
+  begitu: tahu arah dulu, baru bikin video. Nama menunya menyebut *tujuan*,
+  bukan nama alat.
 - **Semua menu:** dua belas menu lama, diurutkan menurut alur kerja: dua aset
   yang dipakai berulang (**siapa** dan **apa**) di atas, alat produksi di
   bawahnya, lalu perencanaan, pengukuran, dan pengaturan. Tidak ada yang
@@ -92,6 +94,10 @@ perangkat:
 
 Kenapa ada dua: uji persona Okt 2026 — sebelas menu dengan nama alat memaksa
 orang memilih alat sebelum tahu bedanya.
+
+**Di ponsel** sidebar disembunyikan dan diganti bilah bawah berisi lima tab:
+🏠 Beranda · 🧭 Arah · 🎬 Buat Video · 🗂 Karya · 💳 Saldo (ke Pengaturan).
+Petunjuk tiap tab sama dengan petunjuk menu ringkasnya.
 
 ### Kartu saldo di kiri bawah
 
@@ -128,8 +134,8 @@ sebelum uang keluar tetap tertulis terlihat di halaman.
 tanpa membuka lima halaman. Isinya ringkasan, bukan tempat bekerja.
 
 **Mulai dari sini.** Selama workspace belum lengkap, kartu paling atas berisi
-lima langkah awal: buat influencer, tambah foto Identity Kit, siapkan suara,
-simpan produk, dan buat video pertama. Tiap langkah dicentang **otomatis dari
+enam langkah awal: buat influencer, tambah foto Identity Kit, siapkan suara,
+jawab 12 pertanyaan arah konten, simpan produk, dan buat video pertama. Tiap langkah dicentang **otomatis dari
 datanya**, bukan manual, dan kartunya hilang sendiri begitu semuanya beres.
 Langkah keenam yang dulu ada, "hubungkan akun sosial", dihapus 16 Nov 2026
 bersama koneksi sosialnya (lihat [Koneksi](#koneksi)) — tanpa itu kartunya
@@ -240,6 +246,47 @@ aturan yang sama dengan wizard UGC dan Storyboard (penjaga wajah yang menerima
 foto produk, avatar termurah yang menerima prompt, model multi-shot termurah
 yang terbukti), dan "Naik kelas" tetap ada di riwayat job. Harga yang tampil
 adalah perkiraan: yang ditagih adalah durasi yang dihasilkan model.
+
+---
+
+## 🧭 Arah Konten
+
+**Untuk apa.** Menjawab "konten apa yang harus aku buat?" sebelum membuat
+video. Subjudul halamannya sekaligus batasnya: *siapa kamu, konten apa yang
+kamu buat, dan naskahnya — tidak membuat video, itu tugas Buat Video.* Tidak
+ada tombol di sini yang membuat gambar, suara, atau video.
+
+1. **12 pertanyaan** (± 8 menit), satu per layar: siapa kamu, siapa yang kamu
+   bantu, masalah dan keinginan mereka, kenapa kamu, apa yang kamu jual dan
+   kisaran harganya, gaya bicara, topik yang dikuasai dan dihindari, platform,
+   dan kreator yang kamu kagumi (opsional). Setiap pertanyaan punya pilihan
+   **"Belum tahu"** — pemula tanpa followers dan belum jualan tetap bisa
+   mengisi. Yang wajib hanya pertanyaan 1, 2, dan 6. Jawaban tersimpan
+   otomatis di perangkat, jadi bisa berhenti dan lanjut.
+2. **Susun blueprint** — penulis AI mengolah jawabanmu jadi satu halaman:
+   positioning (1 kalimat), 3 keunggulan, audiens (siapa, masalahnya,
+   keinginannya, kata-kata mereka), 3–5 pilar konten, gaya bicara (kata yang
+   dipakai dan dihindari), ritme **Kenalan · Percaya · Beli** per minggu, dan
+   3 ide monetisasi. Rasionya diusulkan dari jawabanmu, bukan angka bawaan.
+3. **Ubah bagian mana pun.** Hasil editanmu yang dipakai seterusnya.
+   "Susun ulang dari jawaban" menjalankan AI lagi tanpa mengisi ulang
+   (editanmu ikut diberikan supaya dipertahankan); "Ulangi 12 pertanyaan"
+   membuka pertanyaannya lagi, terisi jawaban yang sekarang.
+4. **Terapkan pilar ke Rencana** — menambahkan pilar blueprint ke Content
+   Pillars untuk influencer itu. Pilar yang namanya sudah ada dilewati; porsi
+   (Target %) diatur di Rencana.
+
+Blueprint disimpan **per influencer**; kalau ada lebih dari satu, pemilihnya
+muncul di atas dan pilihannya ikut ke Buat Video dan Profil saya.
+
+**Yang memakai uang.** Hanya "Susun blueprint" dan "Susun ulang" (penulis AI,
+sama seperti naskah). Menjawab pertanyaan, mengubah blueprint, dan menerapkan
+pilar gratis.
+
+**Yang belum ada.** Ide konten dan naskah dari blueprint belum dibangun di
+halaman ini — kartunya mengarah ke Rencana, tempat ide dan naskah ditulis
+sekarang. Penulis lain (ide, naskah, UGC, storyboard) **belum** membaca
+blueprint; itu tahap berikutnya.
 
 ---
 
@@ -1012,6 +1059,7 @@ lewat tool MCP yang sama: keyframe (gambar) → klip (image-to-video) → narasi
 - ✨ Bantu buat influencer dengan AI, dan ✨ Perbaiki deskripsi
 - ✨ Pencari prompt di Production Studio
 - ✨ Rencanakan sebulan dengan AI, dan ✨ Tulis dengan AI di Planner
+- Susun blueprint dan Susun ulang di Arah Konten
 - Penulis naskah di wizard Storyboard dan Video UGC
 
 **Tidak memakai uang:**

@@ -299,6 +299,12 @@ function StartHere({ d }) {
       tip: "Tanpa suara, Video UGC ditolak di langkah audio. Klon suara dari rekaman di halaman detail influencer.",
     },
     {
+      // Hanya influencer pertama yang dicek, sama dengan langkah foto dan
+      // suara di atas: daftar ini untuk orang yang baru punya satu tokoh.
+      ok: !!pertama && s.blueprints.includes(pertama.id), href: "/arah", judul: "Jawab 12 pertanyaan arah konten",
+      tip: "Siapa kamu, untuk siapa, dan apa yang dijual — disusun jadi blueprint yang membuat ide dan naskah tidak generik. ± 8 menit.",
+    },
+    {
       ok: s.products > 0, href: "/products", judul: "Simpan foto produk (kalau mau endorse)",
       tip: "Hanya perlu untuk video yang membicarakan produk. Pakai foto produk asli, bukan hasil AI.",
     },
@@ -349,7 +355,7 @@ function StartHere({ d }) {
 // ---------- Dashboard ----------
 export function Dashboard({ ws, tick }) {
   const [d, reload, error] = useQuery(async () => {
-    const [inf, jobs, items, assets, tasks, refs, products, done] = await Promise.all([
+    const [inf, jobs, items, assets, tasks, refs, products, done, blueprints] = await Promise.all([
       supa.from("influencers").select("id,name,status,avatar_url,voice").order("created_at").limit(25),
       supa.from("production_jobs").select("*").order("created_at", { ascending: false }).limit(5),
       supa.from("content_items").select("id,title,status").order("created_at", { ascending: false }).limit(5),
@@ -362,10 +368,17 @@ export function Dashboard({ ws, tick }) {
       // tapi langkahnya berbunyi "buat video pertama".
       supa.from("production_jobs").select("id", { count: "exact", head: true })
         .eq("status", "succeeded").in("task", ["video", "lipsync"]),
+      // Influencer mana yang sudah punya blueprint Arah Konten. Kalau tabelnya
+      // belum ada (migrasi 0060 belum dijalankan), error-nya diabaikan dan
+      // langkahnya sekadar belum tercentang — Beranda tidak ikut gagal.
+      supa.from("brand_blueprints").select("influencer_id").not("blueprint", "is", null),
     ]);
     return {
       inf: unwrap(inf), jobs: unwrap(jobs), items: unwrap(items), assets: unwrap(assets), tasks: unwrap(tasks),
-      start: { refs: refs.count || 0, products: products.count || 0, done: done.count || 0 },
+      start: {
+        refs: refs.count || 0, products: products.count || 0, done: done.count || 0,
+        blueprints: (blueprints.data || []).map((b) => b.influencer_id),
+      },
     };
   }, [ws.id, tick]);
   if (!d) return error ? <div className="msg-err">Gagal memuat dashboard: {error}</div> : <div className="muted">Memuat…</div>;
@@ -2743,7 +2756,7 @@ function PlannerCalendar({ items, pillars, month, setMonth }) {
 // bukan style. Harus hex literal: `var(--…)` kehilangan artinya begitu
 // nilainya keluar dari konteks CSS app (ekspor, laporan, klien lain).
 // Enam hue yang saling terbedakan, diselaraskan dengan palet merek.
-const PLAN_COLORS = ["#7c3aed", "#2563eb", "#ea580c", "#0f7b56", "#b0308f", "#b45309"];
+export const PLAN_COLORS = ["#7c3aed", "#2563eb", "#ea580c", "#0f7b56", "#b0308f", "#b45309"];
 
 // Slot hari per minggu untuk tiap frekuensi. Sengaja tidak beruntun agar ada
 // jeda produksi, dan menyisakan akhir pekan hanya saat frekuensinya memang tinggi.
