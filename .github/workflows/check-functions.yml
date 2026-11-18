@@ -1,0 +1,63 @@
+# Type check edge function SEBELUM merge — di pull request, tanpa secret,
+# tanpa deploy.
+#
+# KENAPA ADA
+#
+# 18 Nov 2026 enam PR mengubah generate/metrics/mcp dan di-merge hanya dengan
+# pemeriksaan sintaks (transform esbuild), karena sesi yang mengerjakannya
+# tidak punya Deno. Type check sungguhan pertama baru terjadi di
+# deploy-functions.yml — SETELAH merge, saat kodenya sudah di `main` dan sedang
+# dipasang ke produksi. Pemeriksaan pertama kali dijalankan di sini juga
+# langsung menemukan 11 error tipe di `media` yang sudah lama tayang.
+#
+# Satu `deno check` per fungsi supaya log langsung menyebut fungsi mana yang
+# gagal. Tidak ada deno.json / import map di repo: impor memakai `npm:` dan
+# path relatif, jadi tidak ada yang perlu diteruskan.
+#
+# Lokal: `npm run check:functions` (scripts/check-functions.mjs) — loop yang
+# sama.
+
+name: Check edge functions
+
+on:
+  pull_request:
+    paths:
+      - "supabase/functions/**"
+      - "supabase/config.toml"
+      - ".github/workflows/check-functions.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: denoland/setup-deno@v2
+        with:
+          # Edge Runtime Supabase berbasis Deno 2.1 (menurut dokumentasi
+          # Supabase; tidak ada petunjuk versi di repo ini). Naikkan bersama
+          # runtime-nya, bukan ke "latest" — versi lebih baru bisa meloloskan
+          # API yang belum ada di runtime. Diuji juga dengan 2.9.6: sama-sama lolos.
+          deno-version: v2.1.x
+
+      - name: deno check per fungsi
+        run: |
+          set -uo pipefail
+          gagal=""
+          for f in supabase/functions/*/index.ts; do
+            fn="$(basename "$(dirname "$f")")"
+            echo "::group::deno check $fn"
+            if ! deno check "$f"; then
+              echo "::error file=$f::Type check gagal di fungsi '$fn'."
+              gagal="$gagal $fn"
+            fi
+            echo "::endgroup::"
+          done
+          if [ -n "$gagal" ]; then
+            echo "Fungsi yang gagal:$gagal" >&2
+            exit 1
+          fi
