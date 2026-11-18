@@ -1,6 +1,14 @@
 // Edge function `metrics` — menarik performa post dari Instagram & TikTok.
 //
-// POST actions: fetch | list
+// POST actions: fetch | list | record | item
+//
+// `record` dan `item` adalah jalur isian MANUAL (docs/SPEK-TOOLS-KREATOR.md
+// §4.5). Sejak keputusan pemilik 16 Nov 2026 aplikasi tidak lagi memposting ke
+// akun sosial, jadi `fetch` praktis tidak punya post untuk ditarik — angka
+// views/follower baru hanya bisa masuk kalau orangnya menyalinnya sendiri dari
+// aplikasi TikTok/IG. Keduanya hanya lewat JWT user (tidak ada di
+// INTERNAL_KEYS): angka performa yang dicatat atas nama orang harus datang
+// dari orang itu, bukan dari agen yang menebak.
 //
 // PERINGATAN JUJUR: bentuk respons kedua API di sini BELUM PERNAH DILIHAT dari
 // data sungguhan — saat ini ditulis, workspace belum punya satu pun koneksi
@@ -110,7 +118,64 @@ async function requireUser(req: Request) {
   const { data: mem } = await admin.from("workspace_members")
     .select("workspace_id").eq("user_id", data.user.id).limit(1).maybeSingle();
   if (!mem) throw new Error("Kamu belum tergabung di workspace.");
-  return mem.workspace_id as string;
+  return { ws: mem.workspace_id as string, userId: data.user.id as string };
+}
+
+// ---------------------------------------------------------------------------
+// ISIAN MANUAL
+//
+// Tabel post_metrics dirancang untuk post yang terbit lewat aplikasi: kolom
+// `external_post_id` wajib, dan unik bersama `captured_on`. Isian manual tidak
+// punya id post dari platform, jadi diberi id buatan yang tetap per konten
+// per platform: `manual:<content_item_id>:<platform>`. Akibatnya:
+//   - satu baris per konten per platform PER HARI, sama seperti hasil tarikan
+//     API — kurva harian tetap terbaca, dan `post_metrics_latest` (dipakai
+//     Laporan dan get_post_metrics di MCP) mengambil catatan terakhir tanpa
+//     perubahan apa pun;
+//   - tidak pernah bertabrakan dengan id asli dari IG/TikTok, jadi cron
+//     `fetch` tidak akan menimpanya;
+//   - asal barisnya bisa dikenali tanpa kolom baru: awalan `manual:`,
+//     `publish_job_id` kosong, dan `raw.source = "manual"`.
+const MANUAL_PREFIX = "manual:";
+const MANUAL_FIELDS = ["views", "likes", "comments", "shares", "saves", "follows"] as const;
+const PLATFORMS = ["tiktok", "instagram", "youtube"];
+const sumber = (externalPostId: unknown) => String(externalPostId || "").startsWith(MANUAL_PREFIX) ? "manual" : "api";
+
+// Kosong = null ("belum dicatat"), BUKAN 0 — aturan yang sama dengan `num()` di
+// bawah. Orang yang hanya menyalin follower baru tidak sedang melaporkan bahwa
+// videonya ditonton nol kali.
+function angkaManual(v: unknown, label: string): number | null {
+  if (v === null || v === undefined || String(v).trim() === "") return null;
+  const n = Number(v);
+  if (!Number.isSafeInteger(n) || n < 0) {
+    throw new Error(`${label} harus angka utuh 0 atau lebih (mis. 1200, bukan 1,2rb). Kosongkan kalau belum tahu.`);
+  }
+  return n;
+}
+
+function urlPost(v: unknown): string | null {
+  const s = String(v || "").trim();
+  if (!s) return null;
+  let u: URL;
+  try { u = new URL(s); } catch { throw new Error("Link post tidak valid — salin lengkap dengan https:// di depannya, atau kosongkan."); }
+  if (u.protocol !== "http:" && u.protocol !== "https:") throw new Error("Link post harus berawalan http atau https.");
+  return u.toString().slice(0, 500);
+}
+
+// Tanggal dari perangkat orangnya, bukan current_date server (UTC). Pengguna
+// di WIB yang mencatat jam 06.00 pagi akan tercatat "kemarin" kalau memakai
+// tanggal server. Selisih lebih dari sehari dari jam server ditolak — itu
+// bukan beda zona waktu, melainkan jam perangkat yang salah atau isian yang
+// dikarang.
+function tanggalCatat(v: unknown): string {
+  const today = new Date().toISOString().slice(0, 10);
+  const s = String(v || "");
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(s)) return today;
+  const selisih = Math.abs(Date.parse(s) - Date.parse(today)) / 86400000;
+  if (!Number.isFinite(selisih) || selisih > 1) {
+    throw new Error("Tanggal di perangkatmu berbeda jauh dari hari ini. Periksa jam perangkat, lalu simpan lagi.");
+  }
+  return s;
 }
 
 // Ambil angka dari respons yang bentuknya belum pasti.
@@ -216,12 +281,105 @@ Deno.serve(async (req) => {
   try {
     const body = await req.json().catch(() => ({}));
     const action = String(body.action || "");
-    const ws = (await internalWorkspace(req, body)) ?? (await requireUser(req));
+    const internalWs = await internalWorkspace(req, body);
+    const { ws, userId } = internalWs
+      ? { ws: internalWs, userId: null as string | null }
+      : await requireUser(req);
 
     if (action === "list") {
       const { data, error } = await admin.rpc("post_metrics_latest", { ws });
       if (error) throw new Error(error.message);
-      return json({ posts: data || [] });
+      // `source` diturunkan dari id, bukan kolom: tabelnya tidak punya kolom
+      // asal, dan menambahkannya butuh migrasi untuk informasi yang sudah
+      // terbaca dari awalan `manual:`. Laporan dan MCP membaca daftar yang sama.
+      return json({
+        posts: (data || []).map((r: Record<string, unknown>) => ({ ...r, source: sumber(r.external_post_id) })),
+      });
+    }
+
+    if (action === "item" || action === "record") {
+      if (!userId) throw new Error(`Aksi ${action} hanya untuk pengguna yang login.`);
+      const itemId = String(body.content_item_id || "");
+      // Filter workspace di where: id konten workspace lain yang bocor tidak
+      // boleh cukup untuk membaca atau menulis angkanya.
+      const { data: item } = await admin.from("content_items")
+        .select("id, platform").eq("id", itemId).eq("workspace_id", ws).maybeSingle();
+      if (!item) throw new Error("Konten tidak ditemukan di workspace ini — mungkin sudah dihapus. Muat ulang halaman.");
+
+      if (action === "item") {
+        const { data, error } = await admin.from("post_metrics")
+          .select("captured_on, platform, external_post_id, views, likes, comments, shares, saves, follows, raw, fetched_at")
+          .eq("workspace_id", ws).eq("content_item_id", item.id)
+          .order("captured_on", { ascending: false }).order("fetched_at", { ascending: false })
+          .limit(30);
+        if (error) throw new Error(error.message);
+        return json({
+          rows: (data || []).map((r) => ({
+            captured_on: r.captured_on, platform: r.platform, source: sumber(r.external_post_id),
+            views: r.views, likes: r.likes, comments: r.comments, shares: r.shares, saves: r.saves, follows: r.follows,
+            post_url: (r.raw as Record<string, unknown>)?.post_url ?? null,
+          })),
+        });
+      }
+
+      // --- record ---
+      const masuk = (body.values || {}) as Record<string, unknown>;
+      const LABEL: Record<string, string> = {
+        views: "Views", likes: "Likes", comments: "Komentar", shares: "Share", saves: "Simpan", follows: "Follower baru",
+      };
+      const nilai: Record<string, number | null> = {};
+      for (const f of MANUAL_FIELDS) nilai[f] = angkaManual(masuk[f], LABEL[f]);
+      const postUrl = urlPost(body.post_url);
+      const platform = PLATFORMS.includes(String(body.platform)) ? String(body.platform) : String(item.platform || "tiktok");
+      const capturedOn = tanggalCatat(body.captured_on);
+      const externalPostId = `${MANUAL_PREFIX}${item.id}:${platform}`;
+
+      // Catatan kedua di hari yang sama MENGGABUNG, bukan menimpa. Unique
+      // (external_post_id, captured_on) memaksa satu baris per hari; kalau
+      // upsert polos, orang yang pagi mencatat views lalu sore hanya mengisi
+      // follower baru akan menghapus views pagi itu jadi null — dan Laporan
+      // berbalik bilang "belum dicatat" untuk angka yang sudah ia catat.
+      // Hari berikutnya tetap baris baru: kolom yang dikosongkan berarti
+      // tidak dicatat HARI ITU.
+      const { data: lama } = await admin.from("post_metrics")
+        .select("views, likes, comments, shares, saves, follows, raw")
+        .eq("external_post_id", externalPostId).eq("captured_on", capturedOn).maybeSingle();
+      const gabung: Record<string, number | null> = {};
+      for (const f of MANUAL_FIELDS) gabung[f] = nilai[f] ?? ((lama as Record<string, number | null> | null)?.[f] ?? null);
+      if (MANUAL_FIELDS.every((f) => gabung[f] === null)) {
+        throw new Error("Isi minimal satu angka. Kolom yang belum kamu tahu boleh dikosongkan.");
+      }
+      const rawLama = ((lama?.raw as Record<string, unknown>) || {});
+      // Link post bukan angka yang diukur, jadi boleh dibawa dari catatan
+      // sebelumnya: orang tidak perlu menempelnya ulang setiap minggu.
+      let linkLama = rawLama.post_url ?? null;
+      if (!postUrl && !linkLama) {
+        const { data: prev } = await admin.from("post_metrics").select("raw")
+          .eq("external_post_id", externalPostId).lt("captured_on", capturedOn)
+          .order("captured_on", { ascending: false }).limit(1).maybeSingle();
+        linkLama = (prev?.raw as Record<string, unknown>)?.post_url ?? null;
+      }
+      const { error } = await admin.from("post_metrics").upsert({
+        workspace_id: ws,
+        publish_job_id: null,
+        content_item_id: item.id,
+        platform,
+        external_post_id: externalPostId,
+        captured_on: capturedOn,
+        ...gabung,
+        // reach tidak ditanyakan: TikTok tidak menampilkannya ke kreator dan
+        // di IG maknanya sering tertukar dengan views. null = tidak dicatat.
+        raw: {
+          ...rawLama,
+          source: "manual",
+          post_url: postUrl ?? linkLama,
+          entered_by: userId,
+          entered_at: new Date().toISOString(),
+        },
+        fetched_at: new Date().toISOString(),
+      }, { onConflict: "external_post_id,captured_on" });
+      if (error) throw new Error(error.message);
+      return json({ ok: true, captured_on: capturedOn, platform, values: gabung });
     }
 
     if (action !== "fetch") return json({ error: `Action tidak dikenal: ${action}` }, 400);
