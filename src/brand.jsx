@@ -276,7 +276,7 @@ function Depan({ ws, inf, row, items, onMulai, onLihat, onIde, onNaskah }) {
         </div>
         <div className="card p4">
           <div className="bold">🎙️ Naskah siap baca</div>
-          <div className="tiny muted mt1">Pembuka, isi, ajakan, dan caption terpisah.</div>
+          <div className="tiny muted mt1">Pembuka, isi, ajakan, dan caption terpisah — atau remix dari video yang kamu suka.</div>
           {items === null ? <div className="tiny muted mt2">Memuat…</div>
             : naskah.length ? (
               <>
@@ -942,6 +942,11 @@ function Naskah({ ws, inf, item, pilarRows, support, muatKonten, onKembali }) {
   const [pembuka, setPembuka] = useState(item.hook || "");
   const [detik, setDetik] = useState(15);
   const [d, setD] = useState(() => bukaNaskahTersimpan(item));
+  const [transkrip, setTranskrip] = useState("");
+  // Pola yang dibaca penulis AI dari transkrip remix. Hanya untuk dilihat —
+  // tidak disimpan ke konten, dan hilang begitu naskahnya ditulis ulang
+  // dengan cara biasa, karena naskah itu tidak lagi mengikuti pola ini.
+  const [pola, setPola] = useState(null);
   const [versiTersimpan, setVersiTersimpan] = useState(() => JSON.stringify(bukaNaskahTersimpan(item)));
   const [busy, setBusy] = useState(null);
   const [err, setErr] = useState(null);
@@ -971,6 +976,29 @@ function Naskah({ ws, inf, item, pilarRows, support, muatKonten, onKembali }) {
       });
       const x = r.draft || {};
       setD({ hook: x.hook || pembuka.trim(), isi: x.body ?? x.script ?? "", cta: x.cta || "", caption: x.caption || "", tagar: (x.hashtags || []).join(" ") });
+      setPola(null);
+    } catch (e) { setErr(e.message); }
+    setBusy(null);
+  }
+
+  // Remix (spek U5): pembuka DAN naskah ditulis sekaligus dari pola video
+  // yang ditempel, lalu dipasang ke tempat yang sama dengan naskah biasa —
+  // jadi Simpan dan Buat videonya tidak perlu tahu asalnya. Pembuka ikut
+  // diisi supaya "Tulis ulang naskah" sesudahnya melanjutkan dari pembuka
+  // hasil remix, bukan dari pembuka lama.
+  const panjangTranskrip = transkrip.trim().length;
+  async function remix() {
+    if (panjangTranskrip < 100) { setErr("Tempel transkrip atau garis besarnya, minimal beberapa kalimat."); return; }
+    setBusy("remix"); setErr(null); setPesan(null);
+    try {
+      const r = await callGenerate({
+        action: "write", kind: "remix", content_item_id: item.id, influencer_id: inf.id,
+        transcript: transkrip.trim(), target_seconds: detik, ...(tujuan ? { funnel_stage: tujuan } : {}),
+      });
+      const x = r.draft || {};
+      if (x.hook) setPembuka(x.hook);
+      setD({ hook: x.hook || "", isi: x.body ?? x.script ?? "", cta: x.cta || "", caption: x.caption || "", tagar: (x.hashtags || []).join(" ") });
+      setPola(Array.isArray(x.structure_notes) && x.structure_notes.length ? x.structure_notes : null);
     } catch (e) { setErr(e.message); }
     setBusy(null);
   }
@@ -1043,6 +1071,29 @@ function Naskah({ ws, inf, item, pilarRows, support, muatKonten, onKembali }) {
         )}
         <label className="label">Pembuka yang dipakai<Info tip="Boleh diubah atau ditulis sendiri — menulis sendiri gratis." /></label>
         <input className="input" value={pembuka} onChange={(e) => setPembuka(e.target.value)} placeholder="Tulis sendiri, atau pilih salah satu di atas" />
+
+        {/* Jalan ketiga: pembuka dan naskah sekaligus dari pola video orang
+            lain. Tertutup secara bawaan — kebanyakan orang mulai dari
+            pembuka, dan kotak teks besar di sini akan menenggelamkannya. */}
+        <details className="mt3">
+          <summary className="small bold" style={{ cursor: "pointer" }}>Remix dari video yang kamu suka</summary>
+          <div className="mt2">
+            <textarea className="input" rows={6} value={transkrip} onChange={(e) => setTranskrip(e.target.value)}
+              placeholder="Tempel transkrip atau tulis garis besarnya: pembukanya bilang apa, isinya urut bagaimana, ajakannya apa." />
+            <div className="row mt1" style={{ justifyContent: "space-between", gap: 8 }}>
+              <span className="tiny muted">Tempel teksnya, bukan link. Kami tidak mengunduh video dari TikTok/IG — polanya yang dipakai, bukan kalimatnya.</span>
+              <span className="tiny" style={{ color: panjangTranskrip > 4000 ? "var(--err)" : "var(--muted)", whiteSpace: "nowrap" }}>{panjangTranskrip}/4000</span>
+            </div>
+            <div className="label mt2">Berapa lama?</div>
+            <Chips pilihan={PILIHAN_DETIK_NASKAH.map((s) => [s, `${s} detik`])} nilai={detik} onPilih={setDetik} />
+            <button type="button" className="btn mt3" disabled={!!busy || panjangTranskrip < 100 || panjangTranskrip > 4000} onClick={remix}
+              data-tip={`Penulis AI membaca pola video itu (pembuka, isi, ajakan), lalu menulis pembuka, naskah, dan caption baru untuk ide ini dengan gaya bicaramu. ${d ? "Naskah yang sekarang di bawah ikut terganti. " : ""}${TIP_PENULIS_AI}`}>
+              {busy === "remix" ? "Membaca polanya…" : `Tulis ulang dengan polanya${biayaNaskahLabel()}`}
+            </button>
+            {panjangTranskrip > 0 && panjangTranskrip < 100 && <div className="tiny muted mt1">Tambah beberapa kalimat lagi — dari teks sependek ini polanya belum terbaca.</div>}
+            {panjangTranskrip > 4000 && <div className="tiny muted mt1">Terlalu panjang. Potong bagian yang berulang, atau tulis garis besarnya saja.</div>}
+          </div>
+        </details>
       </div>
 
       <div className="card p4 mb3">
@@ -1057,6 +1108,14 @@ function Naskah({ ws, inf, item, pilarRows, support, muatKonten, onKembali }) {
 
         {d && (
           <div className="mt3">
+            {pola && (
+              <div className="mb3">
+                <div className="tiny bold muted">Pola yang diambil</div>
+                <ul className="tiny muted" style={{ margin: "4px 0 0", paddingLeft: 18 }}>
+                  {pola.map((p, i) => <li key={i}>{p}</li>)}
+                </ul>
+              </div>
+            )}
             <div className="row mb2" style={{ justifyContent: "space-between", gap: 8 }}>
               <span className="tiny bold muted">Yang dibacakan</span>
               <Badge tone="violet">± {perkiraanDetik} detik</Badge>

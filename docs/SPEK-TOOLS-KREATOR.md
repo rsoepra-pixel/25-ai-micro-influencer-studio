@@ -316,7 +316,12 @@ Semua tombol yang memanggil AI memakai pola tooltip biaya yang sudah ada di
    mengikuti ritme blueprint (tanpa rasio bawaan), lalu menempelkan
    tanggalnya sendiri. Bentuk lama (`weeks`/`per_week` saja) tetap dilayani.
    Label tujuan tampil di kalender dan kartu papan, dan bisa diganti di kartu.
-   `remix` belum.
+   **`remix` selesai 2026-11-18** sebagai kind baru di `write`: transkrip
+   tempel 100–4.000 karakter + `content_item_id` (topik bawaan = judul ide),
+   satu panggilan `chat()` yang menulis `structure_notes` (pola, bukan
+   kalimat) lalu naskah baru dengan bentuk `draft` yang sama dengan `script`.
+   Di layar ia lipatan "Remix dari video yang kamu suka" di langkah pembuka
+   Naskah (`src/brand.jsx`), bukan tab terpisah seperti tabel §3.3.
 6. Berkas statis hook/glosarium + `referensi.jsx`.
 7. Laporan: tambah pivot per `funnel_stage` di `reports.jsx`, urut
    berdasarkan follower baru. — **Selesai 2026-11-18**: kartu "Per pilar & tujuan" (pivot
@@ -441,6 +446,8 @@ belum punya jalur transkripsi (§3.4).
 
 **Angka yang harus diputuskan pemilik:** tidak ada. Batas panjang transkrip
 yang diterima adalah batas teknis (`maxTokens`), bukan kebijakan.
+
+**Selesai 2026-11-18:** `write/remix` + lipatan "Remix dari video yang kamu suka" di Naskah — tempel teks, bukan link (§3.6 langkah 5).
 
 ### 4.4 Testimoni berupa gambar
 
