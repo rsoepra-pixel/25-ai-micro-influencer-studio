@@ -345,12 +345,16 @@ async function chat(
   return String(content);
 }
 
-// Ambil objek/array JSON pertama dari balasan model (kadang dibungkus ```json).
-function parseJsonLoose(s: string): unknown {
-  const fenced = s.match(/```(?:json)?\s*([\s\S]*?)```/);
-  const body = fenced ? fenced[1] : s;
+// Ambil JSON pertama dari balasan model. Model kadang membungkusnya dengan
+// ```json, dan kadang — terlihat 18 Nov 2026 di ide konten Arah Konten —
+// menulisnya setengah di-escape: `[{"title": \"Kambing ...\", ...}]`, atau
+// seluruhnya sebagai string JSON. Dulu satu kesalahan format itu langsung
+// jadi error "Unexpected token '\\'" di layar, padahal isinya utuh dan
+// sudah dibayar. Sekarang: coba apa adanya dulu, baru dua perbaikan murah
+// tanpa memanggil model lagi.
+function potongJsonPertama(body: string): string | null {
   const start = body.search(/[[{]/);
-  if (start < 0) throw new Error("Balasan AI tidak berisi JSON.");
+  if (start < 0) return null;
   const openCh = body[start];
   const closeCh = openCh === "[" ? "]" : "}";
   let depth = 0, inStr = false, esc = false;
@@ -366,10 +370,39 @@ function parseJsonLoose(s: string): unknown {
     else if (c === openCh) depth++;
     else if (c === closeCh) {
       depth--;
-      if (depth === 0) return JSON.parse(body.slice(start, i + 1));
+      if (depth === 0) return body.slice(start, i + 1);
     }
   }
-  throw new Error("JSON dari AI tidak lengkap.");
+  return null;
+}
+
+function parseJsonLoose(s: string): unknown {
+  const fenced = s.match(/```(?:json)?\s*([\s\S]*?)```/);
+  const body = (fenced ? fenced[1] : s).trim();
+  if (body.search(/[[{]/) < 0) throw new Error("Balasan AI tidak berisi JSON.");
+
+  const calon: string[] = [];
+  const tambah = (x: string | null) => { if (x && !calon.includes(x)) calon.push(x); };
+  tambah(potongJsonPertama(body));
+  // Seluruh balasan berupa string JSON ("[{\"title\": ...}]").
+  if (body.startsWith('"')) {
+    try {
+      const dalam = JSON.parse(body);
+      if (typeof dalam === "string") tambah(potongJsonPertama(dalam));
+    } catch { /* bukan string JSON utuh */ }
+  }
+  // Kutipan di-escape di luar string: \" → ".
+  if (body.includes('\\"')) tambah(potongJsonPertama(body.replace(/\\"/g, '"')));
+
+  let galat: unknown = null;
+  for (const c of calon) {
+    try { return JSON.parse(c); } catch (e) { galat = e; }
+  }
+  if (!calon.length) throw new Error("JSON dari AI tidak lengkap.");
+  // Pesan untuk orangnya, bukan teks parser: yang bisa ia lakukan adalah
+  // mencoba lagi. Detail parser tetap di log.
+  console.error("parseJsonLoose gagal:", (galat as Error)?.message, body.slice(0, 300));
+  throw new Error("Jawaban penulis AI formatnya rusak. Coba tekan tombolnya sekali lagi.");
 }
 
 // ---------- Hugging Face Inference Providers ----------
