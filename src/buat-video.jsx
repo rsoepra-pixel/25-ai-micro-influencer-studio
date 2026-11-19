@@ -32,7 +32,7 @@
 // ketukan untuk keluar, dan chip langkahnya mengaku "✓ Siapa".
 import React, { useEffect, useMemo, useState } from "react";
 import { supa, callGenerate } from "./supa.js";
-import { useQuery, unwrap, Badge, byPrice, downscaleToDataUri } from "./views.jsx";
+import { useQuery, unwrap, Badge, byPrice, downscaleToDataUri, AvatarIsi } from "./views.jsx";
 import { estimateFor, byEffectivePrice, modelHidup, modelCeritaBawaan, modelMaxSeconds } from "./routing.js";
 import { useProducts, NewProduct } from "./products.jsx";
 import { isAvatarModel, estSeconds, WORDS_PER_SEC, MAX_SECONDS, DEFAULT_SCENE, DEFAULT_DELIVERY } from "./ugc.jsx";
@@ -575,7 +575,7 @@ export function BuatVideo({ ws, refresh, tick, spend, support, query }) {
             <div className="msg-warn mb3">Belum ada profil. <a href="#/profil" style={{ fontWeight: 700 }}>Isi Profil saya</a> dulu — foto, suara, bahasa.</div>
           ) : (
             <div className="row mb3" style={{ gap: 10, alignItems: "center" }}>
-              <span className="avatar" style={{ width: 44, height: 44, fontSize: 18 }}>{inf?.avatar_url ? <img src={inf.avatar_url} alt="" /> : inf?.name?.[0]}</span>
+              <span className="avatar" style={{ width: 44, height: 44, fontSize: 18 }}><AvatarIsi url={inf?.avatar_url} nama={inf?.name} /></span>
               {influencers.length > 1
                 ? <select className="input" style={{ flex: 1 }} value={inf?.id || ""} onChange={(e) => setInfId(e.target.value)}>
                     {influencers.map((i) => <option key={i.id} value={i.id}>{i.name}</option>)}

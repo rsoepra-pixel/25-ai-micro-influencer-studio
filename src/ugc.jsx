@@ -63,11 +63,10 @@ export const DEFAULT_SCENE =
   "holding the product at chest height with its label facing the camera, soft natural window light, " +
   "cozy home background slightly out of focus, natural skin, authentic phone-camera look, vertical 9:16";
 
-// Ditempel ke SETIAP gambar kunci video bicara, termasuk latar tulisan penulis AI
-// atau template. Model lipsync memperbesar bintik kecil di wajah jadi noda hitam
-// (dilaporkan 19 Nov 2026, Lanny), jadi gambar yang ia gerakkan harus bersih.
-// "real skin texture" yang dulu ada di DEFAULT_SCENE justru memancing bintik.
-export const KULIT_BERSIH = "clear even skin, no moles, no dark spots, no freckles, no blemishes on the face";
+// "real skin texture" yang dulu ada di DEFAULT_SCENE memancing bintik di wajah
+// yang lalu dibesarkan model lipsync jadi noda hitam (19 Nov 2026). Instruksi
+// kulit bersih kini ditempel SERVER ke setiap gambar berwajah influencer
+// (KULIT_BERSIH di generate/index.ts), jadi tidak diulang di sini.
 export const DEFAULT_DELIVERY =
   "talking casually to the phone camera like a friend recommending a product, relaxed and natural, " +
   "small hand gestures, briefly lifting the product into frame, genuine smiles between sentences";
@@ -761,7 +760,7 @@ function StepProduksi({ project, inf, product, refCount, models, mode, pending, 
         const res = await callGenerate({
           action: "submit", origin: "ugc", task: "image", model_id: imgModel.id,
           influencer_id: project.influencer_id, content_item_id: project.content_item_id || null,
-          prompt: `${project.scene || DEFAULT_SCENE}, ${KULIT_BERSIH}`,
+          prompt: project.scene || DEFAULT_SCENE,
           extra_ref_urls: r.productPhotos,
           label: `${project.title} — gambar kunci`,
         });
