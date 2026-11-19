@@ -2303,7 +2303,7 @@ Deno.serve(async (req) => {
           const user = aspect === "face"
             ? `Dari foto terlampir, tulis "identity_prompt": bahasa Inggris, 40-70 kata, HANYA ciri fisik tetap ` +
               `(jenis kelamin, perkiraan usia, bentuk wajah, warna & gaya rambut, warna kulit, bentuk mata/alis/hidung, ` +
-              `1-2 ciri khas kecil yang mudah diulang). DILARANG menyebut latar tempat, background, pencahayaan, pose, ` +
+              `tanpa tahi lalat, bintik, atau noda kulit — sebut kulitnya "clear even skin"). DILARANG menyebut latar tempat, background, pencahayaan, pose, ` +
               `aktivitas, atau pakaian — teks ini dipakai ulang di SEMUA gambar. Kalau sesuatu tidak terlihat jelas, ` +
               `lewati saja daripada mengarang.\n` +
               `Format JSON: {"identity_prompt": "...", "style_notes": "", "summary": "1-2 kalimat bahasa Indonesia menjelaskan apa yang kamu tangkap dari foto"}`
@@ -2373,7 +2373,11 @@ Deno.serve(async (req) => {
             `\nAturan penting:\n` +
             `1. "identity_prompt" WAJIB bahasa Inggris, 40-70 kata, dan HANYA ciri fisik tetap: ` +
             `jenis kelamin, perkiraan usia, bentuk wajah, warna/gaya rambut, warna kulit, bentuk mata/alis/hidung, ` +
-            `dan 1-2 ciri khas kecil yang mudah diulang (mis. tahi lalat kecil di bawah mata kiri, lesung pipi sebelah). ` +
+            // Dulu diminta "1-2 ciri khas kecil (mis. tahi lalat kecil)" supaya wajah
+            // konsisten. Akibatnya (dilaporkan 19 Nov 2026): model gambar dan terutama
+            // model lipsync membesar-besarkannya jadi noda hitam di wajah, makin parah
+            // tiap generasi. Konsistensi wajah dijaga foto acuan, bukan teks ini.
+            `JANGAN menyebut tahi lalat, bintik, freckle, atau noda kulit; tulis kulitnya "clear even skin". ` +
             `DILARANG menyebut latar tempat, background, pencahayaan, pose, aktivitas, atau pakaian tertentu — ` +
             `teks ini dipakai ulang di semua gambar, jadi harus netral terhadap situasi.\n` +
             `2. "bio" bahasa Indonesia, 2-3 kalimat: kepribadian, gaya bicara, dan sudut pandang khasnya.\n` +
