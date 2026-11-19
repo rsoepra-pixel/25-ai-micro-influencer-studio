@@ -2,12 +2,22 @@
  {
   "slug": "masuk-daftar",
   "judul": "Masuk & daftar",
-  "isi": "Halaman masuk punya dua jalan: tombol **Masuk dengan Google** di atas, atau\nemail & password di bawahnya. Keduanya berlaku untuk masuk maupun daftar.\n\n- **Akun baru lewat Google** lahir lewat jalur yang sama dengan daftar pakai\n  password: langsung dapat workspace sendiri sebagai owner. Tidak ada jalur\n  kedua yang bisa berbeda perilakunya.\n- **Lewat link undangan**, Google juga boleh dipakai. Undangannya tetap\n  diterima setelah kembali dari Google, karena token undangannya ikut\n  dititipkan di alamat kembali.\n- **Akun Google tidak punya password.** Itu tidak masalah untuk aplikasi ini,\n  tapi halaman persetujuan connector Claude (MCP) hanya menerima email &\n  password. Pengguna Google yang mau menghubungkan Claude perlu memasang\n  password dulu di **Settings → Akun → Ganti password saya** — kartu Claude\n  (MCP) menyebutkan ini juga.\n\nPelanggan yang akunnya dibuat operator masuk pertama kali lewat\nLink akses, bukan lewat halaman ini.\n\n**Kalau masuk gagal, halaman ini menyebut sebabnya** — dulu yang terlihat cuma\nform kosong, dan orangnya mengira password-nya yang salah:\n\n| Yang muncul | Artinya | Jalan keluar |\n|---|---|---|\n| \"Masuk dengan Google gagal…\" | Google atau Supabase menolak setelah akun dipilih | Coba lagi, atau masuk dengan email. Kalau semua orang kena, cek konfigurasi Google di OPERASI.md § Login Google. |\n| \"Link ini sudah kedaluwarsa atau sudah pernah dipakai…\" | Link akses/pemulihan sudah terpakai atau habis waktunya | Terbitkan link baru dari halaman Pelanggan. |\n| \"Link ini tidak bisa dipakai…\" | Link ditolak karena alasan lain | Sama: link baru. |\n\nDetail teknisnya tidak ditampilkan (bisa memuat potongan kode otorisasi);\noperator bisa membacanya di console browser (`Login ditolak: …`).\n\n---",
+  "isi": "Halaman masuk punya dua jalan: tombol **Masuk dengan Google** di atas, atau\nemail & password di bawahnya. Keduanya berlaku untuk masuk maupun daftar.\n\n- **Akun baru lewat Google** lahir lewat jalur yang sama dengan daftar pakai\n  password: langsung dapat workspace sendiri sebagai owner. Tidak ada jalur\n  kedua yang bisa berbeda perilakunya.\n- **Lewat link undangan**, Google juga boleh dipakai. Undangannya tetap\n  diterima setelah kembali dari Google, karena token undangannya ikut\n  dititipkan di alamat kembali.\n- **Akun Google tidak punya password.** Itu tidak masalah untuk aplikasi ini,\n  tapi halaman persetujuan connector Claude (MCP) hanya menerima email &\n  password. Pengguna Google yang mau menghubungkan Claude perlu memasang\n  password dulu di **Settings → Akun → Ganti password saya** — kartu Claude\n  (MCP) menyebutkan ini juga.\n\nPelanggan yang akunnya dibuat operator masuk pertama kali lewat\nLink akses, bukan lewat halaman ini.",
   "tags": [
    "panduan",
    "masuk-daftar"
   ],
   "urutan": 10
+ },
+ {
+  "slug": "masuk-daftar-kalau-masuk-gagal-halaman-ini",
+  "judul": "Masuk & daftar — Kalau masuk gagal, halaman ini menyebut sebabnya",
+  "isi": "**Kalau masuk gagal, halaman ini menyebut sebabnya** — dulu yang terlihat cuma\nform kosong, dan orangnya mengira password-nya yang salah:\n\n| Yang muncul | Artinya | Jalan keluar |\n|---|---|---|\n| \"Masuk dengan Google gagal…\" | Google atau Supabase menolak setelah akun dipilih | Coba lagi, atau masuk dengan email. Kalau semua orang kena, cek konfigurasi Google di OPERASI.md § Login Google. |\n| \"Link ini sudah kedaluwarsa atau sudah pernah dipakai…\" | Link akses/pemulihan sudah terpakai atau habis waktunya | Terbitkan link baru dari halaman Pelanggan. |\n| \"Link ini tidak bisa dipakai…\" | Link ditolak karena alasan lain | Sama: link baru. |\n\nDetail teknisnya tidak ditampilkan (bisa memuat potongan kode otorisasi);\noperator bisa membacanya di console browser (`Login ditolak: …`).",
+  "tags": [
+   "panduan",
+   "masuk-daftar"
+  ],
+  "urutan": 20
  },
  {
   "slug": "kerangka-yang-selalu-terlihat",
@@ -17,17 +27,23 @@
    "panduan",
    "kerangka-yang-selalu-terlihat"
   ],
-  "urutan": 20
+  "urutan": 30
  },
  {
   "slug": "kerangka-yang-selalu-terlihat-sidebar-kiri",
   "judul": "Kerangka yang selalu terlihat — Sidebar kiri",
-  "isi": "Dua susunan, dipilih lewat tombol kecil di bawah daftar menu dan diingat per\nperangkat:\n\n- **Menu ringkas (default):** Beranda · **Buat Video** · Karya (Drive) ·\n  Rencana (Content Planner) · Laporan · Pengaturan. Enam, bukan lima seperti\n  rencana awal — Beranda dipertahankan karena kartu \"Mulai dari sini\" ada di\n  sana. Nama menunya menyebut *tujuan*, bukan nama alat.\n- **Semua menu:** dua belas menu lama, diurutkan menurut alur kerja: dua aset\n  yang dipakai berulang (**siapa** dan **apa**) di atas, alat produksi di\n  bawahnya, lalu perencanaan, pengukuran, dan pengaturan. Tidak ada yang\n  dihapus; Production Studio, Storyboard, Video UGC, Influencers, Product Kit,\n  dan Tasks tetap di sini.\n\nKenapa ada dua: uji persona Okt 2026 — sebelas menu dengan nama alat memaksa\norang memilih alat sebelum tahu bedanya.",
+  "isi": "Dua susunan, dipilih lewat tombol kecil di bawah daftar menu dan diingat per\nperangkat:\n\n- **Menu ringkas (default):** Beranda · **Arah Konten** · **Buat Video** ·\n  Karya (Drive) · Rencana (Content Planner) · Laporan · Pengaturan. Tujuh —\n  Beranda dipertahankan karena kartu \"Mulai dari sini\" ada di sana, dan Arah\n  Konten (Nov 2026) diletakkan sebelum Buat Video karena urutannya memang\n  begitu: tahu arah dulu, baru bikin video. Nama menunya menyebut *tujuan*,\n  bukan nama alat.\n- **Semua menu:** dua belas menu lama, diurutkan menurut alur kerja: dua aset\n  yang dipakai berulang (**siapa** dan **apa**) di atas, alat produksi di\n  bawahnya, lalu perencanaan, pengukuran, dan pengaturan. Tidak ada yang\n  dihapus; Production Studio, Storyboard, Video UGC, Influencers, Product Kit,\n  dan Tasks tetap di sini.\n\nKenapa ada dua: uji persona Okt 2026 — sebelas menu dengan nama alat memaksa\norang memilih alat sebelum tahu bedanya.\n\n**Di ponsel** sidebar disembunyikan dan diganti bilah bawah berisi lima tab:\n🏠 Beranda · 🧭 Arah · 🎬 Buat Video · 🗂 Karya · 💳 Saldo (ke Pengaturan).\nPetunjuk tiap tab sama dengan petunjuk menu ringkasnya.",
   "tags": [
    "panduan",
-   "kerangka-yang-selalu-terlihat"
+   "kerangka-yang-selalu-terlihat",
+   "menu",
+   "menu hilang",
+   "ponsel",
+   "hp",
+   "tab bawah",
+   "semua menu"
   ],
-  "urutan": 30
+  "urutan": 40
  },
  {
   "slug": "kerangka-yang-selalu-terlihat-kartu-saldo-di-kiri-bawah",
@@ -37,67 +53,379 @@
    "panduan",
    "kerangka-yang-selalu-terlihat"
   ],
-  "urutan": 40
+  "urutan": 50
  },
  {
   "slug": "kerangka-yang-selalu-terlihat-petunjuk-hover",
   "judul": "Kerangka yang selalu terlihat — Petunjuk hover",
-  "isi": "Setiap menu, tab, dan tombol yang memakai saldo punya petunjuk singkat saat\ndisorot. Label yang bukan tombol memakai ikon ⓘ kecil, yang di ponsel cukup\ndiketuk. Petunjuk hanya menjelaskan **apa** sesuatu itu; peringatan yang penting\nsebelum uang keluar tetap tertulis terlihat di halaman.\n\n---",
+  "isi": "Setiap menu, tab, dan tombol yang memakai saldo punya petunjuk singkat saat\ndisorot. Label yang bukan tombol memakai ikon ⓘ kecil, yang di ponsel cukup\ndiketuk. Petunjuk hanya menjelaskan **apa** sesuatu itu; peringatan yang penting\nsebelum uang keluar tetap tertulis terlihat di halaman.",
   "tags": [
    "panduan",
    "kerangka-yang-selalu-terlihat"
   ],
-  "urutan": 50
+  "urutan": 60
  },
  {
   "slug": "dashboard",
   "judul": "Dashboard",
-  "isi": "**Untuk apa.** Satu layar untuk menjawab \"apa yang terjadi belakangan ini\"\ntanpa membuka lima halaman. Isinya ringkasan, bukan tempat bekerja.\n\n**Mulai dari sini.** Selama workspace belum lengkap, kartu paling atas berisi\nenam langkah awal: buat influencer, tambah foto Identity Kit, siapkan suara,\nsimpan produk, buat video pertama, dan hubungkan akun sosial. Tiap langkah\ndicentang **otomatis dari datanya**, bukan manual, dan kartunya hilang sendiri\nbegitu semuanya beres. Suara Kling tidak dihitung sebagai \"suara siap\", karena\nVideo UGC tetap menolak influencer yang hanya punya itu.\n\n**Isinya enam kartu**, masing-masing tautan ke halaman lengkapnya:\n\n- **Influencers** — sampai 8 karakter teratas beserta foto profilnya, dan\n  hitungan slot terpakai dari 25.\n- **Tasks** — sampai 5 pekerjaan yang belum selesai.\n- **Produksi Terbaru** — 5 job generate terakhir beserta biayanya. Tanda ✓\n  berhasil, ✕ gagal, ● masih jalan.\n- **Content Planner** — 5 ide konten terbaru beserta statusnya.\n- **Drive** — 4 berkas hasil produksi terakhir. Thumbnail-nya bisa diklik untuk\n  membuka berkasnya.\n- **🤖 Kelola lewat Claude** — pintu masuk ke kartu Claude (MCP) di\n  Settings → Koneksi.\n\n**Yang perlu diketahui.** Kartu Drive punya tombol hapus di tiap thumbnail, dan\nmenghapus media di sini **permanen** — sama seperti di halaman Drive. Lihat\nMenghapus media di bawah.\n\n---",
+  "isi": "**Untuk apa.** Satu layar untuk menjawab \"apa yang terjadi belakangan ini\"\ntanpa membuka lima halaman. Isinya ringkasan, bukan tempat bekerja.\n\n**Mulai dari sini.** Selama workspace belum lengkap, kartu paling atas berisi\nenam langkah awal: buat influencer, tambah foto Identity Kit, siapkan suara,\njawab 12 pertanyaan Arah Konten, simpan produk, dan buat video pertama. Tiap langkah dicentang **otomatis dari\ndatanya**, bukan manual, dan kartunya hilang sendiri begitu semuanya beres.\nLangkah keenam yang dulu ada, \"hubungkan akun sosial\", dihapus 16 Nov 2026\nbersama koneksi sosialnya (lihat Koneksi) — tanpa itu kartunya\ntidak akan pernah bisa selesai. Suara Kling tidak dihitung sebagai \"suara siap\", karena\nVideo UGC tetap menolak influencer yang hanya punya itu.",
   "tags": [
    "panduan",
-   "dashboard"
-  ],
-  "urutan": 60
- },
- {
-  "slug": "cara-mulai",
-  "judul": "Cara mulai",
-  "isi": "**Untuk apa.** Satu halaman infografis untuk orang yang baru pertama kali\nmembuka aplikasi: tiga langkah (Profil saya → Buat Video → Tonton & bagikan),\ngaris \"kapan uang keluar\" dari yang gratis sampai yang paling mahal, daftar\n\"siapkan dulu\", dan \"kalau bingung\". Ada di sidebar (💡 Cara mulai, paling atas di kedua\nsusunan menu), di kartu Mulai dari sini, dan di `#/mulai`. Tombol **Cetak**\nmenyimpannya sebagai PDF satu halaman; sidebar dan tooltip disembunyikan saat\ndicetak.\n\n**Yang perlu diketahui.** Halaman ini **sengaja tidak menulis angka harga**,\nhanya urutan besarannya (gratis / kecil / paling besar). Tarif berubah dan\nhalaman ini dibaca berbulan-bulan; angka pastinya tampil di tombol\nmasing-masing, dihitung dari katalog hari itu. Satu-satunya pengecualian:\nbiaya penulis AI disebut di tooltip batang \"menulis naskah\", karena dihitung\nlangsung dari tarif yang berlaku.",
-  "tags": [
-   "panduan",
-   "cara-mulai"
+   "dashboard",
+   "beranda",
+   "halaman depan"
   ],
   "urutan": 70
  },
  {
-  "slug": "cara-mulai-cara-mulai-lewat-claude",
-  "judul": "Cara mulai — Cara mulai lewat Claude",
-  "isi": "Padanan halaman di atas untuk yang lebih nyaman mengetik seperti di\nWhatsApp: `#/mulai-claude`, ditautkan dari \"Kalau bingung → Lebih suka\nngobrol?\" dan dari kartu Claude (MCP) di Pengaturan → Koneksi (\"❓ Panduan\n1 halaman\"). Isinya: syarat akun Claude yang mendukung connector, empat\nlangkah penyambungan sekali jalan (password untuk pengguna Google, salin\nalamat connector, tambah di claude.ai, nyalakan di chat), alamat connector\ndengan tombol salin, tiga kalimat pertama yang bisa disalin, dan \"kalau tidak\njalan\". **Jujur soal batas hari ini:** foto acuan wajah dan klon suara belum\nbisa lewat chat, jadi tetap diisi di Profil saya.\n\n---",
+  "slug": "dashboard-isinya-enam-kartu",
+  "judul": "Dashboard — Isinya enam kartu",
+  "isi": "**Isinya enam kartu**, masing-masing tautan ke halaman lengkapnya:\n\n- **Influencers** — sampai 8 karakter teratas beserta foto profilnya, dan\n  hitungan slot terpakai dari 25.\n- **Tasks** — sampai 5 pekerjaan yang belum selesai.\n- **Produksi Terbaru** — 5 job generate terakhir beserta biayanya. Tanda ✓\n  berhasil, ✕ gagal, ● masih jalan.\n- **Content Planner** — 5 ide konten terbaru beserta statusnya.\n- **Drive** — 4 berkas hasil produksi terakhir. Thumbnail-nya bisa diklik untuk\n  membuka berkasnya.\n- **🤖 Kelola lewat Claude** — pintu masuk ke kartu Claude (MCP) di\n  Settings → Koneksi.\n\n**Yang perlu diketahui.** Kartu Drive punya tombol hapus di tiap thumbnail, dan\nmenghapus media di sini **permanen** — sama seperti di halaman Drive. Lihat\nMenghapus media di bawah.",
   "tags": [
    "panduan",
-   "cara-mulai"
+   "dashboard",
+   "beranda",
+   "halaman depan"
   ],
   "urutan": 80
  },
  {
-  "slug": "buat-video",
-  "judul": "Buat Video",
-  "isi": "**Untuk apa.** Satu wizard di depan Video UGC dan Storyboard, untuk orang yang\nbelum tahu bedanya. Empat pertanyaan dalam bahasa orangnya, lalu harganya\ndalam rupiah, **sebelum** apa pun berbayar berangkat.\n\n1. **Apa** — pilih \"saya bicara ke kamera\" (jalur UGC) atau \"cerita beberapa\n   adegan\" (jalur Storyboard), lalu ceritakan videonya satu dua kalimat.\n   Untuk jalur cerita ada **bentuk cerita** yang dipilih dari kartu: Masalah →\n   Produk → Hasil · Proses · Sebelum/Sesudah · 3 Tips · Bebas. Penulis AI yang\n   memutuskan jumlah adegan dan detik tiap adegan (pembuka pendek, inti lebih\n   panjang); tidak ada angka yang ditanya. Perkiraan harga 15 dan 30 detik\n   sudah tertulis di sini.\n2. **Siapa** — profil dari halaman Profil saya (pemilih muncul kalau ada\n   lebih dari satu), dan untuk jalur UGC: produknya (bisa membuat produk baru\n   di tempat). Yang belum siap — foto wajah, suara, produk — disebut di sini\n   dengan tautan ke tempat memperbaikinya, bukan setelah naskah dibayar.\n3. **Berapa lama** — 10, 15, 20, atau 30 detik, masing-masing dengan harganya.\n   Lebih dari 30 detik **belum bisa** (batas per job; versi panjang menunggu\n   perakitan klip di server). Tombol \"Tulis naskahnya\" memanggil penulis AI\n   (≈ Rp 40, tertulis di tombol).\n4. **Tinjau & harga** — naskah yang akan diucapkan (atau daftar adegan),\n   rincian biaya per bagian dan totalnya dalam rupiah, lalu **Ya, buat video\n   ini**.\n\nSesudah \"Ya\", wizard menyimpan proyek yang **sama persis** dengan yang dibuat\nformulir Video UGC atau Storyboard dan membuka alur produksinya\n(`#/ugc?project=…` atau `#/storyboard?board=…`). Gambar pertama tetap dibuat\ndan dilihat dulu sebelum suara dan video dibayar — jeda murah yang sama\ndengan wizard UGC.\n\n**Yang perlu diketahui.** Tidak ada pemilih model; defaultnya mengikuti\naturan yang sama dengan wizard UGC dan Storyboard (penjaga wajah yang menerima\nfoto produk, avatar termurah yang menerima prompt, model multi-shot termurah\nyang terbukti), dan \"Naik kelas\" tetap ada di riwayat job. Harga yang tampil\nadalah perkiraan: yang ditagih adalah durasi yang dihasilkan model.\n\n---",
+  "slug": "cara-mulai",
+  "judul": "Cara mulai",
+  "isi": "**Untuk apa.** Satu halaman infografis untuk orang yang baru pertama kali\nmembuka aplikasi: empat langkah (Arah Konten → Profil saya → Buat Video →\nTonton & bagikan), garis \"kapan uang keluar\" dari yang gratis sampai yang\npaling mahal, daftar \"siapkan dulu\", dan \"kalau bingung\". Subjudulnya\nmenjanjikan video pertama dalam ± 25–30 menit — jumlah keempat perkiraan\nwaktunya — dan langkah 1 dan 2 cukup sekali. Ada di sidebar (💡 Cara mulai, paling atas di kedua\nsusunan menu), di kartu Mulai dari sini, dan di `#/mulai`. Tombol **Cetak**\nmenyimpannya sebagai PDF satu halaman; sidebar dan tooltip disembunyikan saat\ndicetak. Di layar lebar keempat kartu sebaris (juga di lembar cetak), di\nlayar sedang 2×2, di ponsel satu kolom.",
   "tags": [
    "panduan",
-   "buat-video"
+   "cara-mulai",
+   "mulai",
+   "baru daftar",
+   "langkah awal",
+   "dari mana"
   ],
   "urutan": 90
  },
  {
+  "slug": "cara-mulai-kenapa-arah-konten-pertama",
+  "judul": "Cara mulai — Kenapa Arah Konten pertama",
+  "isi": "**Kenapa Arah Konten pertama.** Ide dan naskah datang sebelum video, bukan\nsesudahnya: tanpa itu orang tiba di Buat Video tanpa tahu mau bicara apa.\nBlueprint yang disusun di sana juga dibaca sendiri oleh setiap penulis AI\nsesudahnya, jadi semua hasil berikutnya spesifik untuk orangnya. Naskah dari\nArah Konten langsung terisi di Buat Video lewat tombol **🎬 Buat videonya →**,\ndan langkah 4 menutup lingkarannya: angka yang dicatat di Rencana membuat\nLaporan tahu ide mana yang menambah follower.",
+  "tags": [
+   "panduan",
+   "cara-mulai"
+  ],
+  "urutan": 100
+ },
+ {
+  "slug": "cara-mulai-yang-perlu-diketahui",
+  "judul": "Cara mulai — Yang perlu diketahui",
+  "isi": "**Yang perlu diketahui.** Halaman ini **sengaja tidak menulis angka harga**,\nhanya urutan besarannya (gratis / kecil / paling besar). Tarif berubah dan\nhalaman ini dibaca berbulan-bulan; angka pastinya tampil di tombol\nmasing-masing, dihitung dari katalog hari itu. Satu-satunya pengecualian:\nbiaya penulis AI disebut di tooltip batang \"Menyusun blueprint, ide &\nnaskah\", karena dihitung\nlangsung dari tarif yang berlaku.",
+  "tags": [
+   "panduan",
+   "cara-mulai"
+  ],
+  "urutan": 110
+ },
+ {
+  "slug": "cara-mulai-cara-mulai-lewat-claude",
+  "judul": "Cara mulai — Cara mulai lewat Claude",
+  "isi": "Padanan halaman di atas untuk yang lebih nyaman mengetik seperti di\nWhatsApp: `#/mulai-claude`, ditautkan dari \"Kalau bingung → Lebih suka\nngobrol?\" dan dari kartu Claude (MCP) di Pengaturan → Koneksi (\"❓ Panduan\n1 halaman\"). Isinya: syarat akun Claude yang mendukung connector, empat\nlangkah penyambungan sekali jalan (password untuk pengguna Google, salin\nalamat connector, tambah di claude.ai, nyalakan di chat), alamat connector\ndengan tombol salin, tiga kalimat pertama yang bisa disalin, dan \"kalau tidak\njalan\". **Jujur soal batas hari ini:** foto acuan wajah dan klon suara belum\nbisa lewat chat, jadi tetap diisi di Profil saya.",
+  "tags": [
+   "panduan",
+   "cara-mulai"
+  ],
+  "urutan": 120
+ },
+ {
+  "slug": "buat-video",
+  "judul": "Buat Video",
+  "isi": "**Untuk apa.** Satu wizard di depan Video UGC dan Storyboard, untuk orang yang\nbelum tahu bedanya. Empat pertanyaan dalam bahasa orangnya, lalu harganya\ndalam rupiah, **sebelum** apa pun berbayar berangkat.",
+  "tags": [
+   "panduan",
+   "buat-video"
+  ],
+  "urutan": 130
+ },
+ {
+  "slug": "buat-video-apa",
+  "judul": "Buat Video — Apa",
+  "isi": "1. **Apa** — pilih \"saya bicara ke kamera\" (jalur UGC) atau \"cerita beberapa\n   adegan\" (jalur Storyboard), lalu ceritakan videonya satu dua kalimat.\n   Untuk jalur cerita ada **bentuk cerita** yang dipilih dari kartu: Masalah →\n   Produk → Hasil · Proses · Sebelum/Sesudah · 3 Tips · Bebas. Penulis AI yang\n   memutuskan jumlah adegan dan detik tiap adegan (pembuka pendek, inti lebih\n   panjang); tidak ada angka yang ditanya. Perkiraan harga 15 dan 30 detik\n   sudah tertulis di sini.\n   Masih di jalur cerita ada **gaya gambar**: **Foto nyata** (bawaan) atau\n   **Kolase kertas (gaya Vox)** — video penjelasan dengan kertas sobek, label\n   kata kunci tebal, dan kamu tampil sebagai potongan foto bertepi kertas\n   (wajah dan suara tetap dari profilmu). Gaya Vox membuat penulis AI menulis\n   dengan register penjelasan (buka dengan \"lho, kok?\", tiap kalimat satu\n   visual kertas). Harganya sama dengan Foto nyata.",
+  "tags": [
+   "panduan",
+   "buat-video"
+  ],
+  "urutan": 140
+ },
+ {
+  "slug": "buat-video-siapa",
+  "judul": "Buat Video — Siapa",
+  "isi": "2. **Siapa** — profil dari halaman Profil saya (pemilih muncul kalau ada\n   lebih dari satu), dan untuk jalur UGC: produknya (bisa membuat produk baru\n   di tempat). Yang belum siap — foto wajah, suara, produk — disebut di sini\n   dengan tautan ke tempat memperbaikinya, bukan setelah naskah dibayar.\n   Kalau tombol **Lanjut** belum bisa ditekan, alasannya tertulis di bawah\n   tombolnya (bukan hanya di tooltip, yang tidak muncul di ponsel).",
+  "tags": [
+   "panduan",
+   "buat-video"
+  ],
+  "urutan": 150
+ },
+ {
+  "slug": "buat-video-berapa-lama",
+  "judul": "Buat Video — Berapa lama",
+  "isi": "3. **Berapa lama** — 10, 15, 20, atau 30 detik, masing-masing dengan harganya.\n   Lebih dari 30 detik **belum bisa** (batas per job; versi panjang menunggu\n   perakitan klip di server). Tombol \"Tulis naskahnya\" memanggil penulis AI\n   (≈ Rp 40, tertulis di tombol).",
+  "tags": [
+   "panduan",
+   "buat-video"
+  ],
+  "urutan": 160
+ },
+ {
+  "slug": "buat-video-tinjau-harga",
+  "judul": "Buat Video — Tinjau & harga",
+  "isi": "4. **Tinjau & harga** — naskah yang akan diucapkan (atau daftar adegan),\n   rincian biaya per bagian dan totalnya dalam rupiah, lalu **Ya, buat video\n   ini**. Di jalur bicara ke kamera, naskah, caption, dan tagar bisa **diubah\n   langsung** di sini tanpa biaya; rincian harga ikut menyesuaikan panjang\n   naskah yang diubah. Daftar adegan jalur cerita diubah nanti di layar\n   Storyboard.",
+  "tags": [
+   "panduan",
+   "buat-video"
+  ],
+  "urutan": 170
+ },
+ {
+  "slug": "buat-video-isian-diingat",
+  "judul": "Buat Video — Isian diingat",
+  "isi": "**Isian diingat.** Cerita, jenis video, bentuk cerita, gaya, durasi, produk,\ndan langkah terakhir disimpan di perangkat ini per workspace, jadi pindah ke\nProfil saya atau Product Kit untuk memperbaiki penghalang tidak menghapus\nceritamu. Saat kembali muncul baris \"Melanjutkan isian terakhirmu · Mulai\nbaru\". Foto untuk jalur cerita dan naskah dari penulis AI tidak ikut diingat;\nisiannya dihapus begitu proyek berhasil dibuat.",
+  "tags": [
+   "panduan",
+   "buat-video",
+   "isian hilang",
+   "draft",
+   "tersimpan",
+   "lanjutkan",
+   "mulai baru"
+  ],
+  "urutan": 180
+ },
+ {
+  "slug": "buat-video-datang-dari-arah-konten",
+  "judul": "Buat Video — Datang dari Arah Konten",
+  "isi": "**Datang dari Arah Konten.** \"🎬 Buat videonya →\" membuka wizard ini dengan\nide dan profil dari konten itu; kalau naskahnya sudah ada, wizard langsung ke\n**Tinjau** dengan naskah itu (menulis ulang tetap bisa, memakai saldo), dan\nvideo yang dibuat tercatat untuk ide tersebut — proyek Video UGC-nya\nmenampilkan tautan \"Dari ide: … →\". Kalau workspace hanya punya satu produk,\nproduk itu langsung dipilih; kalau ada beberapa (atau foto wajah/suara belum\nsiap), wizard berhenti dulu di **Siapa**, dan \"Lanjut\" dari sana langsung ke\nTinjau tanpa langkah Berapa lama.\n\nSesudah \"Ya\", wizard menyimpan proyek yang **sama persis** dengan yang dibuat\nformulir Video UGC atau Storyboard dan membuka alur produksinya\n(`#/ugc?project=…` atau `#/storyboard?board=…`). Gambar pertama tetap dibuat\ndan dilihat dulu sebelum suara dan video dibayar — jeda murah yang sama\ndengan wizard UGC.",
+  "tags": [
+   "panduan",
+   "buat-video",
+   "naskah dari arah konten",
+   "buat videonya",
+   "dari ide"
+  ],
+  "urutan": 190
+ },
+ {
+  "slug": "buat-video-yang-perlu-diketahui",
+  "judul": "Buat Video — Yang perlu diketahui",
+  "isi": "**Yang perlu diketahui.** Tidak ada pemilih model; defaultnya mengikuti\naturan yang sama dengan wizard UGC dan Storyboard (penjaga wajah yang menerima\nfoto produk, avatar termurah yang menerima prompt, model multi-shot termurah\nyang terbukti), dan \"Naik kelas\" tetap ada di riwayat job. Harga yang tampil\nadalah perkiraan: yang ditagih adalah durasi yang dihasilkan model.",
+  "tags": [
+   "panduan",
+   "buat-video"
+  ],
+  "urutan": 200
+ },
+ {
+  "slug": "arah-konten",
+  "judul": "Arah Konten",
+  "isi": "**Untuk apa.** Menjawab \"konten apa yang harus aku buat?\" sebelum membuat\nvideo. Subjudul halamannya sekaligus batasnya: *siapa kamu, konten apa yang\nkamu buat, dan naskahnya — tidak membuat video, itu tugas Buat Video.* Tidak\nada tombol di sini yang membuat gambar, suara, atau video.",
+  "tags": [
+   "panduan",
+   "arah-konten",
+   "arah",
+   "bingung konten",
+   "nggak tahu mau bikin konten apa",
+   "ide konten",
+   "niche",
+   "positioning",
+   "12 pertanyaan",
+   "kuesioner",
+   "pemula"
+  ],
+  "urutan": 210
+ },
+ {
+  "slug": "arah-konten-12-pertanyaan",
+  "judul": "Arah Konten — 12 pertanyaan",
+  "isi": "1. **12 pertanyaan** (± 8 menit), satu per layar: siapa kamu, siapa yang kamu\n   bantu, masalah dan keinginan mereka, kenapa kamu, apa yang kamu jual dan\n   kisaran harganya, gaya bicara, topik yang dikuasai dan dihindari, platform,\n   dan kreator yang kamu kagumi (opsional). Setiap pertanyaan punya pilihan\n   **\"Belum tahu\"** — pemula tanpa followers dan belum jualan tetap bisa\n   mengisi. Yang wajib hanya pertanyaan 1, 2, dan 6. Jawaban tersimpan\n   otomatis di perangkat, jadi bisa berhenti dan lanjut.",
+  "tags": [
+   "panduan",
+   "arah-konten",
+   "arah"
+  ],
+  "urutan": 220
+ },
+ {
+  "slug": "arah-konten-susun-blueprint",
+  "judul": "Arah Konten — Susun blueprint",
+  "isi": "2. **Susun blueprint** — penulis AI mengolah jawabanmu jadi satu halaman:\n   positioning (1 kalimat), 3 keunggulan, audiens (siapa, masalahnya,\n   keinginannya, kata-kata mereka), 3–5 pilar konten, gaya bicara (kata yang\n   dipakai dan dihindari), ritme **Kenalan · Percaya · Beli** per minggu, dan\n   3 ide monetisasi. Rasionya diusulkan dari jawabanmu, bukan angka bawaan.",
+  "tags": [
+   "panduan",
+   "arah-konten",
+   "arah",
+   "blueprint",
+   "strategi konten",
+   "pilar konten",
+   "monetisasi",
+   "ritme"
+  ],
+  "urutan": 230
+ },
+ {
+  "slug": "arah-konten-ubah-bagian-mana-pun",
+  "judul": "Arah Konten — Ubah bagian mana pun",
+  "isi": "3. **Ubah bagian mana pun.** Hasil editanmu yang dipakai seterusnya.\n   \"Susun ulang dari jawaban\" menjalankan AI lagi tanpa mengisi ulang\n   (editanmu ikut diberikan supaya dipertahankan); \"Ulangi 12 pertanyaan\"\n   membuka pertanyaannya lagi, terisi jawaban yang sekarang.",
+  "tags": [
+   "panduan",
+   "arah-konten",
+   "arah"
+  ],
+  "urutan": 240
+ },
+ {
+  "slug": "arah-konten-terapkan-pilar-ke-rencana",
+  "judul": "Arah Konten — Terapkan pilar ke Rencana",
+  "isi": "4. **Terapkan pilar ke Rencana** — menambahkan pilar blueprint ke Content\n   Pillars untuk influencer itu. Pilar yang namanya sudah ada dilewati; porsi\n   (Target %) diatur di Rencana.\n\nBlueprint disimpan **per influencer**; kalau ada lebih dari satu, pemilihnya\nmuncul di atas dan pilihannya ikut ke Buat Video dan Profil saya.",
+  "tags": [
+   "panduan",
+   "arah-konten",
+   "arah"
+  ],
+  "urutan": 250
+ },
+ {
+  "slug": "arah-konten-ide-konten",
+  "judul": "Arah Konten — Ide konten",
+  "isi": "5. **Ide konten** — kartu \"💡 Ide konten\" membuka daftar ide. Saring per\n   **Pilar** (dari blueprint dan Content Pillars) dan **Tujuan** (Kenalan ·\n   Percaya · Beli), lalu tekan **10 ide**: tiap usulan punya judul kerja,\n   pilar, tujuan, dan satu kalimat kenapa audiensmu peduli. Usulan belum\n   tersimpan — pilih **Simpan** per ide atau **Simpan semua**, yang tidak\n   cocok tinggal dihapus. Pilar yang belum ada di Rencana ikut dibuat. Tanpa\n   filter, tujuan dibagi mengikuti ritme di blueprint; judul yang sudah\n   tersimpan tidak diulang. Belum mengisi 12 pertanyaan? Ide tetap ditulis\n   dari profilmu, dengan catatan bahwa hasilnya masih umum.",
+  "tags": [
+   "panduan",
+   "arah-konten",
+   "arah",
+   "ide",
+   "10 ide",
+   "kehabisan ide",
+   "mau posting apa"
+  ],
+  "urutan": 260
+ },
+ {
+  "slug": "arah-konten-naskah",
+  "judul": "Arah Konten — Naskah",
+  "isi": "6. **Naskah** — \"Tulis naskah →\" di sebuah ide. Pertama **Pilih pembuka**: 5\n   kalimat pembuka dari jenis berbeda (Cerita, Pertanyaan, Angka, Kontras,\n   Pengakuan, Janji), atau tulis sendiri. Lalu pilih durasi (10/15/20/30\n   detik) dan **Tulis naskahnya**: pembuka dipakai persis, diikuti isi yang\n   ditulis untuk didengar (kalimat pendek, \"...\" untuk jeda) dan ajakan yang\n   sesuai tujuan. Pembuka, isi, ajakan, dan **caption** (kartu terpisah —\n   dibaca, bukan dibacakan) bisa diubah; perkiraan \"± N detik\" ikut berubah.\n   **Simpan** menulis ke konten yang sama yang dibaca Rencana.",
+  "tags": [
+   "panduan",
+   "arah-konten",
+   "arah",
+   "naskah",
+   "script",
+   "hook",
+   "pembuka",
+   "caption"
+  ],
+  "urutan": 270
+ },
+ {
+  "slug": "arah-konten-remix-dari-video-yang-kamu",
+  "judul": "Arah Konten — Remix dari video yang kamu suka",
+  "isi": "**Remix dari video yang kamu suka** (lipatan di bawah Pilih pembuka) —\n   tempel transkrip atau tulis garis besar video orang lain: pembukanya\n   bilang apa, isinya urut bagaimana, ajakannya apa. Tempel **teksnya, bukan\n   link**: aplikasi tidak mengunduh video dari TikTok/IG (caption/transkrip\n   TikTok dan YouTube bisa disalin). Penulis AI membaca **polanya**, lalu\n   menulis pembuka, naskah, dan caption baru untuk ide ini dengan gaya\n   bicaramu — kalimat aslinya tidak dipakai. Pola yang dibaca tampil sebagai\n   \"Pola yang diambil\" di atas naskah; sisanya (ubah, Simpan, Buat videonya)\n   sama dengan naskah biasa. Minimal beberapa kalimat, maksimal 4.000 huruf;\n   biayanya sama dengan menulis satu naskah.",
+  "tags": [
+   "panduan",
+   "arah-konten",
+   "arah",
+   "remix",
+   "pola video orang lain",
+   "tiru video",
+   "contoh video",
+   "transkrip",
+   "amati tiru modifikasi"
+  ],
+  "urutan": 280
+ },
+ {
+  "slug": "arah-konten-serah-terima",
+  "judul": "Arah Konten — Serah-terima",
+  "isi": "7. **Serah-terima** — di bawah naskah: **🗓️ Lihat di Rencana** (menjadwalkan)\n   dan **🎬 Buat videonya →**, yang membuka Buat Video dengan naskah ini\n   sudah terisi (perubahan yang belum disimpan disimpan dulu). Arah Konten\n   berhenti di naskah.\n\nIde dan naskah dari halaman ini adalah konten yang sama dengan di **Rencana**\n— muncul di papan dan kalender Rencana, dan naskah yang ditulis di Rencana\njuga terbuka di sini. Kartu \"🎙️ Naskah siap baca\" di halaman depan\nmenampilkan naskah terbaru. Di bawah tiap judulnya ada **📈 Catat angka** — form yang sama dengan\ndi Rencana (lihat Laporan) untuk menyalin views dan follower baru\ndari aplikasi TikTok/IG setelah videonya tayang.",
+  "tags": [
+   "panduan",
+   "arah-konten",
+   "arah",
+   "buat videonya",
+   "lanjut ke video",
+   "naskah ke video"
+  ],
+  "urutan": 290
+ },
+ {
+  "slug": "arah-konten-yang-memakai-uang",
+  "judul": "Arah Konten — Yang memakai uang",
+  "isi": "**Yang memakai uang.** \"Susun blueprint\", \"Susun ulang\", \"10 ide\", \"Beri 5\npembuka\", \"Tulis naskahnya\", dan \"Tulis ulang dengan polanya\" (penulis AI, harganya tertulis di tombol).\nMenjawab pertanyaan, mengubah blueprint atau naskah, menyimpan ide, dan\nmenerapkan pilar gratis.",
+  "tags": [
+   "panduan",
+   "arah-konten",
+   "arah",
+   "biaya",
+   "bayar",
+   "gratis",
+   "saldo"
+  ],
+  "urutan": 300
+ },
+ {
+  "slug": "arah-konten-dipakai-otomatis-di-tempat-lain",
+  "judul": "Arah Konten — Dipakai otomatis di tempat lain",
+  "isi": "**Dipakai otomatis di tempat lain.** Begitu blueprint ada, penulis AI di\nBuat Video, Video UGC, Storyboard (termasuk \"Buat versi lain\"), dan Rencana\n(ide, naskah, rencana konten) membacanya sendiri — audiens, gaya bicara, kata\nyang dihindari, dan pilar. Tidak ada langkah tambahan; influencer tanpa\nblueprint tetap ditulis seperti sebelumnya.\n\n**Yang belum ada.** Pustaka hook statis. (Mengisi sebulan ke kalender ada di\nRencana — lihat Rencanakan sebulan dengan AI.)",
+  "tags": [
+   "panduan",
+   "arah-konten",
+   "arah"
+  ],
+  "urutan": 310
+ },
+ {
   "slug": "profil-saya",
   "judul": "Profil saya",
-  "isi": "**Untuk apa.** Jalan pendek untuk tiga langkah pertama: **wajah, suara, dan\nbahasa** dalam satu halaman, tanpa kata \"influencer\", \"Identity Kit\", atau\n\"voice id\". Dibuka dari kartu **Mulai dari sini** di Dashboard (tautan ⚡ \"Cara\ncepat\"), atau langsung `#/profil`. Tidak ada di sidebar — ia pintu masuk, bukan\nmenu kerja.\n\nDitulis setelah uji persona Okt 2026: pelanggan awam berhenti di langkah\nke-2 dari enam langkah awal, pada kata \"Identity Kit\".\n\n**Tiga kartu, berurutan:**\n\n1. **Wajah saya** — nama panggilan, bahasa, dan 1–4 foto. Tombol **Simpan\n   wajah saya** membuat karakter sekaligus foto acuannya; penulis AI membaca\n   ciri wajah dari foto (≈ Rp 40, tertulis di tombolnya) supaya wajahnya\n   terkunci di semua gambar. Menambah foto berikutnya **gratis** dan tanpa AI.\n2. **Suara saya** — **rekam langsung dari mikrofon** (10–30 detik, berhenti\n   sendiri di 30) atau unggah rekaman dari ponsel. Satu rekaman dipakai untuk\n   **dua** klon sekaligus: suara untuk video bicara ke kamera (MiniMax, UGC)\n   lalu suara untuk video cerita beberapa adegan (Kling, Storyboard). Contoh\n   suara hasil tiruan bisa didengar sebelum dipakai. Tidak memotong saldo.\n3. **Bahasa video** — Indonesia, English, atau campuran. Mandarin menyusul.\n\nKartu penutup menunjukkan tiga tanda centang dan tombol **Buat video\npertama**, yang baru aktif kalau wajah dan suara sudah ada. Video bicara ke\nkamera tetap butuh satu produk di Product Kit.\n\n**Yang perlu diketahui.** Di workspace yang punya lebih dari satu karakter,\nada pemilih \"profil yang diatur\" di atas; pilihannya disimpan di perangkat.\nSemua yang disimpan di sini **sama persis** dengan yang dibuat lewat halaman\nInfluencers — Profil saya hanya jalan pendeknya, dan **Pengaturan lengkap**\nmembawa ke halaman detail yang sama. Penerimaan rekaman browser (format webm\ndi Chrome/Android) oleh penyedia klon suara **belum diverifikasi**; kalau\nditolak, pesan penyedia ditampilkan dan tombol unggah berkas tetap ada.\n\n---",
+  "isi": "**Untuk apa.** Jalan pendek untuk tiga langkah pertama: **wajah, suara, dan\nbahasa** dalam satu halaman, tanpa kata \"influencer\", \"Identity Kit\", atau\n\"voice id\". Dibuka dari kartu **Mulai dari sini** di Dashboard (tautan ⚡ \"Cara\ncepat\"), atau langsung `#/profil`. Tidak ada di sidebar — ia pintu masuk, bukan\nmenu kerja.\n\nDitulis setelah uji persona Okt 2026: pelanggan awam berhenti di langkah\nke-2 dari enam langkah awal, pada kata \"Identity Kit\".\n\n**Tiga kartu, berurutan:**",
   "tags": [
    "panduan",
    "profil-saya"
   ],
-  "urutan": 100
+  "urutan": 320
+ },
+ {
+  "slug": "profil-saya-wajah-saya",
+  "judul": "Profil saya — Wajah saya",
+  "isi": "1. **Wajah saya** — nama panggilan, bahasa, dan 1–4 foto. Tombol **Simpan\n   wajah saya** membuat karakter sekaligus foto acuannya; penulis AI membaca\n   ciri wajah dari foto (≈ Rp 40, tertulis di tombolnya) supaya wajahnya\n   terkunci di semua gambar. Menambah foto berikutnya **gratis** dan tanpa AI.",
+  "tags": [
+   "panduan",
+   "profil-saya"
+  ],
+  "urutan": 330
+ },
+ {
+  "slug": "profil-saya-suara-saya",
+  "judul": "Profil saya — Suara saya",
+  "isi": "2. **Suara saya** — **rekam langsung dari mikrofon** (10–30 detik, berhenti\n   sendiri di 30) atau unggah rekaman dari ponsel. Satu rekaman dipakai untuk\n   **dua** klon sekaligus: suara untuk video bicara ke kamera (MiniMax, UGC)\n   lalu suara untuk video cerita beberapa adegan (Kling, Storyboard). Contoh\n   suara hasil tiruan bisa didengar sebelum dipakai. Tidak memotong saldo.",
+  "tags": [
+   "panduan",
+   "profil-saya"
+  ],
+  "urutan": 340
+ },
+ {
+  "slug": "profil-saya-bahasa-video",
+  "judul": "Profil saya — Bahasa video",
+  "isi": "3. **Bahasa video** — Indonesia, English, atau campuran. Mandarin menyusul.\n\nKartu penutup menunjukkan tiga tanda centang dan tombol **Buat video\npertama**, yang baru aktif kalau wajah dan suara sudah ada. Video bicara ke\nkamera tetap butuh satu produk di Product Kit.",
+  "tags": [
+   "panduan",
+   "profil-saya"
+  ],
+  "urutan": 350
+ },
+ {
+  "slug": "profil-saya-yang-perlu-diketahui",
+  "judul": "Profil saya — Yang perlu diketahui",
+  "isi": "**Yang perlu diketahui.** Di workspace yang punya lebih dari satu karakter,\nada pemilih \"profil yang diatur\" di atas; pilihannya disimpan di perangkat.\nSemua yang disimpan di sini **sama persis** dengan yang dibuat lewat halaman\nInfluencers — Profil saya hanya jalan pendeknya, dan **Pengaturan lengkap**\nmembawa ke halaman detail yang sama. Penerimaan rekaman browser (format webm\ndi Chrome/Android) oleh penyedia klon suara **belum diverifikasi**; kalau\nditolak, pesan penyedia ditampilkan dan tombol unggah berkas tetap ada.",
+  "tags": [
+   "panduan",
+   "profil-saya"
+  ],
+  "urutan": 360
  },
  {
   "slug": "influencers",
@@ -107,7 +435,7 @@
    "panduan",
    "influencers"
   ],
-  "urutan": 110
+  "urutan": 370
  },
  {
   "slug": "influencers-formulir-buat-influencer",
@@ -117,7 +445,7 @@
    "panduan",
    "influencers"
   ],
-  "urutan": 120
+  "urutan": 380
  },
  {
   "slug": "influencers-langkah-2-character-sheet",
@@ -127,27 +455,37 @@
    "panduan",
    "influencers"
   ],
-  "urutan": 130
+  "urutan": 390
  },
  {
   "slug": "influencers-halaman-detail-satu-influencer",
   "judul": "Influencers — Halaman detail satu influencer",
-  "isi": "Dibuka dengan mengklik namanya. Isinya:\n\n- **Character Sheet** — ubah nama, handle, niche, status, bahasa, bio, dan\n  identity prompt. Ada juga **✨ Perbaiki deskripsi dengan AI** yang merapikan\n  deskripsi yang sudah ada, bukan menggantinya.\n- **Identity Kit** — foto acuan multi-angle. Foto inilah yang dikirim ke\n  provider saat memakai model penjaga wajah. Tanpa isi, model seperti Qwen-Image\n  Edit Plus tidak bisa dipakai.\n- **Suara (tiga kartu, dan bedanya penting):**\n  - **Voice** — menempelkan *voice id* buatan provider untuk TTS. Daftar yang\n    ditampilkan adalah **saran dari dokumentasi provider, bukan hasil verifikasi\n    aplikasi ini**; kalau id-nya salah, yang memberi tahu adalah providernya\n    saat generate pertama. Kolomnya tetap teks bebas karena suara hasil cloning\n    punya id sendiri.\n  - **Klon suara MiniMax** — membuat suara baru dari rekaman sungguhan, untuk\n    jalur **TTS**. Inilah yang dipakai wizard Video UGC, karena model avatar\n    menerima *berkas audio*, bukan voice id.\n  - **Klon suara Kling** — menghasilkan voice id yang **hanya dikenal endpoint\n    video Kling**, untuk video multi-shot Storyboard.\n- **Generate untuk [nama]** — formulir generate yang sama dengan di Production\n  Studio, influencernya sudah terkunci.\n- **Aset terbaru** — memilih satu foto di sini langsung mengisi task dan URL\n  gambar sumber di formulir generate di atasnya.\n\n**Yang perlu diketahui.** Klon suara memanggil provider sungguhan, tapi tidak\nmemotong saldo pelanggan — biayanya di operator, dan hasilnya tidak muncul di\nriwayat job.\n\nSuara terkunci **per influencer dan per model**. Voice\nid tidak bisa dipindah antar provider. Tanpa voice id, semua influencer akan\nbersuara sama, jadi permintaan TTS atas nama seorang influencer akan ditolak.\n\n---",
+  "isi": "Dibuka dengan mengklik namanya. Isinya:\n\n- **Character Sheet** — ubah nama, handle, niche, status, bahasa, bio, dan\n  identity prompt. Ada juga **✨ Perbaiki deskripsi dengan AI** yang merapikan\n  deskripsi yang sudah ada, bukan menggantinya.\n- **Identity Kit** — foto acuan multi-angle. Foto inilah yang dikirim ke\n  provider saat memakai model penjaga wajah. Tanpa isi, model seperti Qwen-Image\n  Edit Plus tidak bisa dipakai.\n- **Suara (tiga kartu, dan bedanya penting):**\n  - **Voice** — menempelkan *voice id* buatan provider untuk TTS. Daftar yang\n    ditampilkan adalah **saran dari dokumentasi provider, bukan hasil verifikasi\n    aplikasi ini**; kalau id-nya salah, yang memberi tahu adalah providernya\n    saat generate pertama. Kolomnya tetap teks bebas karena suara hasil cloning\n    punya id sendiri.\n  - **Klon suara MiniMax** — membuat suara baru dari rekaman sungguhan, untuk\n    jalur **TTS**. Inilah yang dipakai wizard Video UGC, karena model avatar\n    menerima *berkas audio*, bukan voice id.\n  - **Klon suara Kling** — menghasilkan voice id yang **hanya dikenal endpoint\n    video Kling**, untuk video multi-shot Storyboard.\n- **Generate untuk [nama]** — formulir generate yang sama dengan di Production\n  Studio, influencernya sudah terkunci.\n- **Aset terbaru** — memilih satu foto di sini langsung mengisi task dan URL\n  gambar sumber di formulir generate di atasnya.",
   "tags": [
    "panduan",
    "influencers"
   ],
-  "urutan": 140
+  "urutan": 400
+ },
+ {
+  "slug": "influencers-halaman-detail-satu-influencer-yang-perlu",
+  "judul": "Influencers — Halaman detail satu influencer — Yang perlu diketahui",
+  "isi": "**Yang perlu diketahui.** Klon suara memanggil provider sungguhan, tapi tidak\nmemotong saldo pelanggan — biayanya di operator, dan hasilnya tidak muncul di\nriwayat job.\n\nSuara terkunci **per influencer dan per model**. Voice\nid tidak bisa dipindah antar provider. Tanpa voice id, semua influencer akan\nbersuara sama, jadi permintaan TTS atas nama seorang influencer akan ditolak.",
+  "tags": [
+   "panduan",
+   "influencers"
+  ],
+  "urutan": 410
  },
  {
   "slug": "product-kit",
   "judul": "Product Kit",
-  "isi": "**Untuk apa.** Menyimpan **foto produk asli** sekali, lalu dipakai ulang di\nbanyak video UGC. Fungsinya sejajar dengan Identity Kit: kalau Identity Kit\nmenjaga wajah tetap sama, Product Kit menjaga **kemasan** tetap sama.\n\n**Kenapa halaman sendiri, bukan kolom di dalam wizard.** Kalau foto produk\ndiunggah di dalam wizard, video kedua akan mengunggah foto yang sedikit berbeda,\nlalu kemasannya \"berubah\" antar video tanpa ada yang tahu kenapa.\n\n**Isinya.** Formulir tambah produk (nama, deskripsi, poin jualan, dan sampai 6\nfoto), lalu kartu untuk tiap produk tersimpan.\n\n**Yang perlu diketahui.** Fotonya **harus foto asli**. Model gambar mengarang\nlabel dan bentuk kemasan kalau hanya diberi teks. Foto asli sebagai referensi\nadalah satu-satunya cara kemasannya tetap sama — dan itu pun tidak 100%, yang\njadi alasan wizard UGC selalu menampilkan gambar kunci untuk ditinjau sebelum\nvideonya dibayar.\n\n---",
+  "isi": "**Untuk apa.** Menyimpan **foto produk asli** sekali, lalu dipakai ulang di\nbanyak video UGC. Fungsinya sejajar dengan Identity Kit: kalau Identity Kit\nmenjaga wajah tetap sama, Product Kit menjaga **kemasan** tetap sama.\n\n**Kenapa halaman sendiri, bukan kolom di dalam wizard.** Kalau foto produk\ndiunggah di dalam wizard, video kedua akan mengunggah foto yang sedikit berbeda,\nlalu kemasannya \"berubah\" antar video tanpa ada yang tahu kenapa.\n\n**Isinya.** Formulir tambah produk (nama, deskripsi, poin jualan, dan sampai 6\nfoto), lalu kartu untuk tiap produk tersimpan.\n\n**Yang perlu diketahui.** Fotonya **harus foto asli**. Model gambar mengarang\nlabel dan bentuk kemasan kalau hanya diberi teks. Foto asli sebagai referensi\nadalah satu-satunya cara kemasannya tetap sama — dan itu pun tidak 100%, yang\njadi alasan wizard UGC selalu menampilkan gambar kunci untuk ditinjau sebelum\nvideonya dibayar.",
   "tags": [
    "panduan",
    "product-kit"
   ],
-  "urutan": 150
+  "urutan": 420
  },
  {
   "slug": "production-studio",
@@ -157,17 +495,77 @@
    "panduan",
    "production-studio"
   ],
-  "urutan": 160
+  "urutan": 430
  },
  {
   "slug": "production-studio-tab-1-generate",
   "judul": "Production Studio — Tab 1 — Generate",
-  "isi": "Satu formulir dengan pemilih **Task**:\n\n| Task | Menghasilkan | Butuh |\n|---|---|---|\n| Gambar | Satu gambar | Prompt |\n| Video (b-roll) | Klip tanpa orang bicara | Prompt, opsional gambar awal |\n| Suara (TTS) | Berkas audio | Teks yang dibacakan |\n| Talking / Lip Sync | Orang bicara | Foto wajah + audio |\n\n**Pemilih Task ini sengaja bukan tab.** Mengisi kolom \"Naskah yang diucapkan\"\npada task Talking membuat **satu submit mengerjakan TTS lalu lipsync\nsekaligus** — kamu tidak perlu membuat suara dulu lalu menyalin URL-nya.\nKeempat task juga berbagi pilihan influencer, konten tujuan, dan foto yang\ndipilih dari daftar aset.\n\nIsi lain di formulir ini:\n\n- **Pemilih model** — dibagi dua kelompok (murah dan premium) supaya keputusan\n  biayanya diambil sebelum melihat nama modelnya. Tiap model membawa\n  **rekamannya sendiri**: berapa kali dicoba, berapa kali jadi. Model yang\n  sering harus diulang ditandai, karena harga satu panggilan dan harga satu\n  hasil jadi pernah berbeda sampai puluhan kali lipat di data platform ini.\n- **Untuk konten (opsional)** — menandai hasil produksi ini milik ide konten\n  yang mana. Tanpa tanda itu, layar publish tidak punya cara tahu berkas mana\n  yang harus diposting. Memilih konten sekalian memilih influencer pemiliknya.\n- **Peringatan kecocokan model** — muncul **sebelum** tombol Generate ditekan.\n  Kasus paling mahal yang dicegahnya: foto Identity Kit sudah ada tapi modelnya\n  tidak membacanya, jadi wajahnya jadi orang asing dan itu baru ketahuan setelah\n  dibayar.\n- **Pencari prompt** (task video) — menjelaskan industrimu, lalu penulis AI\n  menyusun paket lengkap berisi hook, naskah, dan CTA. **Ini memanggil provider\n  teks dan memotong saldo (≈ Rp 40 per naskah).**\n- **Pustaka prompt** — contoh prompt siap pakai per kategori. Gratis, tidak\n  memanggil AI.\n- **URL video sumber (multi-angle)** (task video) — hanya muncul untuk model\n  yang menerimanya: Seedance 2.0, 2.0 Fast, dan 2.5 reference-to-video (versi\n  Mini sengaja tidak). Video yang sudah ada dirender ulang dari sudut kamera\n  lain; sebut videonya di prompt sebagai `@Video1`. **Belum pernah diuji\n  langsung ke provider** — nama field-nya diambil dari dokumentasi publik fal.\n  Tanpa field yang benar, job tetap jalan dan tetap ditagih, tapi videonya\n  dibuat dari nol. Coba dengan job murah dulu. Claude lewat MCP juga bisa\n  mengirimnya (`source_video_url` di `generate_media`).\n- **Estimasi biaya** di sebelah tombol Generate, ditulis \"≈\" karena memang\n  perkiraan.",
+  "isi": "Satu formulir dengan pemilih **Task**:\n\n| Task | Menghasilkan | Butuh |\n|---|---|---|\n| Gambar | Satu gambar | Prompt |\n| Video (b-roll) | Klip tanpa orang bicara | Prompt, opsional gambar awal |\n| Suara (TTS) | Berkas audio | Teks yang dibacakan |\n| Talking / Lip Sync | Orang bicara | Foto wajah + audio |",
   "tags": [
    "panduan",
    "production-studio"
   ],
-  "urutan": 170
+  "urutan": 440
+ },
+ {
+  "slug": "production-studio-tab-1-generate-pemilih-task-ini-sengaja",
+  "judul": "Production Studio — Tab 1 — Generate — Pemilih Task ini sengaja bukan tab",
+  "isi": "**Pemilih Task ini sengaja bukan tab.** Mengisi kolom \"Naskah yang diucapkan\"\npada task Talking membuat **satu submit mengerjakan TTS lalu lipsync\nsekaligus** — kamu tidak perlu membuat suara dulu lalu menyalin URL-nya.\nKeempat task juga berbagi pilihan influencer, konten tujuan, dan foto yang\ndipilih dari daftar aset.\n\nIsi lain di formulir ini:",
+  "tags": [
+   "panduan",
+   "production-studio"
+  ],
+  "urutan": 450
+ },
+ {
+  "slug": "production-studio-tab-1-generate-pemilih-model",
+  "judul": "Production Studio — Tab 1 — Generate — Pemilih model",
+  "isi": "- **Pemilih model** — dibagi dua kelompok (murah dan premium) supaya keputusan\n  biayanya diambil sebelum melihat nama modelnya. Tiap model membawa\n  **rekamannya sendiri**: berapa kali dicoba, berapa kali jadi. Model yang\n  sering harus diulang ditandai, karena harga satu panggilan dan harga satu\n  hasil jadi pernah berbeda sampai puluhan kali lipat di data platform ini.",
+  "tags": [
+   "panduan",
+   "production-studio"
+  ],
+  "urutan": 460
+ },
+ {
+  "slug": "production-studio-tab-1-generate-untuk-konten-opsional",
+  "judul": "Production Studio — Tab 1 — Generate — Untuk konten (opsional)",
+  "isi": "- **Untuk konten (opsional)** — menandai hasil produksi ini milik ide konten\n  yang mana. Tanpa tanda itu, layar publish tidak punya cara tahu berkas mana\n  yang harus diposting. Memilih konten sekalian memilih influencer pemiliknya.",
+  "tags": [
+   "panduan",
+   "production-studio"
+  ],
+  "urutan": 470
+ },
+ {
+  "slug": "production-studio-tab-1-generate-peringatan-kecocokan-model",
+  "judul": "Production Studio — Tab 1 — Generate — Peringatan kecocokan model",
+  "isi": "- **Peringatan kecocokan model** — muncul **sebelum** tombol Generate ditekan.\n  Kasus paling mahal yang dicegahnya: foto Identity Kit sudah ada tapi modelnya\n  tidak membacanya, jadi wajahnya jadi orang asing dan itu baru ketahuan setelah\n  dibayar.",
+  "tags": [
+   "panduan",
+   "production-studio"
+  ],
+  "urutan": 480
+ },
+ {
+  "slug": "production-studio-tab-1-generate-pencari-prompt",
+  "judul": "Production Studio — Tab 1 — Generate — Pencari prompt",
+  "isi": "- **Pencari prompt** (task video) — menjelaskan industrimu, lalu penulis AI\n  menyusun paket lengkap berisi hook, naskah, dan CTA. **Ini memanggil provider\n  teks dan memotong saldo (≈ Rp 40 per naskah).**\n\n- **Pustaka prompt** — contoh prompt siap pakai per kategori. Gratis, tidak\n  memanggil AI.",
+  "tags": [
+   "panduan",
+   "production-studio"
+  ],
+  "urutan": 490
+ },
+ {
+  "slug": "production-studio-tab-1-generate-url-video-sumber-multi",
+  "judul": "Production Studio — Tab 1 — Generate — URL video sumber (multi-angle)",
+  "isi": "- **URL video sumber (multi-angle)** (task video) — hanya muncul untuk model\n  yang menerimanya: Seedance 2.0, 2.0 Fast, dan 2.5 reference-to-video (versi\n  Mini sengaja tidak). Video yang sudah ada dirender ulang dari sudut kamera\n  lain; sebut videonya di prompt sebagai `@Video1`. **Belum pernah diuji\n  langsung ke provider** — nama field-nya diambil dari dokumentasi publik fal.\n  Tanpa field yang benar, job tetap jalan dan tetap ditagih, tapi videonya\n  dibuat dari nol. Coba dengan job murah dulu. Claude lewat MCP juga bisa\n  mengirimnya (`source_video_url` di `generate_media`).\n\n- **Estimasi biaya** di sebelah tombol Generate, ditulis \"≈\" karena memang\n  perkiraan.",
+  "tags": [
+   "panduan",
+   "production-studio"
+  ],
+  "urutan": 500
  },
  {
   "slug": "production-studio-tab-2-character-sheet",
@@ -177,47 +575,170 @@
    "panduan",
    "production-studio"
   ],
-  "urutan": 180
+  "urutan": 510
  },
  {
   "slug": "production-studio-tab-3-riwayat-job",
   "judul": "Production Studio — Tab 3 — Riwayat job",
-  "isi": "Dua puluh job terakhir beserta pratinjau, task, influencer, model, status,\nbiaya, dan tautan hasil. **Label tab ini membawa jumlah job yang masih\nberjalan**, supaya kamu tidak menekan Generate lagi karena mengira yang pertama\ntidak terkirim.\n\nKolom biaya: job **gagal atau batal** tertulis **\"Rp 0 · tidak ditagih\"** —\npemakaian baru dicatat ke saldo saat job berhasil. Job yang masih berjalan\ndiberi \"(ditahan)\" karena angkanya masih perkiraan.\n\n**Model bawaan tidak pernah model yang mati.** Model yang belum pernah berhasil\nsetelah 2 percobaan, atau pernah ditolak provider karena isinya (mis. Seedance\n2.x Reference untuk wajah fotorealistis), dilewati saat memilih bawaan di Buat\nVideo, Video UGC, dan Storyboard, dan selalu ditaruh paling bawah di pemilih\nmodel. Ia tetap bisa dipilih manual — badge ⚠ menjelaskan rekamannya.\n\nTiga tombol per baris:\n\n- **Jejak** — membuka apa yang sebenarnya dikirim ke provider: prompt akhir,\n  foto acuan yang ikut, model, dan pesan errornya. Ini yang membedakan\n  \"usulannya yang buruk\" dari \"editannya yang buruk\".\n- **Naik kelas** — mengirim ulang job yang sama ke model satu tingkat lebih\n  mahal. Lihat Naik kelas di bawah.\n- **Hapus** — permanen, lihat Menghapus media.\n\n**Yang perlu diketahui.** Server tidak punya worker latar. Job hanya maju kalau\nhalaman ini memanggil `poll`, yang dilakukan tiap 8 detik selama halaman Studio\nterbuka **di tab mana pun**. Kalau kamu menutup aplikasi, job tetap berjalan di\nprovider dan hasilnya masuk saat ada yang membuka lagi.\n\n---",
+  "isi": "Dua puluh job terakhir beserta pratinjau, task, influencer, model, status,\nbiaya, dan tautan hasil. **Label tab ini membawa jumlah job yang masih\nberjalan**, supaya kamu tidak menekan Generate lagi karena mengira yang pertama\ntidak terkirim.\n\nKolom biaya: job **gagal atau batal** tertulis **\"Rp 0 · tidak ditagih\"** —\npemakaian baru dicatat ke saldo saat job berhasil. Job yang masih berjalan\ndiberi \"(ditahan)\" karena angkanya masih perkiraan.",
   "tags": [
    "panduan",
    "production-studio"
   ],
-  "urutan": 190
+  "urutan": 520
+ },
+ {
+  "slug": "production-studio-tab-3-riwayat-job-model-bawaan-tidak",
+  "judul": "Production Studio — Tab 3 — Riwayat job — Model bawaan tidak pernah model yang mati",
+  "isi": "**Model bawaan tidak pernah model yang mati.** Model yang belum pernah berhasil\nsetelah 2 percobaan, atau pernah ditolak provider karena isinya (mis. Seedance\n2.x Reference untuk wajah fotorealistis), dilewati saat memilih bawaan di Buat\nVideo, Video UGC, dan Storyboard, dan selalu ditaruh paling bawah di pemilih\nmodel. Ia tetap bisa dipilih manual — badge ⚠ menjelaskan rekamannya.\n\nTiga tombol per baris:\n\n- **Jejak** — membuka apa yang sebenarnya dikirim ke provider: prompt akhir,\n  foto acuan yang ikut, model, dan pesan errornya. Ini yang membedakan\n  \"usulannya yang buruk\" dari \"editannya yang buruk\".\n- **Naik kelas** — mengirim ulang job yang sama ke model satu tingkat lebih\n  mahal. Lihat Naik kelas di bawah.\n- **Hapus** — permanen, lihat Menghapus media.",
+  "tags": [
+   "panduan",
+   "production-studio"
+  ],
+  "urutan": 530
+ },
+ {
+  "slug": "production-studio-tab-3-riwayat-job-yang-perlu-diketahui",
+  "judul": "Production Studio — Tab 3 — Riwayat job — Yang perlu diketahui",
+  "isi": "**Yang perlu diketahui.** Server tidak punya worker latar. Job hanya maju kalau\nhalaman ini memanggil `poll`, yang dilakukan tiap 8 detik selama halaman Studio\nterbuka **di tab mana pun**. Kalau kamu menutup aplikasi, job tetap berjalan di\nprovider dan hasilnya masuk saat ada yang membuka lagi.",
+  "tags": [
+   "panduan",
+   "production-studio"
+  ],
+  "urutan": 540
  },
  {
   "slug": "storyboard",
   "judul": "Storyboard",
-  "isi": "**Untuk apa.** Satu ide dipecah jadi beberapa shot, lalu jadi **satu video\nmulti-shot**. Cocok untuk cerita yang butuh perpindahan sudut, bukan untuk orang\nbicara ke kamera (itu Video UGC).\n\n**Formulirnya** menanyakan bentuk cerita (pola yang sama dengan wizard Buat\nVideo), total durasi, dan **foto dari HP-mu (opsional, maks. 8)**: dapur,\nkeripik, kemasan, pembeli. Penulis AI melihat fotonya dan menjadikan tiap foto\nbahan satu adegan; foto kemasan ikut dikirim sebagai referensi tambahan ke\njob gambar pembuka (hanya untuk model yang menerima banyak referensi) supaya\nkemasannya tidak dikarang. **Foto tidak menjadi frame per adegan** — model\nvideo multi-shot hanya menerima satu gambar awal; foto mengarahkan tulisan\ndan gambar pembuka. Penulis AI membagi adegannya. Yang mau menentukan\nsendiri jumlah shot dan detik per shot memilih **Atur sendiri** di pemilih\nyang sama — cara lama tetap ada, hanya tidak lagi ditanya duluan.\n\n**Alurnya tiga langkah, dan urutannya dipaksakan:**\n\n1. **Naskah** — periksa daftar shot dan kesiapannya. Tiap shot punya kotak\n   **\"Ubah adegan ini\"**: tulis satu kalimat Indonesia (\"dia tertawa, bukan\n   serius\", \"kameranya lebih dekat\", \"kata-katanya lebih singkat\") dan\n   penulis AI menulis ulang adegan itu saja — memakai saldo per panggilan,\n   hasilnya langsung dipasang, dan **Batalkan** mengembalikannya gratis.\n   Prompt visual Inggris, kamera, dan detik tetap ada di balik tombol\n   **Lanjutan**, tidak lagi harus ditulis orangnya. Ada kolom **kontinuitas**\n   terpisah yang ditempelkan ke semua shot saat dikirim, jadi mengubah\n   \"ganti bajunya jadi jaket denim\" cukup sekali, bukan disisir per shot.\n2. **Produksi** — dua tahap, dua tombol (sejak Okt 2026): **gambar pembuka**\n   dulu, ditampilkan besar dengan pertanyaan \"wajahnya mirip? latar dan\n   pakaiannya benar?\", boleh **Coba lagi** seharga satu gambar — baru **Ya,\n   buat video**. Sebelumnya satu tombol mengerjakan keduanya berurutan, dan\n   video $0,5–2 dibayar tanpa pernah melihat frame yang menentukan wajah,\n   baju, dan latar seluruh videonya. Model yang mengunci wajah langsung dari\n   Identity Kit (Seedance reference-to-video) tidak memakai gambar pembuka\n   dan tetap satu tombol.\n3. **Hasil** — tonton, unduh, dan **Buat versi lain**: menyalin storyboard\n   ini jadi versi baru dengan **gambar pembuka dipakai ulang** (gratis, wajah\n   tetap sama); hanya videonya yang nanti dibayar lagi. Kolom \"apa yang beda\"\n   opsional: diisi (\"bahasa Inggris\", \"lebih lucu\", \"ajakan beli lewat\n   WhatsApp\"), penulis AI menulis ulang narasi semua adegan sekali jalan,\n   visual tetap; dikosongkan, salinan persis tanpa biaya. Salinannya terbuka\n   di langkah Naskah, jadi masih bisa diubah per adegan sebelum video dibuat.\n\n**Kenapa cuma dua gambar, bukan satu per shot.** Rancangan pertama membuat satu\ngambar kunci per shot. Dipakai sungguhan, dua hal muncul: Drive penuh potongan\nyang tidak pernah ditinjau satu-satu, dan enam generate terpisah berarti enam\nkesempatan wajahnya bergeser. Enam panel dalam **satu** generate justru lebih\nkonsisten dan harganya ≈ $0,04, bukan ≈ $0,24.\n\nFrame pembuka tetap dibuat terpisah karena model videonya **mewajibkan** gambar\nawal, dan gambar itu jadi frame pertama videonya.\n\n**Lembar storyboard** (panel bergrid) opsional, di samping alur utama — untuk\nditinjau manusia, bukan untuk dijadikan video.\n\n**Yang perlu diketahui.** Videonya satu job, bukan beberapa klip yang dijahit.\nModelnya membagi satu video jadi beberapa shot, mengunci wajah lewat foto\nIdentity Kit, dan mengikat suara ke karakternya lewat voice id Kling.\n\n---",
+  "isi": "**Untuk apa.** Satu ide dipecah jadi beberapa shot, lalu jadi **satu video\nmulti-shot**. Cocok untuk cerita yang butuh perpindahan sudut, bukan untuk orang\nbicara ke kamera (itu Video UGC).\n\n**Formulirnya** menanyakan bentuk cerita (pola yang sama dengan wizard Buat\nVideo), total durasi, dan **foto dari HP-mu (opsional, maks. 8)**: dapur,\nkeripik, kemasan, pembeli. Penulis AI melihat fotonya dan menjadikan tiap foto\nbahan satu adegan; foto kemasan ikut dikirim sebagai referensi tambahan ke\njob gambar pembuka (hanya untuk model yang menerima banyak referensi) supaya\nkemasannya tidak dikarang. **Foto tidak menjadi frame per adegan** — model\nvideo multi-shot hanya menerima satu gambar awal; foto mengarahkan tulisan\ndan gambar pembuka. Penulis AI membagi adegannya. Yang mau menentukan\nsendiri jumlah shot dan detik per shot memilih **Atur sendiri** di pemilih\nyang sama — cara lama tetap ada, hanya tidak lagi ditanya duluan.",
   "tags": [
    "panduan",
    "storyboard"
   ],
-  "urutan": 200
+  "urutan": 550
+ },
+ {
+  "slug": "storyboard-gaya-gambar",
+  "judul": "Storyboard — Gaya gambar",
+  "isi": "**Gaya gambar.** Storyboard yang dibuat dari Buat Video dengan gaya **Kolase\nkertas (gaya Vox)** tidak punya kolom gaya sendiri: blok gayanya (bahasa\nInggris, diawali \"Vox-style paper collage\") ditaruh di **awal** kolom\n**Kontinuitas**, jadi ikut ke prompt setiap shot, dan gambar pembuka diberi\nawalan gaya kertas yang sama. Menghapus awalan itu dari Kontinuitas =\nkembali ke foto nyata. Saat prompt per shot harus dipangkas, blok gaya\ndipertahankan dan deskripsi adegan yang dipendekkan duluan.\n\n**Alurnya tiga langkah, dan urutannya dipaksakan:**",
+  "tags": [
+   "panduan",
+   "storyboard"
+  ],
+  "urutan": 560
+ },
+ {
+  "slug": "storyboard-naskah",
+  "judul": "Storyboard — Naskah",
+  "isi": "1. **Naskah** — periksa daftar shot dan kesiapannya. Tiap shot punya kotak\n   **\"Ubah adegan ini\"**: tulis satu kalimat Indonesia (\"dia tertawa, bukan\n   serius\", \"kameranya lebih dekat\", \"kata-katanya lebih singkat\") dan\n   penulis AI menulis ulang adegan itu saja — memakai saldo per panggilan,\n   hasilnya langsung dipasang, dan **Batalkan** mengembalikannya gratis.\n   Prompt visual Inggris, kamera, dan detik tetap ada di balik tombol\n   **Lanjutan**, tidak lagi harus ditulis orangnya. Ada kolom **kontinuitas**\n   terpisah yang ditempelkan ke semua shot saat dikirim, jadi mengubah\n   \"ganti bajunya jadi jaket denim\" cukup sekali, bukan disisir per shot.",
+  "tags": [
+   "panduan",
+   "storyboard"
+  ],
+  "urutan": 570
+ },
+ {
+  "slug": "storyboard-produksi",
+  "judul": "Storyboard — Produksi",
+  "isi": "2. **Produksi** — dua tahap, dua tombol (sejak Okt 2026): **gambar pembuka**\n   dulu, ditampilkan besar dengan pertanyaan \"wajahnya mirip? latar dan\n   pakaiannya benar?\", boleh **Coba lagi** seharga satu gambar — baru **Ya,\n   buat video**. Sebelumnya satu tombol mengerjakan keduanya berurutan, dan\n   video $0,5–2 dibayar tanpa pernah melihat frame yang menentukan wajah,\n   baju, dan latar seluruh videonya. Model yang mengunci wajah langsung dari\n   Identity Kit (Seedance reference-to-video) tidak memakai gambar pembuka\n   dan tetap satu tombol.",
+  "tags": [
+   "panduan",
+   "storyboard"
+  ],
+  "urutan": 580
+ },
+ {
+  "slug": "storyboard-hasil",
+  "judul": "Storyboard — Hasil",
+  "isi": "3. **Hasil** — tonton, unduh, dan **Buat versi lain**: menyalin storyboard\n   ini jadi versi baru dengan **gambar pembuka dipakai ulang** (gratis, wajah\n   tetap sama); hanya videonya yang nanti dibayar lagi. Kolom \"apa yang beda\"\n   opsional: diisi (\"bahasa Inggris\", \"lebih lucu\", \"ajakan beli lewat\n   WhatsApp\"), penulis AI menulis ulang narasi semua adegan sekali jalan,\n   visual tetap; dikosongkan, salinan persis tanpa biaya. Salinannya terbuka\n   di langkah Naskah, jadi masih bisa diubah per adegan sebelum video dibuat.",
+  "tags": [
+   "panduan",
+   "storyboard"
+  ],
+  "urutan": 590
+ },
+ {
+  "slug": "storyboard-kenapa-cuma-dua-gambar-bukan",
+  "judul": "Storyboard — Kenapa cuma dua gambar, bukan satu per shot",
+  "isi": "**Kenapa cuma dua gambar, bukan satu per shot.** Rancangan pertama membuat satu\ngambar kunci per shot. Dipakai sungguhan, dua hal muncul: Drive penuh potongan\nyang tidak pernah ditinjau satu-satu, dan enam generate terpisah berarti enam\nkesempatan wajahnya bergeser. Enam panel dalam **satu** generate justru lebih\nkonsisten dan harganya ≈ $0,04, bukan ≈ $0,24.\n\nFrame pembuka tetap dibuat terpisah karena model videonya **mewajibkan** gambar\nawal, dan gambar itu jadi frame pertama videonya.\n\n**Lembar storyboard** (panel bergrid) opsional, di samping alur utama — untuk\nditinjau manusia, bukan untuk dijadikan video.",
+  "tags": [
+   "panduan",
+   "storyboard"
+  ],
+  "urutan": 600
+ },
+ {
+  "slug": "storyboard-yang-perlu-diketahui",
+  "judul": "Storyboard — Yang perlu diketahui",
+  "isi": "**Yang perlu diketahui.** Videonya satu job, bukan beberapa klip yang dijahit.\nModelnya membagi satu video jadi beberapa shot, mengunci wajah lewat foto\nIdentity Kit, dan mengikat suara ke karakternya lewat voice id Kling.",
+  "tags": [
+   "panduan",
+   "storyboard"
+  ],
+  "urutan": 610
  },
  {
   "slug": "video-ugc",
   "judul": "Video UGC",
-  "isi": "**Untuk apa.** Produk + orang + suara + naskah → **satu video orang bicara ke\nkamera**, gaya konten buatan pengguna. Ini jalur yang dipakai untuk endorse.\n\n**Lima input, tiga job, dua persetujuan.**\n\nYang diisi manusia hanya lima: produk (dari Product Kit), influencer (Identity\nKit + suara), naskah, durasi, dan latar. Sisanya default yang sudah terbukti.\n\n**Latar usulan penulis AI selalu bahasa Inggris dan tidak berulang.** Latar\ndan gaya penyampaian dikirim apa adanya sebagai prompt ke model gambar dan\nmodel avatar, jadi teks Indonesia di sana menurunkan hasilnya. Kalau penulis\nAI tetap menjawab bahasa Indonesia, aplikasi meminta ulang sekali. Ruangannya\nditentukan produknya (produk yang tidak terikat tempat — ebook, kursus,\naplikasi, jasa — tidak boleh memakai home office), dan lima latar terakhir\ninfluencer yang sama dikirim sebagai daftar yang tidak boleh diulang.\n\nTiga job berbayar, dua persetujuan:\n\n| # | Job | Kisaran biaya | Dari |\n|---|---|---|---|\n| 1a | Gambar kunci | ≈ $0,03 | Wajah Identity Kit + produk Product Kit |\n| 1b | Audio | ≈ $0,02 | Naskah dibacakan suara influencer |\n| 2 | Video avatar | ≈ $0,5–2 | Gambar kunci + audio |\n\n**Pratinjau (1a + 1b) dibuat bersamaan dan ditinjau di satu layar.** Kemasan\nproduk adalah bagian yang paling sering meleset: label berubah, botol berganti\nbentuk, dan model gambar tidak menjamin itu meski diberi foto asli. Suara adalah\nhal pertama yang membuat penonton merasa \"ini AI\". Keduanya murah dan tidak\nsaling butuh, jadi tidak ada alasan menunggu gambar selesai sebelum suaranya\ndibuat. Masing-masing bisa diulang sendiri (Ulang gambar / Ulang suara).\nVideo (bagian mahal) baru bisa dibuat setelah dua-duanya ada, dengan tombolnya\nsendiri.\n\nDari wizard **Buat Video**, tombol terakhir berbunyi \"Ya, buat pratinjau · ≈ Rp …\"\ndan pratinjaunya langsung berangkat begitu layar produksi terbuka — tanpa klik\nkedua. Persetujuan itu dipakai sekali: memuat ulang halaman atau bolak-balik ke\nlangkah Naskah tidak mengirim job baru.\n\nLangkahnya sama-sama tiga: **Naskah → Produksi → Hasil**.\n\n**Durasi tidak punya kenop.** Model avatar membuat video sepanjang audionya, dan\naudio sepanjang naskahnya. Jadi \"durasi\" di wizard ini adalah **target** yang\ndipakai penulis naskah untuk memaskan jumlah kata (≈ 2,3 kata per detik), dan\nestimasi biayanya dihitung dari jumlah kata naskah — bukan dari angka yang\ndiminta.\n\n**Batas 30 detik, ditegakkan server.** Naskah yang lebih panjang ditolak sebelum\njob berbayar berangkat, dan wizard menahannya lebih dulu supaya penolakannya\ntidak terjadi setelah gambar kuncinya sudah dibayar. Tiga puluh detik kira-kira\n69 kata.\n\nKenapa **ditolak** dan bukan dipotong diam-diam: panjang video avatar ditentukan\naudionya, bukan angka yang dikirim aplikasi. Memotong angkanya hanya akan\nmemperkecil estimasi di layar sementara provider tetap membuat dan menagih video\npenuh — pagar yang menyembunyikan tagihannya sendiri. Kalau videonya memang\nharus lebih panjang, bagi jadi beberapa video.\n\n**Yang perlu diketahui.** Influencer tanpa voice id akan ditolak di langkah\naudio. Siapkan suaranya dulu lewat kartu klon suara MiniMax di halaman detail\ninfluencer.\n\n---",
+  "isi": "**Untuk apa.** Produk + orang + suara + naskah → **satu video orang bicara ke\nkamera**, gaya konten buatan pengguna. Ini jalur yang dipakai untuk endorse.\n\n**Lima input, tiga job, dua persetujuan.**\n\nYang diisi manusia hanya lima: produk (dari Product Kit), influencer (Identity\nKit + suara), naskah, durasi, dan latar. Sisanya default yang sudah terbukti.",
   "tags": [
    "panduan",
    "video-ugc"
   ],
-  "urutan": 210
+  "urutan": 620
+ },
+ {
+  "slug": "video-ugc-latar-usulan-penulis-ai-selalu",
+  "judul": "Video UGC — Latar usulan penulis AI selalu bahasa Inggris dan tidak berulang",
+  "isi": "**Latar usulan penulis AI selalu bahasa Inggris dan tidak berulang.** Latar\ndan gaya penyampaian dikirim apa adanya sebagai prompt ke model gambar dan\nmodel avatar, jadi teks Indonesia di sana menurunkan hasilnya. Kalau penulis\nAI tetap menjawab bahasa Indonesia, aplikasi meminta ulang sekali. Ruangannya\nditentukan produknya (produk yang tidak terikat tempat — ebook, kursus,\naplikasi, jasa — tidak boleh memakai home office), dan lima latar terakhir\ninfluencer yang sama dikirim sebagai daftar yang tidak boleh diulang.\n\nTiga job berbayar, dua persetujuan:\n\n| # | Job | Kisaran biaya | Dari |\n|---|---|---|---|\n| 1a | Gambar kunci | ≈ $0,03 | Wajah Identity Kit + produk Product Kit |\n| 1b | Audio | ≈ $0,02 | Naskah dibacakan suara influencer |\n| 2 | Video avatar | ≈ $0,5–2 | Gambar kunci + audio |",
+  "tags": [
+   "panduan",
+   "video-ugc"
+  ],
+  "urutan": 630
+ },
+ {
+  "slug": "video-ugc-pratinjau-1a-1b-dibuat",
+  "judul": "Video UGC — Pratinjau (1a + 1b) dibuat bersamaan dan ditinjau di satu layar",
+  "isi": "**Pratinjau (1a + 1b) dibuat bersamaan dan ditinjau di satu layar.** Kemasan\nproduk adalah bagian yang paling sering meleset: label berubah, botol berganti\nbentuk, dan model gambar tidak menjamin itu meski diberi foto asli. Suara adalah\nhal pertama yang membuat penonton merasa \"ini AI\". Keduanya murah dan tidak\nsaling butuh, jadi tidak ada alasan menunggu gambar selesai sebelum suaranya\ndibuat. Masing-masing bisa diulang sendiri (Ulang gambar / Ulang suara).\nVideo (bagian mahal) baru bisa dibuat setelah dua-duanya ada, dengan tombolnya\nsendiri.\n\nDari wizard **Buat Video**, tombol terakhir berbunyi \"Ya, buat pratinjau · ≈ Rp …\"\ndan pratinjaunya langsung berangkat begitu layar produksi terbuka — tanpa klik\nkedua. Persetujuan itu dipakai sekali: memuat ulang halaman atau bolak-balik ke\nlangkah Naskah tidak mengirim job baru.\n\nLangkahnya sama-sama tiga: **Naskah → Produksi → Hasil**.",
+  "tags": [
+   "panduan",
+   "video-ugc"
+  ],
+  "urutan": 640
+ },
+ {
+  "slug": "video-ugc-durasi-tidak-punya-kenop",
+  "judul": "Video UGC — Durasi tidak punya kenop",
+  "isi": "**Durasi tidak punya kenop.** Model avatar membuat video sepanjang audionya, dan\naudio sepanjang naskahnya. Jadi \"durasi\" di wizard ini adalah **target** yang\ndipakai penulis naskah untuk memaskan jumlah kata (≈ 2,3 kata per detik), dan\nestimasi biayanya dihitung dari jumlah kata naskah — bukan dari angka yang\ndiminta.",
+  "tags": [
+   "panduan",
+   "video-ugc"
+  ],
+  "urutan": 650
+ },
+ {
+  "slug": "video-ugc-batas-30-detik-ditegakkan-server",
+  "judul": "Video UGC — Batas 30 detik, ditegakkan server",
+  "isi": "**Batas 30 detik, ditegakkan server.** Naskah yang lebih panjang ditolak sebelum\njob berbayar berangkat, dan wizard menahannya lebih dulu supaya penolakannya\ntidak terjadi setelah gambar kuncinya sudah dibayar. Tiga puluh detik kira-kira\n69 kata.\n\nKenapa **ditolak** dan bukan dipotong diam-diam: panjang video avatar ditentukan\naudionya, bukan angka yang dikirim aplikasi. Memotong angkanya hanya akan\nmemperkecil estimasi di layar sementara provider tetap membuat dan menagih video\npenuh — pagar yang menyembunyikan tagihannya sendiri. Kalau videonya memang\nharus lebih panjang, bagi jadi beberapa video.\n\n**Yang perlu diketahui.** Influencer tanpa voice id akan ditolak di langkah\naudio. Siapkan suaranya dulu lewat kartu klon suara MiniMax di halaman detail\ninfluencer.",
+  "tags": [
+   "panduan",
+   "video-ugc"
+  ],
+  "urutan": 660
  },
  {
   "slug": "content-planner",
   "judul": "Content Planner",
-  "isi": "**Untuk apa.** Merencanakan konten sebelum diproduksi, lalu **mempublikasikannya**\nke akun sosial. Ini satu-satunya tempat di aplikasi yang memposting.",
+  "isi": "**Untuk apa.** Merencanakan konten sebelum diproduksi, lalu melacak statusnya\nsampai tayang. Sejak 16 Nov 2026 aplikasi tidak memposting ke akun sosial —\nvideonya diunduh lalu diunggah sendiri dari galeri (lihat Koneksi).",
   "tags": [
    "panduan",
-   "content-planner"
+   "content-planner",
+   "rencana",
+   "jadwal",
+   "kalender"
   ],
-  "urutan": 220
+  "urutan": 670
  },
  {
   "slug": "content-planner-content-pillars",
@@ -225,9 +746,12 @@
   "isi": "Tema besar yang kontenmu dibagi ke dalamnya, lengkap dengan **target persen**.\nHalaman Laporan membandingkan porsi aktual terhadap target ini.",
   "tags": [
    "panduan",
-   "content-planner"
+   "content-planner",
+   "rencana",
+   "jadwal",
+   "kalender"
   ],
-  "urutan": 230
+  "urutan": 680
  },
  {
   "slug": "content-planner-rencanakan-konten",
@@ -235,19 +759,66 @@
   "isi": "Satu ide berisi judul, influencer, pillar, tipe, platform, tanggal, dan tiga\nkolom naskah yang **sering tertukar dan dua-duanya baru ketahuan setelah\ntayang**:\n\n- **Hook** — kalimat pembuka 1–3 detik pertama.\n- **Script** — yang **dibacakan** di video.\n- **Caption** — yang **dibaca** di bawah postingan.\n\nCaption yang berisi naskah lengkap adalah penanda paling jelas bahwa akun ini\nbukan dijalankan manusia. Tulis caption pendek sendiri, jangan salin script.",
   "tags": [
    "panduan",
-   "content-planner"
+   "content-planner",
+   "rencana",
+   "jadwal",
+   "kalender"
   ],
-  "urutan": 240
+  "urutan": 690
  },
  {
   "slug": "content-planner-rencanakan-sebulan-dengan-ai",
   "judul": "Content Planner — Rencanakan sebulan dengan AI",
-  "isi": "Memberi brief sekali, lalu AI menyusun jadwal beberapa minggu ke depan. Kamu\nmemilih ide mana yang disimpan ke papan. **Memanggil provider teks, memotong\nsaldo.**",
+  "isi": "Memberi brief sekali, lalu AI menyusun jadwal beberapa minggu ke depan. Kamu\nmemilih ide mana yang disimpan ke papan. **Memanggil provider teks, memotong\nsaldo** — sekali per susunan; isinya hanya ide dan hook, naskah ditulis nanti\nper ide.\n\n- **Hanya tanggal yang masih kosong yang diisi; yang sudah ada tidak\n  disentuh.** Periodenya dihitung mulai hari ini (blok 7 hari). Konten yang\n  sudah terjadwal untuk influencer yang sama ikut dihitung dalam frekuensi:\n  4× per minggu dengan satu konten yang sudah ada berarti 3 ide baru minggu\n  itu. Jadi menekan tombol ini dua kali tidak menggandakan jadwal. Tanpa\n  influencer, semua konten di workspace dihitung.",
   "tags": [
    "panduan",
-   "content-planner"
+   "content-planner",
+   "rencana",
+   "jadwal",
+   "kalender",
+   "sebulan",
+   "isi kalender",
+   "jadwal otomatis",
+   "tanggal kosong",
+   "tidak menimpa"
   ],
-  "urutan": 250
+  "urutan": 700
+ },
+ {
+  "slug": "content-planner-rencanakan-sebulan-dengan-ai-hari-istirahat",
+  "judul": "Content Planner — Rencanakan sebulan dengan AI — Hari istirahat",
+  "isi": "- **Hari istirahat** — centang hari yang tidak boleh diisi (bawaannya tidak\n  ada yang dicentang). Kalau hari yang biasa dipakai frekuensi itu jatuh di\n  hari istirahat atau sudah terisi, dipakai hari lain yang kosong di minggu\n  yang sama. Layar menyebut berapa tanggal kosong yang akan diisi sebelum kamu\n  menekan apa pun; kalau tidak ada, tombolnya mati dan saldo tidak terpotong.",
+  "tags": [
+   "panduan",
+   "content-planner",
+   "rencana",
+   "jadwal",
+   "kalender",
+   "hari libur",
+   "libur",
+   "istirahat",
+   "jangan diisi",
+   "tanggal kosong"
+  ],
+  "urutan": 710
+ },
+ {
+  "slug": "content-planner-rencanakan-sebulan-dengan-ai-ritme-tujuan",
+  "judul": "Content Planner — Rencanakan sebulan dengan AI — Ritme tujuan",
+  "isi": "- **Ritme tujuan** — kalau blueprint influencer di\n  Arah Konten punya ritme Kenalan · Percaya · Beli, wizard\n  menampilkannya (\"Ritme dari Arah Konten: 3 Kenalan · 2 Percaya · 1 Beli per\n  minggu\") dan AI membagi tujuan ide tiap minggu dengan perbandingan itu.\n  Tanpa ritme, AI yang menimbang campurannya. Tujuan tiap ide bisa diganti di\n  tabel sebelum disimpan.\n\nPertanyaan \"boleh menimpa tanggal yang sudah terisi atau tidak\" belum\ndiputuskan; sampai diputuskan, jawabannya tidak.",
+  "tags": [
+   "panduan",
+   "content-planner",
+   "rencana",
+   "jadwal",
+   "kalender",
+   "tujuan",
+   "kenalan",
+   "percaya",
+   "beli",
+   "ritme"
+  ],
+  "urutan": 720
  },
  {
   "slug": "content-planner-tulis-dengan-ai-per-ide",
@@ -255,69 +826,155 @@
   "isi": "Menyusun draf hook, script, dan caption untuk satu ide. Kamu meninjau dulu, baru\ndisimpan. **Memanggil provider teks, memotong saldo.**",
   "tags": [
    "panduan",
-   "content-planner"
+   "content-planner",
+   "rencana",
+   "jadwal",
+   "kalender"
   ],
-  "urutan": 260
+  "urutan": 730
  },
  {
   "slug": "content-planner-dua-tampilan",
   "judul": "Content Planner — Dua tampilan",
-  "isi": "- **🗂 Papan** — kolom per status (ide, script, produksi, review, terjadwal,\n  published).\n- **📅 Kalender** — konten pada tanggal jadwalnya.",
+  "isi": "- **🗂 Papan** — kolom per status (ide, script, produksi, review, terjadwal,\n  published).\n- **📅 Kalender** — konten pada tanggal jadwalnya.\n\nDi kedua tampilan, konten yang punya tujuan diberi label kecil **Kenalan**,\n**Percaya**, atau **Beli** — label dan warnanya sama dengan di Arah Konten.\nDi kartu papan, tujuan bisa diganti lewat pilihan **Tujuan** di bawah status;\nLaporan \"Per pilar & tujuan\" membaca nilai yang sama.",
   "tags": [
    "panduan",
-   "content-planner"
+   "content-planner",
+   "rencana",
+   "jadwal",
+   "kalender",
+   "papan",
+   "tujuan",
+   "kenalan",
+   "percaya",
+   "beli"
   ],
-  "urutan": 270
+  "urutan": 740
  },
  {
   "slug": "content-planner-publish-ke-sosial",
   "judul": "Content Planner — Publish ke sosial",
-  "isi": "Formulir publish per ide. Kamu memilih akun tujuan dan berkas yang diposting —\nmedia yang **sudah ditandai untuk konten ini** dikelompokkan terpisah dari yang\nbelum terikat, jadi tidak ada lagi tebakan server yang tidak terlihat siapa pun.\n\nAda beberapa saklar (izinkan komentar, duet, stitch, konten bersponsor), dan\nsatu yang **wajib dicentang**: pengungkapan bahwa ini konten AI. Tanpa itu\ntombol publish menolak.\n\n**Publikasi selalu atas perintah orang. Tidak ada posting otomatis di aplikasi\nini, dan itu keputusan, bukan fitur yang belum dibuat.**",
+  "isi": "**Sedang tidak ditampilkan** (flag `KONEKSI_SOSIAL_AKTIF = false` di\n`src/views.jsx`, lihat Koneksi). Tombolnya hanya muncul kalau ada\nakun terhubung, dan koneksinya kini tidak ditawarkan. Kartu **Riwayat Publish**\nhanya muncul di workspace yang punya riwayat dari sebelum itu. Keterangan di\nbawah berlaku kalau flag-nya dinyalakan lagi.\n\nFormulir publish per ide. Kamu memilih akun tujuan dan berkas yang diposting —\nmedia yang **sudah ditandai untuk konten ini** dikelompokkan terpisah dari yang\nbelum terikat, jadi tidak ada lagi tebakan server yang tidak terlihat siapa pun.\n\nAda beberapa saklar (izinkan komentar, duet, stitch, konten bersponsor), dan\nsatu yang **wajib dicentang**: pengungkapan bahwa ini konten AI. Tanpa itu\ntombol publish menolak.\n\n**Publikasi selalu atas perintah orang. Tidak ada posting otomatis di aplikasi\nini, dan itu keputusan, bukan fitur yang belum dibuat.**",
   "tags": [
    "panduan",
-   "content-planner"
+   "content-planner",
+   "rencana",
+   "jadwal",
+   "kalender"
   ],
-  "urutan": 280
+  "urutan": 750
  },
  {
   "slug": "content-planner-riwayat-publish",
   "judul": "Content Planner — Riwayat Publish",
-  "isi": "Dua puluh percobaan terakhir beserta platform, nama akun, status, dan pesan\nerrornya.\n\n---",
+  "isi": "Dua puluh percobaan terakhir beserta platform, nama akun, status, dan pesan\nerrornya.",
   "tags": [
    "panduan",
-   "content-planner"
+   "content-planner",
+   "rencana",
+   "jadwal",
+   "kalender"
   ],
-  "urutan": 290
+  "urutan": 760
  },
  {
   "slug": "laporan",
   "judul": "Laporan",
-  "isi": "**Untuk apa.** Menjawab \"apakah yang kita kerjakan berhasil, dan uangnya ke mana\"\n— dengan angka, bukan perasaan.\n\nBisa disaring per periode: **Bulan ini · 30 hari · 90 hari · Semua**.\n\n**Empat angka utama:**\n\n| Angka | Artinya |\n|---|---|\n| Konten published | Berapa yang benar-benar tayang, dari total konten di periode itu |\n| Biaya produksi | Total job generate yang **berhasil** |\n| Publish sukses | Persentase percobaan publish yang berhasil |\n| Job produksi sukses | Persentase job generate yang jadi |\n\n**Empat grafik:**\n\n- **Kadensi konten per minggu** — jendela 8 minggu, dari 6 minggu lalu sampai\n  minggu depan. Minggu depan ikut ditampilkan supaya konten terjadwal\n  berikutnya terlihat. Jendela ini **tidak ikut filter periode**.\n- **Keseimbangan pillar** — porsi aktual vs target yang kamu set di Planner.\n- **Biaya per influencer** — sepuluh teratas.\n- **Biaya per jenis produksi** — gambar, video, suara, lip sync.\n\n**Yang perlu diketahui.** Biaya dihitung dari job **succeeded** saja, memakai\nbiaya aktual kalau sudah tercatat dan estimasi kalau belum. Job yang gagal tetap\nbisa memakan uang di sisi provider, jadi angka di sini adalah biaya **hasil**,\nbukan seluruh pengeluaran.\n\n---",
+  "isi": "**Untuk apa.** Menjawab \"apakah yang kita kerjakan berhasil, dan uangnya ke mana\"\n— dengan angka, bukan perasaan.\n\nBisa disaring per periode: **Bulan ini · 30 hari · 90 hari · Semua**.\n\n**Empat angka utama:**\n\n| Angka | Artinya |\n|---|---|\n| Konten published | Berapa yang benar-benar tayang, dari total konten di periode itu |\n| Biaya produksi | Total job generate yang **berhasil** |\n| Publish sukses | Persentase percobaan publish yang berhasil |\n| Job produksi sukses | Persentase job generate yang jadi |",
   "tags": [
    "panduan",
-   "laporan"
+   "laporan",
+   "statistik",
+   "performa"
   ],
-  "urutan": 300
+  "urutan": 770
+ },
+ {
+  "slug": "laporan-empat-grafik",
+  "judul": "Laporan — Empat grafik",
+  "isi": "**Empat grafik:**\n\n- **Kadensi konten per minggu** — jendela 8 minggu, dari 6 minggu lalu sampai\n  minggu depan. Minggu depan ikut ditampilkan supaya konten terjadwal\n  berikutnya terlihat. Jendela ini **tidak ikut filter periode**.\n- **Keseimbangan pillar** — porsi aktual vs target yang kamu set di Planner.\n- **Biaya per influencer** — sepuluh teratas.\n- **Biaya per jenis produksi** — gambar, video, suara, lip sync.",
+  "tags": [
+   "panduan",
+   "laporan",
+   "statistik",
+   "performa"
+  ],
+  "urutan": 780
+ },
+ {
+  "slug": "laporan-yang-perlu-diketahui",
+  "judul": "Laporan — Yang perlu diketahui",
+  "isi": "**Yang perlu diketahui.** Biaya dihitung dari job **succeeded** saja, memakai\nbiaya aktual kalau sudah tercatat dan estimasi kalau belum. Job yang gagal tetap\nbisa memakan uang di sisi provider, jadi angka di sini adalah biaya **hasil**,\nbukan seluruh pengeluaran.",
+  "tags": [
+   "panduan",
+   "laporan",
+   "statistik",
+   "performa"
+  ],
+  "urutan": 790
+ },
+ {
+  "slug": "laporan-kartu-per-pilar-tujuan",
+  "judul": "Laporan — Kartu Per pilar & tujuan",
+  "isi": "**Kartu \"Per pilar & tujuan\"** (di bawah grafik, ikut filter periode) menjawab\n*pilar dan tujuan mana yang benar-benar menambah pengikut, dan berapa biaya\ntiap ide.* Isinya konten periode itu yang punya pilar atau tujuan:\n\n- **Tabel per pilar** dan **tabel per tujuan** (Kenalan · Percaya · Beli),\n  masing-masing dengan kolom: jumlah konten · **biaya** (job produksi yang\n  terhubung ke ide itu, dalam satuan yang sama dengan kartu biaya di atas;\n  \"—\" kalau tidak ada) · **klik** link pendek · **views** · **follower baru**.\n- Diurutkan berdasarkan **follower baru**, bukan views — yang ditonton banyak\n  tapi tidak menambah pengikut adalah dua hal berbeda.\n- **Ide dengan follower baru terbanyak** — lima teratas, judulnya membuka Arah\n  Konten.\n\nTiga jenis angka, tiga sifat yang berbeda:\n\n| Angka | Dari mana | Kalau kosong |\n|---|---|---|\n| Biaya | Job produksi yang dibuat dari Arah Konten/Rencana (membawa id idenya) | \"—\": tidak ada job terhubung. Video yang dibuat tanpa lewat ide tidak ikut. |\n| Klik | Link pendek, **otomatis** (bot pratinjau WhatsApp dsb. disaring) | 0 berarti benar-benar nol — atau kontennya belum diberi link pendek |\n| Views, follower baru | **Kamu salin sendiri** lewat 📈 Catat angka | \"belum dicatat\" — **bukan 0**. Jumlahnya hanya dari konten yang tercatat, dan di bawahnya tertulis \"n dari m tercatat\" |",
+  "tags": [
+   "panduan",
+   "laporan",
+   "statistik",
+   "performa",
+   "per pilar",
+   "per tujuan",
+   "konten mana yang berhasil",
+   "follower baru",
+   "views"
+  ],
+  "urutan": 800
+ },
+ {
+  "slug": "laporan-mencatat-angka",
+  "judul": "Laporan — Mencatat angka",
+  "isi": "**Mencatat angka.** Aplikasi tidak lagi memposting ke akun sosial, jadi angka\ndari TikTok/IG tidak masuk sendiri. Tekan **📈 Catat angka** di kartu\n**Published** di Rencana, atau di daftar **Naskah siap baca** di Arah Konten,\nlalu salin dari aplikasinya: views, likes, komentar, share, simpan, follower\nbaru, dan (opsional) link post-nya. Yang perlu diingat:\n\n- **Kosongkan yang belum kamu tahu.** Kolom kosong disimpan sebagai \"belum\n  dicatat\"; isi **0** hanya kalau aplikasinya memang menunjukkan 0.\n- Angka abu-abu di kolom adalah **catatan terakhir**, bukan isian. Ketik ulang\n  kalau ingin mencatatnya lagi hari ini.\n- Satu catatan per konten per platform **per hari**. Mencatat lagi di hari\n  yang sama menggabung: kolom yang kamu isi menggantikan, yang kosong tetap.\n  Hari berikutnya jadi catatan baru, dan Laporan memakai yang terakhir.\n- Angka ditulis utuh (1200 atau 1.200), bukan \"1,2rb\".\n- Gratis — tidak memakai saldo.",
+  "tags": [
+   "panduan",
+   "laporan",
+   "statistik",
+   "performa",
+   "catat angka",
+   "angka views",
+   "views",
+   "follower baru",
+   "likes",
+   "insight tiktok",
+   "statistik instagram"
+  ],
+  "urutan": 810
  },
  {
   "slug": "tasks",
   "judul": "Tasks",
-  "isi": "**Untuk apa.** Daftar pekerjaan operasional workspace — hal yang harus dikerjakan\norang, bukan mesin. Tidak terhubung ke produksi maupun penagihan.\n\nPapan empat kolom: **To-do · Dikerjakan · Terblokir · Selesai**. Tiap task punya\njudul, tag bebas, dan tanggal jatuh tempo. Status diubah lewat dropdown di\nkartunya.\n\n---",
+  "isi": "**Untuk apa.** Daftar pekerjaan operasional workspace — hal yang harus dikerjakan\norang, bukan mesin. Tidak terhubung ke produksi maupun penagihan.\n\nPapan empat kolom: **To-do · Dikerjakan · Terblokir · Selesai**. Tiap task punya\njudul, tag bebas, dan tanggal jatuh tempo. Status diubah lewat dropdown di\nkartunya.",
   "tags": [
    "panduan",
    "tasks"
   ],
-  "urutan": 310
+  "urutan": 820
  },
  {
   "slug": "drive",
   "judul": "Drive",
-  "isi": "**Untuk apa.** Semua hasil produksi di satu tempat — gambar, video, audio.\nMenampilkan 60 berkas terbaru per jenis.\n\n**Filter jenis media.** Empat tombol di atas daftar: Semua, Gambar, Video, dan\nSuara, masing-masing membawa jumlah sebenarnya. Angka itu dihitung dari seluruh\naset, bukan dari yang sedang tampil, jadi ia menjawab \"ada berapa\" dan bukan\n\"ada berapa yang kebetulan termuat\".\n\nPenyaringannya dikerjakan di query, bukan di browser. Bedanya terasa saat\nasetmu sudah lebih dari 60: menyaring di browser akan menampilkan video yang\nkebetulan masuk 60 terbaru lalu berhenti, tanpa tanda apa pun bahwa sisanya\nada. Dengan filter di query, menekan Video berarti 60 video terbaru.\n\n**Fitur yang mudah terlewat:** foto terbaik bisa **ditandai sebagai referensi\nIdentity Kit** seorang influencer langsung dari sini. Kalau influencer itu belum\npunya foto profil, foto ini sekalian dipakai.\n\n**Yang perlu diketahui.** Menghapus di sini permanen — lihat di bawah.\n\n---",
+  "isi": "**Untuk apa.** Semua hasil produksi di satu tempat — gambar, video, audio.\nMenampilkan 60 berkas terbaru per jenis.\n\n**Filter jenis media.** Empat tombol di atas daftar: Semua, Gambar, Video, dan\nSuara, masing-masing membawa jumlah sebenarnya. Angka itu dihitung dari seluruh\naset, bukan dari yang sedang tampil, jadi ia menjawab \"ada berapa\" dan bukan\n\"ada berapa yang kebetulan termuat\".\n\nPenyaringannya dikerjakan di query, bukan di browser. Bedanya terasa saat\nasetmu sudah lebih dari 60: menyaring di browser akan menampilkan video yang\nkebetulan masuk 60 terbaru lalu berhenti, tanpa tanda apa pun bahwa sisanya\nada. Dengan filter di query, menekan Video berarti 60 video terbaru.\n\n**Sedang dibuat.** Di atas daftar berkas ada kartu berisi sampai 10 video\nbicara dan video cerita yang videonya belum jadi, terbaru dulu, dengan\numurnya. Menekan satu baris membuka layar produksinya — jalan kembali ke\nvideo yang ditinggal di tengah jalan setelah Buat Video. Kartunya tidak\nmuncul kalau tidak ada yang sedang dibuat.\n\n**Fitur yang mudah terlewat:** foto terbaik bisa **ditandai sebagai referensi\nIdentity Kit** seorang influencer langsung dari sini. Kalau influencer itu belum\npunya foto profil, foto ini sekalian dipakai.\n\n**Yang perlu diketahui.** Menghapus di sini permanen — lihat di bawah.",
   "tags": [
    "panduan",
-   "drive"
+   "drive",
+   "karya",
+   "hasil",
+   "galeri",
+   "sedang dibuat",
+   "video saya mana",
+   "video belum jadi",
+   "lanjutkan video"
   ],
-  "urutan": 320
+  "urutan": 830
  },
  {
   "slug": "settings",
@@ -325,9 +982,10 @@
   "isi": "Pelanggan melihat **empat tab**: Akun, Tim & Kursi, Koneksi, dan Pustaka\nPrompt. Empat lainnya — Provider & Biaya, Katalog Model, Pelanggan, dan\nLanjutan — hanya untuk operator platform (Provider & Biaya juga muncul di\nworkspace `byo_key` yang memasang key sendiri).",
   "tags": [
    "panduan",
-   "settings"
+   "settings",
+   "pengaturan"
   ],
-  "urutan": 330
+  "urutan": 840
  },
  {
   "slug": "settings-akun",
@@ -335,9 +993,10 @@
   "isi": "- **Akun & Admin** — info akunmu, ganti password sendiri. Owner juga bisa\n  mereset password anggota dari sini. Yang biasa masuk dengan Google memasang\n  password pertamanya di sini juga — dibutuhkan untuk menghubungkan Claude.\n- **Langganan** — paket apa, aktif sampai kapan. Kalau kedaluwarsa atau belum\n  tercatat, **model berbayar terkunci**; model gratis (Hugging Face) tetap bisa\n  dipakai.\n- **Jatah kredit kamu** — hanya muncul untuk **anggota**, bukan owner.\n  Memberitahu sisa jatahmu **sebelum** kamu mencoba lalu ditolak.\n- **Saldo** — hanya muncul kalau workspace ini memakai kredit. Di mode `byo_key`\n  saldonya selalu nol, dan menampilkannya hanya membuat orang mengira ada\n  tagihan yang belum dibayar.\n- **Batas belanja bulanan** — rem tambahan di atas saldo. Kalau diisi, job\n  berbayar ditolak begitu pemakaian bulan ini (WIB) akan melewatinya, walau\n  saldonya masih cukup — termasuk job yang dijalankan Claude lewat MCP. Kosong\n  berarti tanpa batas, dan itu nilai awalnya. Hanya owner yang bisa\n  mengubahnya. Penulis AI ikut dihitung tapi tidak dihentikan olehnya.",
   "tags": [
    "panduan",
-   "settings"
+   "settings",
+   "pengaturan"
   ],
-  "urutan": 340
+  "urutan": 850
  },
  {
   "slug": "settings-tim-kursi",
@@ -345,9 +1004,10 @@
   "isi": "Selalu terlihat, termasuk di paket satu kursi — karena di situlah orang mencari\nsaat ingin tahu apakah workspace-nya bisa dibagi.\n\nMenjawab tiga pertanyaan yang semuanya berbiaya kalau tidak terjawab:\n\n- **Berapa kursi tersisa** — supaya owner tidak menerbitkan link untuk kursi\n  yang sudah penuh, lalu penolakannya terjadi di depan tamu.\n- **Siapa memakai berapa** — dompetnya satu, tangannya bisa tiga. Ada kolom\n  pemakaian **Penulis AI** per orang, yang berguna untuk menentukan harga jual\n  penulis AI.\n- **Siapa yang masih diundang** — link yang terbit tapi belum diklik tetap\n  memegang kursi.\n\nOwner bisa menerbitkan link undangan, mencabutnya, dan mengatur **jatah kredit**\nper anggota.\n\n**Yang perlu diketahui.** Link undangan yang baru terbit **hanya ada di layar\nitu**. Yang tersimpan di server cuma hash-nya. Begitu halaman ditutup, link itu\nhilang untuk selamanya dan harus diterbitkan ulang.",
   "tags": [
    "panduan",
-   "settings"
+   "settings",
+   "pengaturan"
   ],
-  "urutan": 350
+  "urutan": 860
  },
  {
   "slug": "settings-provider-biaya-operator-dan-workspace-byo-key",
@@ -355,19 +1015,21 @@
   "isi": "- **Penulis AI** — provider teks (Qwen / Kimi / custom) untuk semua fitur ✨.\n- **Mode Generate & Provider Gambar** — mode `mock` vs `live`, dan kolom API key\n  untuk Hugging Face (gratis, gambar saja) dan fal.ai (berbayar, semua task).\n  **Di mode kredit kolom key ini tidak muncul**, karena key-nya milik platform\n  dan yang menentukan job jalan atau tidak adalah saldo.\n- **Budget Guard** — batas bulanan dalam USD, dengan opsi berhenti keras.\n\nSemua key disimpan di tabel terkunci di server dan **tidak pernah dikirim balik\nke browser**.",
   "tags": [
    "panduan",
-   "settings"
+   "settings",
+   "pengaturan"
   ],
-  "urutan": 360
+  "urutan": 870
  },
  {
   "slug": "settings-koneksi",
   "judul": "Settings — Koneksi",
-  "isi": "- **Kontrol lewat Claude (MCP)** — menghubungkan workspace ini ke Claude, lewat\n  dua jalur berbeda: claude.ai memakai OAuth (tempel URL connector, login di\n  halaman consent), Claude Code di terminal memakai token statik lewat header.\n  Lihat Lewat Claude di bawah. Dulu kartu ini ada di tab\n  Lanjutan; tautan lama `?tab=lanjutan` dari pelanggan diantar ke sini.\n- **Akun sosial** — menghubungkan Instagram dan TikTok untuk publish.\n- **Google Calendar** — pengingat jadwal konten.\n- **Link pendek** — membuat link terlacak dan membaca kliknya.\n\n**Kenapa link pendek layak dipakai.** Instagram dan TikTok tidak pernah memberi\ntahu link mana yang diklik dari post mana. Tanpa link pendek, pertanyaan\n\"konten mana yang menghasilkan klik\" tidak akan pernah bisa dijawab, dan yang\ntersisa cuma \"konten mana yang ramai\" — sering bukan konten yang sama.",
+  "isi": "- **Kontrol lewat Claude (MCP)** — menghubungkan workspace ini ke Claude, lewat\n  dua jalur berbeda: claude.ai memakai OAuth (tempel URL connector, login di\n  halaman consent), Claude Code di terminal memakai token statik lewat header.\n  Lihat Lewat Claude di bawah. Dulu kartu ini ada di tab\n  Lanjutan; tautan lama `?tab=lanjutan` dari pelanggan diantar ke sini.\n- **Akun sosial** — **dimatikan** untuk semua orang, termasuk operator\n  (keputusan pemilik 16 Nov 2026). Kartunya disembunyikan di balik\n  `KONEKSI_SOSIAL_AKTIF = false` di `src/views.jsx`, bukan dihapus. Alasannya:\n  mode live mengharuskan tiap pelanggan punya Meta Developer app sendiri, yang\n  mustahil bagi pengguna Meta Business Suite biasa; jalur yang bisa dicapai\n  hanya mode mock, yang memalsukan \"berhasil\" tanpa ada yang tayang; app\n  Meta/TikTok tingkat platform berarti review berminggu-minggu; dan publikasi\n  memang manual sejak awal — orang mengunggah dari galerinya sendiri.\n- **Google Calendar** — pengingat jadwal konten.\n- **Link pendek** — membuat link terlacak dan membaca kliknya. Tidak butuh\n  koneksi akun sosial apa pun, jadi tetap jalan.\n\n**Kenapa link pendek layak dipakai.** Instagram dan TikTok tidak pernah memberi\ntahu link mana yang diklik dari post mana. Tanpa link pendek, pertanyaan\n\"konten mana yang menghasilkan klik\" tidak akan pernah bisa dijawab, dan yang\ntersisa cuma \"konten mana yang ramai\" — sering bukan konten yang sama.",
   "tags": [
    "panduan",
-   "settings"
+   "settings",
+   "pengaturan"
   ],
-  "urutan": 370
+  "urutan": 880
  },
  {
   "slug": "settings-pustaka-prompt",
@@ -375,9 +1037,10 @@
   "isi": "Prompt siap pakai milik workspace ini, per kategori kreator. Yang tersulit saat\nmembuat konten bukan menekan tombol generate, melainkan kotak prompt yang\nkosong. Pustaka ini mengisinya dengan contoh yang sudah memuat hal-hal yang\nmenentukan hasil: pakaian, lokasi, cahaya, kamera.\n\nTiga jenis template: **gambar**, **video**, dan **storyboard**.",
   "tags": [
    "panduan",
-   "settings"
+   "settings",
+   "pengaturan"
   ],
-  "urutan": 380
+  "urutan": 890
  },
  {
   "slug": "settings-katalog-model-operator-platform-saja",
@@ -385,19 +1048,32 @@
   "isi": "Daftar model yang aktif beserta harga indikatifnya. Harga di sini dipakai untuk\nestimasi dan Budget Guard.\n\n**Yang perlu diketahui.** Harganya **indikatif hasil riset, bukan tarif resmi\nyang ditarik otomatis dari provider**. Verifikasi dengan halaman harga provider\nlalu perbarui di sini kalau sudah berubah. Harga ini juga yang **ditagih** ke\npelanggan, jadi database menolak perubahan dari siapa pun selain operator.",
   "tags": [
    "panduan",
-   "settings"
+   "settings",
+   "pengaturan"
   ],
-  "urutan": 390
+  "urutan": 900
  },
  {
   "slug": "settings-pelanggan-operator-platform-saja",
   "judul": "Settings — Pelanggan (operator platform saja)",
-  "isi": "Tab ini disaring di layar, dan server tetap memeriksa sendiri di setiap aksi —\n**tab yang disembunyikan adalah kerapian, bukan pengamanan**.\n\nTiga jalur memberi akses, semuanya berakhir di fungsi SQL yang sama: webhook\npembayaran (otomatis), tambah manual satu email, dan unggah massal untuk migrasi\npelanggan lama. Ada juga pemberian saldo, yang bisa diketik dalam **rupiah\nmaupun USD** dengan hasil konversinya terlihat sebelum tombolnya ditekan.\n\nYang membuat halaman ini layak ada bukan tombolnya, melainkan dua daftar di\nbawahnya: daftar pelanggan menjawab \"siapa yang aktif\", dan daftar event webhook\nmenjawab \"kenapa pembayaran si A tidak masuk\" — pertanyaan yang tanpa jejaknya\nhanya bisa dijawab dengan tebakan.\n\n#### Link akses\n\nAkun yang dibuat dari halaman ini (webhook, tambah manual, unggah massal)\npunya password acak yang tidak diketahui siapa pun. Pelanggan masuk pertama\nkali lewat **🔗 Link akses** di baris email-nya: tombolnya menyalin link ke\nclipboard, operator mengirimnya (biasanya lewat WhatsApp), lalu pelanggan:\n\n1. membuka link → layar **\"Lanjutkan & buat password\"**;\n2. menekan tombol itu → layar pasang password;\n3. sesudahnya masuk biasa dengan email & password tersebut.\n\nLink yang sama dipakai untuk pelanggan yang **lupa password** — terbitkan\nlink baru, kirim, selesai.\n\nLink-nya berbentuk `https://25-ai-microinfluencer.netlify.app/?pulih=…` dan\n**sekali pakai**. Token baru dipakai saat tombol ditekan, bukan saat link\ndibuka, karena pratinjau link WhatsApp dan pemindai email ikut \"membuka\" link\nsebelum pelanggan sempat mengkliknya. Sebelum Okt 2026 link-nya langsung\nmenunjuk ke Supabase, dan pratinjau itulah yang menghabiskan token: pelanggan\ncuma melihat form login kosong, bahkan dengan link yang baru dibuat semenit\nsebelumnya.\n\nKalau link ditolak, halaman login sekarang menyebut alasannya (\"sudah\nkedaluwarsa atau sudah pernah dipakai\"). Jalan keluarnya selalu sama:\nterbitkan link baru. Link lama tidak bisa dipulihkan.\n\n> **Jangan pakai \"Send password recovery\" di dashboard Supabase** untuk\n> pelanggan. Email itu masih memakai template bawaan yang langsung menunjuk ke\n> Supabase, jadi rentan dengan masalah yang sama — lihat\n> OPERASI.md § Yang belum selesai.",
+  "isi": "Tab ini disaring di layar, dan server tetap memeriksa sendiri di setiap aksi —\n**tab yang disembunyikan adalah kerapian, bukan pengamanan**.\n\nTiga jalur memberi akses, semuanya berakhir di fungsi SQL yang sama: webhook\npembayaran (otomatis), tambah manual satu email, dan unggah massal untuk migrasi\npelanggan lama. Ada juga pemberian saldo, yang bisa diketik dalam **rupiah\nmaupun USD** dengan hasil konversinya terlihat sebelum tombolnya ditekan.\n\nYang membuat halaman ini layak ada bukan tombolnya, melainkan dua daftar di\nbawahnya: daftar pelanggan menjawab \"siapa yang aktif\", dan daftar event webhook\nmenjawab \"kenapa pembayaran si A tidak masuk\" — pertanyaan yang tanpa jejaknya\nhanya bisa dijawab dengan tebakan.",
   "tags": [
    "panduan",
-   "settings"
+   "settings",
+   "pengaturan"
   ],
-  "urutan": 400
+  "urutan": 910
+ },
+ {
+  "slug": "settings-pelanggan-operator-platform-saja-link-akses",
+  "judul": "Settings — Pelanggan (operator platform saja) — Link akses",
+  "isi": "#### Link akses\n\nAkun yang dibuat dari halaman ini (webhook, tambah manual, unggah massal)\npunya password acak yang tidak diketahui siapa pun. Pelanggan masuk pertama\nkali lewat **🔗 Link akses** di baris email-nya: tombolnya menyalin link ke\nclipboard, operator mengirimnya (biasanya lewat WhatsApp), lalu pelanggan:\n\n1. membuka link → layar **\"Lanjutkan & buat password\"**;\n2. menekan tombol itu → layar pasang password;\n3. sesudahnya masuk biasa dengan email & password tersebut.\n\nLink yang sama dipakai untuk pelanggan yang **lupa password** — terbitkan\nlink baru, kirim, selesai.\n\nLink-nya berbentuk `https://25-ai-microinfluencer.netlify.app/?pulih=…` dan\n**sekali pakai**. Token baru dipakai saat tombol ditekan, bukan saat link\ndibuka, karena pratinjau link WhatsApp dan pemindai email ikut \"membuka\" link\nsebelum pelanggan sempat mengkliknya. Sebelum Okt 2026 link-nya langsung\nmenunjuk ke Supabase, dan pratinjau itulah yang menghabiskan token: pelanggan\ncuma melihat form login kosong, bahkan dengan link yang baru dibuat semenit\nsebelumnya.\n\nKalau link ditolak, halaman login sekarang menyebut alasannya (\"sudah\nkedaluwarsa atau sudah pernah dipakai\"). Jalan keluarnya selalu sama:\nterbitkan link baru. Link lama tidak bisa dipulihkan.\n\n> **Jangan pakai \"Send password recovery\" di dashboard Supabase** untuk\n> pelanggan. Email itu masih memakai template bawaan yang langsung menunjuk ke\n> Supabase, jadi rentan dengan masalah yang sama — lihat\n> OPERASI.md § Yang belum selesai.",
+  "tags": [
+   "panduan",
+   "settings",
+   "pengaturan"
+  ],
+  "urutan": 920
  },
  {
   "slug": "fitur-yang-muncul-di-banyak-halaman-menghapus-media",
@@ -407,7 +1083,7 @@
    "panduan",
    "fitur-yang-muncul-di-banyak-halaman"
   ],
-  "urutan": 410
+  "urutan": 930
  },
  {
   "slug": "fitur-yang-muncul-di-banyak-halaman-naik-kelas-escalate",
@@ -417,7 +1093,7 @@
    "panduan",
    "fitur-yang-muncul-di-banyak-halaman"
   ],
-  "urutan": 420
+  "urutan": 940
  },
  {
   "slug": "fitur-yang-muncul-di-banyak-halaman-jejak-job",
@@ -427,27 +1103,97 @@
    "panduan",
    "fitur-yang-muncul-di-banyak-halaman"
   ],
-  "urutan": 430
+  "urutan": 950
  },
  {
   "slug": "fitur-yang-muncul-di-banyak-halaman-lewat-claude-mcp",
   "judul": "Fitur yang muncul di banyak halaman — Lewat Claude (MCP)",
-  "isi": "Workspace ini bisa dikendalikan dari Claude: membaca dan mengubah influencer,\nkonten, pillar, task, dan laporan — dan juga **menjalankan produksi serta\nmemposting**.\n\nKarena dua hal terakhir punya konsekuensi nyata (generate mengeluarkan biaya,\npublish ke koneksi mode `live` tidak bisa dibatalkan), Claude diminta menyebutkan\nperkiraan biaya dan meminta persetujuan sebelum menjalankan keduanya. Dua hal itu\njuga disebut di halaman persetujuan OAuth dan di kartu MCP, supaya orang tahu\nsebelum menghubungkan, bukan sesudahnya.\n\n**Cara menghubungkan** ada di Settings → Koneksi → kartu Claude (MCP). Bagian\nlipat *Sesudah terhubung* di kartu itu memuat langkah yang paling sering\nterlewat — menyalakan connector di menu **+ → Connectors** pada chat — serta\npertanyaan tes dan daftar masalah umum.\n\n**Menulis lewat Claude tidak memotong saldo penulis AI.** Server MCP tidak\npernah memanggil provider teks: Claude menulis naskahnya sendiri lalu\nmenyimpannya lewat `update_content`. Generate media lewat Claude tetap memakai\nsaldo seperti dari aplikasi.\n\n**Foto atau audio yang dilampirkan di chat bisa dipakai.** `generate_media`\nhanya menerima URL, jadi Claude memanggil `create_upload_url` dulu, mengunggah\nfilenya langsung ke storage, lalu memakai URL publiknya. Jenis yang diterima\nsengaja sempit — JPG, PNG, WebP, MP3, WAV, M4A — karena bucket media terbuka\nuntuk dibaca dan daftar yang longgar berarti hosting file gratis. Unggahannya\nlangsung tercatat di Drive dengan nama \"Unggahan Claude\", dan tidak memotong\nsaldo. Mengunggah butuh akses jaringan di sisi Claude (misalnya Cowork); di\ntempat yang tidak punya, Claude perlu URL dari kamu.\n\n**Semua jalur submit bermuara ke satu tempat yang sama** (`production_jobs`),\njadi pemeriksaan saldo, jatah, dan langganan berlaku sama untuk browser, cron,\nmaupun Claude.\n\n**Video bergaya (Vox / kolase kertas, dan gaya lain).** Di luar UGC dan\nStoryboard, Claude bisa memproduksi video animasi explainer klip demi klip\nlewat tool MCP yang sama: keyframe (gambar) → klip (image-to-video) → narasi\n(TTS), semua tertanda ke satu ide konten di Planner. Rulebook-nya ada di\n`.claude/skills/` repo ini; penjelasan dan cara menambah gaya baru di\n`docs/SKILL-VIDEO-GAYA.md`.\n\n---",
+  "isi": "Workspace ini bisa dikendalikan dari Claude: membaca dan mengubah influencer,\nkonten, pillar, task, dan laporan — dan juga **menjalankan produksi serta\nmemposting**.\n\nKarena dua hal terakhir punya konsekuensi nyata (generate mengeluarkan biaya,\npublish ke koneksi mode `live` tidak bisa dibatalkan), Claude diminta menyebutkan\nperkiraan biaya dan meminta persetujuan sebelum menjalankan keduanya. Dua hal itu\njuga disebut di halaman persetujuan OAuth dan di kartu MCP, supaya orang tahu\nsebelum menghubungkan, bukan sesudahnya.",
   "tags": [
    "panduan",
    "fitur-yang-muncul-di-banyak-halaman"
   ],
-  "urutan": 440
+  "urutan": 960
+ },
+ {
+  "slug": "fitur-yang-muncul-di-banyak-halaman-lewat-claude-mcp-cara",
+  "judul": "Fitur yang muncul di banyak halaman — Lewat Claude (MCP) — Cara menghubungkan",
+  "isi": "**Cara menghubungkan** ada di Settings → Koneksi → kartu Claude (MCP). Bagian\nlipat *Sesudah terhubung* di kartu itu memuat langkah yang paling sering\nterlewat — menyalakan connector di menu **+ → Connectors** pada chat — serta\npertanyaan tes dan daftar masalah umum.",
+  "tags": [
+   "panduan",
+   "fitur-yang-muncul-di-banyak-halaman"
+  ],
+  "urutan": 970
+ },
+ {
+  "slug": "fitur-yang-muncul-di-banyak-halaman-lewat-claude-mcp-menulis",
+  "judul": "Fitur yang muncul di banyak halaman — Lewat Claude (MCP) — Menulis lewat Claude tidak memotong saldo penulis AI",
+  "isi": "**Menulis lewat Claude tidak memotong saldo penulis AI.** Server MCP tidak\npernah memanggil provider teks: Claude menulis naskahnya sendiri lalu\nmenyimpannya lewat `update_content`. Generate media lewat Claude tetap memakai\nsaldo seperti dari aplikasi.",
+  "tags": [
+   "panduan",
+   "fitur-yang-muncul-di-banyak-halaman"
+  ],
+  "urutan": 980
+ },
+ {
+  "slug": "fitur-yang-muncul-di-banyak-halaman-lewat-claude-mcp-foto",
+  "judul": "Fitur yang muncul di banyak halaman — Lewat Claude (MCP) — Foto atau audio yang dilampirkan di chat bisa dipakai",
+  "isi": "**Foto atau audio yang dilampirkan di chat bisa dipakai.** `generate_media`\nhanya menerima URL, jadi Claude memanggil `create_upload_url` dulu, mengunggah\nfilenya langsung ke storage, lalu memakai URL publiknya. Jenis yang diterima\nsengaja sempit — JPG, PNG, WebP, MP3, WAV, M4A — karena bucket media terbuka\nuntuk dibaca dan daftar yang longgar berarti hosting file gratis. Unggahannya\nlangsung tercatat di Drive dengan nama \"Unggahan Claude\", dan tidak memotong\nsaldo. Mengunggah butuh akses jaringan di sisi Claude (misalnya Cowork); di\ntempat yang tidak punya, Claude perlu URL dari kamu.\n\n**Semua jalur submit bermuara ke satu tempat yang sama** (`production_jobs`),\njadi pemeriksaan saldo, jatah, dan langganan berlaku sama untuk browser, cron,\nmaupun Claude.",
+  "tags": [
+   "panduan",
+   "fitur-yang-muncul-di-banyak-halaman"
+  ],
+  "urutan": 990
+ },
+ {
+  "slug": "fitur-yang-muncul-di-banyak-halaman-lewat-claude-mcp-video",
+  "judul": "Fitur yang muncul di banyak halaman — Lewat Claude (MCP) — Video bergaya (Vox / kolase kertas, dan gaya lain)",
+  "isi": "**Video bergaya (Vox / kolase kertas, dan gaya lain).** Di luar UGC dan\nStoryboard, Claude bisa memproduksi video animasi explainer klip demi klip\nlewat tool MCP yang sama: keyframe (gambar) → klip (image-to-video) → narasi\n(TTS), semua tertanda ke satu ide konten di Planner. Rulebook-nya ada di\n`.claude/skills/` repo ini; penjelasan dan cara menambah gaya baru di\n`docs/SKILL-VIDEO-GAYA.md`.",
+  "tags": [
+   "panduan",
+   "fitur-yang-muncul-di-banyak-halaman"
+  ],
+  "urutan": 1000
  },
  {
   "slug": "ringkasan-mana-yang-memakai-uang",
   "judul": "Ringkasan: mana yang memakai uang",
-  "isi": "**Memakai uang (model gambar/video/suara — puluhan sen sampai beberapa dolar):**\n\n- Production Studio → Generate, dan Character sheet\n- Storyboard → frame pembuka, video, lembar\n- Video UGC → pratinjau (gambar kunci + audio, bersamaan), lalu video avatar\n- Naik kelas di riwayat job\n\n**Memakai uang (provider teks — ≈ Rp 40 per naskah):**\n\n- ✨ Bantu buat influencer dengan AI, dan ✨ Perbaiki deskripsi\n- ✨ Pencari prompt di Production Studio\n- ✨ Rencanakan sebulan dengan AI, dan ✨ Tulis dengan AI di Planner\n- Penulis naskah di wizard Storyboard dan Video UGC\n\n**Tidak memakai uang:**\n\n- Semua halaman yang hanya membaca: Dashboard, Laporan, Drive, Tasks\n- Content Planner selama tidak memakai tombol ✨\n- Pustaka prompt (contoh tersimpan, bukan usulan AI)\n- Product Kit, dan mengisi identity prompt secara manual\n- Publish ke sosial — tidak memotong saldo, tapi **tidak bisa dibatalkan**\n\n**Kasus khusus — klon suara (MiniMax dan Kling):** memanggil provider sungguhan,\ntapi **tidak lewat `production_jobs`**, jadi saldo pelanggan tidak terpotong.\nBiayanya ditanggung operator. Itu berarti dua hal: klon suara tidak muncul di\nLaporan maupun riwayat job, dan tidak ada gerbang saldo yang menahannya. Kalau\nnanti perlu ditagih, tempatnya di jalur submit, bukan di komponen kartunya.\n\n> **Mode `mock` sudah bukan milik pelanggan.** Setiap percobaan di wizard memakai\n> saldo sungguhan. Perhitungkan itu saat merancang alur yang menyuruh orang\n> mencoba berkali-kali.",
+  "isi": "**Memakai uang (model gambar/video/suara — puluhan sen sampai beberapa dolar):**\n\n- Production Studio → Generate, dan Character sheet\n- Storyboard → frame pembuka, video, lembar\n- Video UGC → pratinjau (gambar kunci + audio, bersamaan), lalu video avatar\n- Naik kelas di riwayat job",
   "tags": [
    "panduan",
    "ringkasan-mana-yang-memakai-uang"
   ],
-  "urutan": 450
+  "urutan": 1010
+ },
+ {
+  "slug": "ringkasan-mana-yang-memakai-uang-memakai-uang-provider-teks",
+  "judul": "Ringkasan: mana yang memakai uang — Memakai uang (provider teks — ≈ Rp 40 per naskah)",
+  "isi": "**Memakai uang (provider teks — ≈ Rp 40 per naskah):**\n\n- ✨ Bantu buat influencer dengan AI, dan ✨ Perbaiki deskripsi\n- ✨ Pencari prompt di Production Studio\n- ✨ Rencanakan sebulan dengan AI, dan ✨ Tulis dengan AI di Planner\n- Susun blueprint dan Susun ulang di Arah Konten\n- Penulis naskah di wizard Storyboard dan Video UGC",
+  "tags": [
+   "panduan",
+   "ringkasan-mana-yang-memakai-uang"
+  ],
+  "urutan": 1020
+ },
+ {
+  "slug": "ringkasan-mana-yang-memakai-uang-tidak-memakai-uang",
+  "judul": "Ringkasan: mana yang memakai uang — Tidak memakai uang",
+  "isi": "**Tidak memakai uang:**\n\n- Semua halaman yang hanya membaca: Dashboard, Laporan, Drive, Tasks\n- Content Planner selama tidak memakai tombol ✨\n- Pustaka prompt (contoh tersimpan, bukan usulan AI)\n- Product Kit, dan mengisi identity prompt secara manual\n- Publish ke sosial — tidak memotong saldo, tapi **tidak bisa dibatalkan**",
+  "tags": [
+   "panduan",
+   "ringkasan-mana-yang-memakai-uang"
+  ],
+  "urutan": 1030
+ },
+ {
+  "slug": "ringkasan-mana-yang-memakai-uang-kasus-khusus-klon-suara",
+  "judul": "Ringkasan: mana yang memakai uang — Kasus khusus — klon suara (MiniMax dan Kling)",
+  "isi": "**Kasus khusus — klon suara (MiniMax dan Kling):** memanggil provider sungguhan,\ntapi **tidak lewat `production_jobs`**, jadi saldo pelanggan tidak terpotong.\nBiayanya ditanggung operator. Itu berarti dua hal: klon suara tidak muncul di\nLaporan maupun riwayat job, dan tidak ada gerbang saldo yang menahannya. Kalau\nnanti perlu ditagih, tempatnya di jalur submit, bukan di komponen kartunya.\n\n> **Mode `mock` sudah bukan milik pelanggan.** Setiap percobaan di wizard memakai\n> saldo sungguhan. Perhitungkan itu saat merancang alur yang menyuruh orang\n> mencoba berkali-kali.",
+  "tags": [
+   "panduan",
+   "ringkasan-mana-yang-memakai-uang"
+  ],
+  "urutan": 1040
  },
  {
   "slug": "gagal-config",
@@ -458,7 +1204,7 @@
    "error",
    "config"
   ],
-  "urutan": 460
+  "urutan": 1050
  },
  {
   "slug": "gagal-policy",
@@ -469,7 +1215,7 @@
    "error",
    "policy"
   ],
-  "urutan": 470
+  "urutan": 1060
  },
  {
   "slug": "gagal-input",
@@ -480,7 +1226,7 @@
    "error",
    "input"
   ],
-  "urutan": 480
+  "urutan": 1070
  },
  {
   "slug": "gagal-provider",
@@ -491,16 +1237,69 @@
    "error",
    "provider"
   ],
-  "urutan": 490
+  "urutan": 1080
  },
  {
   "slug": "cara-mulai-tiga-langkah",
-  "judul": "Cara mulai — 3 langkah video pertama",
-  "isi": "Video pertama dalam ± 15 menit.\n\n- **Isi Profil saya** (± 5 menit, sekali saja): 1–4 foto wajahmu, rekam suara 10–30 detik, pilih bahasa. Tiga hal yang dipakai di semua video: wajah, suara, bahasa. Diisi sekali; video berikutnya tinggal pakai.\n- **Buat Video** (± 3 menit): pilih: bicara ke kamera / cerita, ceritakan videonya, pilih durasi, baca naskah, lihat harga. Empat pertanyaan. Harga total tampil sebelum kamu menekan 'Ya'. Tidak ada yang dibayar sebelum itu.\n- **Tonton & bagikan** (± 5–10 menit menunggu): gambar pertama kamu lihat dulu, lalu suara dan video dibuat, unduh di Karya, posting dari Rencana. Produksi berjalan di layar yang terbuka setelah 'Ya'. Bagian termurah (gambar) dibuat dulu dan kamu setujui sebelum bagian termahal (video) dibayar.\n\nKapan uang keluar (dari yang gratis ke yang paling mahal; angka pastinya tampil di tiap tombol):\n- Foto & rekam suara: gratis\n- Membaca wajah & menulis naskah: kecil\n- Gambar pertama: kecil\n- Suaramu membaca naskah: kecil\n- Video: paling besar\n\nSiapkan dulu:\n- **Foto wajah yang jelas** — Tanpa kacamata hitam, tanpa filter, cahaya cukup. Depan dan samping lebih bagus.\n- **Tempat sunyi 1 menit** — Untuk merekam suara: tanpa musik, tanpa orang lain bicara.\n- **Foto kemasan asli** — Untuk video 'bicara ke kamera'. Tanpa foto asli, kemasannya dikarang mesin.\n- **Saldo** — Harga tiap video tampil sebelum kamu setuju. Saldo diisi di Pengaturan → Akun.\n\nTidak ada yang otomatis bayar: semua yang berbayar menyebut harganya di tombolnya dan tidak jalan sebelum ditekan.",
+  "judul": "Cara mulai — 4 langkah video pertama",
+  "isi": "Video pertama dalam ± 25–30 menit; langkah 1 dan 2 cukup sekali.\n\n- **Arah Konten** (± 10 menit, sekali saja): jawab 12 pertanyaan tentang kamu & daganganmu, dapat blueprint: untuk siapa, pilar, gaya bicara, pilih 1 ide, tulis naskahnya. Blueprint disusun sekali dan dibaca semua penulis AI sesudahnya, jadi ide dan naskahmu tidak generik. Setiap pertanyaan boleh dijawab 'Belum tahu'. Menyusun blueprint, ide, dan naskah memakai saldo kecil; harganya tertulis di tombolnya.",
+  "tags": [
+   "mulai",
+   "panduan",
+   "video pertama",
+   "langkah",
+   "pemula"
+  ],
+  "urutan": 1090
+ },
+ {
+  "slug": "cara-mulai-tiga-langkah-isi-profil-saya",
+  "judul": "Cara mulai — 4 langkah video pertama — Isi Profil saya",
+  "isi": "- **Isi Profil saya** (± 5 menit, sekali saja): 1–4 foto wajahmu, rekam suara 10–30 detik, pilih bahasa. Tiga hal yang dipakai di semua video: wajah, suara, bahasa. Diisi sekali; video berikutnya tinggal pakai.",
   "tags": [
    "mulai",
    "panduan"
   ],
-  "urutan": 500
+  "urutan": 1100
+ },
+ {
+  "slug": "cara-mulai-tiga-langkah-buat-video",
+  "judul": "Cara mulai — 4 langkah video pertama — Buat Video",
+  "isi": "- **Buat Video** (± 3 menit): pilih: bicara ke kamera / cerita, naskah dari Arah Konten langsung terisi, pilih durasi, lihat harga. Tekan '🎬 Buat videonya →' di bawah naskahmu di Arah Konten: naskahnya langsung terisi. Tanpa naskah, ceritakan videonya dan penulis AI menuliskannya. Harga total tampil sebelum kamu menekan 'Ya'. Tidak ada yang dibayar sebelum itu.",
+  "tags": [
+   "mulai",
+   "panduan"
+  ],
+  "urutan": 1110
+ },
+ {
+  "slug": "cara-mulai-tiga-langkah-tonton-bagikan",
+  "judul": "Cara mulai — 4 langkah video pertama — Tonton & bagikan",
+  "isi": "- **Tonton & bagikan** (± 5–10 menit menunggu): gambar dulu kamu lihat, lalu suara & video, unduh di Karya, unggah dari galeri ke IG/TikTok, catat angkanya di Rencana → Laporan tahu ide mana yang nambah follower. Produksi berjalan di layar yang terbuka setelah 'Ya'. Bagian termurah (gambar) dibuat dulu dan kamu setujui sebelum bagian termahal (video) dibayar. Setelah tayang, salin views dan follower baru dari aplikasi TikTok/IG lewat 📈 Catat angka.",
+  "tags": [
+   "mulai",
+   "panduan"
+  ],
+  "urutan": 1120
+ },
+ {
+  "slug": "cara-mulai-tiga-langkah-kapan-uang-keluar",
+  "judul": "Cara mulai — 4 langkah video pertama — Kapan uang keluar",
+  "isi": "**Kapan uang keluar** (dari yang gratis ke yang paling mahal; angka pastinya tampil di tiap tombol):\n- Foto & rekam suara: gratis\n- Membaca wajah dari foto: kecil\n- Menyusun blueprint, ide & naskah: kecil\n- Gambar pertama: kecil\n- Suaramu membaca naskah: kecil\n- Video: paling besar",
+  "tags": [
+   "mulai",
+   "panduan"
+  ],
+  "urutan": 1130
+ },
+ {
+  "slug": "cara-mulai-tiga-langkah-siapkan-dulu",
+  "judul": "Cara mulai — 4 langkah video pertama — Siapkan dulu",
+  "isi": "**Siapkan dulu:**\n- **± 8 menit untuk 12 pertanyaan** — Tentang kamu dan daganganmu. Setiap pertanyaan boleh dijawab 'Belum tahu'.\n- **Foto wajah yang jelas** — Tanpa kacamata hitam, tanpa filter, cahaya cukup. Depan dan samping lebih bagus.\n- **Tempat sunyi 1 menit** — Untuk merekam suara: tanpa musik, tanpa orang lain bicara.\n- **Foto kemasan asli** — Untuk video 'bicara ke kamera'. Tanpa foto asli, kemasannya dikarang mesin.\n- **Saldo** — Harga tiap video tampil sebelum kamu setuju. Saldo diisi di Pengaturan → Akun.\n\nTidak ada yang otomatis bayar: semua yang berbayar menyebut harganya di tombolnya dan tidak jalan sebelum ditekan.",
+  "tags": [
+   "mulai",
+   "panduan"
+  ],
+  "urutan": 1140
  }
 ]
