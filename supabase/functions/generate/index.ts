@@ -840,6 +840,15 @@ function pickDuration(
 // pagar adalah batas bulanan. Satu nol kelebihan saat mengetik sudah cukup.
 const MAX_DURATION_SECONDS = 30;
 
+// Ditempel ke SETIAP gambar yang memuat wajah influencer (submit task image
+// dengan influencer, lembar storyboard). Keputusan pemilik 19 Nov 2026,
+// "semua influencer": noda hitam di wajah muncul berulang (Lanny, Kirana) —
+// model gambar meniru bintik dari foto acuan/deskripsi, lalu model video dan
+// lipsync membesarkannya jadi noda. Konsekuensinya diterima: freckle asli dari
+// foto acuan orang sungguhan ikut dihaluskan. Satu sumber di server, supaya
+// jalur web, Storyboard, dan MCP mendapat aturan yang sama.
+const KULIT_BERSIH = "clear even skin, no moles, no dark spots, no freckles, no blemishes on the face";
+
 // Gaya visual video cerita. SALINAN dari src/gaya-video.js — ubah keduanya
 // bersamaan. `kontinuitas` harus SAMA PERSIS dengan klien: klien menyimpannya
 // sebagai awalan storyboards.continuity, dan submit_multishot mengenalinya
@@ -3327,6 +3336,7 @@ Deno.serve(async (req) => {
         } else if (identity) {
           input.prompt = `${identity}. ${sheetPrompt}`;
         }
+        if (board.influencer_id) input.prompt = `${input.prompt} ${KULIT_BERSIH}.`;
         mergeExtra(input, model.extra_input);
 
         // Bentuk lembarnya dipaksa mendatar SETELAH extra_input, karena katalog
@@ -3789,7 +3799,11 @@ Deno.serve(async (req) => {
             refPhotos = (refs || []).map((r) => String(r.url)).filter(Boolean);
           }
         }
-        const finalPrompt = [identity, prompt].filter(Boolean).join(", ");
+        // Kulit bersih hanya untuk GAMBAR berwajah influencer: model video
+        // menerima gambar yang sudah bersih, dan prompt video tidak menggambar
+        // ulang wajah.
+        const kulit = task === "image" && influencer_id && (identity || refPhotos.length) ? KULIT_BERSIH : "";
+        const finalPrompt = [identity, prompt, kulit].filter(Boolean).join(", ");
 
         // Jejak produksi — lihat komentar di atas modelAudit(). Template
         // dicatat bersama tanda apakah prompt-nya diubah sebelum dikirim,

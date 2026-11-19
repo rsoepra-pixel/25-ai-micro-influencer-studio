@@ -428,7 +428,7 @@ export function Dashboard({ ws, tick }) {
             <div className="row" style={{ flexWrap: "wrap", gap: 8 }}>
               {d.inf.slice(0, 8).map((i) => (
                 <a key={i.id} href={`#/influencers/${i.id}`} className="row" style={{ gap: 6, border: "1px solid var(--border)", borderRadius: 999, padding: "3px 10px 3px 4px" }}>
-                  <span className="avatar" style={{ width: 24, height: 24, fontSize: 11 }}>{i.avatar_url ? <img src={i.avatar_url} alt="" /> : i.name[0]}</span>
+                  <span className="avatar" style={{ width: 24, height: 24, fontSize: 11 }}><AvatarIsi url={i.avatar_url} nama={i.name} /></span>
                   <span className="tiny bold">{i.name}</span>
                 </a>
               ))}
@@ -978,7 +978,7 @@ export function Influencers({ ws, refresh, tick, mode }) {
         {list.map((i) => (
           <a key={i.id} href={`#/influencers/${i.id}`} className="card p4">
             <div className="row">
-              <span className="avatar" style={{ width: 44, height: 44, fontSize: 18 }}>{i.avatar_url ? <img src={i.avatar_url} alt="" /> : i.name[0]}</span>
+              <span className="avatar" style={{ width: 44, height: 44, fontSize: 18 }}><AvatarIsi url={i.avatar_url} nama={i.name} /></span>
               <div style={{ flex: 1 }}>
                 <div className="bold">{i.name}</div>
                 <div className="tiny muted">{i.handle || "@?"} · {i.niche || "niche?"}</div>
@@ -1356,7 +1356,7 @@ export function InfluencerDetail({ id, ws, refresh, tick, mode }) {
     <div>
       <a href="#/influencers" className="small" style={{ color: "var(--blue-strong)" }}>← Semua influencer</a>
       <div className="row mt2 mb4">
-        <span className="avatar" style={{ width: 60, height: 60, fontSize: 24 }}>{inf.avatar_url ? <img src={inf.avatar_url} alt="" /> : inf.name[0]}</span>
+        <span className="avatar" style={{ width: 60, height: 60, fontSize: 24 }}><AvatarIsi url={inf.avatar_url} nama={inf.name} /></span>
         <div>
           <h1 style={{ fontSize: 24, fontWeight: 800 }}>{inf.name}</h1>
           <div className="small muted">{inf.handle} · {inf.niche} · {(inf.platforms || []).join(", ")}</div>
@@ -5545,4 +5545,13 @@ export function Settings({ ws, refresh, tick, spend, spendError, query }) {
       )}
     </div>
   );
+}
+
+// Foto profil dengan cadangan huruf awal. avatar_url bisa menunjuk berkas yang
+// sudah terhapus (Kirana & Lanny, terhapus sebelum perlindungan media_refs
+// #73): tanpa onError yang tampil gambar pecah, bukan huruf awal.
+export function AvatarIsi({ url, nama }) {
+  const [rusak, setRusak] = useState(false);
+  if (!url || rusak) return <>{String(nama || "?")[0]}</>;
+  return <img src={url} alt="" onError={() => setRusak(true)} />;
 }
