@@ -23,7 +23,8 @@ import { supa, callGenerate } from "./supa.js";
 import { useQuery, unwrap, PLAN_COLORS, Badge, TUJUAN, labelTujuan, PilTujuan } from "./views.jsx";
 import { WORDS_PER_SEC } from "./ugc.jsx";
 import { Info, TIP_PENULIS_AI } from "./tips.jsx";
-import { biayaNaskahLabel } from "./harga.js";
+import { biayaNaskahLabel, biayaDokumenUsd, hargaLabel } from "./harga.js";
+import { ekstrakTeks, rapikanTeks } from "./dokumen.js";
 import { TombolIsiSaldo, rupiahkanPesan } from "./bantuan.jsx";
 import { CatatAngka } from "./catat-angka.jsx";
 
@@ -144,7 +145,7 @@ export function ArahKonten({ ws, refresh, tick, spend, support }) {
     return () => { batal = true; };
   }, [aktif?.id, tick]); // eslint-disable-line
 
-  const [layar, setLayar] = useState("depan"); // depan | tanya | blueprint | ide | naskah
+  const [layar, setLayar] = useState("depan"); // depan | dokumen | tanya | blueprint | ide | naskah
   const [itemId, setItemId] = useState(null); // konten yang dibuka di layar naskah
   const bukaNaskah = (id) => { setItemId(id); setLayar("naskah"); window.scrollTo?.(0, 0); };
   const itemDibuka = (items || []).find((i) => i.id === itemId) || null;
@@ -179,6 +180,9 @@ export function ArahKonten({ ws, refresh, tick, spend, support }) {
           <Pertanyaan key={aktif.id} ws={ws} inf={aktif} row={row} support={support}
             onBatal={() => setLayar("depan")}
             onJadi={(baru) => { setRow(baru); setLayar("blueprint"); refresh?.(); }} />
+        ) : layar === "dokumen" ? (
+          <IsiDariDokumen key={aktif.id} ws={ws} inf={aktif} row={row} support={support}
+            onBatal={() => setLayar("depan")} onLanjut={() => { setLayar("tanya"); window.scrollTo?.(0, 0); }} />
         ) : layar === "blueprint" && row?.blueprint ? (
           <Blueprint ws={ws} inf={aktif} row={row} setRow={setRow} support={support}
             pilarAda={pilarAda} setPilarAda={setPilarAda} refresh={refresh}
@@ -199,7 +203,7 @@ export function ArahKonten({ ws, refresh, tick, spend, support }) {
         ) : (
           <>
           {itemsErr && <div className="msg-err mb3">Ide dan naskah belum bisa dimuat: {itemsErr}</div>}
-          <Depan ws={ws} inf={aktif} row={row} items={items} onMulai={() => setLayar("tanya")} onLihat={() => setLayar("blueprint")}
+          <Depan ws={ws} inf={aktif} row={row} items={items} onMulai={() => setLayar("tanya")} onDokumen={() => setLayar("dokumen")} onLihat={() => setLayar("blueprint")}
             onIde={() => setLayar("ide")} onNaskah={bukaNaskah} />
           </>
         )}
@@ -225,7 +229,7 @@ function Kerangka({ children }) {
 // bekerja tanpa profil (lebih generik, tapi jalan — spek §6), dan menghadang
 // orang yang cuma ingin satu ide hari ini dengan 12 pertanyaan dulu membuat
 // ia pergi, bukan mengisi.
-function Depan({ ws, inf, row, items, onMulai, onLihat, onIde, onNaskah }) {
+function Depan({ ws, inf, row, items, onMulai, onDokumen, onLihat, onIde, onNaskah }) {
   const draf = bacaDraf(ws.id, inf.id);
   const terisi = draf ? PERTANYAAN.filter((p) => String(draf.jawaban?.[p.k] || "").trim()).length : 0;
   const nIde = (items || []).filter((i) => i.status === "idea").length;
@@ -246,6 +250,10 @@ function Depan({ ws, inf, row, items, onMulai, onLihat, onIde, onNaskah }) {
         data-tip="Jawaban tersimpan otomatis di perangkat ini; kamu bisa berhenti dan lanjut kapan saja. Belum ada yang memakai saldo sampai kamu menekan Susun blueprint di akhir.">
         {terisi ? `Lanjutkan (${terisi} dari 12 terisi) →` : "Mulai →"}
       </button>
+      <button type="button" className="btn btn2 mt3" style={{ marginLeft: 8 }} onClick={onDokumen}>
+        📄 Isi dari dokumen
+      </button>
+      <div className="tiny muted mt1">Punya profil usaha atau catatan tentang dirimu? Penulis AI mengisikan jawaban yang ada di dalamnya, kamu tinggal memeriksa.</div>
     </div>
   ) : null;
 
@@ -313,10 +321,20 @@ function Pertanyaan({ ws, inf, row, support, onBatal, onJadi }) {
   const awal = bacaDraf(ws.id, inf.id);
   const [jawaban, setJawaban] = useState(() => awal?.jawaban || row?.answers || {});
   const [langkah, setLangkah] = useState(() => Math.min(Math.max(Number(awal?.langkah) || 0, 0), PERTANYAAN.length));
+  // `lewati` dipasang oleh "Isi dari dokumen": orang yang baru meninjau 9
+  // jawaban dari dokumennya tidak perlu diputar lagi melewati kesembilannya
+  // satu per satu — "Lanjut" melompat ke pertanyaan kosong berikutnya.
+  // Ringkasan di akhir tetap menampilkan ke-12-nya untuk diperiksa.
+  const [lewati] = useState(() => !!awal?.lewati);
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState(null);
 
-  useEffect(() => { simpanDraf(ws.id, inf.id, { jawaban, langkah }); }, [jawaban, langkah]);
+  useEffect(() => { simpanDraf(ws.id, inf.id, { jawaban, langkah, ...(lewati ? { lewati } : {}) }); }, [jawaban, langkah]);
+  const berikutnya = (l) => {
+    if (!lewati) return l + 1;
+    const n = PERTANYAAN.findIndex((q, i) => i > l && !String(jawaban[q.k] || "").trim());
+    return n < 0 ? PERTANYAAN.length : n;
+  };
 
   const total = PERTANYAAN.length;
   const ringkasan = langkah >= total;
@@ -415,7 +433,7 @@ function Pertanyaan({ ws, inf, row, support, onBatal, onJadi }) {
         <button type="button" className="btn btn2" disabled={langkah === 0 || busy}
           onClick={() => setLangkah((l) => Math.max(l - 1, 0))}>← Kembali</button>
         {!ringkasan ? (
-          <button type="button" className="btn" onClick={() => setLangkah((l) => l + 1)}>Lanjut →</button>
+          <button type="button" className="btn" onClick={() => setLangkah((l) => berikutnya(l))}>Lanjut →</button>
         ) : (
           <div style={{ textAlign: "right" }}>
             <button type="button" className="btn" disabled={busy} onClick={susun}
@@ -426,6 +444,229 @@ function Pertanyaan({ ws, inf, row, support, onBatal, onJadi }) {
           </div>
         )}
       </div>
+    </div>
+  );
+}
+
+// ---------- Isi dari dokumen ----------
+//
+// Orang yang sudah punya profil usaha tertulis tidak perlu mengetik ulang
+// 12 jawaban. Teks diekstrak di browser (dokumen.js), dikirim ke penulis AI
+// yang mengusulkan jawaban BESERTA kutipan buktinya; server membuang usulan
+// yang kutipannya tidak ada di dokumen (`ditolak`). Hasilnya hanya draf:
+// orangnya meninjau di sini, lalu menjawab sisanya di alur 12 pertanyaan
+// biasa. Jawaban yang sudah ia ketik sendiri tidak ditimpa diam-diam —
+// tulisannya sendiri lebih ia percaya daripada tafsiran dokumen.
+const BATAS_DOKUMEN = 30000;
+const KALIMAT_PRIVASI = "Isi dokumen dikirim ke penulis AI untuk dibaca dan tidak disimpan di aplikasi.";
+
+function IsiDariDokumen({ ws, inf, row, support, onBatal, onLanjut }) {
+  const [namaBerkas, setNamaBerkas] = useState(null);
+  const [teksMentah, setTeksMentah] = useState("");
+  const [membaca, setMembaca] = useState(false);
+  const [errBerkas, setErrBerkas] = useState(null);
+  const [busy, setBusy] = useState(false);
+  const [err, setErr] = useState(null);
+  const [hasil, setHasil] = useState(null); // respons server
+  const [usulan, setUsulan] = useState({}); // k → teks yang bisa diedit
+  const [pakaiDokumen, setPakaiDokumen] = useState({}); // k → true kalau menimpa jawaban lama
+
+  const awal = bacaDraf(ws.id, inf.id);
+  const lama = awal?.jawaban || row?.answers || {};
+  const adaLama = (k) => !!String(lama[k] || "").trim();
+
+  const rapi = rapikanTeks(teksMentah, BATAS_DOKUMEN);
+  const n = rapi.teks.length;
+  const biaya = n ? biayaDokumenUsd(n) : null;
+
+  async function pilihBerkas(e) {
+    const f = e.target.files?.[0];
+    e.target.value = "";
+    if (!f) return;
+    setErrBerkas(null); setErr(null); setMembaca(true);
+    try {
+      const { teks } = await ekstrakTeks(f);
+      if (!String(teks || "").trim()) throw new Error("Berkas ini tidak berisi teks yang bisa dibaca. Tempel teksnya di bawah.");
+      setNamaBerkas(f.name);
+      setTeksMentah(teks);
+    } catch (x) {
+      // Gagal memuat modul (browser lama, koneksi putus saat mengunduh
+      // pdf.js/mammoth) bukan salah berkasnya — arahkan ke tempel teks.
+      const gagalModul = /dynamically imported module|Failed to fetch|Importing a module|import/i.test(String(x?.message || x));
+      setErrBerkas(gagalModul ? "Browser ini belum bisa membaca PDF/DOCX — tempel teksnya di bawah." : (x?.message || String(x)));
+    } finally { setMembaca(false); }
+  }
+
+  async function baca() {
+    if (!n) return;
+    setBusy(true); setErr(null);
+    try {
+      const r = await callGenerate({ action: "write", kind: "dari_dokumen", influencer_id: inf.id, teks: rapi.teks });
+      const u = {};
+      for (const q of PERTANYAAN) {
+        const j = r?.usulan?.[q.k]?.jawaban;
+        if (String(j || "").trim()) u[q.k] = String(j);
+      }
+      setUsulan(u);
+      setPakaiDokumen({});
+      setHasil(r || {});
+      window.scrollTo?.(0, 0);
+    } catch (x) { setErr(x.message); }
+    finally { setBusy(false); }
+  }
+
+  function lanjut() {
+    const terima = {};
+    for (const q of PERTANYAAN) {
+      const v = String(usulan[q.k] || "").trim();
+      if (!v) continue;
+      if (adaLama(q.k) && !pakaiDokumen[q.k]) continue;
+      terima[q.k] = v;
+    }
+    const gabung = { ...lama, ...terima };
+    const kosong = PERTANYAAN.findIndex((q) => !String(gabung[q.k] || "").trim());
+    simpanDraf(ws.id, inf.id, { jawaban: gabung, langkah: kosong < 0 ? PERTANYAAN.length : kosong, lewati: true });
+    onLanjut();
+  }
+
+  const kepala = (
+    <div className="row mb2" style={{ justifyContent: "space-between" }}>
+      <span className="tiny muted">📄 Isi dari dokumen</span>
+      <button type="button" onClick={onBatal} className="small muted"
+        style={{ background: "none", border: 0, cursor: "pointer", padding: "8px 0" }}>← Kembali</button>
+    </div>
+  );
+
+  // ----- Layar tinjau -----
+  if (hasil) {
+    const terjawab = PERTANYAAN.filter((q) => String(usulan[q.k] || "").trim()).length;
+    const akhir = { ...lama };
+    for (const q of PERTANYAAN) {
+      const v = String(usulan[q.k] || "").trim();
+      if (v && (!adaLama(q.k) || pakaiDokumen[q.k])) akhir[q.k] = v;
+    }
+    const sisa = PERTANYAAN.filter((q) => !String(akhir[q.k] || "").trim()).length;
+    return (
+      <div className="card p6">
+        {kepala}
+        <div className="bold" style={{ fontSize: 18 }}>{terjawab} dari 12 terjawab dari dokumen</div>
+        {hasil.catatan && <p className="small muted mt1">{hasil.catatan}</p>}
+        <p className="small muted mt1">Periksa dan ubah jawabannya kalau kurang pas. Belum ada yang disimpan sampai kamu menekan tombol di bawah.</p>
+        <div className="mt3" style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+          {PERTANYAAN.map((q, i) => {
+            if (q.k in usulan) {
+              const kutipan = hasil.usulan?.[q.k]?.kutipan;
+              const pertahankan = adaLama(q.k) && !pakaiDokumen[q.k];
+              return (
+                <div key={q.k} style={{ border: "1px solid var(--border)", borderRadius: 10, padding: 12 }}>
+                  <div className="small bold"><span style={{ color: "var(--ok)" }}>✓</span> {i + 1}. {q.t}</div>
+                  {pertahankan ? (
+                    <>
+                      <div className="tiny muted mt1">Jawabanmu yang lama dipertahankan:</div>
+                      <div className="small mt1" style={{ whiteSpace: "pre-wrap" }}>{lama[q.k]}</div>
+                    </>
+                  ) : (
+                    <textarea className="input mt2" rows={3} value={usulan[q.k]}
+                      onChange={(e) => setUsulan((u) => ({ ...u, [q.k]: e.target.value }))} />
+                  )}
+                  {kutipan && (
+                    <blockquote className="tiny muted mt2" style={{ margin: "8px 0 0", paddingLeft: 10, borderLeft: "3px solid var(--border)" }}>
+                      Dari dokumen: “{kutipan}”
+                    </blockquote>
+                  )}
+                  <div className="row mt2" style={{ gap: 16, flexWrap: "wrap" }}>
+                    {adaLama(q.k) && (
+                      <button type="button" className="small" style={{ background: "none", border: 0, padding: "8px 0", cursor: "pointer", color: "var(--brand-strong)", fontWeight: 600 }}
+                        onClick={() => setPakaiDokumen((p) => ({ ...p, [q.k]: !p[q.k] }))}>
+                        {pertahankan ? "Pakai versi dokumen" : "Kembali ke jawabanku yang lama"}
+                      </button>
+                    )}
+                    {!pertahankan && (
+                      <button type="button" className="small muted" style={{ background: "none", border: 0, padding: "8px 0", cursor: "pointer", textDecoration: "underline" }}
+                        onClick={() => setUsulan((u) => { const c = { ...u }; delete c[q.k]; return c; })}>
+                        Kosongkan
+                      </button>
+                    )}
+                  </div>
+                </div>
+              );
+            }
+            const alasan = hasil.ditolak?.[q.k];
+            return (
+              <div key={q.k} style={{ border: "1px dashed var(--border)", borderRadius: 10, padding: 12 }}>
+                <div className="small bold"><span className="muted">?</span> {i + 1}. {q.t}</div>
+                {adaLama(q.k)
+                  ? <div className="tiny muted mt1">Sudah kamu jawab sebelumnya — jawabanmu tetap dipakai.</div>
+                  : <div className="tiny muted mt1">Belum ada di dokumen — kamu jawab di langkah berikutnya</div>}
+                {alasan && <div className="tiny muted mt1" style={{ fontStyle: "italic" }}>({alasan})</div>}
+              </div>
+            );
+          })}
+        </div>
+        <div className="mt4">
+          <button type="button" className="btn" style={{ width: "100%", padding: "12px 16px" }} onClick={lanjut}>
+            {sisa ? `Lanjut jawab ${sisa} pertanyaan →` : "Periksa semua jawaban →"}
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  // ----- Layar unggah -----
+  const halaman = Math.max(1, Math.round(n / 3000));
+  return (
+    <div className="card p6">
+      {kepala}
+      <div className="bold" style={{ fontSize: 18 }}>Isi dari dokumen</div>
+      <p className="small muted mt1">
+        Unggah profil usaha, company profile, atau catatan tentang dirimu. Penulis AI mengisi jawaban yang ada di dokumen
+        beserta kutipannya; sisanya kamu jawab sendiri.
+      </p>
+
+      <label className="btn btn2 mt3" style={{ display: "inline-block", cursor: membaca || busy ? "default" : "pointer", padding: "12px 16px" }}>
+        {membaca ? "Membuka berkas…" : namaBerkas ? "Ganti berkas" : "Pilih berkas"}
+        <input type="file" accept=".txt,.md,.docx,.pdf" onChange={pilihBerkas} disabled={membaca || busy} style={{ display: "none" }} />
+      </label>
+      <div className="tiny muted mt1">.txt, .md, .docx, atau PDF (maks. 10 MB). Format .doc lama belum didukung — simpan ulang sebagai .docx.</div>
+      {errBerkas && <div className="msg-err mt2">{errBerkas}</div>}
+
+      <label className="label mt3">atau tempel teksnya</label>
+      <textarea className="input" rows={6} value={teksMentah} disabled={busy}
+        onChange={(e) => { setTeksMentah(e.target.value); setNamaBerkas(null); }}
+        placeholder="Tempel isi dokumen di sini…" />
+
+      {n > 0 && (
+        <div className="mt2">
+          <div className="small">
+            {namaBerkas ? <><b>{namaBerkas}</b> · </> : null}{n.toLocaleString("id-ID")} karakter terbaca
+          </div>
+          {rapi.terpotong && (
+            <div className="small mt1" style={{ color: "var(--warn, var(--err))" }}>
+              Dokumennya panjang — hanya ±{halaman} halaman pertama yang dibaca.
+            </div>
+          )}
+          <details className="mt1">
+            <summary className="small" style={{ cursor: "pointer", padding: "6px 0" }}>Lihat cuplikan teks yang terbaca</summary>
+            <div className="tiny muted mt1" style={{ whiteSpace: "pre-wrap", border: "1px solid var(--border)", borderRadius: 8, padding: 10 }}>
+              {rapi.teks.slice(0, 600)}{n > 600 ? "…" : ""}
+            </div>
+          </details>
+        </div>
+      )}
+
+      {err && (
+        <div className="msg-err mt3">
+          {rupiahkanPesan(err)}
+          {String(err).includes("Kredit tidak cukup") && <TombolIsiSaldo support={support} ws={ws} />}
+        </div>
+      )}
+
+      <p className="tiny muted mt4">{KALIMAT_PRIVASI}</p>
+      <button type="button" className="btn mt1" style={{ width: "100%", padding: "12px 16px" }}
+        disabled={!n || busy || membaca} onClick={baca}>
+        {busy ? "Membaca dokumen… biasanya 10–30 detik" : `Baca dokumen · ${biaya ? `≈ ${hargaLabel(biaya)}` : "(gratis)"}`}
+      </button>
+      <div className="tiny muted mt1">Memakai saldo · kamu meninjau hasilnya dulu</div>
     </div>
   );
 }

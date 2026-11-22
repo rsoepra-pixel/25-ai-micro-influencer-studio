@@ -62,3 +62,15 @@ test("POLA_CERITA: kunci unik, ada 'bebas', tiap pola punya label dan keterangan
   assert.ok(keys.includes("bebas"));
   for (const p of POLA_CERITA) { assert.ok(p.label && p.ket); }
 });
+
+test("biayaDokumenUsd: token masuk ikut panjang dokumen, null kalau gratis", async () => {
+  const { biayaDokumenUsd } = await import("./harga.js");
+  setHarga({});
+  assert.equal(biayaDokumenUsd(30000), null);
+  setHarga({ text_price_per_1k_in_usd: 0.001, text_price_per_1k_out_usd: 0.002 });
+  // 30000/3 + 700 = 10700 masuk → 0.0107; 1500 keluar → 0.003
+  assert.ok(Math.abs(biayaDokumenUsd(30000) - 0.0137) < 1e-9);
+  assert.ok(Math.abs(biayaDokumenUsd(1) - (701 * 0.001 + 3) / 1000) < 1e-9);
+  assert.ok(biayaDokumenUsd(0) > 0);
+  setHarga({});
+});
