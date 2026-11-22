@@ -384,7 +384,7 @@ function KartuSuara({ saya, models, adaUgc, adaStoryboard, onDone }) {
             data-tip={`Browser akan meminta izin mikrofon sekali. Bicara ${REKAM_MIN}–${REKAM_MAX} detik; rekaman berhenti sendiri di ${REKAM_MAX}. Belum ada yang dikirim sampai kamu menekan 'Pakai rekaman ini'.`}>🎙️ {blob ? "Rekam ulang" : "Rekam sekarang"}</button>
         )}
         {status === "rekam" && (
-          <button type="button" className="btn" onClick={berhenti} style={{ background: "var(--err)" }}
+          <button type="button" className="btn" onClick={berhenti} style={{ background: "var(--err)", color: "#fff" }}
             data-tip={`Berhenti merekam. Kalau belum ${REKAM_MIN} detik, rekamannya terlalu pendek dan perlu diulang.`}>
             ■ Berhenti · {Math.floor(detik)} dtk{detik < REKAM_MIN ? ` (minimal ${REKAM_MIN})` : ""}
           </button>
