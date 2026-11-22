@@ -136,3 +136,17 @@ export const POLA_CERITA = [
   { key: "bebas", label: "Bebas", ikon: "✍️",
     ket: "Tanpa pola. Penulis AI menyusun sendiri dari ceritamu." },
 ];
+
+// ---------- Perkiraan biaya "Isi dari dokumen" ----------
+// Tagihan ditarik dari token yang sungguh dipakai (lewat chat() di server);
+// angka di sini hanya ordo besarnya untuk tombol. ±3 karakter per token
+// untuk teks Indonesia, +700 token instruksi ekstraksi, dan ±1.500 token
+// keluar untuk 12 jawaban beserta kutipannya.
+export const TOKEN_DOKUMEN = { overhead: 700, keluar: 1500, karakterPerToken: 3 };
+
+/** Perkiraan biaya membaca dokumen sepanjang `chars`; null kalau penulis AI gratis. */
+export function biayaDokumenUsd(chars) {
+  const masuk = Math.ceil(Math.max(0, Number(chars) || 0) / TOKEN_DOKUMEN.karakterPerToken) + TOKEN_DOKUMEN.overhead;
+  const usd = (masuk * hargaTeks.masuk + TOKEN_DOKUMEN.keluar * hargaTeks.keluar) / 1000;
+  return usd > 0 ? usd : null;
+}
