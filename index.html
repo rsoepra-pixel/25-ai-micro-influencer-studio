@@ -4,36 +4,58 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>AI Micro Influencer Studio</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Lexend:wght@400;500;600;700&family=Space+Mono:wght@700&display=swap" rel="stylesheet" />
     <style>
-      /* ---------- Sistem warna ----------
-         Tiga warna merek: UNGU aksi utama, BIRU pendamping/informasi,
-         ORANYE penekan. Semuanya token, jangan tulis hex lepas di JSX —
-         dulu ada 118 hex tersebar di src/ dan mengubah tema berarti
-         memburu satu per satu.
+      /* ---------- Sistem warna — tema "Creator Studio" (22 Nov 2026) ----------
+         Diambil dari referensi yang dipilih pemilik (Creator DNA / Creator
+         Studio): pink untuk aksi, lavender untuk garis & pendamping, mustard
+         dan mint untuk label, tinta ungu-gelap untuk teks dan bayangan tegas.
+         Tetap di LATAR TERANG — membalik ke gelap adalah perubahan besar
+         (masih ada warna putih ditulis langsung di beberapa layar).
 
-         Merah (error) dan amber (peringatan) sengaja DIPISAH dari oranye
-         merek. Kalau peringatan ikut dijadikan oranye, ia jadi sulit
-         dibedakan dari error yang merah — dua hal yang justru paling
-         penting untuk tidak tertukar. */
+         Nama token lama (--brand, --blue, --orange) dipertahankan supaya tidak
+         ada layar yang perlu diubah; yang berganti hanya isinya. Jangan tulis
+         hex lepas di JSX.
+
+         KONTRAS (WCAG, dihitung): pink referensi #EC6A9C hanya 2,95 dengan
+         teks putih — karena itu tombol pink memakai TEKS GELAP (5,7), persis
+         seperti referensinya, dan pink tidak pernah dipakai sebagai warna teks.
+         --brand (dipakai sebagai teks, garis aktif, dan latar dengan teks
+         putih di banyak layar) diisi berry tua #A61E5C: 7,1 di atas putih.
+         Mustard & mint hanya latar label dengan teks gelap (10,6 & 9,6).
+
+         Merah (error) dan amber (peringatan) tetap DIPISAH dari warna merek. */
       :root{
-        /* Ungu — aksi utama, identitas */
-        --brand:#7c3aed; --brand-strong:#6d28d9; --brand-deep:#5b21b6;
-        --brand-soft:#f5f3ff; --brand-line:#ddd6fe;
+        /* Tinta — teks utama, garis & bayangan tombol */
+        --ink:#1e1b2e;
 
-        /* Biru — pendamping, tautan, deret data utama */
-        --blue:#2563eb; --blue-strong:#1d4ed8;
-        --blue-soft:#eff6ff; --blue-line:#bfdbfe; --blue-pale:#cde2fb;
+        /* Pink — tombol aksi (teks gelap di atasnya) */
+        --aksi:#ec6a9c; --aksi-hover:#e3558b;
 
-        /* Oranye — penekan: biaya, sorotan, deret data kedua */
-        --orange:#ea580c; --orange-strong:#c2410c;
-        --orange-soft:#fff7ed; --orange-line:#fed7aa;
+        /* Berry — warna merek untuk teks, tautan, penanda aktif */
+        --brand:#a61e5c; --brand-strong:#8a1749; --brand-deep:#6e1239;
+        --brand-soft:#fdeef4; --brand-line:#f6c3d8;
 
-        /* Netral */
-        --bg:#f7f7fb; --card:#fff; --border:#e7e7ec; --line-soft:#f0f0f4;
-        --text:#17171c; --muted:#71717a; --dim:#a1a1aa;
-        --subtle:#fafafa; --subtle-2:#f4f4f5; --ink-2:#3f3f46; --ink-3:#52525b;
+        /* Lavender/ungu — pendamping & garis (nama token lama: blue) */
+        --blue:#5b4bb0; --blue-strong:#4a3c99;
+        --blue-soft:#f1effb; --blue-line:#cfc9ee; --blue-pale:#e1dcf6;
+        --lavender:#8b7fc7;
 
-        /* Semantik */
+        /* Mustard tua — penekan: biaya, sorotan (nama token lama: orange) */
+        --orange:#a15c07; --orange-strong:#7c4705;
+        --orange-soft:#fdf6e3; --orange-line:#f2c94c;
+
+        /* Label (latar, teks selalu --ink) */
+        --tag:#f2c94c; --mint:#6fd8a6;
+
+        /* Netral, sedikit lavender */
+        --bg:#f7f5fc; --card:#fff; --border:#e3dff1; --line-soft:#efecf8;
+        --text:#1e1b2e; --muted:#5f5a72; --dim:#a39fb5;
+        --subtle:#fbfafe; --subtle-2:#f1eff8; --ink-2:#35314a; --ink-3:#4b4662;
+
+        /* Semantik — tidak berubah */
         --ok:#15803d; --ok-soft:#f0fdf4; --ok-line:#dcfce7;
         --warn:#b45309; --warn-strong:#92400e; --warn-soft:#fffbeb; --warn-line:#fde68a;
         --err:#dc2626; --err-strong:#b91c1c; --err-soft:#fef2f2; --err-line:#fee2e2;
@@ -42,20 +64,34 @@
         --accent:var(--brand);
       }
       *{box-sizing:border-box;margin:0;padding:0}
-      body{background:var(--bg);color:var(--text);font-family:ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;font-size:14px}
+      /* Lexend: sans geometris yang membulat, paling dekat dengan judul
+         referensi dan dirancang untuk keterbacaan. Space Mono hanya untuk
+         label kecil kapital (seperti tag "LANGKAH 1 DARI 7"). display=swap:
+         kalau Google Fonts lambat, teks tetap tampil dengan font sistem. */
+      body{background:var(--bg);color:var(--text);font-family:"Lexend",ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;font-size:14px;-webkit-font-smoothing:antialiased}
       a{color:inherit;text-decoration:none}
       .card{background:var(--card);border:1px solid var(--border);border-radius:16px}
       /* Ketiga warna merek dalam satu sapuan; oranye hanya di ekor supaya
          jadi aksen, bukan ikut berebut perhatian dengan ungu. */
       .gradient-title{background:linear-gradient(90deg,var(--brand),var(--blue) 58%,var(--orange));-webkit-background-clip:text;background-clip:text;color:transparent}
-      .btn{display:inline-flex;align-items:center;gap:6px;border-radius:10px;padding:8px 14px;font-size:14px;font-weight:600;background:var(--brand);color:#fff;border:none;cursor:pointer}
-      .btn:hover{opacity:.9}.btn:disabled{opacity:.5;cursor:not-allowed}
-      .btn2{background:var(--subtle-2);color:var(--text);border:1px solid var(--border)}
-      .btn-blue{background:var(--blue)}
-      .btn-orange{background:var(--orange)}
+      /* Tombol gaya referensi: pil, garis tinta 2 px, bayangan tegas bergeser
+         (tanpa blur), dan saat ditekan tombolnya "turun" menutup bayangannya.
+         Tinggi minimal 40 px untuk jari. Padding & ukuran huruf hampir sama
+         dengan sebelumnya supaya tata letak tidak bergeser. */
+      .btn{display:inline-flex;align-items:center;justify-content:center;gap:6px;min-height:40px;border-radius:999px;padding:8px 18px;font-size:14px;font-weight:600;font-family:inherit;background:var(--aksi);color:var(--ink);border:2px solid var(--ink);box-shadow:3px 3px 0 var(--ink);cursor:pointer;transition:transform .06s,box-shadow .06s,background-color .15s}
+      .btn:hover{background:var(--aksi-hover)}
+      .btn:active{transform:translate(3px,3px);box-shadow:0 0 0 var(--ink)}
+      .btn:focus-visible{outline:3px solid var(--lavender);outline-offset:3px}
+      .btn:disabled{opacity:.5;cursor:not-allowed;transform:none;box-shadow:3px 3px 0 var(--ink)}
+      .btn2{background:var(--card);color:var(--ink);border-color:var(--lavender);box-shadow:3px 3px 0 var(--lavender)}
+      .btn2:hover{background:var(--blue-soft)}
+      .btn2:active{box-shadow:0 0 0 var(--lavender)}
+      /* Varian berwarna: teks putih di atas warna gelapnya (kontras ≥ 5). */
+      .btn-blue{background:var(--blue);color:#fff}.btn-blue:hover{background:var(--blue-strong)}
+      .btn-orange{background:var(--tag);color:var(--ink)}.btn-orange:hover{background:#e8bb33}
       .input{width:100%;border:1px solid var(--border);border-radius:10px;padding:8px 12px;font-size:14px;background:#fff;font-family:inherit}
-      .input:focus{outline:2px solid var(--brand-line)}
-      .label{font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.04em;display:block;margin-bottom:4px}
+      .input:focus{outline:2px solid var(--blue-line);border-color:var(--lavender)}
+      .label{font-family:"Space Mono",ui-monospace,SFMono-Regular,Menlo,monospace;font-size:11px;font-weight:700;color:var(--ink-3);text-transform:uppercase;letter-spacing:.08em;display:block;margin-bottom:4px}
       .badge{display:inline-flex;align-items:center;border-radius:999px;padding:2px 10px;font-size:12px;font-weight:600}
       .row{display:flex;gap:12px;align-items:center}
       .grid{display:grid;gap:16px}
