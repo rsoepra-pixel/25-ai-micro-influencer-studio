@@ -1,0 +1,2086 @@
+[
+  {
+    "id": "sampul",
+    "bagian": "Sampul",
+    "judul": "Panduan AI Micro Influencer Studio",
+    "subjudul": "Cara membuat karakter, suara, dan video, selangkah demi selangkah",
+    "route": null,
+    "keadaan": "Bukan tangkapan layar. Halaman sampul: judul, subjudul, dan nama aplikasi.",
+    "callouts": [],
+    "narasi": "Halo, selamat datang di AI Micro Influencer Studio. Di sini kamu bisa membuat karakter sendiri, lalu menjadikannya video, gambar, dan suara untuk jualan atau konten sehari-hari. Panduan ini dibuat pendek. Satu halaman, satu hal. Kamu tinggal ikuti nomornya, dari masuk ke aplikasi sampai video pertamamu jadi. Santai saja, nggak perlu buru-buru.",
+    "catatan": "Halaman desain murni, tidak ada tangkapan layar."
+  },
+  {
+    "id": "cara-membaca",
+    "bagian": "Pengantar",
+    "judul": "Cara membaca panduan ini",
+    "route": null,
+    "keadaan": "Bukan tangkapan layar. Ilustrasi satu halaman contoh: layar di tengah, kotak bernomor di kiri dan kanan, garis dari tiap kotak ke bagian layar yang dijelaskan.",
+    "callouts": [],
+    "isi": [
+      {
+        "nama": "Kotak bernomor",
+        "untuk": "Tiap kotak menjelaskan satu bagian layar. Garisnya menunjuk persis bagian yang dimaksud."
+      },
+      {
+        "nama": "Ikuti urutan nomor",
+        "untuk": "Baca dari nomor 1 ke atas. Urutannya sama dengan urutan kamu memakai layar itu."
+      },
+      {
+        "nama": "Tulisan 'memakai saldo'",
+        "untuk": "Setiap langkah yang memakai saldo ditulis terang di kotaknya, supaya kamu tidak kaget."
+      }
+    ],
+    "narasi": "Setiap halaman panduan ini berisi satu layar aplikasi. Di sekelilingnya ada kotak-kotak bernomor, dan garis dari tiap kotak menunjuk ke bagian layar yang dijelaskan. Bacalah dari nomor satu, lalu dua, dan seterusnya. Kalau ada langkah yang memakai saldo, kami tulis jelas di kotaknya, jadi kamu selalu tahu sebelum menekan tombol.",
+    "catatan": "Halaman ini sebaiknya ditampilkan dengan satu tangkapan layar contoh yang sudah dianotasi (mis. halaman Buat Video langkah Apa)."
+  },
+  {
+    "id": "peta-menu",
+    "bagian": "Pengantar",
+    "judul": "Peta menu: apa ada di mana",
+    "route": null,
+    "keadaan": "Bukan tangkapan layar. Daftar menu dengan satu baris keterangan per menu (lihat isi).",
+    "callouts": [],
+    "isi": [
+      {
+        "nama": "Beranda",
+        "untuk": "Ringkasan kerjamu dan daftar langkah awal."
+      },
+      {
+        "nama": "Cara mulai",
+        "untuk": "Satu halaman: empat langkah, kapan uang keluar, apa yang perlu disiapkan."
+      },
+      {
+        "nama": "Arah Konten",
+        "untuk": "Jawab 12 pertanyaan, dapat blueprint, lalu ide dan naskah."
+      },
+      {
+        "nama": "Profil saya",
+        "untuk": "Wajah, suara, dan bahasa videomu. Dibuka dari Beranda."
+      },
+      {
+        "nama": "Buat Video",
+        "untuk": "Empat pertanyaan, harga dalam rupiah, lalu videonya dibuat."
+      },
+      {
+        "nama": "Karya",
+        "untuk": "Semua video, gambar, dan suara yang sudah jadi."
+      },
+      {
+        "nama": "Influencers",
+        "untuk": "Karakter AI-mu: wajah, suara, kepribadian."
+      },
+      {
+        "nama": "Product Kit",
+        "untuk": "Foto produk asli, disimpan sekali untuk semua video."
+      },
+      {
+        "nama": "Production Studio",
+        "untuk": "Alat satuan: satu gambar, video, atau suara per kirim."
+      },
+      {
+        "nama": "Storyboard",
+        "untuk": "Satu ide jadi satu video beberapa adegan."
+      },
+      {
+        "nama": "Video UGC",
+        "untuk": "Karakter bicara ke kamera tentang produk."
+      }
+    ],
+    "narasi": "Ini peta singkat isi aplikasi. Untuk pemula, cukup lima menu: Beranda, Arah Konten, Buat Video, Karya, dan Profil saya. Menu lain seperti Influencers, Product Kit, Production Studio, Storyboard, dan Video UGC ada di Semua menu. Itu alat untuk yang mau mengatur sendiri lebih rinci. Kamu nggak harus membuka semuanya.",
+    "catatan": "Menu Rencana, Laporan, dan Pengaturan sengaja tidak dimasukkan karena di luar cakupan panduan ini. 'Profil saya' tidak ada di sidebar; dibuka dari kartu Mulai dari sini di Beranda atau lewat tautan Cara mulai."
+  },
+  {
+    "id": "masuk-01-masuk",
+    "bagian": "Masuk & Daftar",
+    "judul": "Masuk ke aplikasi",
+    "route": "/",
+    "keadaan": "Buka aplikasi di jendela baru tanpa sesi login (belum masuk, tanpa link undangan). Layar login tampil dengan mode 'Masuk' (bawaan). Belum ada yang diketik.",
+    "callouts": [
+      {
+        "target": "Masuk dengan Google",
+        "jenis": "tombol",
+        "teks": "Cara tercepat. Pilih akun Google-mu; kalau belum punya akun di sini, otomatis dibuatkan."
+      },
+      {
+        "target": "Email",
+        "jenis": "kolom",
+        "teks": "Atau ketik alamat email akunmu."
+      },
+      {
+        "target": "Password (min. 8 karakter)",
+        "jenis": "kolom",
+        "teks": "Isi password akunmu, minimal delapan karakter."
+      },
+      {
+        "target": "Masuk",
+        "jenis": "tombol",
+        "teks": "Tekan setelah email dan password terisi. Kalau gagal, layar menyebut sebabnya."
+      },
+      {
+        "target": "Belum punya akun? Daftar",
+        "jenis": "tombol",
+        "teks": "Baru pertama kali? Tekan ini untuk pindah ke formulir daftar."
+      }
+    ],
+    "narasi": "Begini tampilan pertama saat kamu membuka aplikasi. Kamu bisa masuk dengan akun Google, cuma sekali ketuk. Atau pakai email dan password seperti biasa. Kalau salah isi, layar akan bilang apa masalahnya, jadi kamu nggak perlu menebak-nebak. Dan kalau ini pertama kalinya, tekan tulisan Belum punya akun di bagian bawah.",
+    "catatan": "Target 'Masuk' persis sama dengan sebagian teks lain ('Masuk dengan Google', 'Masuk ke workspace kamu.'): cocokkan dengan tombol yang teksnya HANYA 'Masuk' (tombol penuh di bawah kolom password). Dua pesan galat yang mungkin tampil kalau login gagal ('Masuk dengan Google gagal…', 'Link ini sudah kedaluwarsa…') tidak dibuat halaman sendiri."
+  },
+  {
+    "id": "masuk-02-daftar",
+    "bagian": "Masuk & Daftar",
+    "judul": "Daftar akun baru",
+    "route": "/",
+    "keadaan": "Dari layar login, klik 'Belum punya akun? Daftar'. Formulir berganti ke mode Daftar (tombol utama berbunyi 'Daftar'). Jangan kirim formulir.",
+    "callouts": [
+      {
+        "target": "Daftar — kamu langsung dapat workspace sendiri sebagai owner.",
+        "jenis": "lain",
+        "teks": "Daftar langsung memberi kamu ruang kerja sendiri, dan kamu pemiliknya. Nggak perlu menunggu undangan."
+      },
+      {
+        "target": "Daftar",
+        "jenis": "tombol",
+        "teks": "Tekan setelah email dan password terisi. Akun dan ruang kerjamu langsung jadi."
+      },
+      {
+        "target": "Sudah punya akun? Masuk",
+        "jenis": "tombol",
+        "teks": "Salah halaman? Tekan ini untuk kembali ke formulir masuk."
+      },
+      {
+        "target": "Kebijakan Privasi",
+        "jenis": "lain",
+        "teks": "Tautan ke kebijakan privasi dan syarat penggunaan ada di bagian bawah kartu."
+      }
+    ],
+    "narasi": "Kalau kamu belum punya akun, pilih daftar. Isi email dan password, lalu tekan Daftar. Begitu jadi, kamu langsung dapat ruang kerja sendiri, dan kamu pemiliknya. Nggak perlu menunggu persetujuan siapa pun. Kalau ternyata sudah pernah daftar, tekan Sudah punya akun untuk kembali. Kebijakan privasi dan syaratnya bisa kamu baca di bawah.",
+    "catatan": "Target 'Daftar' juga cocok dengan sebagian teks lain (judul formulir): cocokkan dengan tombol yang teksnya HANYA 'Daftar'. Kalau layar dibuka lewat link undangan, teks pengantarnya berbeda (menyebut undangan 24 jam) dan formulir langsung di mode Daftar; tidak dibuat halaman sendiri."
+  },
+  {
+    "id": "kerangka-01-sidebar",
+    "bagian": "Kerangka Aplikasi",
+    "judul": "Menu di sisi kiri layar",
+    "route": "/",
+    "keadaan": "Akun BARU: baru daftar, belum punya influencer, belum ada saldo yang dipakai. Setelah login, buka Beranda (#/). Sidebar dalam keadaan bawaan 'menu ringkas' (tombol bawah daftar menu berbunyi '▾ Semua menu'). Kalau sebelumnya pernah dibuka, hapus localStorage 'menu_lengkap'. Tangkap lebar desktop (>= 1280 px) supaya sidebar terlihat penuh.",
+    "callouts": [
+      {
+        "target": "Cara mulai",
+        "jenis": "menu",
+        "teks": "Selalu paling atas. Satu halaman berisi empat langkah, kapan uang keluar, dan apa yang perlu disiapkan."
+      },
+      {
+        "target": "Buat Video",
+        "jenis": "menu",
+        "teks": "Pintu utama membuat video: empat pertanyaan, lalu harganya muncul sebelum apa pun dibuat."
+      },
+      {
+        "target": "▾ Semua menu",
+        "jenis": "tombol",
+        "teks": "Membuka daftar lengkap, termasuk Influencers dan Product Kit. Pilihanmu diingat di perangkat ini."
+      },
+      {
+        "target": "Saldo kredit",
+        "jenis": "kartu",
+        "teks": "Kartu saldomu ada di sini, di kiri bawah. Cukup tahu kartu ini ada; hal lainnya dibahas di luar panduan ini."
+      },
+      {
+        "target": "⏻",
+        "jenis": "tombol",
+        "teks": "Tombol keluar dari akun, di samping alamat emailmu."
+      }
+    ],
+    "narasi": "Di sebelah kiri ada menu utama. Paling atas ada Cara mulai, tempat terbaik kalau kamu baru. Di bawahnya ada tujuh menu utama, termasuk Buat Video. Mau lihat menu yang lebih lengkap? Tekan Semua menu. Di kiri bawah ada kartu saldo, dan tombol kecil di samping emailmu dipakai untuk keluar dari akun.",
+    "catatan": "Target 'Buat Video' dan 'Cara mulai' juga muncul sebagai judul di halaman lain; di halaman ini cocokkan dengan tautan di dalam <aside> sidebar. Target '⏻' adalah tombol dengan atribut title='Keluar'. Kartu saldo hanya disebut sekilas sesuai permintaan. Label sidebar: menu ringkas memakai 'Beranda', 'Karya', 'Rencana', 'Pengaturan'; menu lengkap memakai 'Dashboard', 'Drive', 'Content Planner', 'Settings' (lihat laporan)."
+  },
+  {
+    "id": "kerangka-02-semua-menu",
+    "bagian": "Kerangka Aplikasi",
+    "judul": "Semua menu, petunjuk, dan bantuan",
+    "route": "/",
+    "keadaan": "Akun BARU: baru daftar, belum punya influencer, belum ada saldo yang dipakai. Dari Beranda, klik '▾ Semua menu' (tombol berubah jadi '▴ Menu ringkas'). Lalu arahkan kursor (hover) ke menu 'Production Studio' dan tahan sampai kotak petunjuk kecil muncul di sampingnya. Tangkap saat petunjuk terlihat. Pojok kanan bawah harus terlihat (tombol bulat '?').",
+    "callouts": [
+      {
+        "target": "▴ Menu ringkas",
+        "jenis": "tombol",
+        "teks": "Tekan lagi untuk kembali ke tujuh menu utama."
+      },
+      {
+        "target": "Influencers",
+        "jenis": "menu",
+        "teks": "Hanya ada di daftar lengkap: karakter AI-mu, tempat mengatur wajah dan suara lebih rinci."
+      },
+      {
+        "target": "~kotak petunjuk kecil yang muncul di samping menu Production Studio",
+        "jenis": "lain",
+        "teks": "Sorot menu mana pun, muncul penjelasan singkat isinya. Di ponsel, cukup ketuk."
+      },
+      {
+        "target": "~ikon bulat kecil bertuliskan i di samping tulisan Saldo kredit",
+        "jenis": "lain",
+        "teks": "Ikon i di label mana pun menjelaskan label itu. Sorot atau ketuk untuk membacanya."
+      },
+      {
+        "target": "~tombol bulat bertanda tanya di pojok kanan bawah",
+        "jenis": "tombol",
+        "teks": "Asisten bantuan. Tanyakan cara pakai atau kenapa sesuatu gagal; ia tahu kamu sedang di layar mana."
+      }
+    ],
+    "narasi": "Tekan Semua menu, dan daftar menunya jadi lengkap, ada Influencers, Product Kit, dan alat produksi lainnya. Coba sorot satu menu, nanti muncul kotak kecil yang menjelaskan isinya. Ikon i di samping label juga begitu. Dan kalau masih bingung, tombol tanda tanya di pojok kanan bawah siap menjawab pertanyaanmu.",
+    "catatan": "Tombol '?' (Asisten bantuan, src/bantuan-chat.jsx) tidak disebut di PANDUAN-APLIKASI.md; saya sertakan karena tampil di semua layar. Belum jelas apakah pertanyaan ke asisten memakai saldo (tidak ada tulisan soal itu di tombolnya) — karena itu tidak disebut di kotak. Kalau Anda tidak ingin fitur ini muncul di panduan, hapus callout 5."
+  },
+  {
+    "id": "beranda-01-mulai-dari-sini",
+    "bagian": "Beranda",
+    "judul": "Beranda dan daftar langkah awal",
+    "route": "/",
+    "keadaan": "Akun BARU: baru daftar, belum punya influencer, belum ada saldo yang dipakai. Buka Beranda (#/) lewat menu Beranda. Kartu 'Mulai dari sini' muncul hanya selama workspace belum lengkap (satu atau lebih langkah belum tercentang). Tangkap bagian atas halaman.",
+    "callouts": [
+      {
+        "target": "Ruang Kerja",
+        "jenis": "judul",
+        "teks": "Judul Beranda. Ringkasan sekilas isi ruang kerjamu; bukan tempat bekerja."
+      },
+      {
+        "target": "Mulai dari sini",
+        "jenis": "kartu",
+        "teks": "Enam langkah awal. Tiap langkah tercentang sendiri begitu datanya ada, dan kartu hilang kalau semuanya beres."
+      },
+      {
+        "target": "Cara cepat: isi Profil saya (foto, suara, bahasa)",
+        "jenis": "tombol",
+        "teks": "Jalan pintas untuk tiga langkah pertama: foto, suara, dan bahasa dalam satu halaman."
+      },
+      {
+        "target": "Baru pertama kali? Lihat Cara mulai (1 halaman)",
+        "jenis": "tombol",
+        "teks": "Membuka halaman Cara mulai yang bisa dicetak jadi satu lembar."
+      },
+      {
+        "target": "Buat video pertama",
+        "jenis": "tombol",
+        "teks": "Langkah terakhir daftar. Membuka wizard Buat Video; harga tampil di sana sebelum apa pun dibayar."
+      }
+    ],
+    "narasi": "Ini Beranda, ruang kerjamu. Kalau kamu masih baru, di atas ada kartu Mulai dari sini, daftar enam langkah awal. Kamu nggak perlu mencentangnya sendiri. Langkah akan tercentang otomatis begitu datanya terisi. Mau yang ringkas? Tekan Cara cepat untuk mengisi foto, suara, dan bahasa sekaligus. Kalau masih bingung, ada tautan ke halaman Cara mulai.",
+    "catatan": "Judul halaman di layar adalah 'Ruang Kerja', bukan 'Beranda' atau 'Dashboard' (label menu berbeda dari judul halaman). Target 'Buat video pertama' juga muncul sebagai tombol di halaman Profil saya; di sini cocokkan dengan tautan di dalam kartu Mulai dari sini. Teks langkah lain: 'Buat influencer pertama', 'Tambah foto wajah', 'Siapkan suara influencer', 'Jawab 12 pertanyaan Arah Konten', 'Simpan foto produk (kalau mau endorse)'."
+  },
+  {
+    "id": "beranda-02-kartu",
+    "bagian": "Beranda",
+    "judul": "Kartu ringkasan di Beranda",
+    "route": "/",
+    "keadaan": "Akun LENGKAP: sudah ada satu influencer dengan minimal 2 foto acuan wajah dan suara klon, minimal satu produk berfoto, dan saldo cukup. Buka Beranda (#/), gulir ke bawah sampai deretan kartu (Influencers, Produksi Terbaru, Drive, Kelola lewat Claude) terlihat. Idealnya ada beberapa job riwayat dan beberapa berkas di kartu Drive.",
+    "callouts": [
+      {
+        "target": "Influencers",
+        "jenis": "kartu",
+        "teks": "Karakter AI-mu beserta foto profil. Klik satu nama untuk membuka halaman detailnya."
+      },
+      {
+        "target": "Produksi Terbaru",
+        "jenis": "kartu",
+        "teks": "Lima job terakhir. Tanda centang berarti berhasil, silang gagal, bulat masih berjalan."
+      },
+      {
+        "target": "Drive",
+        "jenis": "kartu",
+        "teks": "Empat hasil terbaru. Klik gambarnya untuk membuka berkas; tanda silang kecil menghapusnya permanen."
+      },
+      {
+        "target": "Kelola lewat Claude",
+        "jenis": "kartu",
+        "teks": "Opsional. Cara menghubungkan ruang kerja ke Claude supaya bisa meminta lewat percakapan biasa."
+      }
+    ],
+    "narasi": "Di bawahnya ada beberapa kartu ringkasan. Kartu Influencers menunjukkan karakter-karakter kamu. Produksi Terbaru memperlihatkan pekerjaan terakhir, apakah berhasil, gagal, atau masih jalan. Kartu Drive menampilkan hasil terbaru, tinggal klik untuk membukanya. Dan ada kartu Kelola lewat Claude kalau kamu lebih suka minta lewat chat. Semua ini cuma ringkasan, tempat bekerjanya ada di menu masing-masing.",
+    "catatan": "Kartu ini bernama 'Drive' di Beranda tetapi menu sidebarnya 'Karya'. Ada juga kartu Tasks dan Content Planner di halaman ini; sengaja tidak disorot karena di luar cakupan. Kartu Drive punya tombol hapus kecil (×) di tiap thumbnail; menghapus permanen."
+  },
+  {
+    "id": "mulai-01-infografis",
+    "bagian": "Cara Mulai",
+    "judul": "Cara mulai: empat langkah",
+    "route": "/mulai",
+    "keadaan": "Login (akun apa saja), klik menu 'Cara mulai' di sidebar. Tangkap seluruh halaman dalam satu layar lebar (>= 1280 px): empat kartu langkah sebaris, lalu kartu 'Kapan uang keluar?' dan 'Siapkan dulu'.",
+    "callouts": [
+      {
+        "target": "Arah Konten",
+        "jenis": "kartu",
+        "teks": "Langkah 1: jawab 12 pertanyaan dan dapatkan blueprint. Cukup sekali, sekitar sepuluh menit."
+      },
+      {
+        "target": "Isi Profil saya",
+        "jenis": "kartu",
+        "teks": "Langkah 2: foto wajah, rekam suara, pilih bahasa. Juga cukup sekali."
+      },
+      {
+        "target": "Kapan uang keluar?",
+        "jenis": "kartu",
+        "teks": "Urutan dari yang gratis ke yang paling mahal. Yang termahal, yaitu video, selalu dibayar terakhir."
+      },
+      {
+        "target": "Siapkan dulu",
+        "jenis": "kartu",
+        "teks": "Lima hal yang bikin lancar: waktu, foto wajah, tempat sunyi, foto kemasan asli, dan saldo."
+      },
+      {
+        "target": "Cetak",
+        "jenis": "tombol",
+        "teks": "Menyimpan halaman ini sebagai PDF satu lembar, atau mencetaknya."
+      }
+    ],
+    "narasi": "Kalau kamu bingung mulai dari mana, halaman ini jawabannya. Ada empat langkah. Pertama Arah Konten, lalu Profil saya, kemudian Buat Video, dan terakhir tonton serta bagikan. Dua langkah pertama cukup sekali saja. Di bawahnya ada garis kapan uang keluar, dari yang gratis sampai video yang paling besar, dan itu selalu dibayar paling akhir. Bisa dicetak juga.",
+    "catatan": "Judul halaman 'Cara mulai — 4 langkah'. Target 'Arah Konten' dan 'Isi Profil saya' adalah judul di dalam kartu langkah (bukan menu sidebar). Halaman ini sengaja tanpa angka harga. Bagian 'Kalau bingung' (di bawah) tidak dapat callout karena batas lima; disebut sekilas di narasi bila perlu."
+  },
+  {
+    "id": "mulai-02-lewat-claude",
+    "bagian": "Cara Mulai",
+    "judul": "Cara mulai lewat Claude",
+    "route": "/mulai-claude",
+    "keadaan": "Dari halaman Cara mulai (#/mulai), gulir ke 'Kalau bingung' lalu klik 'Cara mulai lewat Claude →' (atau buka #/mulai-claude langsung). Tangkap seluruh halaman dalam satu layar lebar.",
+    "callouts": [
+      {
+        "target": "Syarat: akun Claude yang mendukung connector",
+        "jenis": "kartu",
+        "teks": "Fitur ini hanya ada di paket Claude tertentu. Cek dulu akunmu sebelum mulai."
+      },
+      {
+        "target": "Sambungkan sekali",
+        "jenis": "kartu",
+        "teks": "Empat langkah penyambungan, dilakukan satu kali, sekitar sepuluh menit. Minta bantuan kalau perlu."
+      },
+      {
+        "target": "Salin",
+        "jenis": "tombol",
+        "teks": "Menyalin alamat connector atau kalimat contoh, lalu tempel di claude.ai atau chat Claude."
+      },
+      {
+        "target": "Kalimat pertama yang bisa kamu salin",
+        "jenis": "kartu",
+        "teks": "Tiga contoh kalimat. Claude diminta menyebut harga dan menunggu kata ya sebelum membuat yang berbayar."
+      },
+      {
+        "target": "Kalau tidak jalan",
+        "jenis": "kartu",
+        "teks": "Daftar masalah umum dan jalan keluarnya, mis. connector belum dinyalakan di chat."
+      }
+    ],
+    "narasi": "Buat yang lebih nyaman mengetik seperti di WhatsApp, kamu bisa mengatur semuanya lewat chat Claude. Penyambungannya dilakukan sekali saja, sekitar sepuluh menit. Habis itu tinggal ngobrol. Claude akan menyebut harga dulu dan menunggu kamu bilang ya sebelum membuat sesuatu yang berbayar. Satu catatan, foto wajah dan rekaman suara tetap diisi di aplikasi, lewat Profil saya.",
+    "catatan": "Target 'Salin' adalah tombol '📋 Salin' (ada empat; cocokkan yang pertama, di samping alamat connector). Halaman memuat alamat connector sebagai teks panjang; tidak dibacakan di narasi. Teks halaman menyebut 'Pengaturan → Koneksi' dan 'Pengaturan → Akun' (menu di luar cakupan) — hanya disebut kalau perlu."
+  },
+  {
+    "id": "arah-01-depan",
+    "bagian": "Arah Konten",
+    "judul": "Arah Konten: titik awal",
+    "route": "/arah",
+    "keadaan": "Akun dengan satu influencer (Profil saya sudah diisi) dan BELUM punya blueprint. Klik menu 'Arah Konten'. Tangkap halaman depan: kartu 'Mulai dari 12 pertanyaan', lalu dua kartu 'Ide konten' dan 'Naskah siap baca' di bawahnya (gulir sedikit kalau perlu supaya ketiganya terlihat). Jangan menekan tombol apa pun.",
+    "callouts": [
+      {
+        "target": "Mulai dari 12 pertanyaan (± 8 menit)",
+        "jenis": "kartu",
+        "teks": "Satu pertanyaan per layar. Tiap pertanyaan boleh dijawab Belum tahu, jadi pemula tanpa pengikut pun bisa."
+      },
+      {
+        "target": "Mulai →",
+        "jenis": "tombol",
+        "teks": "Jawabanmu tersimpan otomatis di perangkat, jadi boleh berhenti dan lanjut. Belum memakai saldo."
+      },
+      {
+        "target": "Isi dari dokumen",
+        "jenis": "tombol",
+        "teks": "Punya profil usaha tertulis? Unggah, penulis AI mengisikan jawabannya, kamu tinggal memeriksa. Membaca dokumen memakai saldo."
+      },
+      {
+        "target": "Ide konten",
+        "jenis": "kartu",
+        "teks": "Tempat mencari ide: sepuluh usulan sekali tekan, lengkap dengan pilar dan tujuannya."
+      },
+      {
+        "target": "Naskah siap baca",
+        "jenis": "kartu",
+        "teks": "Daftar naskah yang sudah kamu tulis. Masih kosong sampai kamu menulis satu."
+      }
+    ],
+    "narasi": "Arah Konten menjawab satu pertanyaan, konten apa yang sebaiknya kamu buat. Halaman ini nggak membuat video, cuma ide dan naskah. Mulai dari dua belas pertanyaan, sekitar delapan menit. Nggak tahu jawabannya? Pilih Belum tahu. Atau kalau kamu sudah punya profil usaha, unggah saja dokumennya. Di bawah ada tempat ide dan naskah yang nanti terisi.",
+    "catatan": "'Isi dari dokumen' (📄) ada di kode tetapi TIDAK ada di PANDUAN-APLIKASI.md. Layar unggah-nya ('Baca dokumen · ≈ Rp…') memakai saldo; tidak diberi halaman sendiri demi batas jumlah halaman. Kalau akun sudah punya blueprint, kartu pertama diganti '🧬 Blueprint brand' dengan tombol 'Lihat & ubah →'."
+  },
+  {
+    "id": "arah-02-pertanyaan",
+    "bagian": "Arah Konten",
+    "judul": "Menjawab 12 pertanyaan",
+    "route": "/arah",
+    "keadaan": "Akun dengan satu influencer (Profil saya sudah diisi) dan BELUM punya blueprint. Dari halaman depan Arah Konten klik 'Mulai →'. Layar pertanyaan 1 dari 12 tampil ('Siapa kamu & apa yang kamu kerjakan?'). Boleh ketik satu kalimat contoh di kolom jawaban; jangan klik 'Lanjut' dulu.",
+    "callouts": [
+      {
+        "target": "Pertanyaan 1 dari 12",
+        "jenis": "lain",
+        "teks": "Penunjuk posisi. Pertanyaan wajib hanya 1, 2, dan 6; sisanya boleh dijawab Belum tahu."
+      },
+      {
+        "target": "Siapa kamu & apa yang kamu kerjakan?",
+        "jenis": "judul",
+        "teks": "Satu pertanyaan per layar, dengan contoh jawaban di bawahnya. Tulis seadanya, pakai bahasa sehari-hari."
+      },
+      {
+        "target": "Belum tahu",
+        "jenis": "tombol",
+        "teks": "Belum punya jawaban? Pilih ini. Tanpa pengikut atau belum jualan pun tetap bisa mengisi."
+      },
+      {
+        "target": "Simpan & keluar",
+        "jenis": "tombol",
+        "teks": "Boleh berhenti di tengah jalan. Jawabanmu tetap tersimpan di perangkat ini."
+      },
+      {
+        "target": "Lanjut →",
+        "jenis": "tombol",
+        "teks": "Ke pertanyaan berikutnya. Di akhir, kamu melihat ringkasan semua jawaban."
+      }
+    ],
+    "narasi": "Tiap layar cuma satu pertanyaan, dengan contoh jawaban di bawahnya. Jawab seadanya saja, seperti ngobrol. Yang wajib cuma tiga, yaitu nomor satu, dua, dan enam. Sisanya, kalau belum tahu, tekan Belum tahu. Tenang, nggak ada jawaban yang salah. Kalau capek, tekan Simpan dan keluar, besok bisa lanjut dari tempat yang sama.",
+    "catatan": "Teks pertanyaan 1 diikuti ' · wajib diisi' (pertanyaan 1, 2, 6). Tombol 'Belum tahu' bernama sama di semua pertanyaan; pertanyaan 5 dan 6 juga punya 'Belum ada'."
+  },
+  {
+    "id": "arah-03-susun-blueprint",
+    "bagian": "Arah Konten",
+    "judul": "Periksa jawaban, lalu susun blueprint",
+    "route": "/arah",
+    "keadaan": "Akun dengan satu influencer (Profil saya sudah diisi) dan BELUM punya blueprint. Lanjutkan pertanyaan sampai habis (isi minimal pertanyaan 1, 2, 6; sisanya boleh 'Belum tahu'). Layar akhir 'Siap disusun' tampil berisi daftar 12 jawaban. Jangan menekan 'Susun blueprint' kalau tidak ingin memakai saldo.",
+    "callouts": [
+      {
+        "target": "Siap disusun",
+        "jenis": "judul",
+        "teks": "Ringkasan 12 jawabanmu. Ketuk jawaban mana pun untuk mengubahnya sebelum lanjut."
+      },
+      {
+        "target": "Susun blueprint",
+        "jenis": "tombol",
+        "teks": "Penulis AI menyusun blueprint dari jawabanmu. Langkah ini memakai saldo."
+      },
+      {
+        "target": "Memakai saldo · kamu meninjau hasilnya dulu",
+        "jenis": "lain",
+        "teks": "Pengingat tertulis di bawah tombol: hasil bisa kamu periksa dan ubah, tidak langsung dipakai."
+      },
+      {
+        "target": "← Kembali",
+        "jenis": "tombol",
+        "teks": "Kembali ke pertanyaan sebelumnya kalau ada yang mau diubah."
+      }
+    ],
+    "narasi": "Sampai di sini semua jawabanmu terkumpul dalam satu daftar. Periksa dulu, dan ketuk jawaban yang mau diubah. Kalau sudah pas, tekan Susun blueprint. Langkah ini memakai saldo, karena penulis AI yang bekerja menyusunnya. Tapi tenang, hasilnya kamu lihat dulu dan bisa kamu ubah sesukamu. Belum ada video atau gambar yang dibuat di sini.",
+    "catatan": "Tombol berbunyi 'Susun blueprint · ≈ Rp …' (harga dinamis dari katalog; ada tooltip). Target 'Susun blueprint' = awalan teks tombol. Kalau pertanyaan wajib kosong, muncul pesan galat merah dan penyusunan ditolak."
+  },
+  {
+    "id": "arah-04-blueprint-atas",
+    "bagian": "Arah Konten",
+    "judul": "Blueprint: siapa kamu dan untuk siapa",
+    "route": "/arah",
+    "keadaan": "Akun LENGKAP: sudah ada satu influencer dengan minimal 2 foto acuan wajah dan suara klon, minimal satu produk berfoto, dan saldo cukup. Akun yang sudah punya blueprint. Dari halaman depan Arah Konten klik 'Lihat & ubah →'. Tangkap bagian atas halaman blueprint (Positioning, Keunggulanmu, Audiens).",
+    "callouts": [
+      {
+        "target": "Positioning",
+        "jenis": "kartu",
+        "teks": "Satu kalimat: untuk siapa kamu membantu, membantu apa, dan dengan cara apa."
+      },
+      {
+        "target": "Keunggulanmu",
+        "jenis": "kartu",
+        "teks": "Tiga alasan orang memilih kamu, bukan orang lain."
+      },
+      {
+        "target": "Audiens",
+        "jenis": "kartu",
+        "teks": "Siapa mereka, masalahnya, yang diinginkan, dan kata-kata yang mereka pakai sendiri."
+      },
+      {
+        "target": "Ubah",
+        "jenis": "tombol",
+        "teks": "Tiap bagian bisa kamu ubah sendiri, gratis. Hasil editanmu yang dipakai seterusnya."
+      }
+    ],
+    "narasi": "Inilah blueprint kamu, ringkasan arah kontenmu dalam satu halaman. Di atas ada positioning, satu kalimat tentang siapa kamu. Lalu tiga keunggulan, dan gambaran audiensmu, termasuk kata-kata yang mereka pakai sendiri. Kalau ada yang kurang pas, tekan Ubah di bagian itu. Mengubah sendiri gratis, dan editanmulah yang dipakai seterusnya.",
+    "catatan": "Blueprint tersimpan per influencer. Tombol 'Ubah' ada di tiap kartu; target cocokkan dengan yang pertama."
+  },
+  {
+    "id": "arah-05-blueprint-bawah",
+    "bagian": "Arah Konten",
+    "judul": "Blueprint: pilar, ritme, dan susun ulang",
+    "route": "/arah",
+    "keadaan": "Akun LENGKAP: sudah ada satu influencer dengan minimal 2 foto acuan wajah dan suara klon, minimal satu produk berfoto, dan saldo cukup. Masih di halaman blueprint; gulir ke bawah sampai kartu 'Pilar konten' sampai tombol 'Susun ulang dari jawaban' terlihat (kartu 'Pilar konten' belum diterapkan supaya tombol 'Terapkan pilar ke Rencana' tampil).",
+    "callouts": [
+      {
+        "target": "Pilar konten",
+        "jenis": "kartu",
+        "teks": "Tiga sampai lima tema yang terus kamu ulang, masing-masing dengan alasan kenapa audiensmu peduli."
+      },
+      {
+        "target": "Terapkan pilar ke Rencana",
+        "jenis": "tombol",
+        "teks": "Menambahkan pilar ini ke Rencana. Pilar yang namanya sudah ada dilewati. Gratis."
+      },
+      {
+        "target": "Ritme Kenalan · Percaya · Beli",
+        "jenis": "kartu",
+        "teks": "Berapa konten per minggu untuk tiap tujuan: mengenalkan, membuat percaya, dan mengajak beli."
+      },
+      {
+        "target": "Susun ulang dari jawaban",
+        "jenis": "tombol",
+        "teks": "Menjalankan penulis AI lagi dari jawaban tersimpan. Memakai saldo, dan hasil lama diganti."
+      },
+      {
+        "target": "Ulangi 12 pertanyaan",
+        "jenis": "tombol",
+        "teks": "Membuka pertanyaan lagi, terisi jawabanmu. Blueprint lama tidak berubah sampai kamu menyusun lagi."
+      }
+    ],
+    "narasi": "Lebih ke bawah ada pilar konten, tiga sampai lima tema yang akan terus kamu bahas. Lalu ritme per minggu, berapa konten untuk berkenalan, membangun percaya, dan mengajak beli. Mau mengisi ulang? Ada dua pilihan. Susun ulang dari jawaban langsung memakai saldo. Ulangi dua belas pertanyaan hanya membuka pertanyaannya lagi, dan baru memakai saldo saat kamu menyusun blueprint.",
+    "catatan": "'Terapkan pilar ke Rencana' memuat jumlah dinamis, mis. 'Terapkan pilar ke Rencana (3)'; tombol berganti jadi '✓ Sudah diterapkan ke Rencana' kalau semua pilar sudah ada. 'Susun ulang dari jawaban' memuat harga dinamis. Dua kartu lain (Gaya bicara, Cara menghasilkan) ada di halaman ini tetapi tidak disorot."
+  },
+  {
+    "id": "arah-06-ide",
+    "bagian": "Arah Konten",
+    "judul": "Mencari ide konten",
+    "route": "/arah",
+    "keadaan": "Akun LENGKAP: sudah ada satu influencer dengan minimal 2 foto acuan wajah dan suara klon, minimal satu produk berfoto, dan saldo cukup. Dari halaman depan Arah Konten klik 'Buka ide →'. Biarkan filter 'Semua'. Tekan '10 ide' (memakai saldo) dan tunggu sampai daftar 'Usulan (10)' muncul. Tangkap saat kartu 'Ide konten' dan daftar usulan terlihat.",
+    "callouts": [
+      {
+        "target": "Pilar",
+        "jenis": "kolom",
+        "teks": "Saring ide menurut pilar kontenmu. Pilih Semua kalau mau yang campur."
+      },
+      {
+        "target": "Tujuan",
+        "jenis": "kolom",
+        "teks": "Kenalan, Percaya, atau Beli. Tanpa saringan, tujuan dibagi mengikuti ritme di blueprint."
+      },
+      {
+        "target": "10 ide",
+        "jenis": "tombol",
+        "teks": "Meminta sepuluh usulan sekaligus. Langkah ini memakai saldo."
+      },
+      {
+        "target": "Simpan",
+        "jenis": "tombol",
+        "teks": "Menyimpan satu usulan sebagai ide. Gratis. Yang tidak cocok dihapus dengan tanda ×."
+      },
+      {
+        "target": "Simpan semua",
+        "jenis": "tombol",
+        "teks": "Menyimpan semua usulan yang tersisa sekaligus. Gratis; pilar yang belum ada ikut dibuat."
+      }
+    ],
+    "narasi": "Di sini kamu bisa minta sepuluh ide sekaligus. Mau ide untuk pilar tertentu, atau untuk tujuan tertentu seperti kenalan, percaya, atau beli? Tinggal pilih dulu. Tombol Sepuluh ide memakai saldo. Hasilnya belum tersimpan, jadi kamu pilih dulu. Yang cocok, tekan Simpan, atau Simpan semua kalau semuanya bagus. Menyimpan dan menghapus gratis.",
+    "catatan": "Tombol berbunyi '10 ide · ≈ Rp …' (harga dinamis); setelah ada hasil, bunyinya jadi '10 ide lagi'. 'Simpan' muncul di tiap usulan: cocokkan yang pertama. 'Pilar' dan 'Tujuan' adalah label kecil di atas deretan chip. Kalau blueprint belum ada, muncul catatan 'Ide ini ditulis tanpa blueprint brand'."
+  },
+  {
+    "id": "arah-07-pembuka",
+    "bagian": "Arah Konten",
+    "judul": "Memilih kalimat pembuka naskah",
+    "route": "/arah",
+    "keadaan": "Akun LENGKAP: sudah ada satu influencer dengan minimal 2 foto acuan wajah dan suara klon, minimal satu produk berfoto, dan saldo cukup. Dari daftar 'Ide tersimpan' klik 'Tulis naskah →' pada satu ide. Layar naskah terbuka. Tekan 'Beri 5 pembuka' (memakai saldo) dan tunggu lima pilihan muncul; klik salah satu supaya kolom 'Pembuka yang dipakai' terisi. Biarkan lipatan 'Remix' tertutup.",
+    "callouts": [
+      {
+        "target": "1. Pilih pembuka",
+        "jenis": "judul",
+        "teks": "Pembuka adalah kalimat 1–3 detik pertama yang membuat orang berhenti scroll."
+      },
+      {
+        "target": "Beri 5 pembuka",
+        "jenis": "tombol",
+        "teks": "Penulis AI menulis lima pembuka dengan gaya berbeda. Memakai saldo."
+      },
+      {
+        "target": "Pembuka yang dipakai",
+        "jenis": "kolom",
+        "teks": "Pilih salah satu usulan, atau tulis sendiri (gratis). Naskah dilanjutkan persis dari kalimat ini."
+      },
+      {
+        "target": "Remix dari video yang kamu suka",
+        "jenis": "tombol",
+        "teks": "Tempel teks atau garis besar video orang lain. Yang dipakai polanya, bukan kalimatnya. Memakai saldo."
+      }
+    ],
+    "narasi": "Naskah dimulai dari pembuka, kalimat pertama yang bikin orang berhenti scroll. Tekan Beri lima pembuka, dan penulis AI menyodorkan lima gaya berbeda, misalnya cerita, pertanyaan, atau angka. Langkah itu memakai saldo. Suka salah satu? Klik. Atau tulis sendiri, itu gratis. Ada juga Remix, kalau kamu mau meniru pola video orang lain, bukan kalimatnya.",
+    "catatan": "Tombol berbunyi 'Beri 5 pembuka · ≈ Rp …', berubah jadi '5 pembuka lain' setelah ada hasil. 'Remix dari video yang kamu suka' adalah <summary> lipatan (tertutup bawaan); isinya menyebut 'Tempel teksnya, bukan link' dan tombol 'Tulis ulang dengan polanya' (memakai saldo). Teks 'Ide tersimpan' memakai pilar, tujuan, dan penanda '✓ naskah'."
+  },
+  {
+    "id": "arah-08-naskah",
+    "bagian": "Arah Konten",
+    "judul": "Menulis naskah yang enak didengar",
+    "route": "/arah",
+    "keadaan": "Akun LENGKAP: sudah ada satu influencer dengan minimal 2 foto acuan wajah dan suara klon, minimal satu produk berfoto, dan saldo cukup. Masih di layar naskah. Pembuka sudah terisi. Pilih '15 detik' di 'Berapa lama?' lalu tekan 'Tulis naskahnya' (memakai saldo) dan tunggu sampai bagian 'Yang dibacakan' dengan kolom Pembuka, Isi, dan Ajakan muncul. Tangkap bagian '2. Naskah'.",
+    "callouts": [
+      {
+        "target": "Berapa lama?",
+        "jenis": "kolom",
+        "teks": "Pilih 10, 15, 20, atau 30 detik. Samakan dengan video yang akan kamu buat."
+      },
+      {
+        "target": "Tulis ulang naskah",
+        "jenis": "tombol",
+        "teks": "Penulis AI melanjutkan pembukamu dengan isi dan ajakan. Memakai saldo, dan menulis ulang mengganti yang lama."
+      },
+      {
+        "target": "Yang dibacakan",
+        "jenis": "judul",
+        "teks": "Bagian yang diucapkan di video, dengan perkiraan lama bicara di kanannya."
+      },
+      {
+        "target": "Isi",
+        "jenis": "kolom",
+        "teks": "Ditulis untuk didengar: kalimat pendek dan jeda pakai titik-titik. Boleh kamu ubah, gratis."
+      },
+      {
+        "target": "Ajakan",
+        "jenis": "kolom",
+        "teks": "Kalimat penutup yang menyuruh penonton berbuat sesuatu, disesuaikan dengan tujuan idenya."
+      }
+    ],
+    "narasi": "Pilih berapa lama videonya, lalu tekan Tulis naskahnya. Penulis AI akan melanjutkan dari pembuka yang kamu pilih. Naskahnya ditulis untuk didengar, jadi kalimatnya pendek, seperti orang ngobrol. Itu memakai saldo. Setelah muncul, kamu boleh mengubah pembuka, isi, atau ajakan sesukamu. Mengubah naskah sendiri tidak memakai saldo.",
+    "catatan": "Setelah naskah ada, tombol berubah dari 'Tulis naskahnya' menjadi 'Tulis ulang naskah' (target di callout 2 memakai bunyi sesudah naskah ada; keduanya diikuti harga dinamis). 'Isi' dan 'Ajakan' di PANDUAN disebut 'isi' dan 'ajakan'; di layar labelnya Pembuka / Isi / Ajakan."
+  },
+  {
+    "id": "arah-09-serah-terima",
+    "bagian": "Arah Konten",
+    "judul": "Caption, simpan, dan lanjut ke video",
+    "route": "/arah",
+    "keadaan": "Akun LENGKAP: sudah ada satu influencer dengan minimal 2 foto acuan wajah dan suara klon, minimal satu produk berfoto, dan saldo cukup. Masih di layar naskah, gulir ke bawah sampai kartu 'Caption (dibaca, bukan dibacakan)' dan deretan tombol 'Simpan', 'Lihat di Rencana', 'Buat videonya →' terlihat. Ubah satu huruf di naskah supaya tombol 'Simpan' aktif (bukan '✓ Tersimpan').",
+    "callouts": [
+      {
+        "target": "Caption (dibaca, bukan dibacakan)",
+        "jenis": "kartu",
+        "teks": "Teks pendek di bawah postingan. Sengaja berbeda dari naskah yang diucapkan."
+      },
+      {
+        "target": "Tagar",
+        "jenis": "kolom",
+        "teks": "Pisahkan dengan spasi; tanda # boleh ditulis atau tidak."
+      },
+      {
+        "target": "Simpan",
+        "jenis": "tombol",
+        "teks": "Menyimpan pembuka, naskah, caption, dan tagar ke konten ini. Gratis."
+      },
+      {
+        "target": "Lihat di Rencana",
+        "jenis": "tombol",
+        "teks": "Membuka Rencana untuk menjadwalkan konten ini. Ide dan naskahnya sudah ada di sana."
+      },
+      {
+        "target": "Buat videonya →",
+        "jenis": "tombol",
+        "teks": "Membuka Buat Video dengan naskah ini sudah terisi. Belum ada yang dibayar sampai kamu menekan Ya di sana."
+      }
+    ],
+    "narasi": "Di bagian bawah ada caption, yaitu teks yang dibaca di bawah postingan. Caption sengaja dibuat pendek dan berbeda dari naskah. Kalau sudah pas, tekan Simpan. Terakhir, tombol Buat videonya akan membawamu ke Buat Video dengan naskah yang sudah terisi. Di sini belum ada yang dibayar. Arah Konten memang berhenti di naskah.",
+    "catatan": "Tombol 'Simpan' berubah jadi '✓ Tersimpan' dan nonaktif kalau tidak ada perubahan. Target 'Lihat di Rencana' menyebut menu Rencana, yang di luar cakupan panduan; hanya disebut sebagai nama tombol."
+  },
+  {
+    "id": "profil-01-wajah",
+    "bagian": "Profil Saya",
+    "judul": "Profil saya: wajahmu",
+    "route": "/profil",
+    "keadaan": "Akun BARU: baru daftar, belum punya influencer. Dari Beranda klik tautan '⚡ Cara cepat: isi Profil saya' (atau buka #/profil). Kartu '1 · Wajah saya' menampilkan kolom 'Nama panggilan di video' dan 'Bahasa'. Boleh ketik nama dan pilih 1–2 foto lewat '+ Pilih foto' (thumbnail muncul), tetapi jangan menekan 'Simpan wajah saya'.",
+    "callouts": [
+      {
+        "target": "1 · Wajah saya",
+        "jenis": "kartu",
+        "teks": "Foto acuan supaya wajahmu selalu sama di semua video. Dua sampai empat foto jelas, tanpa kacamata hitam."
+      },
+      {
+        "target": "Nama panggilan di video",
+        "jenis": "kolom",
+        "teks": "Nama yang dipakai penulis naskah saat menyebut dirimu. Bisa diganti kapan saja."
+      },
+      {
+        "target": "+ Pilih foto",
+        "jenis": "tombol",
+        "teks": "Pilih sampai empat foto dari galeri sekaligus. Belum terkirim sebelum kamu menekan tombol simpan."
+      },
+      {
+        "target": "Simpan wajah saya",
+        "jenis": "tombol",
+        "teks": "Membuat profilmu. Penulis AI membaca ciri wajah dari foto, jadi langkah ini memakai saldo sedikit."
+      }
+    ],
+    "narasi": "Langkah pertama di Profil saya adalah wajahmu. Isi nama panggilan, lalu pilih dua sampai empat foto yang jelas, tanpa kacamata hitam dan tanpa filter. Foto ini membuat wajahmu tetap sama di semua video. Tekan Simpan wajah saya. Langkah ini memakai saldo sedikit, karena penulis AI membaca ciri wajahmu dari foto. Menambah foto berikutnya gratis.",
+    "catatan": "Tombol berbunyi 'Simpan wajah saya · ≈ Rp …' (harga dinamis). Kalau akun sudah punya profil, kartu ini TIDAK menampilkan kolom nama/bahasa; yang tampil 'Foto yang sudah tersimpan' dan tombol 'Tambahkan N foto' (gratis). Karena itu halaman ini harus ditangkap dari akun tanpa influencer."
+  },
+  {
+    "id": "profil-02-suara",
+    "bagian": "Profil Saya",
+    "judul": "Profil saya: suaramu",
+    "route": "/profil",
+    "keadaan": "Akun LENGKAP: sudah ada satu influencer dengan minimal 2 foto acuan wajah dan suara klon, minimal satu produk berfoto, dan saldo cukup. Buka #/profil (profil sudah ada). Gulir ke kartu '2 · Suara saya'. Klik 'Unggah rekaman' dan pilih berkas audio 10–30 detik, supaya muncul pemutar 'Rekamanmu · N detik — dengarkan dulu' dan tombol 'Pakai rekaman ini'. Jangan tekan 'Pakai rekaman ini'.",
+    "callouts": [
+      {
+        "target": "2 · Suara saya",
+        "jenis": "kartu",
+        "teks": "Dari satu rekaman, suaramu ditiru untuk membaca naskah di semua video. Tidak memotong saldo."
+      },
+      {
+        "target": "Rekam ulang",
+        "jenis": "tombol",
+        "teks": "Merekam lewat mikrofon, 10–30 detik, di tempat sunyi. Sebelum ada rekaman, tombol ini bertuliskan Rekam sekarang."
+      },
+      {
+        "target": "Unggah rekaman",
+        "jenis": "tombol",
+        "teks": "Atau pakai rekaman dari ponsel. Pilihan paling aman kalau rekaman dari browser ditolak."
+      },
+      {
+        "target": "dengarkan dulu",
+        "jenis": "lain",
+        "teks": "Putar rekamanmu dulu. Kalau ada suara latar atau terpotong, rekam ulang sebelum dipakai."
+      },
+      {
+        "target": "Pakai rekaman ini",
+        "jenis": "tombol",
+        "teks": "Mengirim rekaman untuk ditiru, sekitar satu menit. Tidak memotong saldo; suara lama diganti."
+      }
+    ],
+    "narasi": "Sekarang suaramu. Rekam sepuluh sampai tiga puluh detik di tempat sunyi, tanpa musik. Ceritakan saja apa yang kamu jual, seperti ngobrol. Atau unggah rekaman dari ponselmu. Dengarkan dulu hasilnya. Kalau sudah pas, tekan Pakai rekaman ini. Sistem butuh sekitar satu menit untuk menirunya. Langkah suara ini tidak memotong saldomu.",
+    "catatan": "Tombol rekam bertuliskan '🎙️ Rekam sekarang' sebelum ada rekaman dan '🎙️ Rekam ulang' sesudahnya (callout 2 memakai bunyi sesudah ada rekaman). Setelah suara tersimpan muncul 'Contoh suara hasil tiruan' dan lencana '✓ video bicara' / '✓ video cerita'. Klon suara tidak memotong saldo pelanggan (biaya ada di operator) sesuai PANDUAN. Mikrofon tidak bisa dijalankan otomatis; gunakan 'Unggah rekaman' untuk keperluan tangkapan layar."
+  },
+  {
+    "id": "profil-03-bahasa-siap",
+    "bagian": "Profil Saya",
+    "judul": "Profil saya: bahasa dan siap video",
+    "route": "/profil",
+    "keadaan": "Akun LENGKAP: sudah ada satu influencer dengan minimal 2 foto acuan wajah dan suara klon, minimal satu produk berfoto, dan saldo cukup. Buka #/profil, gulir ke bawah sampai kartu '3 · Bahasa video' dan kartu 'Sudah siap?' terlihat. Tombol 'Buat video pertama →' harus aktif (wajah dan suara sudah ada).",
+    "callouts": [
+      {
+        "target": "3 · Bahasa video",
+        "jenis": "kartu",
+        "teks": "Bahasa naskah dan suara. Indonesia, English, atau campuran; Mandarin menyusul."
+      },
+      {
+        "target": "Campuran",
+        "jenis": "tombol",
+        "teks": "Indonesia dengan sisipan istilah Inggris, seperti gaya bicara sehari-hari. Langsung tersimpan saat ditekan."
+      },
+      {
+        "target": "Sudah siap?",
+        "jenis": "kartu",
+        "teks": "Tiga tanda terisi otomatis: wajah, suara, bahasa. Video bicara ke kamera masih butuh satu produk di Product Kit."
+      },
+      {
+        "target": "Buat video pertama →",
+        "jenis": "tombol",
+        "teks": "Membuka wizard Buat Video. Baru aktif kalau wajah dan suara sudah ada."
+      },
+      {
+        "target": "Pengaturan lengkap",
+        "jenis": "tombol",
+        "teks": "Membuka halaman detail karakter ini untuk mengatur lebih rinci."
+      }
+    ],
+    "narasi": "Terakhir, pilih bahasa videomu, Indonesia, English, atau campuran. Pilihannya langsung tersimpan. Di bawahnya ada kartu Sudah siap, yang tandanya terisi sendiri saat wajah dan suara sudah ada. Kalau sudah hijau, tekan Buat video pertama. Ingat, video bicara ke kamera masih butuh satu produk di Product Kit. Mau mengatur lebih rinci? Ada Pengaturan lengkap.",
+    "catatan": "Tombol 'Simpan produk dulu' juga ada di kartu 'Sudah siap?' tetapi tidak disorot (batas lima). Tombol 'Buat video pertama →' tidak punya ikon; bunyinya sama dengan langkah di Beranda tanpa tanda panah."
+  },
+  {
+    "id": "buat-video-01-apa-bicara",
+    "bagian": "Buat Video",
+    "judul": "Buat Video: pilih jenis video",
+    "route": "/buat-video",
+    "keadaan": "Akun LENGKAP: sudah ada satu influencer dengan minimal 2 foto acuan wajah dan suara klon, minimal satu produk berfoto, dan saldo cukup. Klik menu 'Buat Video'. Kalau muncul 'Melanjutkan isian terakhirmu · Mulai baru', klik 'Mulai baru'. Langkah '1. Apa' terbuka dengan kartu '🎤 Saya bicara ke kamera' terpilih (bawaan). Ketik satu kalimat di kolom cerita, mis. 'keripik singkong saya, renyah dan tidak berminyak'. Jangan klik Lanjut.",
+    "callouts": [
+      {
+        "target": "1. Apa",
+        "jenis": "tab",
+        "teks": "Empat langkah: Apa, Siapa, Berapa lama, Tinjau & harga. Di langkah pertama belum ada yang dibayar."
+      },
+      {
+        "target": "Saya bicara ke kamera",
+        "jenis": "kartu",
+        "teks": "Kamu bicara ke kamera membicarakan satu produk. Cocok untuk jualan dan endorse."
+      },
+      {
+        "target": "Cerita beberapa adegan",
+        "jenis": "kartu",
+        "teks": "Satu ide jadi beberapa adegan dengan narasi, tanpa bicara ke kamera."
+      },
+      {
+        "target": "Ceritakan videonya",
+        "jenis": "kolom",
+        "teks": "Satu atau dua kalimat cukup. Penulis AI menyusun naskah lengkapnya nanti."
+      },
+      {
+        "target": "Perkiraan harga",
+        "jenis": "lain",
+        "teks": "Perkiraan harga untuk beberapa pilihan durasi sudah tertulis, dalam rupiah, sebelum kamu lanjut."
+      }
+    ],
+    "narasi": "Buat Video itu seperti wawancara singkat, cuma empat pertanyaan. Pertama, kamu mau video seperti apa? Bicara ke kamera, cocok untuk jualan dan endorse. Atau cerita beberapa adegan. Lalu ceritakan videonya dalam satu dua kalimat saja. Harga perkiraannya sudah tertulis di sini, dalam rupiah, jadi kamu tahu dari awal. Di langkah ini belum ada yang dibayar.",
+    "catatan": "Teks di bawah judul halaman: 'Empat pertanyaan, lalu harganya. Tidak ada yang dibayar sebelum kamu menekan \"Ya\" di langkah terakhir.' — secara teknis kurang tepat: tombol 'Tulis naskahnya' di langkah 3 sudah memakai saldo (penulis AI). Target 'Perkiraan harga' adalah label di baris kecil di atas tombol Lanjut. Chip langkah berbunyi '1. Apa', '2. Siapa', '3. Berapa lama', '4. Tinjau & harga'."
+  },
+  {
+    "id": "buat-video-02-apa-cerita",
+    "bagian": "Buat Video",
+    "judul": "Jalur cerita: bentuk dan gaya gambar",
+    "route": "/buat-video",
+    "keadaan": "Akun LENGKAP: sudah ada satu influencer dengan minimal 2 foto acuan wajah dan suara klon, minimal satu produk berfoto, dan saldo cukup. Di langkah '1. Apa' klik kartu '🎞️ Cerita beberapa adegan'. Bagian 'Bentuk ceritanya', 'Gaya gambarnya', dan 'Foto dari HP-mu' muncul. Pilih satu bentuk (mis. 'Masalah → Produk → Hasil'). Biarkan gaya 'Foto nyata'.",
+    "callouts": [
+      {
+        "target": "Bentuk ceritanya",
+        "jenis": "kolom",
+        "teks": "Pilih pola: Masalah → Produk → Hasil, Proses, Sebelum/Sesudah, 3 Tips, atau Bebas. Penulis AI membagi adegan dan detiknya."
+      },
+      {
+        "target": "Gaya gambarnya",
+        "jenis": "kolom",
+        "teks": "Foto nyata, atau Kolase kertas (gaya Vox) untuk video penjelasan. Harganya sama."
+      },
+      {
+        "target": "Foto dari HP-mu (opsional, maks. 8)",
+        "jenis": "kolom",
+        "teks": "Foto dapur, kemasan, atau pembeli jadi bahan adegan. Belum terkirim sebelum naskah ditulis."
+      },
+      {
+        "target": "Ceritakan videonya",
+        "jenis": "kolom",
+        "teks": "Satu atau dua kalimat cukup, mis. pagi di dapur, menggoreng keripik, sampai ke tangan pembeli."
+      }
+    ],
+    "narasi": "Kalau kamu pilih cerita beberapa adegan, ada tiga pilihan tambahan. Bentuk ceritanya, misalnya masalah, produk, lalu hasil. Kamu nggak perlu menghitung adegan, penulis AI yang membagi. Lalu gaya gambar, foto nyata atau kolase kertas. Harganya sama saja. Terakhir, foto dari HP kamu, kalau ada, untuk bahan adegan. Semua ini opsional.",
+    "catatan": "Kartu 'Cerita beberapa adegan' = jalur Storyboard. Label bentuk cerita di layar diawali ikon: '💡 Masalah → Produk → Hasil', '🍳 Proses: dari dapur ke pembeli', '🔁 Sebelum / Sesudah', '✅ 3 Tips', '✍️ Bebas'. PANDUAN menyebut 'Proses' dan 'Sebelum/Sesudah' dengan ejaan lebih pendek."
+  },
+  {
+    "id": "buat-video-03-siapa",
+    "bagian": "Buat Video",
+    "judul": "Siapa yang tampil dan produk apa",
+    "route": "/buat-video",
+    "keadaan": "Akun LENGKAP: sudah ada satu influencer dengan minimal 2 foto acuan wajah dan suara klon, minimal satu produk berfoto, dan saldo cukup. Pilih kartu '🎤 Saya bicara ke kamera', isi ceritanya, klik 'Lanjut →'. Langkah '2. Siapa' tampil. Pilih satu produk di kolom 'Produk yang dibicarakan' sehingga tidak ada pesan kuning. Jangan klik Lanjut.",
+    "callouts": [
+      {
+        "target": "Yang tampil di video",
+        "jenis": "kolom",
+        "teks": "Wajah dan suara dari Profil saya. Kalau ada beberapa karakter, pilih di sini."
+      },
+      {
+        "target": "wajah",
+        "jenis": "lain",
+        "teks": "Lencana hijau berarti foto wajahmu cukup. Kalau kuning, tambah foto di Profil saya."
+      },
+      {
+        "target": "Produk yang dibicarakan",
+        "jenis": "kolom",
+        "teks": "Pilih produk dari Product Kit. Foto kemasan aslinya jadi acuan supaya kemasan tidak dikarang."
+      },
+      {
+        "target": "+ Produk baru",
+        "jenis": "tombol",
+        "teks": "Simpan produk baru di sini tanpa pindah halaman: nama, keunggulan, dan foto kemasan asli."
+      },
+      {
+        "target": "Lanjut →",
+        "jenis": "tombol",
+        "teks": "Kalau belum bisa ditekan, alasannya tertulis di bawah tombol, lengkap dengan tautan memperbaikinya."
+      }
+    ],
+    "narasi": "Langkah dua, siapa yang tampil. Wajah dan suaranya diambil dari Profil saya. Kalau ada yang belum siap, misalnya foto wajah, suara, atau produk, layar bilang sekarang juga, lengkap dengan tautan untuk memperbaikinya, jadi kamu nggak kecele setelah naskah dibayar. Untuk video bicara, pilih produknya. Belum ada? Tekan Produk baru.",
+    "catatan": "Target 'wajah' = lencana '✓ wajah (N)' / 'wajah: N foto'. Di jalur cerita langkah ini hanya menampilkan 'Yang tampil di video' (tanpa kolom produk) dan butuh minimal 2 foto wajah. Kalau datang dari Arah Konten dengan naskah siap, 'Lanjut' langsung ke Tinjau (melewati 'Berapa lama')."
+  },
+  {
+    "id": "buat-video-04-berapa-lama",
+    "bagian": "Buat Video",
+    "judul": "Berapa lama videonya",
+    "route": "/buat-video",
+    "keadaan": "Akun LENGKAP: sudah ada satu influencer dengan minimal 2 foto acuan wajah dan suara klon, minimal satu produk berfoto, dan saldo cukup. Dari langkah '2. Siapa' klik 'Lanjut →'. Langkah '3. Berapa lama' tampil dengan empat tombol durasi (10, 15, 20, 30 detik) dan harga di tiap tombol. Pilih '15 detik'. Jangan klik 'Tulis naskahnya'.",
+    "callouts": [
+      {
+        "target": "Berapa lama videonya?",
+        "jenis": "judul",
+        "teks": "Pilih target durasi. Maksimal 30 detik per video; video bicara mengikuti panjang naskah yang dibacakan."
+      },
+      {
+        "target": "15 detik",
+        "jenis": "tombol",
+        "teks": "Tiap tombol menulis durasi dan perkiraan harganya dalam rupiah. Pilih yang sesuai isi kantongmu."
+      },
+      {
+        "target": "Video lebih dari 30 detik menyusul",
+        "jenis": "lain",
+        "teks": "Video lebih panjang belum bisa. Untuk sekarang, bagi jadi beberapa video pendek."
+      },
+      {
+        "target": "Tulis naskahnya",
+        "jenis": "tombol",
+        "teks": "Penulis AI menyusun naskah. Langkah ini memakai saldo. Gambar, suara, dan video belum dibuat."
+      }
+    ],
+    "narasi": "Sekarang pilih berapa lama videonya. Setiap tombol menuliskan perkiraan harganya langsung, jadi nggak ada kejutan. Maksimal tiga puluh detik per video. Kalau butuh lebih panjang, bagi jadi beberapa video pendek. Lalu tekan Tulis naskahnya. Langkah ini memakai saldo, karena penulis AI yang menulis. Gambar, suara, dan video belum dibuat sama sekali.",
+    "catatan": "Tombol 'Tulis naskahnya' berbunyi 'Tulis naskahnya · ≈ Rp … →'. Target 'Video lebih dari 30 detik menyusul' = bagian dari kalimat 'Video lebih dari 30 detik menyusul — untuk sekarang buat beberapa video pendek.' Kalau datang dari Arah Konten dengan naskah siap, langkah ini dilompati."
+  },
+  {
+    "id": "buat-video-05-tinjau-bicara",
+    "bagian": "Buat Video",
+    "judul": "Tinjau naskah dan harga: bicara ke kamera",
+    "route": "/buat-video",
+    "keadaan": "Akun LENGKAP: sudah ada satu influencer dengan minimal 2 foto acuan wajah dan suara klon, minimal satu produk berfoto, dan saldo cukup. Dari langkah 3 klik 'Tulis naskahnya' (memakai saldo) dan tunggu sampai langkah '4. Tinjau & harga' tampil dengan kotak naskah, Caption, Tagar, tabel rincian, dan tombol 'Ya, buat pratinjau'. JANGAN klik 'Ya, buat pratinjau' (itu memakai saldo dan langsung membuat gambar dan suara).",
+    "callouts": [
+      {
+        "target": "Yang akan kamu ucapkan",
+        "jenis": "kolom",
+        "teks": "Naskah yang dibacakan suara tiruanmu. Boleh diubah langsung di sini; mengubah gratis."
+      },
+      {
+        "target": "Caption",
+        "jenis": "kolom",
+        "teks": "Teks di bawah postingan, bukan yang diucapkan. Sengaja pendek dan berbeda dari naskah."
+      },
+      {
+        "target": "Total perkiraan",
+        "jenis": "lain",
+        "teks": "Rincian biaya tiap bagian dan totalnya, dalam rupiah. Angkanya ikut menyesuaikan panjang naskah."
+      },
+      {
+        "target": "Ya, buat pratinjau",
+        "jenis": "tombol",
+        "teks": "Ini yang memakai saldo: gambar pertama dan suaramu dibuat bersamaan. Videonya baru dibayar sesudah kamu setuju."
+      },
+      {
+        "target": "Tulis ulang",
+        "jenis": "tombol",
+        "teks": "Minta naskah versi lain. Memakai saldo, dan perubahanmu di kolom naskah ikut terganti."
+      }
+    ],
+    "narasi": "Inilah naskah yang akan kamu ucapkan. Baca pelan-pelan, dan ubah kalau ada kata yang kurang pas. Mengubah naskah gratis, dan harga di bawahnya ikut menyesuaikan. Kalau sudah cocok, tekan Ya, buat pratinjau. Langkah ini memakai saldo. Yang dibuat dulu cuma gambar pertama dan suaramu, bagian yang murah. Videonya baru dibayar setelah kamu menyetujui keduanya.",
+    "catatan": "Tombol berbunyi 'Ya, buat pratinjau · ≈ Rp …'; target cocok sebagai awalan. PANDUAN (Buat Video, langkah 4) hanya menyebut 'Ya, buat video ini'; itu bunyi tombol jalur cerita. Jalur bicara ke kamera: 'Ya, buat pratinjau'. Tabel rincian: 'Gambar pertama (wajah + produk)', 'Suaramu membaca naskah', 'Video bicara ≈ N detik', 'Total perkiraan'."
+  },
+  {
+    "id": "buat-video-06-tinjau-cerita",
+    "bagian": "Buat Video",
+    "judul": "Tinjau naskah dan harga: jalur cerita",
+    "route": "/buat-video",
+    "keadaan": "Akun LENGKAP: sudah ada satu influencer dengan minimal 2 foto acuan wajah dan suara klon, minimal satu produk berfoto, dan saldo cukup. Pilih kartu '🎞️ Cerita beberapa adegan', isi cerita, lanjutkan sampai langkah 3 lalu 'Tulis naskahnya' (memakai saldo). Langkah '4. Tinjau & harga' tampil dengan judul cerita, daftar adegan, tabel rincian, dan tombol 'Ya, buat video ini'. Jangan klik tombol itu.",
+    "callouts": [
+      {
+        "target": "adegan ·",
+        "jenis": "lain",
+        "teks": "Jumlah adegan dan detik tiap adegan ditentukan penulis AI mengikuti bentuk ceritamu. Daftar di bawahnya tiap baris satu adegan."
+      },
+      {
+        "target": "Total perkiraan",
+        "jenis": "lain",
+        "teks": "Rincian biaya gambar pembuka dan video, serta totalnya, dalam rupiah."
+      },
+      {
+        "target": "Ya, buat video ini",
+        "jenis": "tombol",
+        "teks": "Menyimpan storyboard dan membuka layar produksinya. Di sana gambar pembuka dibuat dulu dan kamu lihat sebelum video dibayar."
+      },
+      {
+        "target": "Tulis ulang",
+        "jenis": "tombol",
+        "teks": "Minta naskah versi lain dari cerita yang sama. Memakai saldo."
+      },
+      {
+        "target": "← Kembali",
+        "jenis": "tombol",
+        "teks": "Mengubah durasi. Naskah yang sudah ditulis dibuang."
+      }
+    ],
+    "narasi": "Untuk jalur cerita, kamu melihat daftar adegan beserta narasi dan lamanya. Penulis AI yang membaginya, jadi nggak perlu menghitung sendiri. Di bawahnya ada rincian harga. Tekan Ya, buat video ini, dan kamu dibawa ke layar produksi. Di sana gambar pembuka dibuat dulu supaya kamu bisa lihat wajah dan latarnya sebelum videonya dibayar. Daftar adegan bisa diubah di sana.",
+    "catatan": "Target 'adegan' = baris ringkasan 'N adegan · a + b = c detik'; teks persis dinamis, pakai pencocokan substring 'adegan ·'. Di jalur ini klik 'Ya, buat video ini' hanya menyimpan data dan pindah ke #/storyboard?board=…; tidak ada job berbayar yang dikirim. Sedikit berbeda dari PANDUAN yang menulis tombol itu sebagai 'Ya, buat video ini' untuk semua jalur."
+  },
+  {
+    "id": "karya-01-daftar",
+    "bagian": "Karya",
+    "judul": "Karya: semua hasil produksimu",
+    "route": "/drive",
+    "keadaan": "Akun LENGKAP: sudah ada satu influencer dengan minimal 2 foto acuan wajah dan suara klon, minimal satu produk berfoto, dan saldo cukup. Klik menu 'Karya' di sidebar (menu ringkas; di menu lengkap bernama 'Drive'). Idealnya ada beberapa gambar dan video di daftar, dan minimal satu video yang belum selesai supaya kartu 'Sedang dibuat' tampil. Filter 'Semua' aktif.",
+    "callouts": [
+      {
+        "target": "Sedang dibuat",
+        "jenis": "kartu",
+        "teks": "Video yang belum selesai. Klik satu baris untuk melanjutkan di layar produksinya; membukanya tidak memakai saldo."
+      },
+      {
+        "target": "Semua",
+        "jenis": "tombol",
+        "teks": "Penyaring jenis: Semua, Gambar, Video, Suara. Angkanya jumlah sebenarnya, bukan cuma yang tampil."
+      },
+      {
+        "target": "~kotak berkas pertama di daftar",
+        "jenis": "kartu",
+        "teks": "Klik gambarnya untuk membuka berkas di tab baru. Video dan suara juga begitu."
+      },
+      {
+        "target": "+ jadikan referensi",
+        "jenis": "tombol",
+        "teks": "Jadikan foto bagus ini acuan wajah seorang influencer, supaya gambar berikutnya memakai wajah ini."
+      },
+      {
+        "target": "Hapus",
+        "jenis": "tombol",
+        "teks": "Menghapus berkas. Permanen, tapi sebelum jadi kamu diberi tahu apa yang akan hilang."
+      }
+    ],
+    "narasi": "Karya adalah tempat semua hasilmu berkumpul, gambar, video, dan suara. Di atas ada Sedang dibuat, jalan pulang kalau kamu menutup layar di tengah proses. Pakai tombol Gambar, Video, atau Suara untuk menyaring. Klik berkasnya, lalu unduh, dan kamu unggah sendiri ke TikTok atau Instagram. Hati-hati dengan Hapus, karena itu permanen.",
+    "catatan": "KONFLIK CAKUPAN: permintaan menyebut 'Karya (lihat src/library.jsx)', tetapi library.jsx adalah 'Pustaka prompt' (ada di Pengaturan dan di Production Studio). Menu sidebar 'Karya' sebenarnya halaman /drive (komponen Drive di views.jsx), dan 'Drive' ada di daftar KECUALI. Saya menulis halaman ini untuk /drive karena 'Karya' ada di daftar dalam cakupan. Judul di layar tetap 'Drive'. Kartu 'Sedang dibuat' hanya tampil kalau ada video belum selesai. Tombol 'Hapus' di tiap kartu; 'Semua' juga cocok dengan teks lain, cocokkan tombol filter."
+  },
+  {
+    "id": "karya-02-hapus",
+    "bagian": "Karya",
+    "judul": "Hapus berkas dengan aman",
+    "route": "/drive",
+    "keadaan": "Akun LENGKAP: sudah ada satu influencer dengan minimal 2 foto acuan wajah dan suara klon, minimal satu produk berfoto, dan saldo cukup. Di halaman Karya klik 'Hapus' di bawah satu gambar uji yang memang boleh dibuang. Kartu konfirmasi merah muda muncul ('Hapus permanen?' atau 'Hapus dari Drive saja?'). Tangkap saat kartu itu terbuka, lalu klik 'Batal'. JANGAN klik 'Ya, hapus'.",
+    "callouts": [
+      {
+        "target": "Hapus permanen?",
+        "jenis": "judul",
+        "teks": "Pertanyaan konfirmasi. Sebelum bertanya, aplikasi memeriksa apa yang akan hilang, bukan sekadar yakin atau tidak."
+      },
+      {
+        "target": "Filenya ikut dihapus dan tidak bisa dikembalikan.",
+        "jenis": "lain",
+        "teks": "Kalau berkas tidak dipakai di tempat lain, ia ikut terhapus dan tidak bisa kembali."
+      },
+      {
+        "target": "Ya, hapus",
+        "jenis": "tombol",
+        "teks": "Baru tombol ini yang benar-benar menghapus."
+      },
+      {
+        "target": "Batal",
+        "jenis": "tombol",
+        "teks": "Berubah pikiran? Tekan Batal, tidak ada yang terhapus."
+      }
+    ],
+    "narasi": "Menghapus di aplikasi ini permanen, jadi konfirmasinya sengaja lebih jelas. Aplikasi mengecek dulu apa yang akan hilang, misalnya apakah berkas itu dipakai di konten lain. Kalau masih dipakai, filenya tidak ikut dibuang. Kalau tidak, filenya hilang selamanya. Baca dulu, lalu tekan Ya, hapus. Atau Batal, kalau kamu ragu.",
+    "catatan": "Teks kartu berbeda menurut keadaan: bila berkas masih dipakai di tempat lain, judulnya 'Hapus dari Drive saja?' dan tombolnya 'Hapus dari Drive'. Callout 2 menyalin kalimat untuk keadaan berkas bebas pakai; pakai gambar uji yang tidak dipakai di mana pun supaya teks itu tampil. Teks 'Filenya ikut dihapus…' memuat kalimat lanjutan opsional."
+  },
+  {
+    "id": "influencers-01-daftar",
+    "bagian": "Influencers",
+    "judul": "Daftar karakter AI-mu",
+    "route": "/influencers",
+    "keadaan": "Akun LENGKAP: sudah ada satu influencer dengan minimal 2 foto acuan wajah dan suara klon, minimal satu produk berfoto, dan saldo cukup. Buka menu lengkap ('▾ Semua menu'), klik 'Influencers'. Idealnya ada dua kartu influencer, satu di antaranya belum punya character sheet (supaya tanda '⚠️ Character sheet belum dibuat' tampil). Formulir di bawah dalam keadaan tertutup.",
+    "callouts": [
+      {
+        "target": "+ Buat Influencer Baru",
+        "jenis": "tombol",
+        "teks": "Membuka formulir pembuatan karakter di bawah daftar."
+      },
+      {
+        "target": "slot terpakai",
+        "jenis": "lain",
+        "teks": "Satu ruang kerja punya batas jumlah karakter. Hitungan terpakai ditulis di bawah judul."
+      },
+      {
+        "target": "~kartu influencer pertama",
+        "jenis": "kartu",
+        "teks": "Foto, nama, handle, niche, dan status. Klik kartunya untuk membuka halaman detail karakter itu."
+      },
+      {
+        "target": "Character sheet belum dibuat",
+        "jenis": "lain",
+        "teks": "Penanda: karakter ini belum punya lembar foto acuan dari berbagai sudut. Bisa dibuat kapan saja."
+      }
+    ],
+    "narasi": "Influencers adalah daftar karakter AI milikmu. Satu karakter menyimpan wajah, suara, dan kepribadiannya, supaya tetap sama di semua video. Tiap kartu menunjukkan nama dan niche. Klik untuk membuka detailnya. Kalau ada tanda peringatan Character sheet belum dibuat, artinya karakter itu belum punya lembar foto acuan. Mau menambah karakter? Tekan Buat Influencer Baru.",
+    "catatan": "Label menu: 'Influencers' ada hanya di menu lengkap. Target 'slot terpakai' dari kalimat '{N} dari 25 slot terpakai. Setiap influencer punya identity kit…'. Sebagian besar pemakai awam cukup memakai Profil saya; halaman ini untuk pengaturan rinci. Angka batas tidak dibacakan."
+  },
+  {
+    "id": "influencers-02-formulir",
+    "bagian": "Influencers",
+    "judul": "Formulir membuat karakter baru",
+    "route": "/influencers",
+    "keadaan": "Akun LENGKAP: sudah ada satu influencer dengan minimal 2 foto acuan wajah dan suara klon, minimal satu produk berfoto, dan saldo cukup. Di halaman Influencers klik '+ Buat Influencer Baru'. Formulir 'Buat influencer baru' terbuka dan menggulir ke bawah. Tangkap bagian atas formulir (tombol ✨, deretan ide niche, Nama, Handle, Niche, Bahasa). Biarkan kosong.",
+    "callouts": [
+      {
+        "target": "Bantu buat dengan AI",
+        "jenis": "tombol",
+        "teks": "Jawab beberapa pertanyaan atau unggah foto, penulis AI menyusun niche, bio, dan deskripsi fisik. Memakai saldo."
+      },
+      {
+        "target": "Ide niche (opsional, klik untuk isi otomatis)",
+        "jenis": "kolom",
+        "teks": "Pilih satu niche umum untuk mengisi niche dan bio awal. Tanda ⚠️ berarti ada hal yang perlu dicek dulu."
+      },
+      {
+        "target": "Nama *",
+        "jenis": "kolom",
+        "teks": "Satu-satunya isian wajib."
+      },
+      {
+        "target": "Niche",
+        "jenis": "kolom",
+        "teks": "Topik kontenmu. Teks bebas, jadi daftar ide di atasnya hanya titik mulai."
+      },
+      {
+        "target": "Bahasa",
+        "jenis": "kolom",
+        "teks": "Indonesia, English, atau Campuran. Menentukan bahasa naskah dan suara karakter ini."
+      }
+    ],
+    "narasi": "Ada dua cara mengisi formulir ini. Pertama, manual, mulai dari ide niche yang sudah disediakan sebagai pancingan. Kedua, dibantu AI, tinggal jawab beberapa pertanyaan atau unggah foto. Bantuan AI memakai saldo. Satu-satunya kolom yang wajib adalah nama. Sisanya bisa diisi sambil jalan, dan bisa diubah kapan saja di halaman detail.",
+    "catatan": "Tombol di layar: '✨ Bantu buat dengan AI · ≈ Rp …'; PANDUAN menulis '✨ Bantu buat influencer dengan AI' (itu judul jendela bantuannya, bukan tombol). Dua niche punya peringatan: Keuangan Pribadi (cek aturan OJK) dan Komedi. Beberapa teks peringatan niche berbunyi 'belum saya verifikasi…' (bahasa orang pertama) — tampil apa adanya di layar."
+  },
+  {
+    "id": "influencers-03-bantuan-ai",
+    "bagian": "Influencers",
+    "judul": "Dibantu AI membuat karakter",
+    "route": "/influencers",
+    "keadaan": "Akun LENGKAP: sudah ada satu influencer dengan minimal 2 foto acuan wajah dan suara klon, minimal satu produk berfoto, dan saldo cukup. Di formulir 'Buat influencer baru' klik '✨ Bantu buat dengan AI'. Jendela 'Bantu buat influencer dengan AI' terbuka (latar gelap). Isi satu dua kolom pertanyaan, jangan klik 'Buatkan deskripsi'.",
+    "callouts": [
+      {
+        "target": "Bantu buat influencer dengan AI",
+        "jenis": "judul",
+        "teks": "Jendela bantuan. Jawab seadanya, yang kosong diisi AI, dan hasilnya bisa kamu edit sebelum dipakai."
+      },
+      {
+        "target": "Foto referensi (opsional, maks. 4)",
+        "jenis": "kolom",
+        "teks": "Unggah foto supaya AI membaca ciri wajah dari foto itu. Jauh lebih akurat daripada menebak dari teks."
+      },
+      {
+        "target": "Basis karakter",
+        "jenis": "kolom",
+        "teks": "Fleksibel, Fiktif sepenuhnya, atau Ikuti deskripsi saya."
+      },
+      {
+        "target": "Buatkan deskripsi",
+        "jenis": "tombol",
+        "teks": "Menjalankan penulis AI. Memakai saldo. Hasilnya kamu tinjau dulu sebelum dipakai di formulir."
+      }
+    ],
+    "narasi": "Di jendela ini kamu cukup menjawab seadanya. Yang kosong akan diisi AI. Kalau punya foto, unggah saja, sampai empat. AI akan membaca ciri wajah dari foto itu, jauh lebih tepat daripada hanya menebak dari kata-kata. Pilih basis karakter, lalu tekan Buatkan deskripsi. Itu memakai saldo. Hasilnya muncul dulu, bisa kamu edit, baru kamu pakai.",
+    "catatan": "Di bawah tombol layar masih menulis 'Butuh API key penulis AI (Qwen/Kimi) di Settings → Penulis AI.' — kalimat itu kuno dan membingungkan bagi pelanggan (mereka tidak boleh memasang kunci sendiri). Disarankan diperbaiki di kode; tidak disorot di panduan. Tombol berbunyi 'Buatkan deskripsi' atau 'Buat dari N foto' bila ada foto."
+  },
+  {
+    "id": "influencers-04-identity",
+    "bagian": "Influencers",
+    "judul": "Deskripsi fisik dan simpan karakter",
+    "route": "/influencers",
+    "keadaan": "Akun LENGKAP: sudah ada satu influencer dengan minimal 2 foto acuan wajah dan suara klon, minimal satu produk berfoto, dan saldo cukup. Di formulir 'Buat influencer baru', gulir sampai 'Identity prompt (deskripsi fisik terkunci)', 'Catatan gaya visual / ambience', panel 'Look-alike photo (opsional)', dan tombol 'Buat Influencer' terlihat. Isi 'Nama' dan satu kalimat contoh di Identity prompt (bahasa Inggris, ciri fisik saja). Jangan klik 'Buat Influencer' kalau tidak ingin menyimpan.",
+    "callouts": [
+      {
+        "target": "Identity prompt (deskripsi fisik terkunci)",
+        "jenis": "kolom",
+        "teks": "Ciri fisik tetap, ditulis Inggris. Latar, pose, dan baju ditulis di prompt tiap gambar, bukan di sini."
+      },
+      {
+        "target": "Catatan gaya visual / ambience",
+        "jenis": "kolom",
+        "teks": "Suasana yang kamu suka. Tidak otomatis dipakai; jadi pilihan saat membuat gambar."
+      },
+      {
+        "target": "Look-alike photo (opsional)",
+        "jenis": "kartu",
+        "teks": "Unggah satu foto acuan, lalu pilih yang ditiru: karakter wajahnya atau suasananya."
+      },
+      {
+        "target": "Buat Influencer",
+        "jenis": "tombol",
+        "teks": "Menyimpan karakter. Langkah character sheet langsung ditawarkan sesudahnya."
+      }
+    ],
+    "narasi": "Bagian terpenting adalah identity prompt, deskripsi fisik karakter dalam bahasa Inggris. Isinya cuma ciri tetap, seperti wajah dan rambut. Jangan masukkan latar atau baju, karena nanti ikut muncul di semua gambar. Ada juga foto look-alike kalau kamu punya contoh. Kalau sudah, tekan Buat Influencer. Setelah itu kamu ditawari langkah berikutnya, character sheet.",
+    "catatan": "'Analisis foto' di panel Look-alike memanggil penulis AI (action 'write', kind 'lookalike') — belum jelas apakah memotong saldo; tombolnya tidak menyebut harga dan PANDUAN tidak membahasnya. Karena itu callout tidak menyebut saldo. Target 'Buat Influencer' juga cocok sebagian dengan '+ Buat Influencer Baru' dan 'Buat influencer baru'; cocokkan tombol submit di dasar formulir."
+  },
+  {
+    "id": "influencers-05-character-sheet",
+    "bagian": "Influencers",
+    "judul": "Langkah 2: character sheet",
+    "route": "/influencers",
+    "keadaan": "Akun LENGKAP: sudah ada satu influencer dengan minimal 2 foto acuan wajah dan suara klon, minimal satu produk berfoto, dan saldo cukup. Setelah 'Buat Influencer' berhasil, kartu 'Langkah 2 — character sheet untuk …' muncul di atas daftar (latar ungu muda). Tangkap bagian atas halaman; gulir sedikit supaya daftar shot, latar, dan tombol 'Buat character sheet' terlihat. Jangan klik tombol itu.",
+    "callouts": [
+      {
+        "target": "Langkah 2 — character sheet untuk",
+        "jenis": "judul",
+        "teks": "Setelah karakter tersimpan, kamu ditawari membuat lembar foto acuan dari berbagai sudut."
+      },
+      {
+        "target": "Lewati dulu",
+        "jenis": "tombol",
+        "teks": "Boleh dilewati. Karakter diberi tanda di daftar dan sheet-nya bisa dibuat kapan saja."
+      },
+      {
+        "target": "Shot yang dibuat",
+        "jenis": "kolom",
+        "teks": "Centang sudut dan ekspresi yang diinginkan: depan, serong, profil, senyum, setengah badan, seluruh badan."
+      },
+      {
+        "target": "Latar & pencahayaan",
+        "jenis": "kolom",
+        "teks": "Studio abu netral disarankan, supaya latar tidak ikut terkunci ke karakter."
+      },
+      {
+        "target": "Buat character sheet",
+        "jenis": "tombol",
+        "teks": "Satu gambar per sudut yang dicentang. Semuanya memakai saldo; perkiraan total tertulis di sampingnya."
+      }
+    ],
+    "narasi": "Begitu karakter tersimpan, kamu ditawari character sheet, beberapa foto wajah dari sudut dan ekspresi berbeda. Foto-foto ini jadi patokan di semua produksi berikutnya, supaya wajahnya nggak bergeser. Centang sudut yang kamu mau, pilih latar netral, lalu tekan Buat character sheet. Tiap gambar memakai saldo. Belum siap? Lewati dulu, bisa dibuat kapan saja.",
+    "catatan": "Alat yang sama dengan tab 'Character sheet' di Production Studio, hanya influencernya terkunci. Layar menampilkan 'Estimasi: $…' dalam dolar; jangan dibacakan. Tombol berbunyi 'Buat character sheet (N gambar)'. Model yang tidak membaca foto Identity Kit memunculkan peringatan kuning; di akun tanpa foto acuan muncul pesan merah."
+  },
+  {
+    "id": "influencers-06-detail",
+    "bagian": "Influencers",
+    "judul": "Halaman detail karakter",
+    "route": "/influencers/<id influencer>",
+    "keadaan": "Akun LENGKAP: sudah ada satu influencer dengan minimal 2 foto acuan wajah dan suara klon, minimal satu produk berfoto, dan saldo cukup. Dari daftar Influencers klik kartu influencer yang punya identity prompt dan foto acuan. Halaman detail terbuka. Tangkap bagian atas: kartu 'Character Sheet' di kiri dan 'Identity Kit' di kanan.",
+    "callouts": [
+      {
+        "target": "Character Sheet",
+        "jenis": "kartu",
+        "teks": "Ubah nama, handle, niche, status, bahasa, dan bio. Tekan Simpan supaya perubahannya tersimpan."
+      },
+      {
+        "target": "Perbaiki dengan AI",
+        "jenis": "tombol",
+        "teks": "Merapikan deskripsi yang sudah ada, bukan menggantinya. Memakai saldo."
+      },
+      {
+        "target": "Terkunci",
+        "jenis": "tombol",
+        "teks": "Mengunci identity prompt supaya tidak ikut tertimpa hasil AI atau berubah tanpa sengaja."
+      },
+      {
+        "target": "Identity Kit",
+        "jenis": "kartu",
+        "teks": "Foto acuan wajah dari berbagai sudut. Foto inilah yang dikirim saat membuat gambar agar wajah konsisten."
+      },
+      {
+        "target": "Simpan",
+        "jenis": "tombol",
+        "teks": "Menyimpan perubahan formulir kiri. Bio dan identity prompt baru permanen setelah ini ditekan."
+      }
+    ],
+    "narasi": "Ini halaman detail satu karakter. Di kiri, kartu Character Sheet berisi nama, niche, bahasa, bio, dan identity prompt. Gembok kecil mengunci identity prompt, supaya nggak berubah tanpa sengaja. Di kanan ada Identity Kit, foto acuan wajahnya. Foto inilah yang membuat wajah tetap sama di semua gambar. Setelah mengubah sesuatu, ingat tekan Simpan.",
+    "catatan": "Nama kartu 'Character Sheet' di halaman ini adalah formulir data karakter, BUKAN lembar foto sudut yang dibuat di Production Studio — dua hal berbeda dengan nama sama. Tombol di layar '✨ Perbaiki dengan AI · ≈ Rp …'; PANDUAN menulis 'Perbaiki deskripsi dengan AI' (itu judul jendelanya). Tombol kunci berbunyi '🔒 Terkunci' / '🔓 Terbuka'. 'Simpan' cocokkan tombol di dalam kartu Character Sheet."
+  },
+  {
+    "id": "influencers-07-suara",
+    "bagian": "Influencers",
+    "judul": "Suara karakter di halaman detail",
+    "route": "/influencers/<id influencer>",
+    "keadaan": "Akun LENGKAP: sudah ada satu influencer dengan minimal 2 foto acuan wajah dan suara klon, minimal satu produk berfoto, dan saldo cukup. Di halaman detail influencer, gulir kolom kanan sampai kartu 'Suara', 'Suara untuk video UGC (klon MiniMax)', dan 'Suara di dalam video (Kling)' terlihat. Pakai karakter yang belum punya klon suara jika memungkinkan (lencana 'belum ada').",
+    "callouts": [
+      {
+        "target": "Suara",
+        "jenis": "kartu",
+        "teks": "Memasang suara bawaan penyedia lewat voice id. Daftar sarannya belum diuji oleh aplikasi."
+      },
+      {
+        "target": "Suara untuk video UGC (klon MiniMax)",
+        "jenis": "kartu",
+        "teks": "Unggah rekaman minimal 10 detik berisi satu suara. Dipakai Video UGC; tanpa ini, UGC menolak karakter ini di langkah suara."
+      },
+      {
+        "target": "Suara di dalam video (Kling)",
+        "jenis": "kartu",
+        "teks": "Untuk video cerita di Storyboard, rekaman 5–30 detik. Tidak wajib, tapi suaranya jadi tetap."
+      },
+      {
+        "target": "Unggah rekaman suara",
+        "jenis": "tombol",
+        "teks": "Mengirim rekaman untuk ditiru. Tidak memotong saldomu."
+      },
+      {
+        "target": "belum ada",
+        "jenis": "lain",
+        "teks": "Lencana status: belum ada, atau sudah diklon."
+      }
+    ],
+    "narasi": "Di bawah Identity Kit ada tiga kartu suara. Yang paling penting, klon suara untuk video UGC. Unggah satu rekaman bersih, tanpa musik, minimal sepuluh detik, dan suaramu dipakai untuk membaca naskah. Satu lagi untuk video cerita di Storyboard, tidak wajib. Klon suara tidak memotong saldomu. Cara paling cepat tetap lewat halaman Profil saya.",
+    "catatan": "Kartu 'Suara' (voice id mentah dari penyedia) paling teknis bagi awam; panduan menekankan klon suara. PANDUAN menyebut kartunya 'Voice', 'Klon suara MiniMax', 'Klon suara Kling'; label di layar: 'Suara', 'Suara untuk video UGC (klon MiniMax)', 'Suara di dalam video (Kling)'. Bagian 'Generate untuk <nama>' dan 'Aset terbaru' (tombol 'B-roll' dan 'Talking') ada di bawahnya tetapi tidak dibuatkan halaman (formulir yang sama dengan Production Studio). Target 'belum ada' muncul di dua kartu; pilih yang pertama. Klon suara tidak memotong saldo menurut PANDUAN."
+  },
+  {
+    "id": "product-kit-01-tambah",
+    "bagian": "Product Kit",
+    "judul": "Menyimpan produk dengan foto asli",
+    "route": "/products",
+    "keadaan": "Akun LENGKAP: sudah ada satu influencer dengan minimal 2 foto acuan wajah dan suara klon, minimal satu produk berfoto, dan saldo cukup. Buka menu lengkap, klik 'Product Kit'. Tangkap bagian atas: judul, paragraf pengantar, dan kartu 'Tambah produk'. Isi 'Nama produk' dan satu keunggulan sebagai contoh; belum klik 'Simpan produk'.",
+    "callouts": [
+      {
+        "target": "Foto produk asli, disimpan sekali dan dipakai di banyak video UGC.",
+        "jenis": "lain",
+        "teks": "Product Kit menyimpan produkmu sekali. Foto kemasan asli dikirim sebagai acuan supaya kemasan tidak dikarang."
+      },
+      {
+        "target": "Nama produk *",
+        "jenis": "kolom",
+        "teks": "Satu-satunya isian wajib."
+      },
+      {
+        "target": "Keunggulan — satu per baris",
+        "jenis": "kolom",
+        "teks": "Tulis satu keunggulan per baris. Penulis naskah hanya memilih satu atau dua per video."
+      },
+      {
+        "target": "Klaim yang DILARANG diucapkan",
+        "jenis": "kolom",
+        "teks": "Kata yang tidak boleh keluar di video, misalnya menyembuhkan atau 100% aman."
+      },
+      {
+        "target": "Foto produk asli (1–6 foto)",
+        "jenis": "kolom",
+        "teks": "Wajib foto asli kemasan. Tanpa foto, model gambar mengarang label dan bentuk kemasan."
+      }
+    ],
+    "narasi": "Product Kit adalah tempat menyimpan produkmu sekali, lalu dipakai di banyak video. Isi nama, keunggulan satu per baris, dan klaim yang tidak boleh diucapkan, misalnya menyembuhkan. Yang paling penting adalah fotonya, harus foto kemasan asli, bukan buatan AI. Tanpa foto asli, label dan bentuk kemasan bakal dikarang mesin dan berubah-ubah antar video.",
+    "catatan": "Judul halaman '📦 Product Kit'. Target pertama adalah kalimat pengantar (paragraf di bawah judul). Menyimpan produk tidak memakai saldo. Tombol simpan: 'Simpan produk'."
+  },
+  {
+    "id": "product-kit-02-tersimpan",
+    "bagian": "Product Kit",
+    "judul": "Kelola produk yang tersimpan",
+    "route": "/products",
+    "keadaan": "Akun LENGKAP: sudah ada satu influencer dengan minimal 2 foto acuan wajah dan suara klon, minimal satu produk berfoto, dan saldo cukup. Di halaman Product Kit gulir ke bagian 'Produk tersimpan' dengan minimal dua kartu produk: satu berfoto, dan satu tanpa foto (supaya peringatan kuning 'Belum ada foto…' tampil).",
+    "callouts": [
+      {
+        "target": "Produk tersimpan",
+        "jenis": "judul",
+        "teks": "Daftar produk yang sudah kamu simpan. Tiap kartu menunjukkan nama, keunggulan, dan fotonya."
+      },
+      {
+        "target": "Ubah",
+        "jenis": "tombol",
+        "teks": "Mengedit nama, deskripsi, keunggulan, klaim yang dilarang, dan tautan beli."
+      },
+      {
+        "target": "+ Tambah foto",
+        "jenis": "tombol",
+        "teks": "Menambah foto kemasan, sampai total enam. Gratis."
+      },
+      {
+        "target": "Belum ada foto.",
+        "jenis": "lain",
+        "teks": "Peringatan: tanpa foto, kemasan produk akan dikarang model. Tambah foto sebelum dipakai di video."
+      },
+      {
+        "target": "Hapus",
+        "jenis": "tombol",
+        "teks": "Menghapus produk beserta fotonya. Video UGC yang memakainya tetap ada, tapi kehilangan produknya."
+      }
+    ],
+    "narasi": "Produk yang sudah disimpan muncul sebagai kartu. Dari sini kamu bisa mengubah isinya, menambah foto, atau menghapusnya. Kalau ada kartu dengan peringatan kuning belum ada foto, tambahkan dulu, karena tanpa foto kemasannya akan dikarang. Menyimpan dan mengubah produk tidak memakai saldo. Produknya nanti tinggal kamu pilih saat membuat video bicara ke kamera.",
+    "catatan": "Dua tombol 'Hapus' (produk dan foto kecil '✕'): target adalah tombol teks 'Hapus' di kepala kartu. Hapus produk memunculkan dialog konfirmasi browser (bukan kartu merah seperti di Karya)."
+  },
+  {
+    "id": "studio-01-generate",
+    "bagian": "Production Studio",
+    "judul": "Studio: pilih jenis hasil dan model",
+    "route": "/studio",
+    "keadaan": "Akun LENGKAP: sudah ada satu influencer dengan minimal 2 foto acuan wajah dan suara klon, minimal satu produk berfoto, dan saldo cukup. Buka menu lengkap, klik 'Production Studio'. Tab 'Generate' aktif (bawaan). Task 'Gambar'. Pilih satu influencer di kolom 'Influencer'. Tangkap bagian atas kartu 'Generate baru'.",
+    "callouts": [
+      {
+        "target": "Generate",
+        "jenis": "tab",
+        "teks": "Tab pertama dari tiga: Generate, Character sheet, dan Riwayat job. Mengirim satu job per kali."
+      },
+      {
+        "target": "Task",
+        "jenis": "kolom",
+        "teks": "Pilih hasilnya: Gambar, Video (b-roll), Suara (TTS), atau Talking / Lip Sync."
+      },
+      {
+        "target": "Model",
+        "jenis": "kolom",
+        "teks": "Dua daftar: yang murah dan yang premium. Putuskan soal biaya dulu, baru pilih nama modelnya."
+      },
+      {
+        "target": "Influencer",
+        "jenis": "kolom",
+        "teks": "Pilih agar foto Identity Kit dan identity prompt-nya dipakai otomatis supaya wajah konsisten."
+      },
+      {
+        "target": "Untuk konten (opsional)",
+        "jenis": "kolom",
+        "teks": "Menandai hasil ini milik ide konten yang mana. Dikosongkan untuk b-roll umum atau uji coba."
+      }
+    ],
+    "narasi": "Production Studio adalah alat mentahnya. Kamu mengirim satu pekerjaan per kali, entah gambar, video, suara, atau orang bicara. Pilih Task dulu, lalu model. Modelnya dibagi dua daftar, murah dan premium, jadi keputusan biaya diambil sebelum kamu terpaku pada nama modelnya. Pilih influencer supaya wajahnya konsisten. Untuk cara yang dipandu, pakai Buat Video.",
+    "catatan": "Kolom 'Untuk konten (opsional)' hanya tampil kalau ada ide konten yang belum selesai. Dropdown model berlabel 'Model' dan menampilkan harga per model dalam dolar ('· $0.04') — jangan dibacakan. Tiap model membawa catatan rekam jejak ('3 jadi dari 4× dicoba')."
+  },
+  {
+    "id": "studio-02-prompt",
+    "bagian": "Production Studio",
+    "judul": "Menulis prompt dan menjalankan Generate",
+    "route": "/studio",
+    "keadaan": "Akun LENGKAP: sudah ada satu influencer dengan minimal 2 foto acuan wajah dan suara klon, minimal satu produk berfoto, dan saldo cukup. Di tab Generate ubah Task jadi 'Video (b-roll)', pilih model dan influencer. Tangkap bagian tengah-bawah formulir: tombol '🔎 Cari prompt dengan AI — per industri', 'Mulai dari pustaka', kolom 'Prompt', tombol 'Generate' dan 'Estimasi'. Jangan klik Generate.",
+    "callouts": [
+      {
+        "target": "Cari prompt dengan AI — per industri",
+        "jenis": "tombol",
+        "teks": "Sebut industrimu; AI menyusun tiga paket prompt, hook, naskah, dan caption. Memakai saldo."
+      },
+      {
+        "target": "Mulai dari pustaka",
+        "jenis": "kolom",
+        "teks": "Contoh prompt siap pakai per kategori. Gratis, tidak memanggil AI."
+      },
+      {
+        "target": "Prompt",
+        "jenis": "kolom",
+        "teks": "Tulis isi gambar atau klipnya. Identity prompt influencer otomatis ikut ditempel."
+      },
+      {
+        "target": "Generate",
+        "jenis": "tombol",
+        "teks": "Mengirim job. Memakai saldo sungguhan, dan kalau gagal tidak ditagih."
+      },
+      {
+        "target": "Estimasi:",
+        "jenis": "lain",
+        "teks": "Perkiraan biaya di samping tombol. Ditulis indikatif karena yang ditagih adalah hasil sebenarnya."
+      }
+    ],
+    "narasi": "Di bawahnya ada kolom prompt. Bingung menulis dari nol? Mulai dari pustaka, contoh siap pakai yang gratis. Atau minta AI mencarikan prompt per industri, itu memakai saldo. Setelah prompt siap, tekan Generate. Tombol itu memakai saldo sungguhan, tapi kalau job gagal, nggak ditagih. Perkiraan biayanya tertulis tepat di sebelahnya.",
+    "catatan": "Pointer 'lihat src/library.jsx' ternyata menunjuk ke dua fitur ini: PromptFinder ('Cari prompt dengan AI') dan LibraryPicker ('Mulai dari pustaka'). 'Cari prompt dengan AI' hanya muncul untuk task video; 'Mulai dari pustaka' untuk gambar dan video. Panel yang terbuka (Industri, 'Cari 3 prompt', 'Pakai prompt ini', 'Simpan sebagai ide konten', '🎤 Buat video UGC (bersuara)') tidak diberi halaman sendiri; teksnya memuat istilah 'hook', 'CTA', 'planner', dan estimasi dalam dolar. Estimasi di layar: 'Estimasi: $0.xxx (indikatif)'."
+  },
+  {
+    "id": "studio-03-talking",
+    "bagian": "Production Studio",
+    "judul": "Orang bicara dengan satu kali kirim",
+    "route": "/studio",
+    "keadaan": "Akun LENGKAP: sudah ada satu influencer dengan minimal 2 foto acuan wajah dan suara klon, minimal satu produk berfoto, dan saldo cukup. Di tab Generate ubah Task jadi 'Talking / Lip Sync', pilih influencer. Kartu ungu muda 'Naskah yang diucapkan (opsional)' dan dua kolom 'URL gambar sumber' dan 'URL audio' tampil. Isi naskah dengan satu kalimat; jangan klik Generate.",
+    "callouts": [
+      {
+        "target": "Naskah yang diucapkan (opsional)",
+        "jenis": "kolom",
+        "teks": "Tulis kalimat yang mau diucapkan. Suaranya dibuat otomatis, lalu langsung jadi video orang bicara, sekali kirim."
+      },
+      {
+        "target": "URL gambar sumber",
+        "jenis": "kolom",
+        "teks": "Alamat foto wajah yang akan bicara. Bisa dipilih dari Aset terbaru di halaman detail karakter."
+      },
+      {
+        "target": "URL audio",
+        "jenis": "kolom",
+        "teks": "Isi kalau audionya sudah ada. Kalau kolom naskah diisi, kolom ini diabaikan."
+      },
+      {
+        "target": "Durasi (detik)",
+        "jenis": "kolom",
+        "teks": "Lama video yang diminta. Yang ditagih nanti durasi yang benar-benar dihasilkan."
+      },
+      {
+        "target": "Generate",
+        "jenis": "tombol",
+        "teks": "Mengirim dua pekerjaan berurutan, suara lalu video. Memakai saldo sungguhan."
+      }
+    ],
+    "narasi": "Untuk video orang bicara, pilih Talking. Rahasianya ada di kolom Naskah yang diucapkan. Isi di situ, dan satu kali kirim sudah membuat suaranya, lalu langsung jadi video. Kamu nggak perlu membuat suara dulu lalu menyalin alamatnya. Kolom alamat audio hanya untuk yang audionya sudah ada. Satu kali kirim ini memakai saldo untuk keduanya.",
+    "catatan": "Kolom 'URL gambar sumber' dan 'URL audio' adalah istilah teknis di layar (placeholder 'https://… (pilih dari Aset terbaru)'); untuk awam, jalur yang disarankan adalah Buat Video. Durasi di Studio terbatas 3–15 detik. 'Generate' pada task ini membuat dua job (tts lalu lipsync) sehingga dua kali biaya."
+  },
+  {
+    "id": "studio-04-character-sheet",
+    "bagian": "Production Studio",
+    "judul": "Tab Character sheet: banyak sudut sekaligus",
+    "route": "/studio?tab=sheet",
+    "keadaan": "Akun LENGKAP: sudah ada satu influencer dengan minimal 2 foto acuan wajah dan suara klon, minimal satu produk berfoto, dan saldo cukup. Di Production Studio klik tab '🎭 Character sheet'. Pilih influencer yang punya identity prompt dan foto acuan. Pilih model gambar yang membaca Identity Kit sehingga tidak ada peringatan kuning. Tangkap seluruh kartu sampai tombol 'Buat character sheet'. Jangan klik tombol itu.",
+    "callouts": [
+      {
+        "target": "🎭 Character sheet",
+        "jenis": "tab",
+        "teks": "Tab kedua. Satu klik menghasilkan beberapa gambar acuan karakter sekaligus."
+      },
+      {
+        "target": "Model gambar",
+        "jenis": "kolom",
+        "teks": "Pilih model yang membaca foto Identity Kit supaya semua gambar menampilkan orang yang sama."
+      },
+      {
+        "target": "Shot yang dibuat",
+        "jenis": "kolom",
+        "teks": "Centang sudut dan ekspresi yang dibutuhkan. Jumlah gambar tertulis di judul kolom."
+      },
+      {
+        "target": "Latar & pencahayaan",
+        "jenis": "kolom",
+        "teks": "Pilih latar netral supaya tidak ikut terkunci ke karakter."
+      },
+      {
+        "target": "Buat character sheet",
+        "jenis": "tombol",
+        "teks": "Satu gambar per sudut yang dicentang, semuanya memakai saldo. Biaya sama dengan harga satu gambar dikali jumlah sudut."
+      }
+    ],
+    "narasi": "Tab Character sheet membuat banyak foto acuan karakter dalam sekali klik. Satu gambar per sudut atau ekspresi, semuanya dengan identity prompt yang sama. Pilih modelnya, centang sudut yang kamu butuh, dan pilih latar netral. Tombol di bawah memakai saldo, sebesar harga satu gambar dikali jumlah sudut yang kamu centang. Hasilnya masuk ke Karya dengan nama yang mudah dibaca.",
+    "catatan": "Jika modelnya tidak membaca Identity Kit, muncul peringatan kuning 'Model ini tidak membaca foto Identity Kit…'. Estimasi dalam dolar tampil di samping tombol ('Estimasi: $…'); jangan dibacakan. Teks hasil berbunyi 'masuk ke Drive'. Tombol berbunyi 'Buat character sheet (N gambar)'."
+  },
+  {
+    "id": "studio-05-riwayat",
+    "bagian": "Production Studio",
+    "judul": "Tab Riwayat job: hasil dan biaya",
+    "route": "/studio?tab=riwayat",
+    "keadaan": "Akun LENGKAP: sudah ada satu influencer dengan minimal 2 foto acuan wajah dan suara klon, minimal satu produk berfoto, dan saldo cukup. Di Production Studio klik tab 'Riwayat job' (atau buka #/studio?tab=riwayat). Idealnya ada beberapa baris: satu berhasil dengan gambar, satu gagal ('Rp 0 · tidak ditagih'), dan satu sedang berjalan sehingga label tab menampilkan '· N jalan'. Klik 'Jejak' pada satu baris supaya detailnya terbuka, lalu tangkap.",
+    "callouts": [
+      {
+        "target": "Riwayat job",
+        "jenis": "tab",
+        "teks": "Angka di label tab, kalau ada, adalah job yang masih berjalan, supaya kamu tidak menekan Generate lagi karena mengira gagal terkirim."
+      },
+      {
+        "target": "Biaya",
+        "jenis": "kolom",
+        "teks": "Biaya tiap job. Yang gagal atau batal tertulis tidak ditagih; yang masih berjalan ditulis ditahan."
+      },
+      {
+        "target": "Jejak",
+        "jenis": "tombol",
+        "teks": "Menunjukkan apa yang sebenarnya dikirim ke penyedia: prompt akhir, foto acuan, model, dan pesan error. Gratis."
+      },
+      {
+        "target": "Naik kelas",
+        "jenis": "tombol",
+        "teks": "Kirim ulang job yang sama ke model satu tingkat lebih mahal. Memakai saldo; perkiraannya tertulis sebelum dikirim."
+      },
+      {
+        "target": "Hapus",
+        "jenis": "tombol",
+        "teks": "Membuang catatan job saja. Hasilnya tetap ada di Karya, dan catatan pengeluaran tidak hilang."
+      }
+    ],
+    "narasi": "Riwayat job menampilkan dua puluh pekerjaan terakhir, lengkap dengan status dan biaya sebenarnya. Job yang gagal tidak ditagih. Angka di label tab, kalau ada, menandakan masih ada yang berjalan, jadi jangan tekan Generate lagi. Hasil kurang bagus? Naik kelas mengirim ulang ke model satu tingkat lebih mahal, itu memakai saldo. Jejak membuka rincian yang dikirim.",
+    "catatan": "Halaman ini memuat job yang berjalan: tab memperbarui diri tiap 8 detik selama terbuka. Tombol 'Naik kelas' tidak muncul di job lama (sebelum 13 Sep 2026) atau yang gagal. 'Hapus' di baris job hanya membuang catatan; PANDUAN menyebutnya 'permanen' secara umum, sedangkan layar menegaskan medianya tetap ada. Kolom 'Biaya' memuat teks 'Rp 0 · tidak ditagih' untuk job gagal; 'Jejak' membuka kartu abu-abu dengan 'Asal', 'Model', 'Prompt dikirim', 'Acuan', 'Waktu'."
+  },
+  {
+    "id": "storyboard-01-form",
+    "bagian": "Storyboard",
+    "judul": "Storyboard: mulai dari ide",
+    "route": "/storyboard",
+    "keadaan": "Akun LENGKAP: sudah ada satu influencer dengan minimal 2 foto acuan wajah dan suara klon, minimal satu produk berfoto, dan saldo cukup. Buka menu lengkap, klik 'Storyboard'. Kartu 'Susun storyboard baru' tampil di atas. Pilih satu influencer, biarkan Platform 'TikTok', ketik satu ide di 'Ide video *' (mis. 3 kesalahan yang bikin skincare kamu sia-sia). Jangan klik 'Susun shot list'.",
+    "callouts": [
+      {
+        "target": "Susun storyboard baru",
+        "jenis": "judul",
+        "teks": "Satu ide dipecah jadi beberapa shot, lalu jadi satu video multi-shot. Untuk orang bicara ke kamera, pakai Video UGC."
+      },
+      {
+        "target": "Influencer",
+        "jenis": "kolom",
+        "teks": "Wajah di setiap shot diambil dari foto acuan orang ini. Tanpa influencer, wajah tidak bisa dikunci."
+      },
+      {
+        "target": "Platform",
+        "jenis": "kolom",
+        "teks": "Tujuan videomu: TikTok, Instagram Reels, atau YouTube Shorts."
+      },
+      {
+        "target": "Foto dari HP-mu (opsional, maks. 8)",
+        "jenis": "kolom",
+        "teks": "Foto dapur, kemasan, atau pembeli jadi bahan adegan. Belum terkirim sebelum kamu menekan Susun shot list."
+      },
+      {
+        "target": "Ide video *",
+        "jenis": "kolom",
+        "teks": "Ceritakan videomu dalam satu dua kalimat. Satu-satunya isian wajib di formulir ini."
+      }
+    ],
+    "narasi": "Storyboard cocok untuk cerita yang berpindah-pindah adegan, bukan untuk orang bicara ke kamera. Mulainya dari satu ide. Pilih influencernya supaya wajahnya terkunci di setiap adegan, lalu ceritakan idenya. Kalau punya foto dari ponsel, misalnya dapur atau kemasan, unggah saja. Tiap foto jadi bahan satu adegan. Foto ini belum terkirim sebelum kamu menekan tombol penyusun.",
+    "catatan": "Ada kolom 'Ambil dari planner (opsional)' dan 'Mulai dari pustaka' yang hanya tampil kalau ada ide konten / contoh pustaka; tidak disorot. Halaman ini bisa dicapai lewat Buat Video jalur cerita (tidak perlu formulir ini), jadi pemakai pemula jarang melihatnya langsung. Target 'Ide video *' memuat tanda bintang."
+  },
+  {
+    "id": "storyboard-02-bentuk-durasi",
+    "bagian": "Storyboard",
+    "judul": "Bentuk cerita dan total durasi",
+    "route": "/storyboard",
+    "keadaan": "Akun LENGKAP: sudah ada satu influencer dengan minimal 2 foto acuan wajah dan suara klon, minimal satu produk berfoto, dan saldo cukup. Di formulir 'Susun storyboard baru' gulir ke bawah sampai 'Bentuk cerita', 'Total durasi', dan tombol 'Susun shot list' terlihat. Pilih '💡 Masalah → Produk → Hasil' dan '15 detik'. Jangan klik 'Susun shot list'.",
+    "callouts": [
+      {
+        "target": "Bentuk cerita",
+        "jenis": "kolom",
+        "teks": "Pola menentukan urutan adegan dan ritmenya. Penulis AI yang membagi detiknya, kamu tidak perlu menghitung."
+      },
+      {
+        "target": "Atur sendiri (jumlah shot & durasi)",
+        "jenis": "kolom",
+        "teks": "Pilihan terakhir di daftar bentuk cerita, untuk yang mau menentukan sendiri jumlah shot dan detik per shot."
+      },
+      {
+        "target": "Total durasi",
+        "jenis": "kolom",
+        "teks": "Pilih 10, 15, 20, atau 30 detik. Penulis membaginya ke tiga sampai enam adegan."
+      },
+      {
+        "target": "Susun shot list",
+        "jenis": "tombol",
+        "teks": "Penulis AI menyusun daftar shot. Langkah ini memakai saldo; hasilnya kamu periksa dulu."
+      }
+    ],
+    "narasi": "Pilih bentuk ceritanya, misalnya masalah, produk, lalu hasil. Penulis AI yang memutuskan berapa adegan dan berapa detik tiap adegan, jadi kamu nggak perlu menghitung. Kalau kamu memang mau mengatur sendiri, ada pilihan Atur sendiri. Lalu pilih total durasi, dan tekan Susun shot list. Langkah ini memakai saldo, karena penulis AI yang bekerja.",
+    "catatan": "Bentuk cerita berupa dropdown (opsi seperti '💡 Masalah → Produk → Hasil'); di wizard Buat Video bentuk yang sama berupa kartu. 'Susun shot list' tidak menampilkan harga di tombol (tidak seperti tombol penulis AI lain); biaya penulis AI tetap berlaku (≈ per panggilan). Target 'Atur sendiri…' = opsi di dalam dropdown (tangkap dengan daftar opsi terbuka, atau hapus callout ini kalau sulit)."
+  },
+  {
+    "id": "storyboard-03-draf",
+    "bagian": "Storyboard",
+    "judul": "Periksa shot list sebelum disimpan",
+    "route": "/storyboard",
+    "keadaan": "Akun LENGKAP: sudah ada satu influencer dengan minimal 2 foto acuan wajah dan suara klon, minimal satu produk berfoto, dan saldo cukup. Setelah menekan 'Susun shot list' (memakai saldo) dan menunggu, draf muncul di bawah formulir: judul, logline, 'Kontinuitas (berlaku di semua shot)', beberapa kartu shot, dan tiga tombol. Tangkap saat semuanya terlihat. Jangan klik 'Simpan & lanjut produksi' kalau tidak ingin menyimpan.",
+    "callouts": [
+      {
+        "target": "Kontinuitas (berlaku di semua shot)",
+        "jenis": "kartu",
+        "teks": "Hal yang harus sama di semua adegan: baju, lokasi, cahaya. Inilah yang membuatnya terasa satu video."
+      },
+      {
+        "target": "~salah satu kartu shot di daftar",
+        "jenis": "kartu",
+        "teks": "Tiap kartu: nomor, inti adegan, jenis kamera, detik, deskripsi gambar, dan kalimat yang diucapkan."
+      },
+      {
+        "target": "Simpan & lanjut produksi",
+        "jenis": "tombol",
+        "teks": "Menyimpan storyboard dan membuka layar produksi. Belum ada gambar atau video yang dibayar di sini."
+      },
+      {
+        "target": "Susun ulang",
+        "jenis": "tombol",
+        "teks": "Minta shot list versi lain. Memakai saldo, dan draf yang sekarang diganti."
+      },
+      {
+        "target": "Buang",
+        "jenis": "tombol",
+        "teks": "Membuang draf dan kembali ke formulir. Tidak ada yang tersimpan."
+      }
+    ],
+    "narasi": "Inilah shot list rancangan penulis AI. Di atas ada kontinuitas, hal-hal yang harus sama di semua adegan, seperti baju dan lokasi. Di bawahnya tiap adegan punya nomor, sudut kamera, lama, dan kalimat yang diucapkan. Kalau sudah cocok, Simpan dan lanjut produksi. Belum cocok? Susun ulang, memakai saldo lagi. Atau Buang, tanpa menyimpan apa pun.",
+    "catatan": "Kartu shot memuat '🗣' sebelum narasi dan label kamera 'Close-up' / 'Medium' / 'Wide'. Prompt visual di draf berbahasa Inggris (tampil apa adanya)."
+  },
+  {
+    "id": "storyboard-04-naskah",
+    "bagian": "Storyboard",
+    "judul": "Langkah Naskah: kesiapan dan ubah adegan",
+    "route": "/storyboard?board=<id storyboard>",
+    "keadaan": "Akun LENGKAP: sudah ada satu influencer dengan minimal 2 foto acuan wajah dan suara klon, minimal satu produk berfoto, dan saldo cukup. Buka storyboard yang belum diproduksi (klik kartu di 'Storyboard tersimpan' atau setelah 'Simpan & lanjut produksi'). Penanda langkah 'Naskah' aktif. Tangkap bagian atas: kolom Kontinuitas, kartu 'Kesiapan', dan shot pertama dengan kotak 'Ubah adegan ini'. Jangan klik 'Ubah'.",
+    "callouts": [
+      {
+        "target": "Kontinuitas — ditempelkan ke prompt SETIAP shot",
+        "jenis": "kolom",
+        "teks": "Mengubah baju atau lokasi cukup sekali di sini; berlaku ke semua shot sekaligus."
+      },
+      {
+        "target": "Kesiapan",
+        "jenis": "kartu",
+        "teks": "Daftar yang harus beres sebelum lanjut, mis. minimal dua foto wajah. Tulisan merah wajib diperbaiki."
+      },
+      {
+        "target": "Ubah adegan ini",
+        "jenis": "kolom",
+        "teks": "Tulis satu kalimat, mis. dia tertawa, bukan serius. Penulis AI menulis ulang adegan itu saja."
+      },
+      {
+        "target": "Ubah",
+        "jenis": "tombol",
+        "teks": "Menjalankan penulis AI untuk satu adegan. Memakai saldo; hasilnya langsung dipasang, dan Batalkan gratis."
+      },
+      {
+        "target": "Lanjut ke produksi →",
+        "jenis": "tombol",
+        "teks": "Ke langkah berikutnya. Aktif setelah semua yang merah beres."
+      }
+    ],
+    "narasi": "Di langkah Naskah, periksa dulu kesiapannya. Kalau ada tulisan merah, bereskan. Kontinuitas ditempel ke semua adegan, jadi mengganti baju cukup sekali di sini. Mau mengubah satu adegan? Tulis saja satu kalimat biasa, misalnya dia tertawa, bukan serius. Penulis AI menulis ulang adegan itu, memakai saldo. Nggak suka hasilnya? Batalkan, gratis.",
+    "catatan": "'Ubah adegan ini' adalah teks placeholder di dalam kolom input (bukan label); cocokkan lewat atribut placeholder 'Ubah adegan ini: mis. dia tertawa, bukan serius'. Tombol berbunyi 'Ubah · ≈ Rp …'. '↶ Batalkan' hanya muncul setelah satu perubahan. Di tiap shot juga ada tombol 'Lanjutan (prompt Inggris)' (prompt teknis; tidak disorot). Penanda langkah: '1 · Naskah', '2 · Produksi', '3 · Hasil'."
+  },
+  {
+    "id": "storyboard-05-produksi",
+    "bagian": "Storyboard",
+    "judul": "Produksi: rincian dan gambar pembuka",
+    "route": "/storyboard?board=<id storyboard>",
+    "keadaan": "Akun LENGKAP: sudah ada satu influencer dengan minimal 2 foto acuan wajah dan suara klon, minimal satu produk berfoto, dan saldo cukup. Dari langkah Naskah klik 'Lanjut ke produksi →'. Langkah 'Produksi' tampil dengan kartu 'Dua tahap: lihat gambar pembuka dulu, baru video', tabel rincian, dan tombol 'Buat gambar pembuka'. Gambar pembuka belum dibuat. Jangan klik tombol itu.",
+    "callouts": [
+      {
+        "target": "Dua tahap: lihat gambar pembuka dulu, baru video",
+        "jenis": "judul",
+        "teks": "Gambar pembuka dibuat dulu dan menentukan wajah, baju, dan latar seluruh video. Videonya dibayar sesudah kamu setuju."
+      },
+      {
+        "target": "Total",
+        "jenis": "lain",
+        "teks": "Rincian harga gambar pembuka dan video, serta totalnya, tertulis sebelum apa pun dikirim."
+      },
+      {
+        "target": "Ganti model",
+        "jenis": "tombol",
+        "teks": "Model sudah dipilih otomatis. Buka kalau kamu mau mengganti model gambar atau video."
+      },
+      {
+        "target": "Buat gambar pembuka",
+        "jenis": "tombol",
+        "teks": "Langkah termurah dulu: satu gambar diam. Memakai saldo."
+      },
+      {
+        "target": "Lembar storyboard untuk ditinjau",
+        "jenis": "kartu",
+        "teks": "Opsional: semua panel dalam satu gambar untuk ditinjau manusia. Tidak dipakai untuk membuat video."
+      }
+    ],
+    "narasi": "Produksi dibagi dua tahap, dan ini yang melindungi saldomu. Tahap pertama, gambar pembuka, satu gambar diam yang murah. Gambar ini menentukan wajah, baju, dan latar seluruh video. Tahap kedua, videonya, bagian yang mahal. Rincian harga sudah tertulis di atas. Tekan Buat gambar pembuka, memakai saldo, dan kamu lihat dulu hasilnya sebelum lanjut.",
+    "catatan": "Tombol berbunyi 'Buat gambar pembuka — Rp …' (target = awalan). Untuk model yang mengunci wajah langsung dari Identity Kit, kartu berjudul 'Satu tahap: video' dan tidak ada gambar pembuka (satu tombol 'Buat video — Rp …'). Rincian memuat dua baris: 'Frame pembuka' dan 'Video N detik · N shot'; PANDUAN menyebut 'gambar pembuka' sedangkan baris tabel menulis 'Frame pembuka'."
+  },
+  {
+    "id": "storyboard-06-periksa-gambar",
+    "bagian": "Storyboard",
+    "judul": "Periksa gambar pembuka, baru bayar video",
+    "route": "/storyboard?board=<id storyboard>",
+    "keadaan": "Akun LENGKAP: sudah ada satu influencer dengan minimal 2 foto acuan wajah dan suara klon, minimal satu produk berfoto, dan saldo cukup. Di langkah Produksi tekan 'Buat gambar pembuka' (memakai saldo) dan tunggu sampai gambar muncul di kartu abu-abu dengan tulisan 'Wajahnya mirip? Latar dan pakaiannya benar?'. Tangkap saat dua tombol 'Coba lagi — …' dan 'Ya, buat video — …' terlihat. Jangan klik 'Ya, buat video'.",
+    "callouts": [
+      {
+        "target": "~gambar pembuka berukuran kecil di kiri kartu",
+        "jenis": "lain",
+        "teks": "Inilah frame pertama video. Perhatikan wajah, baju, dan latarnya; semuanya akan terbawa ke seluruh video."
+      },
+      {
+        "target": "Wajahnya mirip? Latar dan pakaiannya benar?",
+        "jenis": "judul",
+        "teks": "Pertanyaan penentu. Kalau meleset, ulangi gambar ini yang murah, bukan videonya yang mahal."
+      },
+      {
+        "target": "Coba lagi",
+        "jenis": "tombol",
+        "teks": "Membuat gambar pembuka baru dengan prompt sama. Dihitung lagi sebesar harga satu gambar."
+      },
+      {
+        "target": "Ya, buat video",
+        "jenis": "tombol",
+        "teks": "Mengirim video multi-shot. Bagian termahal, ditagih per detik yang dihasilkan. Memakai saldo."
+      },
+      {
+        "target": "kotak kontinuitas di langkah Naskah",
+        "jenis": "lain",
+        "teks": "Mau ganti latar atau pakaian? Ubah di kotak kontinuitas pada langkah Naskah, lalu tekan Coba lagi."
+      }
+    ],
+    "narasi": "Inilah momen yang paling penting. Gambar pembuka sudah jadi, dan kamu bertanya pada diri sendiri, wajahnya mirip? Latar dan bajunya benar? Kalau meleset, tekan Coba lagi. Biayanya cuma sebesar satu gambar. Jauh lebih murah daripada mengulang video. Kalau sudah yakin, baru tekan Ya, buat video. Itu bagian termahal, dan memakai saldo.",
+    "catatan": "Tombol berbunyi 'Coba lagi — Rp …' dan 'Ya, buat video — Rp …'. Teks petunjuk: 'Ubah latar atau pakaian lewat kotak kontinuitas di langkah Naskah, lalu \"Coba lagi\".' (target callout 5 adalah penggalan kalimat itu). Videonya diproses 2–6 menit; setelah itu layar otomatis pindah ke 'Hasil'."
+  },
+  {
+    "id": "storyboard-07-hasil",
+    "bagian": "Storyboard",
+    "judul": "Hasil: tonton, unduh, dan buat versi lain",
+    "route": "/storyboard?board=<id storyboard>",
+    "keadaan": "Akun LENGKAP: sudah ada satu influencer dengan minimal 2 foto acuan wajah dan suara klon, minimal satu produk berfoto, dan saldo cukup. Buka storyboard yang videonya sudah jadi (langkah 'Hasil'). Klik tombol 'Buat versi lain' sampai panel 'Apa yang beda di versi ini? (opsional)' terbuka. Biarkan kolom kosong. Jangan klik 'Salin jadi versi baru →'.",
+    "callouts": [
+      {
+        "target": "Bagikan",
+        "jenis": "tombol",
+        "teks": "Membuka menu bagikan di ponsel. Di komputer, videonya diunduh. Kamu sendiri yang mengunggah ke media sosial."
+      },
+      {
+        "target": "Unduh video",
+        "jenis": "tombol",
+        "teks": "Menyimpan berkas video ke perangkatmu. Video juga tersimpan di Karya."
+      },
+      {
+        "target": "Buat ulang",
+        "jenis": "tombol",
+        "teks": "Kembali ke Produksi untuk membuat ulang video dengan gambar pembuka yang sama. Dibayar lagi."
+      },
+      {
+        "target": "Buat versi lain",
+        "jenis": "tombol",
+        "teks": "Menyalin storyboard jadi versi baru. Gambar pembuka dipakai ulang gratis, hanya videonya yang nanti dibayar lagi."
+      },
+      {
+        "target": "Apa yang beda di versi ini? (opsional)",
+        "jenis": "kolom",
+        "teks": "Isi mis. bahasa Inggris atau lebih lucu, penulis AI menulis ulang narasinya (memakai saldo). Kosong: salinan persis, gratis."
+      }
+    ],
+    "narasi": "Videonya sudah jadi. Tonton, lalu unduh atau bagikan lewat menu ponselmu. Kamu sendiri yang mengunggahnya ke media sosial. Mau variasi? Tekan Buat versi lain. Gambar pembukanya dipakai ulang, jadi wajahnya tetap sama dan gratis. Cuma videonya nanti yang dibayar lagi. Isi kolom perbedaan untuk menulis ulang narasi, memakai saldo, atau kosongkan untuk salinan persis.",
+    "catatan": "Tombol 'Bagikan' membuka share sheet ponsel; di komputer langsung mengunduh (tidak ada posting otomatis). Tombol di panel: 'Salin jadi versi baru →' (kolom kosong, gratis) atau 'Buat versi lain · ≈ Rp … →' (kolom terisi, memakai saldo). Penanda langkah 'Hasil' juga tertulis 'tonton & bagikan'."
+  },
+  {
+    "id": "ugc-01-form-atas",
+    "bagian": "Video UGC",
+    "judul": "Video UGC: pilih orang dan produk",
+    "route": "/ugc",
+    "keadaan": "Akun LENGKAP: sudah ada satu influencer dengan minimal 2 foto acuan wajah dan suara klon, minimal satu produk berfoto, dan saldo cukup. Buka menu lengkap, klik 'Video UGC'. Kartu 'Buat video UGC baru' tampil. Pilih satu influencer dan satu produk. Biarkan Platform 'TikTok'. Jangan klik tombol apa pun yang menyusun naskah.",
+    "callouts": [
+      {
+        "target": "Buat video UGC baru",
+        "jenis": "judul",
+        "teks": "Produk, orang, suara, dan naskah jadi satu video orang bicara ke kamera. Jalur untuk endorse."
+      },
+      {
+        "target": "Influencer *",
+        "jenis": "kolom",
+        "teks": "Wajah diambil dari Identity Kit, suara dari pengaturan suaranya. Wajib dipilih."
+      },
+      {
+        "target": "Produk *",
+        "jenis": "kolom",
+        "teks": "Pilih produk dari Product Kit. Foto kemasan aslinya dikirim agar kemasan tidak dikarang."
+      },
+      {
+        "target": "+ Produk baru",
+        "jenis": "tombol",
+        "teks": "Menyimpan produk baru di tempat, tanpa pindah halaman. Tersimpan ke Product Kit juga."
+      },
+      {
+        "target": "Platform",
+        "jenis": "kolom",
+        "teks": "Tujuan videomu: TikTok, Instagram Reels, atau YouTube Shorts."
+      }
+    ],
+    "narasi": "Video UGC itu karakter kamu bicara ke kamera tentang produk, cocok untuk endorse. Cuma ada lima hal yang kamu isi, yaitu produk, influencer, naskah, durasi, dan latar. Mulainya dari pilih influencer dan produk. Wajah diambil dari Identity Kit, suaranya dari pengaturan suara. Belum punya produk? Tambahkan di tempat, lewat Produk baru.",
+    "catatan": "Halaman ini adalah jalur 'lama' yang juga ditempuh Buat Video (jalur bicara ke kamera) secara otomatis; pemula disarankan memakai Buat Video. Target 'Produk *' dan 'Influencer *' memuat tanda bintang."
+  },
+  {
+    "id": "ugc-02-naskah-form",
+    "bagian": "Video UGC",
+    "judul": "Sudut cerita, durasi, dan naskah",
+    "route": "/ugc",
+    "keadaan": "Akun LENGKAP: sudah ada satu influencer dengan minimal 2 foto acuan wajah dan suara klon, minimal satu produk berfoto, dan saldo cukup. Di formulir 'Buat video UGC baru' gulir ke bawah sampai 'Sudut cerita', 'Target durasi (detik)', 'Kata-kata yang diucapkan', dan tombol 'Susun naskah dengan AI' terlihat. Isi satu kalimat di 'Sudut cerita' (mis. review jujur setelah 2 minggu pakai). Kosongkan kolom naskah. Jangan klik tombol.",
+    "callouts": [
+      {
+        "target": "Mulai dari pustaka",
+        "jenis": "kolom",
+        "teks": "Contoh latar dan gaya siap pakai. Memilih satu mengisi sudut cerita dan latar secara otomatis. Gratis."
+      },
+      {
+        "target": "Sudut cerita (opsional, untuk penulis AI)",
+        "jenis": "kolom",
+        "teks": "Satu kalimat arah naskah, mis. review jujur setelah dua minggu pakai."
+      },
+      {
+        "target": "Target durasi (detik)",
+        "jenis": "kolom",
+        "teks": "Target untuk penulis naskah, bukan kenop. Panjang video mengikuti naskah, dan biayanya dihitung dari naskah itu."
+      },
+      {
+        "target": "Kata-kata yang diucapkan — tulis sendiri, atau kosongkan dan minta AI",
+        "jenis": "kolom",
+        "teks": "Tulis naskah sendiri (gratis), atau kosongkan dan biarkan penulis AI menyusunnya."
+      },
+      {
+        "target": "Susun naskah dengan AI",
+        "jenis": "tombol",
+        "teks": "Penulis AI menyusun naskah dari keunggulan produk. Memakai saldo, dan hasilnya kamu periksa dulu."
+      }
+    ],
+    "narasi": "Di bagian bawah, kamu menentukan arah ceritanya dan target durasi. Durasi itu cuma target, panjang video sebenarnya mengikuti naskah yang dibacakan. Punya naskah sendiri? Tulis di kolom kata-kata yang diucapkan, itu gratis. Atau kosongkan, dan tekan Susun naskah dengan AI. Langkah itu memakai saldo, dan hasilnya kamu periksa dulu.",
+    "catatan": "'Mulai dari pustaka' hanya tampil kalau ada contoh pustaka kategori 'ugc' di katalog. Kalau naskah diisi sendiri, tombol berubah jadi 'Simpan & lanjut' (gratis) dan keterangan '{N} kata ≈ {N} detik' muncul. 'Susun naskah dengan AI' tidak menampilkan harga di tombol."
+  },
+  {
+    "id": "ugc-03-draf-naskah",
+    "bagian": "Video UGC",
+    "judul": "Periksa naskah dari penulis AI",
+    "route": "/ugc",
+    "keadaan": "Akun LENGKAP: sudah ada satu influencer dengan minimal 2 foto acuan wajah dan suara klon, minimal satu produk berfoto, dan saldo cukup. Setelah menekan 'Susun naskah dengan AI' (memakai saldo), kartu abu-abu muncul berisi 'Naskah · N kata ≈ N detik', 'Caption', 'Latar gambar kunci', 'Gaya penyampaian', dan tiga tombol. Tangkap saat semuanya terlihat. Jangan klik 'Simpan & lanjut produksi' kalau tidak ingin menyimpan.",
+    "callouts": [
+      {
+        "target": "Naskah ·",
+        "jenis": "kartu",
+        "teks": "Naskah yang akan dibacakan, lengkap dengan jumlah kata dan perkiraan detiknya."
+      },
+      {
+        "target": "Caption",
+        "jenis": "kartu",
+        "teks": "Teks di bawah postingan. Dibaca orang, bukan dibacakan di video."
+      },
+      {
+        "target": "Latar gambar kunci",
+        "jenis": "kartu",
+        "teks": "Tempat dan suasana untuk gambar pertama. Ditulis Inggris karena model gambar lebih paham."
+      },
+      {
+        "target": "Simpan & lanjut produksi",
+        "jenis": "tombol",
+        "teks": "Menyimpan proyek dan membuka layar produksi. Belum ada gambar atau suara yang dibayar."
+      },
+      {
+        "target": "Susun ulang",
+        "jenis": "tombol",
+        "teks": "Minta naskah versi lain. Memakai saldo. Semua bagian masih bisa diubah di langkah berikutnya."
+      }
+    ],
+    "narasi": "Inilah naskah usulan penulis AI, lengkap dengan caption, latar gambar, dan gaya penyampaiannya. Perhatikan jumlah kata dan perkiraan detiknya. Video akan sepanjang naskah ini. Kalau sudah pas, tekan Simpan dan lanjut produksi. Belum membayar apa pun untuk gambar dan suara. Kalau kurang suka, Susun ulang, memakai saldo lagi, atau ubah sendiri di langkah berikutnya.",
+    "catatan": "Teks 'Naskah ·' dilengkapi '{N} kata ≈ {N} detik (anggaran {N} kata)' (dinamis). 'Latar gambar kunci' dan 'Gaya penyampaian' ditulis bahasa Inggris tampil apa adanya."
+  },
+  {
+    "id": "ugc-04-langkah-naskah",
+    "bagian": "Video UGC",
+    "judul": "Langkah Naskah: kata-kata dan kesiapan",
+    "route": "/ugc?project=<id proyek>",
+    "keadaan": "Akun LENGKAP: sudah ada satu influencer dengan minimal 2 foto acuan wajah dan suara klon, minimal satu produk berfoto, dan saldo cukup. Setelah 'Simpan & lanjut produksi', proyek terbuka di langkah 'Naskah' (penanda '1 · Naskah' aktif). Tangkap seluruh langkah: kotak 'Kata-kata yang diucapkan', dua kotak Inggris, kartu 'Kesiapan', dan tombol 'Lanjut ke produksi →'.",
+    "callouts": [
+      {
+        "target": "Kata-kata yang diucapkan",
+        "jenis": "kolom",
+        "teks": "Naskah yang dibacakan. Memangkas kata memangkas biaya, karena video sepanjang audionya."
+      },
+      {
+        "target": "Latar gambar kunci (Inggris; tanpa wajah, tanpa kemasan)",
+        "jenis": "kolom",
+        "teks": "Tempat dan suasana gambar pertama. Wajah dan kemasan datang dari foto acuan."
+      },
+      {
+        "target": "Kesiapan",
+        "jenis": "kartu",
+        "teks": "Daftar yang harus beres: foto wajah, suara, dan model. Tulisan merah wajib diperbaiki dulu."
+      },
+      {
+        "target": "Lanjut ke produksi →",
+        "jenis": "tombol",
+        "teks": "Ke langkah Produksi. Aktif kalau semua yang merah sudah beres."
+      }
+    ],
+    "narasi": "Langkah Naskah mengumpulkan semua yang perlu diperiksa. Di atas, kata-kata yang akan diucapkan. Ubah kalau ada yang kurang pas, dan ingat, makin pendek naskah, makin murah videonya. Di bawahnya latar gambar dan gaya penyampaian, dalam bahasa Inggris. Lalu kartu Kesiapan. Kalau ada tulisan merah, bereskan dulu. Setelah itu, lanjut ke produksi.",
+    "catatan": "Ada tiga kotak teks di langkah ini: 'Kata-kata yang diucapkan', 'Latar gambar kunci (Inggris; tanpa wajah, tanpa kemasan)', 'Gaya penyampaian (Inggris)'. Mengubah naskah membuang audio lama (harus dibuat ulang). Penanda langkah: '1 · Naskah', '2 · Produksi', '3 · Hasil'."
+  },
+  {
+    "id": "ugc-05-pratinjau",
+    "bagian": "Video UGC",
+    "judul": "Produksi: pratinjau gambar dan suara",
+    "route": "/ugc?project=<id proyek>",
+    "keadaan": "Akun LENGKAP: sudah ada satu influencer dengan minimal 2 foto acuan wajah dan suara klon, minimal satu produk berfoto, dan saldo cukup. Dari proyek yang BARU dibuat lewat form UGC (bukan lewat Buat Video, yang langsung otomatis membuat pratinjau), klik 'Lanjut ke produksi →'. Langkah 'Produksi' tampil dengan kartu '1 · Pratinjau' ('Gambar belum dibuat', 'Suara belum dibuat') dan kartu '2 · Video' yang redup. Jangan klik 'Buat pratinjau'.",
+    "callouts": [
+      {
+        "target": "1 · Pratinjau",
+        "jenis": "judul",
+        "teks": "Gambar pertama dan suaramu dibuat bersamaan. Ini bagian murah, dan kamu meninjaunya sebelum video dibayar."
+      },
+      {
+        "target": "Gambar belum dibuat",
+        "jenis": "lain",
+        "teks": "Tempat gambar pertama nanti muncul: wajahmu memegang produk, dari foto acuan dan foto kemasan."
+      },
+      {
+        "target": "Buat pratinjau",
+        "jenis": "tombol",
+        "teks": "Membuat gambar dan suara sekaligus. Memakai saldo, harga tertulis di tombol."
+      },
+      {
+        "target": "Ganti model",
+        "jenis": "tombol",
+        "teks": "Model gambar, suara, dan avatar sudah dipilih otomatis. Buka kalau kamu mau mengganti."
+      },
+      {
+        "target": "2 · Video",
+        "jenis": "judul",
+        "teks": "Bagian termahal. Baru aktif setelah gambar dan suara kamu setujui."
+      }
+    ],
+    "narasi": "Produksi dimulai dengan pratinjau. Gambar pertama dan suaramu dibuat bersamaan, karena dua-duanya murah dan nggak saling menunggu. Tekan Buat pratinjau, dan harganya sudah tertulis di tombolnya. Langkah ini memakai saldo. Lihat dulu hasilnya. Kartu Video di bawahnya masih redup, karena bagian yang mahal itu baru bisa dibuat setelah kamu setuju.",
+    "catatan": "Dari wizard Buat Video, tombol terakhir 'Ya, buat pratinjau' langsung memulai pratinjau begitu layar ini terbuka (tidak ada klik kedua), sehingga keadaan 'sebelum pratinjau' ini hanya dicapai lewat form UGC langsung. Tombol berbunyi 'Buat pratinjau · ≈ Rp …'."
+  },
+  {
+    "id": "ugc-06-tinjau-video",
+    "bagian": "Video UGC",
+    "judul": "Setujui gambar dan suara, lalu buat video",
+    "route": "/ugc?project=<id proyek>",
+    "keadaan": "Akun LENGKAP: sudah ada satu influencer dengan minimal 2 foto acuan wajah dan suara klon, minimal satu produk berfoto, dan saldo cukup. Setelah 'Buat pratinjau' (memakai saldo) selesai, kartu '1 · Pratinjau' menampilkan gambar, pemutar suara, lencana 'siap ditinjau', dan tombol 'Ulang gambar', 'Ulang suara'. Tangkap dengan kartu '2 · Video' ikut terlihat. Jangan klik 'Buat video'.",
+    "callouts": [
+      {
+        "target": "Periksa gambarnya",
+        "jenis": "judul",
+        "teks": "Pastikan wajahnya benar dan kemasan produknya sama dengan foto asli. Kalau meleset, ubah latar di langkah Naskah."
+      },
+      {
+        "target": "Dengarkan suaranya sampai habis",
+        "jenis": "judul",
+        "teks": "Kalau terdengar seperti dibacakan mesin, tulis naskah lebih seperti orang ngobrol atau ganti suaranya."
+      },
+      {
+        "target": "Ulang gambar",
+        "jenis": "tombol",
+        "teks": "Membuat gambar baru saja. Memakai saldo kecil, jauh lebih murah daripada mengulang video."
+      },
+      {
+        "target": "Ulang suara",
+        "jenis": "tombol",
+        "teks": "Membuat suara baru saja. Juga murah dan memakai saldo."
+      },
+      {
+        "target": "Buat video",
+        "jenis": "tombol",
+        "teks": "Bagian termahal: gambar digerakkan mengikuti suara. Memakai saldo, ditagih per detik yang dihasilkan."
+      }
+    ],
+    "narasi": "Pratinjau sudah jadi. Periksa gambarnya, wajahnya mirip kamu, kemasan produknya sama dengan aslinya. Lalu dengarkan suaranya sampai habis. Ada yang meleset? Ulang gambar atau ulang suara saja, memakai saldo, tapi jauh lebih murah daripada mengulang video. Kalau sudah puas, tekan Buat video. Itu bagian termahal, dan butuh dua sampai enam menit.",
+    "catatan": "Tombol 'Buat video' berbunyi 'Buat video · ≈ Rp …'; kalau pratinjau belum siap tombolnya bertuliskan 'Setujui gambar dan suara dulu' dan nonaktif. Halaman boleh ditutup saat video dibuat; hasilnya tetap tercatat (bisa dilanjutkan lewat kartu 'Sedang dibuat' di Karya)."
+  },
+  {
+    "id": "ugc-07-hasil",
+    "bagian": "Video UGC",
+    "judul": "Hasil: tonton, caption, dan bagikan",
+    "route": "/ugc?project=<id proyek>",
+    "keadaan": "Akun LENGKAP: sudah ada satu influencer dengan minimal 2 foto acuan wajah dan suara klon, minimal satu produk berfoto, dan saldo cukup. Buka proyek UGC yang videonya sudah jadi (langkah 'Hasil'). Tangkap seluruh langkah: pemutar video di kiri, kartu 'Caption (yang DIBACA, bukan naskah)' dan 'Hashtag' di kanan.",
+    "callouts": [
+      {
+        "target": "Bagikan",
+        "jenis": "tombol",
+        "teks": "Membuka menu bagikan di ponsel. Di komputer, videonya diunduh. Kamu sendiri yang mengunggah ke media sosial."
+      },
+      {
+        "target": "Unduh",
+        "jenis": "tombol",
+        "teks": "Menyimpan berkas video ke perangkatmu. Video juga tersimpan di Karya."
+      },
+      {
+        "target": "Buat ulang",
+        "jenis": "tombol",
+        "teks": "Kembali ke Produksi. Membuat ulang video memakai saldo penuh, jadi ulang gambar atau suaranya dulu bila perlu."
+      },
+      {
+        "target": "Caption (yang DIBACA, bukan naskah)",
+        "jenis": "kolom",
+        "teks": "Satu kalimat pendek di bawah postingan, berbeda dari naskah yang diucapkan. Boleh kamu ubah."
+      },
+      {
+        "target": "Salin caption + hashtag",
+        "jenis": "tombol",
+        "teks": "Menyalin caption dan hashtag sekaligus, siap ditempel saat kamu mengunggah."
+      }
+    ],
+    "narasi": "Videonya jadi. Tonton dulu. Suka? Tekan Bagikan dan pilih aplikasinya dari menu ponselmu, atau Unduh untuk disimpan. Kamu sendiri yang mengunggahnya, aplikasi ini tidak memposting otomatis. Di sebelahnya ada caption dan hashtag. Ubah kalau perlu, lalu tekan Salin supaya tinggal ditempel. Mau coba lagi? Buat ulang, tapi itu membayar video penuh.",
+    "catatan": "Tombol 'Unduh' dan tombol lain: target 'Unduh' cocok dengan tautan <a> bertuliskan 'Unduh'. Ada tautan 'Buat link pendek di planner →' kalau produk punya tautan beli (menu Rencana, di luar cakupan; tidak disorot). Narasi menyebut 'tidak memposting otomatis' sesuai kebijakan di CLAUDE.md."
+  },
+  {
+    "id": "penutup",
+    "bagian": "Penutup",
+    "judul": "Urutan langkah pertama yang disarankan",
+    "route": null,
+    "keadaan": "Bukan tangkapan layar. Daftar bernomor urutan langkah pertama (lihat isi).",
+    "callouts": [],
+    "isi": [
+      {
+        "urutan": 1,
+        "nama": "Masuk atau daftar",
+        "untuk": "Satu akun, satu ruang kerja."
+      },
+      {
+        "urutan": 2,
+        "nama": "Arah Konten",
+        "untuk": "Jawab 12 pertanyaan, dapatkan blueprint. Cukup sekali."
+      },
+      {
+        "urutan": 3,
+        "nama": "Profil saya",
+        "untuk": "Foto wajah, rekam suara, pilih bahasa. Cukup sekali."
+      },
+      {
+        "urutan": 4,
+        "nama": "Product Kit",
+        "untuk": "Simpan satu produk dengan foto kemasan asli, kalau mau video bicara ke kamera."
+      },
+      {
+        "urutan": 5,
+        "nama": "Ide dan naskah",
+        "untuk": "Di Arah Konten, pilih satu ide dan tulis naskahnya."
+      },
+      {
+        "urutan": 6,
+        "nama": "Buat Video",
+        "untuk": "Jawab empat pertanyaan, lihat harganya, setujui gambar dan suara, lalu video dibuat."
+      },
+      {
+        "urutan": 7,
+        "nama": "Karya",
+        "untuk": "Tonton, unduh, dan unggah sendiri videonya."
+      }
+    ],
+    "narasi": "Itu dia seluruh isi aplikasi. Kalau bingung harus mulai dari mana, ikuti urutan ini. Masuk, jawab pertanyaan di Arah Konten, isi Profil saya, simpan satu produk kalau perlu, tulis naskah, lalu Buat Video. Setelah video jadi, ambil di Karya dan unggah sendiri. Ingat, harga selalu tampil sebelum kamu menyetujui. Selamat mencoba, dan nikmati prosesnya.",
+    "catatan": "Urutan mengikuti halaman 'Cara mulai' di aplikasi (Arah Konten, Profil saya, Buat Video, Tonton & bagikan) dengan tambahan Product Kit untuk jalur bicara ke kamera."
+  }
+]
