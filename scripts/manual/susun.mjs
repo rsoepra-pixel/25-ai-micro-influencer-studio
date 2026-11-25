@@ -17,6 +17,7 @@ import { createRequire } from "node:module";
 // sana — `require` yang mencarinya.
 const { chromium } = createRequire(import.meta.url)("playwright");
 import fs from "node:fs";
+import { execFileSync } from "node:child_process";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -32,7 +33,7 @@ const LAYAR = { w: 1200, h: 844 };
 
 const halaman = JSON.parse(fs.readFileSync(process.env.HALAMAN || path.join(DI_SINI, "halaman.json"), "utf8"));
 
-const esc = (s) => String(s ?? "").replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
 const dataUri = (file) => {
   const ext = path.extname(file).slice(1).replace("jpg", "jpeg");
   return `data:image/${ext};base64,${fs.readFileSync(file).toString("base64")}`;
@@ -44,11 +45,16 @@ function halamanLayar(h, no, total) {
   // Kotak teks tanpa posisi (bagiannya tidak ketemu di layar) tetap dicetak,
   // hanya tanpa garis — lebih baik daripada penjelasannya hilang diam-diam.
   const callouts = h.callouts.map((c, i) => ({ teks: c.teks, kotak: meta.kotak?.[i] || null, sisi: c.sisi || null }));
+  // Gambar layar disisipkan sebagai JPEG: PNG 2x membuat PDF-nya dua kali
+  // lebih besar tanpa beda yang terlihat pada ukuran cetak ini.
+  const jpg = path.join(DIR_TANGKAPAN, `${h.id}.jpg`);
+  if (!fs.existsSync(jpg) || fs.statSync(jpg).mtimeMs < fs.statSync(png).mtimeMs)
+    execFileSync("ffmpeg", ["-y", "-loglevel", "error", "-i", png, "-q:v", "6", jpg]);
   return `
 <section class="hal layar" data-callouts='${esc(JSON.stringify(callouts))}'>
   ${kepala(h, no, total)}
   <div class="panggung">
-    <div class="bingkai"><img src="${dataUri(png)}" width="${LAYAR.w}" height="${LAYAR.h}" /></div>
+    <div class="bingkai"><img src="${dataUri(jpg)}" width="${LAYAR.w}" height="${LAYAR.h}" /></div>
     <svg class="garis" width="1920" height="930"></svg>
   </div>
 </section>`;
@@ -188,8 +194,10 @@ function susun(sec) {
   const tinggi = (s) => muat(s).reduce((a, x) => a + x.t + JARAK, 0);
   for (let pengaman = 0; pengaman < 6; pengaman++) {
     const a = muat("kiri"), b = muat("kanan");
-    const banyak = a.length - b.length > 1 || tinggi("kiri") > BAWAH - ATAS ? "kiri"
-                 : b.length - a.length > 1 || tinggi("kanan") > BAWAH - ATAS ? "kanan" : null;
+    // Kotak tetap di sisi sasarannya selama muat (maks. 3 per kolom): garis
+    // pendek lebih mudah diikuti daripada dua kolom yang sama banyak.
+    const banyak = a.length > 3 || tinggi("kiri") > BAWAH - ATAS ? "kiri"
+                 : b.length > 3 || tinggi("kanan") > BAWAH - ATAS ? "kanan" : null;
     if (!banyak) break;
     const calon = muat(banyak).filter((x) => !x.sisi)
       .sort((p, q) => banyak === "kiri" ? q.cx - p.cx : p.cx - q.cx)[0];

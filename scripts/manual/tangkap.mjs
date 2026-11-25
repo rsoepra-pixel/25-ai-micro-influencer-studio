@@ -18,6 +18,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { pasangMock } from "./mock.mjs";
+import { contohBerkas } from "./media.mjs";
 
 const DI_SINI = path.dirname(fileURLToPath(import.meta.url));
 const APP_URL = process.env.APP_URL || "http://localhost:5173";
@@ -53,7 +54,7 @@ async function jalankan(page, l) {
   if (l.klik) await cari(page, l.klik).click();
   else if (l.isi) await cari(page, l.isi).fill(l.dengan);
   else if (l.pilih) await cari(page, l.pilih).selectOption(l.dengan);
-  else if (l.unggah) await cari(page, l.unggah).setInputFiles(path.join(DI_SINI, l.berkas));
+  else if (l.unggah) await cari(page, l.unggah).setInputFiles(path.join(DIR_CONTOH, path.basename(l.berkas)));
   else if (l.buka) await page.goto(`${APP_URL}/#${l.buka}`);
   else if (l.tunggu) await cari(page, l.tunggu).waitFor({ timeout: 15000 });
   else if (l.gulir) await cari(page, l.gulir).evaluate((el, a) => el.scrollIntoView({ block: a || "start" }), l.posisi);
@@ -64,6 +65,10 @@ async function jalankan(page, l) {
   else throw new Error("Langkah tidak dikenal: " + JSON.stringify(l));
   await page.waitForTimeout(l.lalu ?? 250);
 }
+
+// Berkas contoh (foto wajah, rekaman suara) dibuat sekali di folder cache;
+// halaman.json cukup menyebut nama berkasnya.
+const DIR_CONTOH = path.dirname((await contohBerkas()).dokumen);
 
 const browser = await chromium.launch();
 let gagal = 0;

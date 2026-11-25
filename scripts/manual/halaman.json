@@ -1,0 +1,3873 @@
+[
+ {
+  "id": "sampul",
+  "jenis": "sampul",
+  "bagian": "Sampul",
+  "judul": "Panduan AI Influencer Studio",
+  "subjudul": "Cara membuat karakter, suara, dan video — dijelaskan layar demi layar.",
+  "isi": [
+   "Arah Konten",
+   "Profil saya",
+   "Buat Video",
+   "Influencers",
+   "Product Kit",
+   "Production Studio",
+   "Storyboard",
+   "Video UGC"
+  ],
+  "kaki": "Edisi November 2026 · Semua gambar layar memakai data contoh — nama, karya, dan angka di dalamnya bukan data atau harga sungguhan.",
+  "narasi": "Halo, selamat datang di AI Influencer Studio. Di sini kamu bisa membuat karakter sendiri, lalu menjadikannya video, gambar, dan suara untuk jualan atau konten sehari-hari. Panduan ini dibuat pendek. Satu halaman, satu hal. Kamu tinggal ikuti nomornya, dari masuk ke aplikasi sampai video pertamamu jadi. Santai saja, nggak perlu buru-buru."
+ },
+ {
+  "id": "cara-membaca",
+  "jenis": "daftar",
+  "bagian": "Pengantar",
+  "judul": "Cara membaca panduan ini",
+  "pengantar": "Setiap halaman berisi satu layar aplikasi. Di kiri dan kanannya ada kotak teks bernomor, dan garis dari tiap kotak menunjuk bagian layar yang dijelaskan.",
+  "isi": [
+   {
+    "nama": "Kotak bernomor",
+    "untuk": "Tiap kotak menjelaskan satu bagian layar. Garisnya berakhir persis di bagian yang dimaksud, yang diberi bingkai merah muda."
+   },
+   {
+    "nama": "Ikuti urutan nomor",
+    "untuk": "Baca dari nomor 1, lalu 2, dan seterusnya. Urutannya mengikuti urutan kamu memakai layar itu."
+   },
+   {
+    "nama": "Tulisan “memakai saldo”",
+    "untuk": "Langkah yang memakai saldo ditulis terang di kotaknya, supaya kamu tahu sebelum menekan tombol."
+   },
+   {
+    "nama": "Gambar layar memakai data contoh",
+    "untuk": "Nama, karya, dan angka rupiah di gambar hanyalah contoh. Harga yang berlaku adalah yang tampil di layarmu sendiri."
+   }
+  ],
+  "narasi": "Setiap halaman panduan ini berisi satu layar aplikasi. Di sekelilingnya ada kotak-kotak bernomor, dan garis dari tiap kotak menunjuk ke bagian layar yang dijelaskan. Bacalah dari nomor satu, lalu dua, dan seterusnya. Kalau ada langkah yang memakai saldo, kami tulis jelas di kotaknya. Oh ya, semua gambar layar di sini memakai data contoh, jadi angka yang berlaku adalah yang tampil di layarmu sendiri."
+ },
+ {
+  "id": "peta-menu",
+  "jenis": "daftar",
+  "bagian": "Pengantar",
+  "judul": "Peta menu: apa ada di mana",
+  "isi": [
+   {
+    "nama": "Beranda",
+    "untuk": "Ringkasan kerjamu dan daftar langkah awal."
+   },
+   {
+    "nama": "Cara mulai",
+    "untuk": "Satu halaman: empat langkah dan apa yang perlu disiapkan."
+   },
+   {
+    "nama": "Arah Konten",
+    "untuk": "Jawab 12 pertanyaan, dapat blueprint, lalu ide dan naskah."
+   },
+   {
+    "nama": "Profil saya",
+    "untuk": "Wajah, suara, dan bahasa videomu. Dibuka dari Beranda."
+   },
+   {
+    "nama": "Buat Video",
+    "untuk": "Jalur terpandu: beberapa pertanyaan, tinjau, lalu videonya dibuat."
+   },
+   {
+    "nama": "Influencers",
+    "untuk": "Karakter AI-mu: wajah, suara, kepribadian."
+   },
+   {
+    "nama": "Product Kit",
+    "untuk": "Foto produk asli, disimpan sekali untuk semua video."
+   },
+   {
+    "nama": "Production Studio",
+    "untuk": "Alat satuan: satu gambar, video, atau suara per kirim."
+   },
+   {
+    "nama": "Storyboard",
+    "untuk": "Satu ide jadi satu video beberapa adegan."
+   },
+   {
+    "nama": "Video UGC",
+    "untuk": "Karakter bicara ke kamera tentang produk."
+   }
+  ],
+  "narasi": "Ini peta singkat isi aplikasi. Untuk pemula, cukup empat tempat: Beranda, Arah Konten, Profil saya, dan Buat Video. Menu lain seperti Influencers, Product Kit, Production Studio, Storyboard, dan Video UGC ada di Semua menu. Itu alat untuk yang mau mengatur sendiri lebih rinci. Kamu nggak harus membuka semuanya."
+ },
+ {
+  "id": "masuk-01-masuk",
+  "bagian": "Masuk & Daftar",
+  "judul": "Masuk ke aplikasi",
+  "route": "/",
+  "login": false,
+  "menuLengkap": false,
+  "callouts": [
+   {
+    "sasaran": {
+     "teks": "Masuk dengan Google",
+     "induk": 0
+    },
+    "teks": "Cara tercepat. Pilih akun Google-mu; kalau belum punya akun di sini, otomatis dibuatkan."
+   },
+   {
+    "sasaran": {
+     "css": "input[type=email]"
+    },
+    "teks": "Atau ketik alamat email akunmu."
+   },
+   {
+    "sasaran": {
+     "css": "input[type=password]"
+    },
+    "teks": "Isi password akunmu, minimal delapan karakter."
+   },
+   {
+    "sasaran": {
+     "peran": "button",
+     "nama": "Masuk",
+     "persis": true
+    },
+    "teks": "Tekan setelah email dan password terisi. Kalau gagal, layar menyebut sebabnya."
+   },
+   {
+    "sasaran": {
+     "teks": "Belum punya akun? Daftar"
+    },
+    "teks": "Baru pertama kali? Tekan ini untuk pindah ke formulir daftar."
+   }
+  ],
+  "narasi": "Begini tampilan pertama saat kamu membuka aplikasi. Kamu bisa masuk dengan akun Google, cuma sekali ketuk. Atau pakai email dan password seperti biasa. Kalau salah isi, layar akan bilang apa masalahnya, jadi kamu nggak perlu menebak-nebak. Dan kalau ini pertama kalinya, tekan tulisan Belum punya akun di bagian bawah."
+ },
+ {
+  "id": "masuk-02-daftar",
+  "bagian": "Masuk & Daftar",
+  "judul": "Daftar akun baru",
+  "route": "/",
+  "login": false,
+  "menuLengkap": false,
+  "langkah": [
+   {
+    "klik": "Belum punya akun? Daftar"
+   }
+  ],
+  "callouts": [
+   {
+    "sasaran": {
+     "teks": "Daftar — kamu langsung dapat workspace sendiri sebagai owner."
+    },
+    "teks": "Daftar langsung memberi kamu ruang kerja sendiri, dan kamu pemiliknya. Nggak perlu menunggu undangan."
+   },
+   {
+    "sasaran": {
+     "peran": "button",
+     "nama": "Daftar",
+     "persis": true
+    },
+    "teks": "Tekan setelah email dan password terisi. Akun dan ruang kerjamu langsung jadi."
+   },
+   {
+    "sasaran": {
+     "teks": "Sudah punya akun? Masuk"
+    },
+    "teks": "Salah halaman? Tekan ini untuk kembali ke formulir masuk."
+   },
+   {
+    "sasaran": {
+     "teks": "Kebijakan Privasi"
+    },
+    "teks": "Tautan ke kebijakan privasi dan syarat penggunaan ada di bagian bawah kartu."
+   }
+  ],
+  "narasi": "Kalau kamu belum punya akun, pilih daftar. Isi email dan password, lalu tekan Daftar. Begitu jadi, kamu langsung dapat ruang kerja sendiri, dan kamu pemiliknya. Nggak perlu menunggu persetujuan siapa pun. Kalau ternyata sudah pernah daftar, tekan Sudah punya akun untuk kembali. Kebijakan privasi dan syaratnya bisa kamu baca di bawah."
+ },
+ {
+  "id": "kerangka-01-sidebar",
+  "bagian": "Kerangka Aplikasi",
+  "judul": "Menu di sisi kiri layar",
+  "route": "/",
+  "menuLengkap": false,
+  "mock": {
+   "tanpaInfluencer": true
+  },
+  "callouts": [
+   {
+    "sasaran": {
+     "teks": "Cara mulai"
+    },
+    "teks": "Selalu paling atas. Satu halaman berisi empat langkah, kapan uang keluar, dan apa yang perlu disiapkan."
+   },
+   {
+    "sasaran": {
+     "css": "aside a.nav",
+     "ke": 2
+    },
+    "teks": "Menjawab pertanyaan konten apa yang sebaiknya kamu buat: dua belas pertanyaan, ide, lalu naskah."
+   },
+   {
+    "sasaran": {
+     "css": "aside a.nav",
+     "ke": 3
+    },
+    "teks": "Pintu utama membuat video: beberapa pertanyaan, lalu kamu meninjau naskah dan harganya sebelum videonya dibuat."
+   },
+   {
+    "sasaran": {
+     "teks": "▾ Semua menu"
+    },
+    "teks": "Membuka daftar lengkap, termasuk Influencers dan Product Kit. Pilihanmu diingat di perangkat ini."
+   }
+  ],
+  "narasi": "Di sebelah kiri ada menu utama. Paling atas ada Cara mulai, tempat terbaik kalau kamu baru. Di bawahnya ada tujuh menu utama, termasuk Arah Konten untuk mencari ide dan Buat Video untuk membuatnya. Mau melihat menu yang lebih lengkap? Tekan Semua menu. Di kiri bawah ada kartu saldo, dan di bawahnya tombol kecil untuk keluar dari akun."
+ },
+ {
+  "id": "kerangka-02-semua-menu",
+  "bagian": "Kerangka Aplikasi",
+  "judul": "Semua menu, petunjuk, dan bantuan",
+  "route": "/",
+  "menuLengkap": false,
+  "mock": {
+   "tanpaInfluencer": true
+  },
+  "biarkanHover": true,
+  "langkah": [
+   {
+    "klik": "▾ Semua menu"
+   },
+   {
+    "arahkan": {
+     "css": "aside a.nav",
+     "ke": 6
+    }
+   }
+  ],
+  "callouts": [
+   {
+    "sasaran": {
+     "teks": "▴ Menu ringkas"
+    },
+    "teks": "Tekan lagi untuk kembali ke tujuh menu utama."
+   },
+   {
+    "sasaran": {
+     "teks": "Influencers"
+    },
+    "teks": "Hanya ada di daftar lengkap: karakter AI-mu, tempat mengatur wajah dan suara lebih rinci."
+   },
+   {
+    "sasaran": {
+     "css": ".tip-layer"
+    },
+    "teks": "Sorot menu mana pun, muncul penjelasan singkat isinya. Di ponsel, cukup ketuk."
+   },
+   {
+    "sasaran": {
+     "css": "aside .info-tip"
+    },
+    "teks": "Ikon i di label mana pun menjelaskan label itu. Sorot atau ketuk untuk membacanya."
+   },
+   {
+    "sasaran": {
+     "css": "button[data-tip^='Tanya asisten']"
+    },
+    "teks": "Asisten bantuan. Tanyakan cara pakai atau kenapa sesuatu gagal; ia tahu kamu sedang di layar mana."
+   }
+  ],
+  "narasi": "Tekan Semua menu, dan daftar menunya jadi lengkap, ada Influencers, Product Kit, dan alat produksi lainnya. Coba sorot satu menu, nanti muncul kotak kecil yang menjelaskan isinya. Ikon i di samping label juga begitu. Dan kalau masih bingung, tombol tanda tanya di pojok kanan bawah siap menjawab pertanyaanmu."
+ },
+ {
+  "id": "beranda-01-mulai-dari-sini",
+  "bagian": "Beranda",
+  "judul": "Beranda dan daftar langkah awal",
+  "route": "/",
+  "menuLengkap": false,
+  "mock": {
+   "tanpaInfluencer": true
+  },
+  "callouts": [
+   {
+    "sasaran": {
+     "teks": "Ruang Kerja"
+    },
+    "teks": "Judul Beranda. Ringkasan sekilas isi ruang kerjamu; bukan tempat bekerja."
+   },
+   {
+    "sasaran": {
+     "teks": "Mulai dari sini",
+     "induk": 1
+    },
+    "teks": "Enam langkah awal. Tiap langkah tercentang sendiri begitu datanya ada, dan kartu hilang kalau semuanya beres."
+   },
+   {
+    "sasaran": {
+     "teks": "Cara cepat: isi Profil saya",
+     "dalam": "main"
+    },
+    "teks": "Jalan pintas untuk tiga langkah pertama: foto, suara, dan bahasa dalam satu halaman."
+   },
+   {
+    "sasaran": {
+     "teks": "Baru pertama kali? Lihat Cara mulai",
+     "dalam": "main"
+    },
+    "teks": "Membuka halaman Cara mulai yang bisa dicetak jadi satu lembar."
+   },
+   {
+    "sasaran": {
+     "teks": "Buat video pertama",
+     "induk": 1,
+     "dalam": "main"
+    },
+    "teks": "Langkah terakhir daftar. Membuka wizard Buat Video; rincian harganya tampil di langkah tinjau."
+   }
+  ],
+  "narasi": "Ini Beranda, ruang kerjamu. Kalau kamu masih baru, di atas ada kartu Mulai dari sini, daftar enam langkah awal. Kamu nggak perlu mencentangnya sendiri. Langkah akan tercentang otomatis begitu datanya terisi. Mau yang ringkas? Tekan Cara cepat untuk mengisi foto, suara, dan bahasa sekaligus. Kalau masih bingung, ada tautan ke halaman Cara mulai."
+ },
+ {
+  "id": "beranda-02-kartu",
+  "bagian": "Beranda",
+  "judul": "Kartu ringkasan di Beranda",
+  "route": "/",
+  "menuLengkap": false,
+  "mock": {
+   "influencerAktif": "nadia",
+   "kecepatanJob": 0
+  },
+  "langkah": [
+   {
+    "gulir": {
+     "teks": "Influencers",
+     "dalam": "main"
+    }
+   }
+  ],
+  "callouts": [
+   {
+    "sasaran": {
+     "teks": "Influencers",
+     "induk": 2,
+     "dalam": "main"
+    },
+    "teks": "Karakter AI-mu beserta foto profil. Klik satu nama untuk membuka halaman detailnya."
+   },
+   {
+    "sasaran": {
+     "teks": "Produksi Terbaru",
+     "induk": 2,
+     "dalam": "main"
+    },
+    "teks": "Lima job terakhir. Tanda centang berarti berhasil, silang gagal, bulat masih berjalan."
+   },
+   {
+    "sasaran": {
+     "teks": "Kelola lewat Claude",
+     "induk": 2,
+     "dalam": "main"
+    },
+    "teks": "Opsional. Cara menghubungkan ruang kerja ke Claude supaya bisa meminta lewat percakapan biasa."
+   }
+  ],
+  "narasi": "Di bawahnya ada beberapa kartu ringkasan. Kartu Influencers menunjukkan karakter-karakter kamu. Produksi Terbaru memperlihatkan pekerjaan terakhir, apakah berhasil, gagal, atau masih jalan. Dan ada kartu Kelola lewat Claude kalau kamu lebih suka minta lewat chat. Semua ini cuma ringkasan, tempat bekerjanya ada di menu masing-masing."
+ },
+ {
+  "id": "mulai-01-infografis",
+  "bagian": "Cara Mulai",
+  "judul": "Cara mulai: empat langkah",
+  "route": "/mulai",
+  "menuLengkap": false,
+  "callouts": [
+   {
+    "sasaran": {
+     "teks": "Arah Konten",
+     "dalam": ".mulai",
+     "induk": 2
+    },
+    "teks": "Langkah 1: jawab 12 pertanyaan dan dapatkan blueprint. Cukup sekali, sekitar sepuluh menit."
+   },
+   {
+    "sasaran": {
+     "teks": "Isi Profil saya",
+     "dalam": ".mulai",
+     "induk": 2
+    },
+    "teks": "Langkah 2: foto wajah, rekam suara, pilih bahasa. Juga cukup sekali."
+   },
+   {
+    "sasaran": {
+     "teks": "Kapan uang keluar?",
+     "dalam": ".mulai",
+     "induk": 1
+    },
+    "teks": "Urutan dari yang gratis ke yang paling mahal. Yang termahal, yaitu video, selalu dibayar terakhir."
+   },
+   {
+    "sasaran": {
+     "teks": "Siapkan dulu",
+     "dalam": ".mulai",
+     "induk": 1
+    },
+    "teks": "Lima hal yang bikin lancar: waktu, foto wajah, tempat sunyi, foto kemasan asli, dan saldo."
+   },
+   {
+    "sasaran": {
+     "teks": "Cetak"
+    },
+    "teks": "Menyimpan halaman ini sebagai PDF satu lembar, atau mencetaknya."
+   }
+  ],
+  "narasi": "Kalau kamu bingung mulai dari mana, halaman ini jawabannya. Ada empat langkah. Pertama Arah Konten, lalu Profil saya, kemudian Buat Video, dan terakhir tonton serta bagikan. Dua langkah pertama cukup sekali saja. Di bawahnya ada garis kapan uang keluar, dari yang gratis sampai video yang paling besar, dan itu selalu dibayar paling akhir. Bisa dicetak juga."
+ },
+ {
+  "id": "mulai-02-lewat-claude-a",
+  "bagian": "Cara Mulai",
+  "judul": "Cara mulai lewat Claude: menyambungkan",
+  "route": "/mulai-claude",
+  "menuLengkap": false,
+  "callouts": [
+   {
+    "sasaran": {
+     "teks": "Syarat: akun Claude yang mendukung connector",
+     "dalam": "main",
+     "induk": 1
+    },
+    "teks": "Fitur ini hanya ada di paket Claude tertentu. Cek dulu akunmu sebelum mulai."
+   },
+   {
+    "sasaran": {
+     "teks": "Sambungkan sekali",
+     "induk": 1
+    },
+    "teks": "Empat langkah penyambungan, dilakukan satu kali, sekitar sepuluh menit. Minta bantuan kalau perlu."
+   },
+   {
+    "sasaran": {
+     "peran": "button",
+     "nama": "Salin",
+     "persis": false
+    },
+    "teks": "Menyalin alamat connector atau kalimat contoh, lalu tempel di claude.ai atau chat Claude."
+   }
+  ],
+  "narasi": "Buat yang lebih nyaman mengetik seperti di WhatsApp, kamu bisa mengatur semuanya lewat chat Claude. Cek dulu syaratnya, karena fitur ini hanya ada di paket Claude tertentu. Penyambungannya empat langkah dan dilakukan sekali saja, sekitar sepuluh menit. Alamat connector bisa kamu salin dengan satu tombol, lalu tempel di claude.ai."
+ },
+ {
+  "id": "mulai-02-lewat-claude-b",
+  "bagian": "Cara Mulai",
+  "judul": "Cara mulai lewat Claude: kalimat pertama",
+  "route": "/mulai-claude",
+  "menuLengkap": false,
+  "langkah": [
+   {
+    "gulir": "Kalimat pertama yang bisa kamu salin"
+   }
+  ],
+  "callouts": [
+   {
+    "sasaran": {
+     "teks": "Kalimat pertama yang bisa kamu salin",
+     "induk": 1
+    },
+    "teks": "Tiga contoh kalimat. Claude diminta menyebut harga dan menunggu kata ya sebelum membuat yang berbayar."
+   },
+   {
+    "sasaran": {
+     "peran": "button",
+     "nama": "Salin",
+     "ke": 1
+    },
+    "teks": "Tombol Salin di tiap contoh menyalin kalimatnya, tinggal tempel di chat Claude."
+   },
+   {
+    "sasaran": {
+     "teks": "Kalau tidak jalan",
+     "induk": 1
+    },
+    "teks": "Daftar masalah umum dan jalan keluarnya, mis. connector belum dinyalakan di chat."
+   }
+  ],
+  "narasi": "Habis tersambung, tinggal ngobrol. Ada tiga kalimat contoh yang bisa kamu salin lewat tombol Salin. Claude akan menyebut harga dulu dan menunggu kamu bilang ya sebelum membuat sesuatu yang berbayar. Kalau ada yang tidak jalan, lihat daftar masalah umum di bawahnya. Satu catatan, foto wajah dan rekaman suara tetap diisi di aplikasi, lewat Profil saya."
+ },
+ {
+  "id": "arah-01-depan",
+  "bagian": "Arah Konten",
+  "judul": "Arah Konten: titik awal",
+  "route": "/arah",
+  "menuLengkap": false,
+  "mock": {
+   "influencerAktif": "raka",
+   "kecepatanJob": 0
+  },
+  "callouts": [
+   {
+    "sasaran": {
+     "teks": "Mulai dari 12 pertanyaan",
+     "induk": 1,
+     "dalam": "main"
+    },
+    "teks": "Satu pertanyaan per layar. Tiap pertanyaan boleh dijawab Belum tahu, jadi pemula tanpa pengikut pun bisa."
+   },
+   {
+    "sasaran": {
+     "peran": "button",
+     "nama": "Mulai →"
+    },
+    "teks": "Jawabanmu tersimpan otomatis di perangkat, jadi boleh berhenti dan lanjut. Belum memakai saldo."
+   },
+   {
+    "sasaran": {
+     "teks": "Isi dari dokumen"
+    },
+    "teks": "Punya profil usaha tertulis? Unggah, penulis AI mengisikan jawabannya, kamu tinggal memeriksa. Membaca dokumen memakai saldo."
+   },
+   {
+    "sasaran": {
+     "teks": "Ide konten",
+     "induk": 1,
+     "ke": 0,
+     "dalam": "main"
+    },
+    "teks": "Tempat mencari ide: sepuluh usulan sekali tekan, lengkap dengan pilar dan tujuannya."
+   },
+   {
+    "sasaran": {
+     "teks": "Naskah siap baca",
+     "induk": 1,
+     "dalam": "main"
+    },
+    "teks": "Daftar naskah yang sudah kamu tulis. Masih kosong sampai kamu menulis satu."
+   }
+  ],
+  "narasi": "Arah Konten menjawab satu pertanyaan, konten apa yang sebaiknya kamu buat. Halaman ini nggak membuat video, cuma ide dan naskah. Mulai dari dua belas pertanyaan, sekitar delapan menit. Nggak tahu jawabannya? Pilih Belum tahu. Atau kalau kamu sudah punya profil usaha, unggah saja dokumennya. Di bawah ada tempat ide dan naskah yang nanti terisi."
+ },
+ {
+  "id": "arah-02-pertanyaan",
+  "bagian": "Arah Konten",
+  "judul": "Menjawab 12 pertanyaan",
+  "route": "/arah",
+  "menuLengkap": false,
+  "mock": {
+   "influencerAktif": "raka",
+   "kecepatanJob": 0
+  },
+  "langkah": [
+   {
+    "klik": {
+     "peran": "button",
+     "nama": "Mulai →"
+    }
+   },
+   {
+    "isi": {
+     "placeholder": "Tulis jawabanmu di sini…"
+    },
+    "dengan": "Pelatih kebugaran untuk pekerja kantoran yang jarang punya waktu olahraga."
+   }
+  ],
+  "callouts": [
+   {
+    "sasaran": {
+     "teks": "Pertanyaan 1 dari 12"
+    },
+    "teks": "Penunjuk posisi. Pertanyaan wajib hanya 1, 2, dan 6; sisanya boleh dijawab Belum tahu."
+   },
+   {
+    "sasaran": {
+     "teks": "Siapa kamu & apa yang kamu kerjakan?"
+    },
+    "teks": "Satu pertanyaan per layar, dengan contoh jawaban di bawahnya. Tulis seadanya, pakai bahasa sehari-hari."
+   },
+   {
+    "sasaran": {
+     "teks": "Belum tahu"
+    },
+    "teks": "Belum punya jawaban? Pilih ini. Tanpa pengikut atau belum jualan pun tetap bisa mengisi."
+   },
+   {
+    "sasaran": {
+     "teks": "Simpan & keluar"
+    },
+    "teks": "Boleh berhenti di tengah jalan. Jawabanmu tetap tersimpan di perangkat ini."
+   },
+   {
+    "sasaran": {
+     "teks": "Lanjut →"
+    },
+    "teks": "Ke pertanyaan berikutnya. Di akhir, kamu melihat ringkasan semua jawaban."
+   }
+  ],
+  "narasi": "Tiap layar cuma satu pertanyaan, dengan contoh jawaban di bawahnya. Jawab seadanya saja, seperti ngobrol. Yang wajib cuma tiga, yaitu nomor satu, dua, dan enam. Sisanya, kalau belum tahu, tekan Belum tahu. Tenang, nggak ada jawaban yang salah. Kalau capek, tekan Simpan dan keluar, besok bisa lanjut dari tempat yang sama."
+ },
+ {
+  "id": "arah-03-susun-blueprint",
+  "bagian": "Arah Konten",
+  "judul": "Periksa jawaban, lalu susun blueprint",
+  "route": "/arah",
+  "menuLengkap": false,
+  "mock": {
+   "influencerAktif": "raka",
+   "kecepatanJob": 0
+  },
+  "langkah": [
+   {
+    "klik": {
+     "peran": "button",
+     "nama": "Mulai →"
+    }
+   },
+   {
+    "isi": {
+     "placeholder": "Tulis jawabanmu di sini…"
+    },
+    "dengan": "Pelatih kebugaran untuk pekerja kantoran yang jarang punya waktu olahraga."
+   },
+   {
+    "klik": "Lanjut →"
+   },
+   {
+    "isi": {
+     "placeholder": "Tulis jawabanmu di sini…"
+    },
+    "dengan": "Karyawan kantoran 25–40 tahun yang duduk lebih dari delapan jam sehari."
+   },
+   {
+    "klik": "Lanjut →"
+   },
+   {
+    "isi": {
+     "placeholder": "Tulis jawabanmu di sini…"
+    },
+    "dengan": "Badan pegal, tidak sempat ke gym, dan bingung mulai dari mana."
+   },
+   {
+    "klik": "Lanjut →"
+   },
+   {
+    "isi": {
+     "placeholder": "Tulis jawabanmu di sini…"
+    },
+    "dengan": "Badan terasa ringan dan punya kebiasaan gerak yang bisa dijaga."
+   },
+   {
+    "klik": "Lanjut →"
+   },
+   {
+    "isi": {
+     "placeholder": "Tulis jawabanmu di sini…"
+    },
+    "dengan": "Sepuluh tahun melatih pekerja kantoran di Jakarta."
+   },
+   {
+    "klik": "Lanjut →"
+   },
+   {
+    "isi": {
+     "placeholder": "Tulis jawabanmu di sini…"
+    },
+    "dengan": "Program latihan 14 hari dan panduan gerak di meja kerja."
+   },
+   {
+    "klik": "Lanjut →"
+   },
+   {
+    "klik": {
+     "peran": "button",
+     "nama": "Belum tahu",
+     "persis": true
+    }
+   },
+   {
+    "klik": "Lanjut →"
+   },
+   {
+    "klik": {
+     "peran": "button",
+     "nama": "Hangat dan menenangkan"
+    }
+   },
+   {
+    "klik": "Lanjut →"
+   },
+   {
+    "isi": {
+     "placeholder": "Tulis jawabanmu di sini…"
+    },
+    "dengan": "peregangan, kebiasaan kecil, mitos kebugaran, sarapan cepat"
+   },
+   {
+    "klik": "Lanjut →"
+   },
+   {
+    "isi": {
+     "placeholder": "Tulis jawabanmu di sini…"
+    },
+    "dengan": "Diet ekstrem dan obat pelangsing."
+   },
+   {
+    "klik": "Lanjut →"
+   },
+   {
+    "isi": {
+     "placeholder": "Tulis jawabanmu di sini…"
+    },
+    "dengan": "TikTok, bicara ke kamera"
+   },
+   {
+    "klik": "Lanjut →"
+   },
+   {
+    "isi": {
+     "placeholder": "Tulis jawabanmu di sini…"
+    },
+    "dengan": "Pelatih yang menjelaskan sederhana dan tidak menggurui."
+   },
+   {
+    "klik": "Lanjut →"
+   },
+   {
+    "tunggu": "Siap disusun"
+   },
+   {
+    "gulir": {
+     "peran": "button",
+     "nama": "Susun blueprint"
+    },
+    "posisi": "center"
+   }
+  ],
+  "callouts": [
+   {
+    "sasaran": {
+     "teks": "1. Siapa kamu & apa yang kamu kerjakan?",
+     "induk": 1
+    },
+    "teks": "Ringkasan 12 jawabanmu. Ketuk jawaban mana pun untuk mengubahnya sebelum lanjut."
+   },
+   {
+    "sasaran": {
+     "teks": "Susun blueprint"
+    },
+    "teks": "Penulis AI menyusun blueprint dari jawabanmu. Langkah ini memakai saldo."
+   },
+   {
+    "sasaran": {
+     "teks": "Memakai saldo · kamu meninjau hasilnya dulu"
+    },
+    "teks": "Pengingat tertulis di bawah tombol: hasil bisa kamu periksa dan ubah, tidak langsung dipakai."
+   },
+   {
+    "sasaran": {
+     "teks": "← Kembali"
+    },
+    "teks": "Kembali ke pertanyaan sebelumnya kalau ada yang mau diubah."
+   }
+  ],
+  "narasi": "Sampai di sini semua jawabanmu terkumpul dalam satu daftar. Periksa dulu, dan ketuk jawaban yang mau diubah. Kalau sudah pas, tekan Susun blueprint. Langkah ini memakai saldo, karena penulis AI yang bekerja menyusunnya. Tapi tenang, hasilnya kamu lihat dulu dan bisa kamu ubah sesukamu. Belum ada video atau gambar yang dibuat di sini."
+ },
+ {
+  "id": "arah-04-blueprint-atas",
+  "bagian": "Arah Konten",
+  "judul": "Blueprint: siapa kamu dan untuk siapa",
+  "route": "/arah",
+  "menuLengkap": false,
+  "mock": {
+   "influencerAktif": "nadia",
+   "kecepatanJob": 0
+  },
+  "langkah": [
+   {
+    "klik": {
+     "peran": "button",
+     "nama": "Lihat & ubah →"
+    }
+   },
+   {
+    "tunggu": "Positioning"
+   }
+  ],
+  "callouts": [
+   {
+    "sasaran": {
+     "teks": "Positioning",
+     "induk": 2,
+     "dalam": "main"
+    },
+    "teks": "Satu kalimat: untuk siapa kamu membantu, membantu apa, dan dengan cara apa."
+   },
+   {
+    "sasaran": {
+     "teks": "Keunggulanmu",
+     "induk": 2,
+     "dalam": "main"
+    },
+    "teks": "Tiga alasan orang memilih kamu, bukan orang lain."
+   },
+   {
+    "sasaran": {
+     "teks": "Audiens",
+     "induk": 2,
+     "dalam": "main"
+    },
+    "teks": "Siapa mereka, masalahnya, yang diinginkan, dan kata-kata yang mereka pakai sendiri."
+   },
+   {
+    "sasaran": {
+     "teks": "Ubah",
+     "ke": 0
+    },
+    "teks": "Tiap bagian bisa kamu ubah sendiri, gratis. Hasil editanmu yang dipakai seterusnya."
+   }
+  ],
+  "narasi": "Inilah blueprint kamu, ringkasan arah kontenmu dalam satu halaman. Di atas ada positioning, satu kalimat tentang siapa kamu. Lalu tiga keunggulan, dan gambaran audiensmu, termasuk kata-kata yang mereka pakai sendiri. Kalau ada yang kurang pas, tekan Ubah di bagian itu. Mengubah sendiri gratis, dan editanmulah yang dipakai seterusnya."
+ },
+ {
+  "id": "arah-05-blueprint-bawah",
+  "bagian": "Arah Konten",
+  "judul": "Blueprint: pilar, ritme, dan susun ulang",
+  "route": "/arah",
+  "menuLengkap": false,
+  "mock": {
+   "influencerAktif": "nadia",
+   "kecepatanJob": 0
+  },
+  "langkah": [
+   {
+    "klik": {
+     "peran": "button",
+     "nama": "Lihat & ubah →"
+    }
+   },
+   {
+    "tunggu": "Positioning"
+   },
+   {
+    "gulir": "Pilar konten"
+   }
+  ],
+  "callouts": [
+   {
+    "sasaran": {
+     "teks": "Pilar konten",
+     "induk": 2,
+     "dalam": "main"
+    },
+    "teks": "Tiga sampai lima tema yang terus kamu ulang, masing-masing dengan alasan kenapa audiensmu peduli."
+   },
+   {
+    "sasaran": {
+     "teks": "Ritme Kenalan · Percaya · Beli",
+     "induk": 2,
+     "dalam": "main"
+    },
+    "teks": "Berapa konten per minggu untuk tiap tujuan: mengenalkan, membuat percaya, dan mengajak beli."
+   },
+   {
+    "sasaran": {
+     "teks": "Susun ulang dari jawaban"
+    },
+    "teks": "Menjalankan penulis AI lagi dari jawaban tersimpan. Memakai saldo, dan hasil lama diganti."
+   },
+   {
+    "sasaran": {
+     "teks": "Ulangi 12 pertanyaan"
+    },
+    "teks": "Membuka pertanyaan lagi, terisi jawabanmu. Blueprint lama tidak berubah sampai kamu menyusun lagi."
+   }
+  ],
+  "narasi": "Lebih ke bawah ada pilar konten, tiga sampai lima tema yang akan terus kamu bahas. Lalu ritme per minggu, berapa konten untuk berkenalan, membangun percaya, dan mengajak beli. Mau mengisi ulang? Ada dua pilihan. Susun ulang dari jawaban langsung memakai saldo. Ulangi dua belas pertanyaan hanya membuka pertanyaannya lagi, dan baru memakai saldo saat kamu menyusun blueprint."
+ },
+ {
+  "id": "arah-06-ide",
+  "bagian": "Arah Konten",
+  "judul": "Mencari ide konten",
+  "route": "/arah",
+  "menuLengkap": false,
+  "mock": {
+   "influencerAktif": "nadia",
+   "kecepatanJob": 0
+  },
+  "langkah": [
+   {
+    "klik": {
+     "peran": "button",
+     "nama": "Buka ide →"
+    }
+   },
+   {
+    "klik": {
+     "peran": "button",
+     "nama": "10 ide"
+    }
+   },
+   {
+    "tunggu": "Usulan (10)"
+   }
+  ],
+  "callouts": [
+   {
+    "sasaran": {
+     "teks": "Pilar",
+     "persis": true,
+     "induk": 1,
+     "dalam": "main"
+    },
+    "teks": "Saring ide menurut pilar kontenmu. Pilih Semua kalau mau yang campur."
+   },
+   {
+    "sasaran": {
+     "teks": "Tujuan",
+     "induk": 1,
+     "dalam": "main"
+    },
+    "teks": "Kenalan, Percaya, atau Beli. Tanpa saringan, tujuan dibagi mengikuti ritme di blueprint."
+   },
+   {
+    "sasaran": {
+     "peran": "button",
+     "nama": "10 ide"
+    },
+    "teks": "Meminta sepuluh usulan sekaligus. Langkah ini memakai saldo."
+   },
+   {
+    "sasaran": {
+     "peran": "button",
+     "nama": "Simpan",
+     "persis": true
+    },
+    "teks": "Menyimpan satu usulan sebagai ide. Gratis. Yang tidak cocok dihapus dengan tanda ×."
+   },
+   {
+    "sasaran": {
+     "teks": "Simpan semua"
+    },
+    "teks": "Menyimpan semua usulan yang tersisa sekaligus. Gratis; pilar yang belum ada ikut dibuat."
+   }
+  ],
+  "narasi": "Di sini kamu bisa minta sepuluh ide sekaligus. Mau ide untuk pilar tertentu, atau untuk tujuan tertentu seperti kenalan, percaya, atau beli? Tinggal pilih dulu. Tombol Sepuluh ide memakai saldo. Hasilnya belum tersimpan, jadi kamu pilih dulu. Yang cocok, tekan Simpan, atau Simpan semua kalau semuanya bagus. Menyimpan dan menghapus gratis."
+ },
+ {
+  "id": "arah-07-pembuka",
+  "bagian": "Arah Konten",
+  "judul": "Memilih kalimat pembuka naskah",
+  "route": "/arah",
+  "menuLengkap": false,
+  "mock": {
+   "influencerAktif": "nadia",
+   "kecepatanJob": 0
+  },
+  "langkah": [
+   {
+    "klik": {
+     "peran": "button",
+     "nama": "Buka ide →"
+    }
+   },
+   {
+    "klik": {
+     "peran": "button",
+     "nama": "Tulis naskah →"
+    }
+   },
+   {
+    "klik": {
+     "peran": "button",
+     "nama": "Beri 5 pembuka"
+    }
+   },
+   {
+    "tunggu": {
+     "peran": "radio"
+    }
+   },
+   {
+    "klik": {
+     "peran": "radio",
+     "ke": 1
+    }
+   }
+  ],
+  "callouts": [
+   {
+    "sasaran": {
+     "teks": "1. Pilih pembuka"
+    },
+    "teks": "Pembuka adalah kalimat 1–3 detik pertama yang membuat orang berhenti scroll."
+   },
+   {
+    "sasaran": {
+     "peran": "button",
+     "nama": "5 pembuka lain"
+    },
+    "teks": "Penulis AI menulis lima pembuka dengan gaya berbeda. Memakai saldo."
+   },
+   {
+    "sasaran": {
+     "css": "main input",
+     "ke": 0
+    },
+    "teks": "Pilih salah satu usulan, atau tulis sendiri (gratis). Naskah dilanjutkan persis dari kalimat ini."
+   },
+   {
+    "sasaran": {
+     "teks": "Remix dari video yang kamu suka"
+    },
+    "teks": "Tempel teks atau garis besar video orang lain. Yang dipakai polanya, bukan kalimatnya. Memakai saldo."
+   }
+  ],
+  "narasi": "Naskah dimulai dari pembuka, kalimat pertama yang bikin orang berhenti scroll. Tekan Beri lima pembuka, dan penulis AI menyodorkan lima gaya berbeda, misalnya cerita, pertanyaan, atau angka. Langkah itu memakai saldo. Suka salah satu? Klik. Atau tulis sendiri, itu gratis. Ada juga Remix, kalau kamu mau meniru pola video orang lain, bukan kalimatnya."
+ },
+ {
+  "id": "arah-08-naskah",
+  "bagian": "Arah Konten",
+  "judul": "Menulis naskah yang enak didengar",
+  "route": "/arah",
+  "menuLengkap": false,
+  "mock": {
+   "influencerAktif": "nadia",
+   "kecepatanJob": 0
+  },
+  "langkah": [
+   {
+    "klik": {
+     "peran": "button",
+     "nama": "Buka ide →"
+    }
+   },
+   {
+    "klik": {
+     "peran": "button",
+     "nama": "Tulis naskah →"
+    }
+   },
+   {
+    "klik": {
+     "peran": "button",
+     "nama": "Beri 5 pembuka"
+    }
+   },
+   {
+    "tunggu": {
+     "peran": "radio"
+    }
+   },
+   {
+    "klik": {
+     "peran": "radio",
+     "ke": 1
+    }
+   },
+   {
+    "klik": {
+     "peran": "button",
+     "nama": "15 detik"
+    }
+   },
+   {
+    "klik": {
+     "peran": "button",
+     "nama": "Tulis naskahnya"
+    }
+   },
+   {
+    "tunggu": "Yang dibacakan"
+   },
+   {
+    "gulir": "2. Naskah"
+   }
+  ],
+  "callouts": [
+   {
+    "sasaran": {
+     "peran": "button",
+     "nama": "10 detik",
+     "persis": true,
+     "induk": 1
+    },
+    "teks": "Pilih 10, 15, 20, atau 30 detik. Samakan dengan video yang akan kamu buat."
+   },
+   {
+    "sasaran": {
+     "peran": "button",
+     "nama": "Tulis ulang naskah"
+    },
+    "teks": "Penulis AI melanjutkan pembukamu dengan isi dan ajakan. Memakai saldo, dan menulis ulang mengganti yang lama."
+   },
+   {
+    "sasaran": {
+     "teks": "Yang dibacakan",
+     "induk": 0,
+     "dalam": "main"
+    },
+    "teks": "Bagian yang diucapkan di video, dengan perkiraan lama bicara di kanannya."
+   },
+   {
+    "sasaran": {
+     "css": "main textarea",
+     "ke": 2
+    },
+    "teks": "Ditulis untuk didengar: kalimat pendek dan jeda pakai titik-titik. Boleh kamu ubah, gratis."
+   },
+   {
+    "sasaran": {
+     "css": "main textarea",
+     "ke": 3
+    },
+    "teks": "Kalimat penutup yang menyuruh penonton berbuat sesuatu, disesuaikan dengan tujuan idenya."
+   }
+  ],
+  "narasi": "Pilih berapa lama videonya, lalu tekan Tulis naskahnya. Penulis AI akan melanjutkan dari pembuka yang kamu pilih. Naskahnya ditulis untuk didengar, jadi kalimatnya pendek, seperti orang ngobrol. Itu memakai saldo. Setelah muncul, kamu boleh mengubah pembuka, isi, atau ajakan sesukamu. Mengubah naskah sendiri tidak memakai saldo."
+ },
+ {
+  "id": "arah-09-serah-terima",
+  "bagian": "Arah Konten",
+  "judul": "Caption, simpan, dan lanjut ke video",
+  "route": "/arah",
+  "menuLengkap": false,
+  "mock": {
+   "influencerAktif": "nadia",
+   "kecepatanJob": 0
+  },
+  "langkah": [
+   {
+    "klik": {
+     "peran": "button",
+     "nama": "Buka ide →"
+    }
+   },
+   {
+    "klik": {
+     "peran": "button",
+     "nama": "Tulis naskah →"
+    }
+   },
+   {
+    "klik": {
+     "peran": "button",
+     "nama": "Beri 5 pembuka"
+    }
+   },
+   {
+    "tunggu": {
+     "peran": "radio"
+    }
+   },
+   {
+    "klik": {
+     "peran": "radio",
+     "ke": 1
+    }
+   },
+   {
+    "klik": {
+     "peran": "button",
+     "nama": "15 detik"
+    }
+   },
+   {
+    "klik": {
+     "peran": "button",
+     "nama": "Tulis naskahnya"
+    }
+   },
+   {
+    "tunggu": "Yang dibacakan"
+   },
+   {
+    "gulir": "Caption (dibaca, bukan dibacakan)",
+    "posisi": "center"
+   }
+  ],
+  "callouts": [
+   {
+    "sasaran": {
+     "css": "main textarea",
+     "ke": 4
+    },
+    "teks": "Teks pendek di bawah postingan. Sengaja berbeda dari naskah yang diucapkan."
+   },
+   {
+    "sasaran": {
+     "css": "main input",
+     "ke": -1
+    },
+    "teks": "Pisahkan dengan spasi; tanda # boleh ditulis atau tidak."
+   },
+   {
+    "sasaran": {
+     "peran": "button",
+     "nama": "Simpan",
+     "persis": true
+    },
+    "teks": "Menyimpan pembuka, naskah, caption, dan tagar ke konten ini. Gratis."
+   },
+   {
+    "sasaran": {
+     "teks": "Buat videonya →"
+    },
+    "teks": "Membuka Buat Video dengan naskah ini sudah terisi. Gambar, suara, dan videonya baru dibuat di sana."
+   }
+  ],
+  "narasi": "Di bagian bawah ada caption, yaitu teks yang dibaca di bawah postingan. Caption sengaja dibuat pendek dan berbeda dari naskah. Kalau sudah pas, tekan Simpan. Terakhir, tombol Buat videonya akan membawamu ke Buat Video dengan naskah yang sudah terisi. Menekan tombol itu belum memakai saldo. Arah Konten memang berhenti di naskah."
+ },
+ {
+  "id": "profil-01-wajah",
+  "bagian": "Profil Saya",
+  "judul": "Profil saya: wajahmu",
+  "route": "/profil",
+  "menuLengkap": false,
+  "mock": {
+   "tanpaInfluencer": true
+  },
+  "langkah": [
+   {
+    "isi": {
+     "placeholder": "mis. Bu Rini"
+    },
+    "dengan": "Nadia"
+   },
+   {
+    "unggah": {
+     "css": "input[type=file][accept=\"image/*\"]"
+    },
+    "berkas": "wajah-0.png"
+   }
+  ],
+  "callouts": [
+   {
+    "sasaran": {
+     "teks": "1 · Wajah saya",
+     "induk": 2,
+     "dalam": "main"
+    },
+    "teks": "Foto acuan supaya wajahmu selalu sama di semua video. Dua sampai empat foto jelas, tanpa kacamata hitam."
+   },
+   {
+    "sasaran": {
+     "placeholder": "mis. Bu Rini"
+    },
+    "teks": "Nama yang dipakai penulis naskah saat menyebut dirimu. Bisa diganti kapan saja."
+   },
+   {
+    "sasaran": {
+     "teks": "+ Pilih foto"
+    },
+    "teks": "Pilih sampai empat foto dari galeri sekaligus. Belum terkirim sebelum kamu menekan tombol simpan."
+   },
+   {
+    "sasaran": {
+     "teks": "Simpan wajah saya"
+    },
+    "teks": "Membuat profilmu. Penulis AI membaca ciri wajah dari foto, jadi langkah ini memakai saldo sedikit."
+   }
+  ],
+  "narasi": "Langkah pertama di Profil saya adalah wajahmu. Isi nama panggilan, lalu pilih dua sampai empat foto yang jelas, tanpa kacamata hitam dan tanpa filter. Foto ini membuat wajahmu tetap sama di semua video. Tekan Simpan wajah saya. Langkah ini memakai saldo sedikit, karena penulis AI membaca ciri wajahmu dari foto. Menambah foto berikutnya gratis."
+ },
+ {
+  "id": "profil-02-suara",
+  "bagian": "Profil Saya",
+  "judul": "Profil saya: suaramu",
+  "route": "/profil",
+  "menuLengkap": false,
+  "mock": {
+   "influencerAktif": "nadia",
+   "kecepatanJob": 0
+  },
+  "langkah": [
+   {
+    "gulir": "2 · Suara saya"
+   },
+   {
+    "unggah": {
+     "css": "input[type=file][accept^=\"audio\"]"
+    },
+    "berkas": "contoh-suara-14s.wav"
+   },
+   {
+    "tunggu": {
+     "peran": "button",
+     "nama": "Ganti dengan rekaman ini"
+    }
+   },
+   {
+    "gulir": "2 · Suara saya"
+   }
+  ],
+  "callouts": [
+   {
+    "sasaran": {
+     "teks": "2 · Suara saya",
+     "induk": 2,
+     "dalam": "main"
+    },
+    "teks": "Dari satu rekaman, suaramu ditiru untuk membaca naskah di semua video. Tidak memotong saldo."
+   },
+   {
+    "sasaran": {
+     "teks": "Rekam ulang"
+    },
+    "teks": "Merekam lewat mikrofon, 10–30 detik, di tempat sunyi. Sebelum ada rekaman, tombol ini bertuliskan Rekam sekarang."
+   },
+   {
+    "sasaran": {
+     "teks": "Unggah rekaman"
+    },
+    "teks": "Atau pakai rekaman dari ponsel. Pilihan paling aman kalau rekaman dari browser ditolak."
+   },
+   {
+    "sasaran": {
+     "teks": "dengarkan dulu"
+    },
+    "teks": "Putar rekamanmu dulu. Kalau ada suara latar atau terpotong, rekam ulang sebelum dipakai."
+   },
+   {
+    "sasaran": {
+     "peran": "button",
+     "nama": "Ganti dengan rekaman ini"
+    },
+    "teks": "Mengirim rekaman untuk ditiru, sekitar satu menit. Tidak memotong saldo; suara lama diganti. Kalau belum ada suara, tombolnya bertuliskan Pakai rekaman ini."
+   }
+  ],
+  "narasi": "Sekarang suaramu. Rekam sepuluh sampai tiga puluh detik di tempat sunyi, tanpa musik. Ceritakan saja apa yang kamu jual, seperti ngobrol. Atau unggah rekaman dari ponselmu. Dengarkan dulu hasilnya. Kalau sudah pas, tekan tombol untuk memakai rekaman itu. Sistem butuh sekitar satu menit untuk menirunya. Langkah suara ini tidak memotong saldomu."
+ },
+ {
+  "id": "profil-03-bahasa-siap",
+  "bagian": "Profil Saya",
+  "judul": "Profil saya: bahasa dan siap video",
+  "route": "/profil",
+  "menuLengkap": false,
+  "mock": {
+   "influencerAktif": "nadia",
+   "kecepatanJob": 0
+  },
+  "langkah": [
+   {
+    "klik": {
+     "peran": "button",
+     "nama": "Campuran",
+     "persis": true
+    }
+   },
+   {
+    "gulir": "3 · Bahasa video"
+   }
+  ],
+  "callouts": [
+   {
+    "sasaran": {
+     "teks": "3 · Bahasa video",
+     "induk": 1,
+     "dalam": "main"
+    },
+    "teks": "Bahasa naskah dan suara. Indonesia, English, atau campuran; Mandarin menyusul."
+   },
+   {
+    "sasaran": {
+     "peran": "button",
+     "nama": "Campuran",
+     "persis": true
+    },
+    "teks": "Indonesia dengan sisipan istilah Inggris, seperti gaya bicara sehari-hari. Langsung tersimpan saat ditekan."
+   },
+   {
+    "sasaran": {
+     "teks": "Sudah siap?",
+     "induk": 1,
+     "dalam": "main"
+    },
+    "teks": "Tiga tanda terisi otomatis: wajah, suara, bahasa. Video bicara ke kamera masih butuh satu produk di Product Kit."
+   },
+   {
+    "sasaran": {
+     "teks": "Buat video pertama",
+     "dalam": "main"
+    },
+    "teks": "Membuka wizard Buat Video. Baru aktif kalau wajah dan suara sudah ada."
+   },
+   {
+    "sasaran": {
+     "teks": "Pengaturan lengkap",
+     "dalam": "main"
+    },
+    "teks": "Membuka halaman detail karakter ini untuk mengatur lebih rinci."
+   }
+  ],
+  "narasi": "Terakhir, pilih bahasa videomu, Indonesia, English, atau campuran. Pilihannya langsung tersimpan. Di bawahnya ada kartu Sudah siap, yang tandanya terisi sendiri saat wajah dan suara sudah ada. Kalau sudah hijau, tekan Buat video pertama. Ingat, video bicara ke kamera masih butuh satu produk di Product Kit. Mau mengatur lebih rinci? Ada Pengaturan lengkap."
+ },
+ {
+  "id": "buat-video-01-apa-bicara",
+  "bagian": "Buat Video",
+  "judul": "Buat Video: pilih jenis video",
+  "route": "/buat-video",
+  "login": true,
+  "menuLengkap": true,
+  "mock": {
+   "influencerAktif": "nadia",
+   "kecepatanJob": 0
+  },
+  "langkah": [
+   {
+    "isi": {
+     "placeholder": "keripik singkong"
+    },
+    "dengan": "Kopi Susu Aren Senja untuk teman lembur"
+   }
+  ],
+  "callouts": [
+   {
+    "sasaran": {
+     "teks": "1. Apa"
+    },
+    "teks": "Empat langkah: Apa, Siapa, Berapa lama, Tinjau & harga. Di langkah pertama belum ada yang dibayar."
+   },
+   {
+    "sasaran": {
+     "teks": "Saya bicara ke kamera",
+     "induk": 1
+    },
+    "teks": "Kamu bicara ke kamera membicarakan satu produk. Cocok untuk jualan dan endorse."
+   },
+   {
+    "sasaran": {
+     "teks": "Cerita beberapa adegan",
+     "induk": 1
+    },
+    "teks": "Satu ide jadi beberapa adegan dengan narasi, tanpa bicara ke kamera."
+   },
+   {
+    "sasaran": {
+     "css": "label:has-text(\"Ceritakan videonya\") + *",
+     "ke": 0
+    },
+    "teks": "Satu atau dua kalimat cukup. Penulis AI menyusun naskah lengkapnya nanti."
+   },
+   {
+    "sasaran": {
+     "teks": "Perkiraan harga"
+    },
+    "teks": "Perkiraan harga untuk beberapa pilihan durasi sudah tertulis, dalam rupiah, sebelum kamu lanjut."
+   }
+  ],
+  "narasi": "Buat Video itu seperti wawancara singkat, cuma empat pertanyaan. Pertama, kamu mau video seperti apa? Bicara ke kamera, cocok untuk jualan dan endorse. Atau cerita beberapa adegan. Lalu ceritakan videonya dalam satu dua kalimat saja. Harga perkiraannya sudah tertulis di sini, dalam rupiah, jadi kamu tahu dari awal. Di langkah ini belum ada yang dibayar."
+ },
+ {
+  "id": "buat-video-02-apa-cerita",
+  "bagian": "Buat Video",
+  "judul": "Jalur cerita: bentuk dan gaya gambar",
+  "route": "/buat-video",
+  "login": true,
+  "menuLengkap": true,
+  "mock": {
+   "influencerAktif": "nadia",
+   "kecepatanJob": 0
+  },
+  "langkah": [
+   {
+    "klik": {
+     "teks": "Cerita beberapa adegan"
+    }
+   },
+   {
+    "klik": {
+     "teks": "Masalah → Produk → Hasil"
+    }
+   },
+   {
+    "isi": {
+     "placeholder": "pagi di dapur"
+    },
+    "dengan": "Pagi di dapur kecilku: menyeduh kopi susu aren dari tuangan pertama sampai tegukan pertama"
+   }
+  ],
+  "callouts": [
+   {
+    "sasaran": {
+     "css": "label:has-text(\"Bentuk ceritanya\") + *",
+     "ke": 0
+    },
+    "teks": "Pilih pola: Masalah → Produk → Hasil, Proses, Sebelum/Sesudah, 3 Tips, atau Bebas. Penulis AI membagi adegan dan detiknya."
+   },
+   {
+    "sasaran": {
+     "css": "label:has-text(\"Gaya gambarnya\") + *",
+     "ke": 0
+    },
+    "teks": "Foto nyata, atau Kolase kertas (gaya Vox) untuk video penjelasan. Harganya sama."
+   },
+   {
+    "sasaran": {
+     "css": "label:has-text(\"Foto dari HP-mu\") + *",
+     "ke": 0
+    },
+    "teks": "Foto dapur, kemasan, atau pembeli jadi bahan adegan. Belum terkirim sebelum naskah ditulis."
+   },
+   {
+    "sasaran": {
+     "css": "label:has-text(\"Ceritakan videonya\") + *",
+     "ke": 0
+    },
+    "teks": "Satu atau dua kalimat cukup, mis. pagi di dapur, menggoreng keripik, sampai ke tangan pembeli."
+   }
+  ],
+  "narasi": "Kalau kamu pilih cerita beberapa adegan, ada tiga pilihan tambahan. Bentuk ceritanya, misalnya masalah, produk, lalu hasil. Kamu nggak perlu menghitung adegan, penulis AI yang membagi. Lalu gaya gambar, foto nyata atau kolase kertas. Harganya sama saja. Terakhir, foto dari HP kamu, kalau ada, untuk bahan adegan. Semua ini opsional."
+ },
+ {
+  "id": "buat-video-03-siapa",
+  "bagian": "Buat Video",
+  "judul": "Siapa yang tampil dan produk apa",
+  "route": "/buat-video",
+  "login": true,
+  "menuLengkap": true,
+  "mock": {
+   "influencerAktif": "nadia",
+   "kecepatanJob": 0
+  },
+  "langkah": [
+   {
+    "isi": {
+     "placeholder": "keripik singkong"
+    },
+    "dengan": "Kopi Susu Aren Senja untuk teman lembur: manis pas, tidak kemanisan"
+   },
+   {
+    "klik": {
+     "peran": "button",
+     "nama": "Lanjut →",
+     "persis": true
+    }
+   },
+   {
+    "tunggu": "Yang tampil di video"
+   },
+   {
+    "pilih": {
+     "css": "select:has(option:has-text(\"pilih produk\"))"
+    },
+    "dengan": {
+     "label": "Kopi Susu Aren Senja (2 foto)"
+    }
+   }
+  ],
+  "callouts": [
+   {
+    "sasaran": {
+     "css": "select",
+     "ke": 0
+    },
+    "teks": "Wajah dan suara dari Profil saya. Kalau ada beberapa karakter, pilih di sini."
+   },
+   {
+    "sasaran": {
+     "teks": "✓ wajah"
+    },
+    "teks": "Lencana hijau berarti foto wajahmu cukup. Kalau kuning, tambah foto di Profil saya."
+   },
+   {
+    "sasaran": {
+     "css": "select",
+     "ke": 1
+    },
+    "teks": "Pilih produk dari Product Kit. Foto kemasan aslinya jadi acuan supaya kemasan tidak dikarang."
+   },
+   {
+    "sasaran": {
+     "teks": "+ Produk baru"
+    },
+    "teks": "Simpan produk baru di sini tanpa pindah halaman: nama, keunggulan, dan foto kemasan asli."
+   },
+   {
+    "sasaran": {
+     "peran": "button",
+     "nama": "Lanjut →",
+     "persis": true
+    },
+    "teks": "Kalau belum bisa ditekan, alasannya tertulis di bawah tombol, lengkap dengan tautan memperbaikinya."
+   }
+  ],
+  "narasi": "Langkah dua, siapa yang tampil. Wajah dan suaranya diambil dari Profil saya. Kalau ada yang belum siap, misalnya foto wajah, suara, atau produk, layar bilang sekarang juga, lengkap dengan tautan untuk memperbaikinya, jadi kamu nggak kecele setelah naskah dibayar. Untuk video bicara, pilih produknya. Belum ada? Tekan Produk baru."
+ },
+ {
+  "id": "buat-video-04-berapa-lama",
+  "bagian": "Buat Video",
+  "judul": "Berapa lama videonya",
+  "route": "/buat-video",
+  "login": true,
+  "menuLengkap": true,
+  "mock": {
+   "influencerAktif": "nadia",
+   "kecepatanJob": 0
+  },
+  "langkah": [
+   {
+    "isi": {
+     "placeholder": "keripik singkong"
+    },
+    "dengan": "Kopi Susu Aren Senja untuk teman lembur: manis pas, tidak kemanisan"
+   },
+   {
+    "klik": {
+     "peran": "button",
+     "nama": "Lanjut →",
+     "persis": true
+    }
+   },
+   {
+    "tunggu": "Yang tampil di video"
+   },
+   {
+    "pilih": {
+     "css": "select:has(option:has-text(\"pilih produk\"))"
+    },
+    "dengan": {
+     "label": "Kopi Susu Aren Senja (2 foto)"
+    }
+   },
+   {
+    "klik": {
+     "peran": "button",
+     "nama": "Lanjut →",
+     "persis": true
+    }
+   },
+   {
+    "tunggu": "Berapa lama videonya?"
+   },
+   {
+    "klik": {
+     "peran": "button",
+     "nama": "15 detik"
+    }
+   }
+  ],
+  "callouts": [
+   {
+    "sasaran": {
+     "teks": "Berapa lama videonya?"
+    },
+    "teks": "Pilih target durasi. Maksimal 30 detik per video; video bicara mengikuti panjang naskah yang dibacakan."
+   },
+   {
+    "sasaran": {
+     "peran": "button",
+     "nama": "15 detik"
+    },
+    "teks": "Tiap tombol menulis durasi dan perkiraan harganya dalam rupiah. Pilih yang sesuai isi kantongmu."
+   },
+   {
+    "sasaran": {
+     "teks": "Video lebih dari 30 detik menyusul"
+    },
+    "teks": "Video lebih panjang belum bisa. Untuk sekarang, bagi jadi beberapa video pendek."
+   },
+   {
+    "sasaran": {
+     "peran": "button",
+     "nama": "Tulis naskahnya"
+    },
+    "teks": "Penulis AI menyusun naskah. Langkah ini memakai saldo. Gambar, suara, dan video belum dibuat."
+   }
+  ],
+  "narasi": "Sekarang pilih berapa lama videonya. Setiap tombol menuliskan perkiraan harganya langsung, jadi nggak ada kejutan. Maksimal tiga puluh detik per video. Kalau butuh lebih panjang, bagi jadi beberapa video pendek. Lalu tekan Tulis naskahnya. Langkah ini memakai saldo, karena penulis AI yang menulis. Gambar, suara, dan video belum dibuat sama sekali."
+ },
+ {
+  "id": "buat-video-05-tinjau-bicara",
+  "bagian": "Buat Video",
+  "judul": "Tinjau naskah dan harga: bicara ke kamera",
+  "route": "/buat-video",
+  "login": true,
+  "menuLengkap": true,
+  "mock": {
+   "influencerAktif": "nadia",
+   "kecepatanJob": 0
+  },
+  "langkah": [
+   {
+    "isi": {
+     "placeholder": "keripik singkong"
+    },
+    "dengan": "Kopi Susu Aren Senja untuk teman lembur: manis pas, tidak kemanisan"
+   },
+   {
+    "klik": {
+     "peran": "button",
+     "nama": "Lanjut →",
+     "persis": true
+    }
+   },
+   {
+    "tunggu": "Yang tampil di video"
+   },
+   {
+    "pilih": {
+     "css": "select:has(option:has-text(\"pilih produk\"))"
+    },
+    "dengan": {
+     "label": "Kopi Susu Aren Senja (2 foto)"
+    }
+   },
+   {
+    "klik": {
+     "peran": "button",
+     "nama": "Lanjut →",
+     "persis": true
+    }
+   },
+   {
+    "tunggu": "Berapa lama videonya?"
+   },
+   {
+    "klik": {
+     "peran": "button",
+     "nama": "15 detik"
+    }
+   },
+   {
+    "klik": {
+     "peran": "button",
+     "nama": "Tulis naskahnya"
+    }
+   },
+   {
+    "tunggu": "Yang akan kamu ucapkan"
+   }
+  ],
+  "callouts": [
+   {
+    "sasaran": {
+     "css": "textarea",
+     "ke": 0
+    },
+    "teks": "Naskah yang dibacakan suara tiruanmu. Boleh diubah langsung di sini; mengubah gratis."
+   },
+   {
+    "sasaran": {
+     "css": "textarea",
+     "ke": 1
+    },
+    "teks": "Teks di bawah postingan, bukan yang diucapkan. Sengaja pendek dan berbeda dari naskah."
+   },
+   {
+    "sasaran": {
+     "css": "table"
+    },
+    "teks": "Rincian biaya tiap bagian dan totalnya, dalam rupiah. Angkanya ikut menyesuaikan panjang naskah."
+   },
+   {
+    "sasaran": {
+     "peran": "button",
+     "nama": "Ya, buat pratinjau"
+    },
+    "teks": "Ini yang memakai saldo: gambar pertama dan suaramu dibuat bersamaan. Videonya baru dibayar sesudah kamu setuju."
+   },
+   {
+    "sasaran": {
+     "peran": "button",
+     "nama": "Tulis ulang"
+    },
+    "teks": "Minta naskah versi lain. Memakai saldo, dan perubahanmu di kolom naskah ikut terganti."
+   }
+  ],
+  "narasi": "Inilah naskah yang akan kamu ucapkan. Baca pelan-pelan, dan ubah kalau ada kata yang kurang pas. Mengubah naskah gratis, dan harga di bawahnya ikut menyesuaikan. Kalau sudah cocok, tekan Ya, buat pratinjau. Langkah ini memakai saldo. Yang dibuat dulu cuma gambar pertama dan suaramu, bagian yang murah. Videonya baru dibayar setelah kamu menyetujui keduanya."
+ },
+ {
+  "id": "buat-video-06-tinjau-cerita",
+  "bagian": "Buat Video",
+  "judul": "Tinjau naskah dan harga: jalur cerita",
+  "route": "/buat-video",
+  "login": true,
+  "menuLengkap": true,
+  "mock": {
+   "influencerAktif": "nadia",
+   "kecepatanJob": 0
+  },
+  "langkah": [
+   {
+    "klik": {
+     "teks": "Cerita beberapa adegan"
+    }
+   },
+   {
+    "isi": {
+     "placeholder": "pagi di dapur"
+    },
+    "dengan": "Pagi di dapur kecilku: menyeduh kopi susu aren dari tuangan pertama sampai tegukan pertama"
+   },
+   {
+    "klik": {
+     "peran": "button",
+     "nama": "Lanjut →",
+     "persis": true
+    }
+   },
+   {
+    "klik": {
+     "peran": "button",
+     "nama": "Lanjut →",
+     "persis": true
+    }
+   },
+   {
+    "klik": {
+     "peran": "button",
+     "nama": "15 detik"
+    }
+   },
+   {
+    "klik": {
+     "peran": "button",
+     "nama": "Tulis naskahnya"
+    }
+   },
+   {
+    "tunggu": "Ya, buat video ini"
+   },
+   {
+    "js": "(()=>{const rs=[...document.querySelectorAll('div.row.mb1')].filter(r=>/^\\d · \\d+ dtk/.test(r.innerText.trim()));const w=document.createElement('div');w.id='daftar-adegan';w.style.paddingBottom='4px';const h=[...document.querySelectorAll('div')].find(d=>/^\\d+ adegan ·/.test(d.innerText.trim())&&d.children.length==0);rs[0].before(w);if(h)w.appendChild(h);rs.forEach(r=>w.appendChild(r));})()"
+   }
+  ],
+  "callouts": [
+   {
+    "sasaran": {
+     "css": "#daftar-adegan"
+    },
+    "teks": "Jumlah adegan dan detik tiap adegan ditentukan penulis AI mengikuti bentuk ceritamu. Daftar di bawahnya tiap baris satu adegan."
+   },
+   {
+    "sasaran": {
+     "css": "table"
+    },
+    "teks": "Rincian biaya gambar pembuka dan video, serta totalnya, dalam rupiah."
+   },
+   {
+    "sasaran": {
+     "peran": "button",
+     "nama": "Ya, buat video ini"
+    },
+    "teks": "Menyimpan storyboard dan membuka layar produksinya. Di sana gambar pembuka dibuat dulu dan kamu lihat sebelum video dibayar."
+   },
+   {
+    "sasaran": {
+     "peran": "button",
+     "nama": "Tulis ulang"
+    },
+    "teks": "Minta naskah versi lain dari cerita yang sama. Memakai saldo."
+   },
+   {
+    "sasaran": {
+     "peran": "button",
+     "nama": "← Kembali"
+    },
+    "teks": "Mengubah durasi. Naskah yang sudah ditulis dibuang."
+   }
+  ],
+  "narasi": "Untuk jalur cerita, kamu melihat daftar adegan beserta narasi dan lamanya. Penulis AI yang membaginya, jadi nggak perlu menghitung sendiri. Di bawahnya ada rincian harga. Tekan Ya, buat video ini, dan kamu dibawa ke layar produksi. Di sana gambar pembuka dibuat dulu supaya kamu bisa lihat wajah dan latarnya sebelum videonya dibayar. Daftar adegan bisa diubah di sana."
+ },
+ {
+  "id": "influencers-01-daftar",
+  "bagian": "Influencers",
+  "judul": "Daftar karakter AI-mu",
+  "route": "/influencers",
+  "login": true,
+  "menuLengkap": true,
+  "mock": {
+   "influencerAktif": "nadia",
+   "kecepatanJob": 0
+  },
+  "langkah": [],
+  "callouts": [
+   {
+    "sasaran": {
+     "peran": "button",
+     "nama": "+ Buat Influencer Baru",
+     "persis": true
+    },
+    "teks": "Membuka formulir pembuatan karakter di bawah daftar."
+   },
+   {
+    "sasaran": {
+     "teks": "slot terpakai"
+    },
+    "teks": "Satu ruang kerja punya batas jumlah karakter. Hitungan terpakai ditulis di bawah judul."
+   },
+   {
+    "sasaran": {
+     "teks": "Nadia Larasati",
+     "induk": 3
+    },
+    "teks": "Foto, nama, handle, niche, dan status. Klik kartunya untuk membuka halaman detail karakter itu."
+   },
+   {
+    "sasaran": {
+     "teks": "Character sheet belum dibuat"
+    },
+    "teks": "Penanda: karakter ini belum punya lembar foto acuan dari berbagai sudut. Bisa dibuat kapan saja."
+   }
+  ],
+  "narasi": "Influencers adalah daftar karakter AI milikmu. Satu karakter menyimpan wajah, suara, dan kepribadiannya, supaya tetap sama di semua video. Tiap kartu menunjukkan nama dan niche. Klik untuk membuka detailnya. Kalau ada tanda peringatan Character sheet belum dibuat, artinya karakter itu belum punya lembar foto acuan. Mau menambah karakter? Tekan Buat Influencer Baru."
+ },
+ {
+  "id": "influencers-02-formulir",
+  "bagian": "Influencers",
+  "judul": "Formulir membuat karakter baru",
+  "route": "/influencers",
+  "login": true,
+  "menuLengkap": true,
+  "mock": {
+   "influencerAktif": "nadia",
+   "kecepatanJob": 0
+  },
+  "langkah": [
+   {
+    "klik": {
+     "peran": "button",
+     "nama": "+ Buat Influencer Baru",
+     "persis": true
+    }
+   },
+   {
+    "tunggu": {
+     "placeholder": "mis. Kirana"
+    }
+   },
+   {
+    "gulir": {
+     "teks": "Buat influencer baru"
+    }
+   }
+  ],
+  "callouts": [
+   {
+    "sasaran": {
+     "peran": "button",
+     "nama": "Bantu buat dengan AI"
+    },
+    "teks": "Jawab beberapa pertanyaan atau unggah foto, penulis AI menyusun niche, bio, dan deskripsi fisik. Memakai saldo."
+   },
+   {
+    "sasaran": {
+     "css": "label:has-text(\"Ide niche\") + *",
+     "ke": 0
+    },
+    "teks": "Pilih satu niche umum untuk mengisi niche dan bio awal. Tanda ⚠️ berarti ada hal yang perlu dicek dulu."
+   },
+   {
+    "sasaran": {
+     "placeholder": "mis. Kirana"
+    },
+    "teks": "Satu-satunya isian wajib."
+   },
+   {
+    "sasaran": {
+     "placeholder": "skincare"
+    },
+    "teks": "Topik kontenmu. Teks bebas, jadi daftar ide di atasnya hanya titik mulai."
+   },
+   {
+    "sasaran": {
+     "css": "select",
+     "ke": 0
+    },
+    "teks": "Indonesia, English, atau Campuran. Menentukan bahasa naskah dan suara karakter ini."
+   }
+  ],
+  "narasi": "Ada dua cara mengisi formulir ini. Pertama, manual, mulai dari ide niche yang sudah disediakan sebagai pancingan. Kedua, dibantu AI, tinggal jawab beberapa pertanyaan atau unggah foto. Bantuan AI memakai saldo. Satu-satunya kolom yang wajib adalah nama. Sisanya bisa diisi sambil jalan, dan bisa diubah kapan saja di halaman detail."
+ },
+ {
+  "id": "influencers-03-bantuan-ai",
+  "bagian": "Influencers",
+  "judul": "Dibantu AI membuat karakter",
+  "route": "/influencers",
+  "login": true,
+  "menuLengkap": true,
+  "mock": {
+   "influencerAktif": "nadia",
+   "kecepatanJob": 0
+  },
+  "langkah": [
+   {
+    "klik": {
+     "peran": "button",
+     "nama": "+ Buat Influencer Baru",
+     "persis": true
+    }
+   },
+   {
+    "tunggu": {
+     "placeholder": "mis. Kirana"
+    }
+   },
+   {
+    "klik": {
+     "peran": "button",
+     "nama": "Bantu buat dengan AI"
+    }
+   },
+   {
+    "tunggu": {
+     "teks": "Bantu buat influencer dengan AI"
+    }
+   },
+   {
+    "isi": {
+     "placeholder": "mis. perempuan, awal 20-an"
+    },
+    "dengan": "perempuan, awal 30-an"
+   },
+   {
+    "isi": {
+     "placeholder": "mis. skincare & beauty"
+    },
+    "dengan": "kuliner rumahan"
+   },
+   {
+    "js": "document.activeElement&&document.activeElement.blur()"
+   }
+  ],
+  "callouts": [
+   {
+    "sasaran": {
+     "teks": "Bantu buat influencer dengan AI",
+     "induk": 0
+    },
+    "teks": "Jendela bantuan. Jawab seadanya, yang kosong diisi AI, dan hasilnya bisa kamu edit sebelum dipakai."
+   },
+   {
+    "sasaran": {
+     "teks": "Foto referensi",
+     "induk": 2
+    },
+    "teks": "Unggah foto supaya AI membaca ciri wajah dari foto itu. Jauh lebih akurat daripada menebak dari teks."
+   },
+   {
+    "sasaran": {
+     "css": "label:has-text(\"Basis karakter\") + *",
+     "ke": 0
+    },
+    "teks": "Fleksibel, Fiktif sepenuhnya, atau Ikuti deskripsi saya."
+   },
+   {
+    "sasaran": {
+     "peran": "button",
+     "nama": "Buatkan deskripsi"
+    },
+    "teks": "Menjalankan penulis AI. Memakai saldo. Hasilnya kamu tinjau dulu sebelum dipakai di formulir."
+   }
+  ],
+  "narasi": "Di jendela ini kamu cukup menjawab seadanya. Yang kosong akan diisi AI. Kalau punya foto, unggah saja, sampai empat. AI akan membaca ciri wajah dari foto itu, jauh lebih tepat daripada hanya menebak dari kata-kata. Pilih basis karakter, lalu tekan Buatkan deskripsi. Itu memakai saldo. Hasilnya muncul dulu, bisa kamu edit, baru kamu pakai."
+ },
+ {
+  "id": "influencers-04-identity",
+  "bagian": "Influencers",
+  "judul": "Deskripsi fisik dan simpan karakter",
+  "route": "/influencers",
+  "login": true,
+  "menuLengkap": true,
+  "mock": {
+   "influencerAktif": "nadia",
+   "kecepatanJob": 0
+  },
+  "langkah": [
+   {
+    "klik": {
+     "peran": "button",
+     "nama": "+ Buat Influencer Baru",
+     "persis": true
+    }
+   },
+   {
+    "tunggu": {
+     "placeholder": "mis. Kirana"
+    }
+   },
+   {
+    "isi": {
+     "placeholder": "mis. Kirana"
+    },
+    "dengan": "Maya Kusuma"
+   },
+   {
+    "isi": {
+     "placeholder": "@kirana.id"
+    },
+    "dengan": "@maya.cermat"
+   },
+   {
+    "isi": {
+     "placeholder": "skincare / kuliner"
+    },
+    "dengan": "kuliner rumahan"
+   },
+   {
+    "isi": {
+     "css": "textarea",
+     "ke": 1
+    },
+    "dengan": "Indonesian woman in her early 30s, shoulder-length black hair, warm brown eyes, light tan skin, friendly oval face"
+   },
+   {
+    "gulir": {
+     "peran": "button",
+     "nama": "Buat Influencer",
+     "persis": true
+    },
+    "posisi": "end"
+   },
+   {
+    "js": "document.activeElement&&document.activeElement.blur()"
+   }
+  ],
+  "callouts": [
+   {
+    "sasaran": {
+     "css": "label:has-text(\"Identity prompt\") + *",
+     "ke": 0
+    },
+    "teks": "Ciri fisik tetap, ditulis Inggris. Latar, pose, dan baju ditulis di prompt tiap gambar, bukan di sini."
+   },
+   {
+    "sasaran": {
+     "css": "label:has-text(\"Catatan gaya visual\") + *",
+     "ke": 0
+    },
+    "teks": "Suasana yang kamu suka. Tidak otomatis dipakai; jadi pilihan saat membuat gambar."
+   },
+   {
+    "sasaran": {
+     "teks": "Look-alike photo",
+     "induk": 1
+    },
+    "teks": "Unggah satu foto acuan, lalu pilih yang ditiru: karakter wajahnya atau suasananya."
+   },
+   {
+    "sasaran": {
+     "peran": "button",
+     "nama": "Buat Influencer",
+     "persis": true
+    },
+    "teks": "Menyimpan karakter. Langkah character sheet langsung ditawarkan sesudahnya."
+   }
+  ],
+  "narasi": "Bagian terpenting adalah identity prompt, deskripsi fisik karakter dalam bahasa Inggris. Isinya cuma ciri tetap, seperti wajah dan rambut. Jangan masukkan latar atau baju, karena nanti ikut muncul di semua gambar. Ada juga foto look-alike kalau kamu punya contoh. Kalau sudah, tekan Buat Influencer. Setelah itu kamu ditawari langkah berikutnya, character sheet."
+ },
+ {
+  "id": "influencers-05-character-sheet",
+  "bagian": "Influencers",
+  "judul": "Langkah 2: character sheet",
+  "route": "/influencers",
+  "login": true,
+  "menuLengkap": true,
+  "mock": {
+   "influencerAktif": "nadia",
+   "kecepatanJob": 0
+  },
+  "langkah": [
+   {
+    "klik": {
+     "peran": "button",
+     "nama": "+ Buat Influencer Baru",
+     "persis": true
+    }
+   },
+   {
+    "tunggu": {
+     "placeholder": "mis. Kirana"
+    }
+   },
+   {
+    "klik": {
+     "peran": "button",
+     "nama": "Bantu buat dengan AI"
+    }
+   },
+   {
+    "tunggu": {
+     "teks": "Bantu buat influencer dengan AI"
+    }
+   },
+   {
+    "unggah": {
+     "css": "input[type=file]",
+     "dalam": "div.card.p6:has-text('Bantu buat influencer dengan AI')"
+    },
+    "berkas": "wajah-0.png"
+   },
+   {
+    "isi": {
+     "placeholder": "mis. perempuan, awal 20-an"
+    },
+    "dengan": "perempuan, awal 30-an"
+   },
+   {
+    "isi": {
+     "placeholder": "mis. skincare & beauty"
+    },
+    "dengan": "kuliner rumahan"
+   },
+   {
+    "klik": {
+     "peran": "button",
+     "nama": "Buat dari 1 foto"
+    }
+   },
+   {
+    "tunggu": {
+     "peran": "button",
+     "nama": "Pakai di formulir"
+    }
+   },
+   {
+    "klik": {
+     "peran": "button",
+     "nama": "Pakai di formulir"
+    }
+   },
+   {
+    "isi": {
+     "placeholder": "mis. Kirana"
+    },
+    "dengan": "Maya Kusuma"
+   },
+   {
+    "isi": {
+     "placeholder": "@kirana.id"
+    },
+    "dengan": "@maya.cermat"
+   },
+   {
+    "klik": {
+     "peran": "button",
+     "nama": "Buat Influencer",
+     "persis": true
+    }
+   },
+   {
+    "tunggu": {
+     "teks": "Langkah 2 — character sheet untuk Maya Kusuma"
+    }
+   },
+   {
+    "jeda": 600
+   },
+   {
+    "gulir": {
+     "teks": "Langkah 2 — character sheet untuk Maya Kusuma"
+    },
+    "posisi": "start"
+   },
+   {
+    "js": "window.scrollBy(0,-24)"
+   }
+  ],
+  "callouts": [
+   {
+    "sasaran": {
+     "teks": "Langkah 2 — character sheet untuk Maya Kusuma"
+    },
+    "teks": "Setelah karakter tersimpan, kamu ditawari membuat lembar foto acuan dari berbagai sudut."
+   },
+   {
+    "sasaran": {
+     "peran": "button",
+     "nama": "Lewati dulu"
+    },
+    "teks": "Boleh dilewati. Karakter diberi tanda di daftar dan sheet-nya bisa dibuat kapan saja."
+   },
+   {
+    "sasaran": {
+     "css": "label:has-text(\"Shot yang dibuat\") + *",
+     "ke": 0
+    },
+    "teks": "Centang sudut dan ekspresi yang diinginkan: depan, serong, profil, senyum, setengah badan, seluruh badan."
+   },
+   {
+    "sasaran": {
+     "css": "label:has-text(\"Latar & pencahayaan\") + *",
+     "ke": 0
+    },
+    "teks": "Studio abu netral disarankan, supaya latar tidak ikut terkunci ke karakter."
+   },
+   {
+    "sasaran": {
+     "peran": "button",
+     "nama": "Buat character sheet"
+    },
+    "teks": "Satu gambar per sudut yang dicentang. Semuanya memakai saldo; perkiraan total tertulis di sampingnya."
+   }
+  ],
+  "narasi": "Begitu karakter tersimpan, kamu ditawari character sheet, beberapa foto wajah dari sudut dan ekspresi berbeda. Foto-foto ini jadi patokan di semua produksi berikutnya, supaya wajahnya nggak bergeser. Centang sudut yang kamu mau, pilih latar netral, lalu tekan Buat character sheet. Tiap gambar memakai saldo. Belum siap? Lewati dulu, bisa dibuat kapan saja."
+ },
+ {
+  "id": "influencers-06-detail",
+  "bagian": "Influencers",
+  "judul": "Halaman detail karakter",
+  "route": "/influencers/cccccccc-cccc-4ccc-8ccc-cccccccc0001",
+  "login": true,
+  "menuLengkap": true,
+  "mock": {
+   "influencerAktif": "nadia",
+   "kecepatanJob": 0
+  },
+  "langkah": [],
+  "callouts": [
+   {
+    "sasaran": {
+     "css": "form.card"
+    },
+    "teks": "Ubah nama, handle, niche, status, bahasa, dan bio. Tekan Simpan supaya perubahannya tersimpan."
+   },
+   {
+    "sasaran": {
+     "peran": "button",
+     "nama": "Perbaiki dengan AI"
+    },
+    "teks": "Merapikan deskripsi yang sudah ada, bukan menggantinya. Memakai saldo."
+   },
+   {
+    "sasaran": {
+     "teks": "Terkunci"
+    },
+    "teks": "Mengunci identity prompt supaya tidak ikut tertimpa hasil AI atau berubah tanpa sengaja."
+   },
+   {
+    "sasaran": {
+     "teks": "Identity Kit",
+     "induk": 1
+    },
+    "teks": "Foto acuan wajah dari berbagai sudut. Foto inilah yang dikirim saat membuat gambar agar wajah konsisten."
+   },
+   {
+    "sasaran": {
+     "peran": "button",
+     "nama": "Simpan",
+     "persis": true
+    },
+    "teks": "Menyimpan perubahan formulir kiri. Bio dan identity prompt baru permanen setelah ini ditekan."
+   }
+  ],
+  "narasi": "Ini halaman detail satu karakter. Di kiri, kartu Character Sheet berisi nama, niche, bahasa, bio, dan identity prompt. Gembok kecil mengunci identity prompt, supaya nggak berubah tanpa sengaja. Di kanan ada Identity Kit, foto acuan wajahnya. Foto inilah yang membuat wajah tetap sama di semua gambar. Setelah mengubah sesuatu, ingat tekan Simpan."
+ },
+ {
+  "id": "influencers-07-suara",
+  "bagian": "Influencers",
+  "judul": "Suara karakter di halaman detail",
+  "route": "/influencers/cccccccc-cccc-4ccc-8ccc-cccccccc0002",
+  "login": true,
+  "menuLengkap": true,
+  "mock": {
+   "influencerAktif": "nadia",
+   "kecepatanJob": 0
+  },
+  "langkah": [
+   {
+    "gulir": {
+     "teks": "Tanpa ini semua influencer",
+     "induk": 1
+    },
+    "posisi": "start"
+   },
+   {
+    "js": "window.scrollBy(0,-12)"
+   }
+  ],
+  "callouts": [
+   {
+    "sasaran": {
+     "teks": "Tanpa ini semua influencer",
+     "induk": 1
+    },
+    "teks": "Memasang suara bawaan penyedia lewat voice id. Daftar sarannya belum diuji oleh aplikasi."
+   },
+   {
+    "sasaran": {
+     "teks": "Suara untuk video UGC",
+     "induk": 2
+    },
+    "teks": "Unggah rekaman minimal 10 detik berisi satu suara. Dipakai Video UGC; tanpa ini, UGC menolak karakter ini di langkah suara."
+   },
+   {
+    "sasaran": {
+     "teks": "Suara di dalam video",
+     "induk": 2
+    },
+    "teks": "Untuk video cerita di Storyboard, rekaman 5–30 detik. Tidak wajib, tapi suaranya jadi tetap."
+   },
+   {
+    "sasaran": {
+     "teks": "Unggah rekaman suara"
+    },
+    "teks": "Mengirim rekaman untuk ditiru. Tidak memotong saldomu."
+   },
+   {
+    "sasaran": {
+     "teks": "belum ada"
+    },
+    "teks": "Lencana status: belum ada, atau sudah diklon."
+   }
+  ],
+  "narasi": "Di bawah Identity Kit ada tiga kartu suara. Yang paling penting, klon suara untuk video UGC. Unggah satu rekaman bersih, tanpa musik, minimal sepuluh detik, dan suaramu dipakai untuk membaca naskah. Satu lagi untuk video cerita di Storyboard, tidak wajib. Klon suara tidak memotong saldomu. Cara paling cepat tetap lewat halaman Profil saya."
+ },
+ {
+  "id": "product-kit-01-tambah",
+  "bagian": "Product Kit",
+  "judul": "Menyimpan produk dengan foto asli",
+  "route": "/products",
+  "login": true,
+  "menuLengkap": true,
+  "mock": {
+   "influencerAktif": "nadia",
+   "kecepatanJob": 0
+  },
+  "langkah": [
+   {
+    "isi": {
+     "placeholder": "mis. Serum Vitamin C"
+    },
+    "dengan": "Kopi Susu Aren Senja Literan"
+   },
+   {
+    "isi": {
+     "placeholder": "bahannya lembut"
+    },
+    "dengan": "Gula aren asli, tidak terlalu manis\nSiap minum, tahan 3 hari di kulkas"
+   },
+   {
+    "isi": {
+     "placeholder": "menyembuhkan"
+    },
+    "dengan": "menyembuhkan, 100% aman"
+   },
+   {
+    "js": "document.activeElement&&document.activeElement.blur()"
+   }
+  ],
+  "callouts": [
+   {
+    "sasaran": {
+     "teks": "Foto produk asli, disimpan sekali"
+    },
+    "teks": "Product Kit menyimpan produkmu sekali. Foto kemasan asli dikirim sebagai acuan supaya kemasan tidak dikarang."
+   },
+   {
+    "sasaran": {
+     "css": "label:has-text(\"Nama produk\") + *",
+     "ke": 0
+    },
+    "teks": "Satu-satunya isian wajib."
+   },
+   {
+    "sasaran": {
+     "css": "label:has-text(\"Keunggulan\") + *",
+     "ke": 0
+    },
+    "teks": "Tulis satu keunggulan per baris. Penulis naskah hanya memilih satu atau dua per video."
+   },
+   {
+    "sasaran": {
+     "css": "label:has-text(\"Klaim yang DILARANG\") + *",
+     "ke": 0
+    },
+    "teks": "Kata yang tidak boleh keluar di video, misalnya menyembuhkan atau 100% aman."
+   },
+   {
+    "sasaran": {
+     "css": "label:has-text(\"Foto produk asli\") + *",
+     "ke": 0
+    },
+    "teks": "Wajib foto asli kemasan. Tanpa foto, model gambar mengarang label dan bentuk kemasan."
+   }
+  ],
+  "narasi": "Product Kit adalah tempat menyimpan produkmu sekali, lalu dipakai di banyak video. Isi nama, keunggulan satu per baris, dan klaim yang tidak boleh diucapkan, misalnya menyembuhkan. Yang paling penting adalah fotonya, harus foto kemasan asli, bukan buatan AI. Tanpa foto asli, label dan bentuk kemasan bakal dikarang mesin dan berubah-ubah antar video."
+ },
+ {
+  "id": "product-kit-02-tersimpan",
+  "bagian": "Product Kit",
+  "judul": "Kelola produk yang tersimpan",
+  "route": "/products",
+  "login": true,
+  "menuLengkap": true,
+  "mock": {
+   "influencerAktif": "nadia",
+   "kecepatanJob": 0
+  },
+  "langkah": [
+   {
+    "isi": {
+     "placeholder": "mis. Serum Vitamin C"
+    },
+    "dengan": "Kopi Susu Aren Senja Literan"
+   },
+   {
+    "isi": {
+     "placeholder": "bahannya lembut"
+    },
+    "dengan": "Gula aren asli, tidak terlalu manis\nSiap minum, tahan 3 hari di kulkas"
+   },
+   {
+    "klik": {
+     "peran": "button",
+     "nama": "Simpan produk"
+    }
+   },
+   {
+    "jeda": 1200
+   },
+   {
+    "gulir": {
+     "teks": "Produk tersimpan",
+     "persis": true
+    },
+    "posisi": "start"
+   },
+   {
+    "js": "window.scrollBy(0,-16)"
+   }
+  ],
+  "callouts": [
+   {
+    "sasaran": {
+     "teks": "Produk tersimpan",
+     "persis": true
+    },
+    "teks": "Daftar produk yang sudah kamu simpan. Tiap kartu menunjukkan nama, keunggulan, dan fotonya."
+   },
+   {
+    "sasaran": {
+     "peran": "button",
+     "nama": "Ubah"
+    },
+    "teks": "Mengedit nama, deskripsi, keunggulan, klaim yang dilarang, dan tautan beli."
+   },
+   {
+    "sasaran": {
+     "teks": "+ Tambah foto"
+    },
+    "teks": "Menambah foto kemasan, sampai total enam. Gratis."
+   },
+   {
+    "sasaran": {
+     "teks": "Belum ada foto"
+    },
+    "teks": "Peringatan: tanpa foto, kemasan produk akan dikarang model. Tambah foto sebelum dipakai di video."
+   },
+   {
+    "sasaran": {
+     "peran": "button",
+     "nama": "Hapus"
+    },
+    "teks": "Menghapus produk beserta fotonya. Video UGC yang memakainya tetap ada, tapi kehilangan produknya."
+   }
+  ],
+  "narasi": "Produk yang sudah disimpan muncul sebagai kartu. Dari sini kamu bisa mengubah isinya, menambah foto, atau menghapusnya. Kalau ada kartu dengan peringatan kuning belum ada foto, tambahkan dulu, karena tanpa foto kemasannya akan dikarang. Menyimpan dan mengubah produk tidak memakai saldo. Produknya nanti tinggal kamu pilih saat membuat video bicara ke kamera."
+ },
+ {
+  "id": "studio-01-generate",
+  "bagian": "Production Studio",
+  "judul": "Studio: pilih jenis hasil dan model",
+  "route": "/studio",
+  "login": true,
+  "menuLengkap": true,
+  "mock": {
+   "influencerAktif": "nadia",
+   "kecepatanJob": 0
+  },
+  "langkah": [
+   {
+    "pilih": {
+     "css": "select[name=influencer_id]"
+    },
+    "dengan": {
+     "label": "Nadia Larasati"
+    }
+   },
+   {
+    "jeda": 400
+   }
+  ],
+  "callouts": [
+   {
+    "sasaran": {
+     "teks": "Generate",
+     "persis": true
+    },
+    "teks": "Tab pertama dari tiga: Generate, Character sheet, dan Riwayat job. Mengirim satu job per kali."
+   },
+   {
+    "sasaran": {
+     "css": "label:has-text(\"Task\") + *",
+     "ke": 0
+    },
+    "teks": "Pilih hasilnya: Gambar, Video (b-roll), Suara (TTS), atau Talking / Lip Sync."
+   },
+   {
+    "sasaran": {
+     "css": "label:has-text(\"Model\") + *",
+     "ke": 0
+    },
+    "teks": "Dua daftar: yang murah dan yang premium. Putuskan soal biaya dulu, baru pilih nama modelnya."
+   },
+   {
+    "sasaran": {
+     "css": "label:has-text(\"Influencer\") + *",
+     "ke": 0
+    },
+    "teks": "Pilih agar foto Identity Kit dan identity prompt-nya dipakai otomatis supaya wajah konsisten."
+   },
+   {
+    "sasaran": {
+     "css": "label:has-text(\"Untuk konten\") + *",
+     "ke": 0
+    },
+    "teks": "Menandai hasil ini milik ide konten yang mana. Dikosongkan untuk b-roll umum atau uji coba."
+   }
+  ],
+  "narasi": "Production Studio adalah alat mentahnya. Kamu mengirim satu pekerjaan per kali, entah gambar, video, suara, atau orang bicara. Pilih Task dulu, lalu model. Modelnya dibagi dua daftar, murah dan premium, jadi keputusan biaya diambil sebelum kamu terpaku pada nama modelnya. Pilih influencer supaya wajahnya konsisten. Untuk cara yang dipandu, pakai Buat Video."
+ },
+ {
+  "id": "studio-02-prompt",
+  "bagian": "Production Studio",
+  "judul": "Menulis prompt dan menjalankan Generate",
+  "route": "/studio",
+  "login": true,
+  "menuLengkap": true,
+  "mock": {
+   "influencerAktif": "nadia",
+   "kecepatanJob": 0
+  },
+  "langkah": [
+   {
+    "pilih": {
+     "css": "select",
+     "ke": 0
+    },
+    "dengan": {
+     "label": "Video (b-roll)"
+    }
+   },
+   {
+    "pilih": {
+     "css": "select[name=influencer_id]"
+    },
+    "dengan": {
+     "label": "Nadia Larasati"
+    }
+   },
+   {
+    "jeda": 400
+   },
+   {
+    "isi": {
+     "placeholder": "walking through Jakarta"
+    },
+    "dengan": "Nadia menuang kopi susu aren ke gelas berisi es, cahaya pagi dari jendela dapur"
+   },
+   {
+    "js": "document.activeElement&&document.activeElement.blur()"
+   },
+   {
+    "gulir": {
+     "css": "label:has-text(\"Prompt\") + *",
+     "ke": 0
+    },
+    "posisi": "center"
+   }
+  ],
+  "callouts": [
+   {
+    "sasaran": {
+     "teks": "Cari prompt dengan AI"
+    },
+    "teks": "Sebut industrimu; AI menyusun tiga paket prompt, hook, naskah, dan caption. Memakai saldo."
+   },
+   {
+    "sasaran": {
+     "css": "select:has(option:has-text(\"pilih contoh\"))"
+    },
+    "teks": "Contoh prompt siap pakai per kategori. Gratis, tidak memanggil AI."
+   },
+   {
+    "sasaran": {
+     "css": "label:has-text(\"Prompt\") + *",
+     "ke": 0
+    },
+    "teks": "Tulis isi gambar atau klipnya. Identity prompt influencer otomatis ikut ditempel."
+   },
+   {
+    "sasaran": {
+     "peran": "button",
+     "nama": "Generate",
+     "persis": false
+    },
+    "teks": "Mengirim job. Memakai saldo sungguhan, dan kalau gagal tidak ditagih."
+   },
+   {
+    "sasaran": {
+     "teks": "Estimasi:"
+    },
+    "teks": "Perkiraan biaya di samping tombol. Ditulis indikatif karena yang ditagih adalah hasil sebenarnya."
+   }
+  ],
+  "narasi": "Di bawahnya ada kolom prompt. Bingung menulis dari nol? Mulai dari pustaka, contoh siap pakai yang gratis. Atau minta AI mencarikan prompt per industri, itu memakai saldo. Setelah prompt siap, tekan Generate. Tombol itu memakai saldo sungguhan, tapi kalau job gagal, nggak ditagih. Perkiraan biayanya tertulis tepat di sebelahnya."
+ },
+ {
+  "id": "studio-03-talking",
+  "bagian": "Production Studio",
+  "judul": "Orang bicara dengan satu kali kirim",
+  "route": "/studio",
+  "login": true,
+  "menuLengkap": true,
+  "mock": {
+   "influencerAktif": "nadia",
+   "kecepatanJob": 0
+  },
+  "langkah": [
+   {
+    "pilih": {
+     "css": "select",
+     "ke": 0
+    },
+    "dengan": {
+     "label": "Talking / Lip Sync"
+    }
+   },
+   {
+    "pilih": {
+     "css": "select[name=influencer_id]"
+    },
+    "dengan": {
+     "label": "Nadia Larasati"
+    }
+   },
+   {
+    "jeda": 400
+   },
+   {
+    "isi": {
+     "placeholder": "Tulis kalimat yang mau diucapkan"
+    },
+    "dengan": "Pagi-pagi begini, kopi susu aren dulu ya. Manisnya pas, nggak bikin eneg."
+   },
+   {
+    "js": "document.activeElement&&document.activeElement.blur()"
+   },
+   {
+    "gulir": {
+     "teks": "Naskah yang diucapkan"
+    },
+    "posisi": "start"
+   },
+   {
+    "js": "window.scrollBy(0,-60)"
+   }
+  ],
+  "callouts": [
+   {
+    "sasaran": {
+     "teks": "Naskah yang diucapkan",
+     "induk": 1
+    },
+    "teks": "Tulis kalimat yang mau diucapkan. Suaranya dibuat otomatis, lalu langsung jadi video orang bicara, sekali kirim."
+   },
+   {
+    "sasaran": {
+     "css": "label:has-text(\"URL gambar sumber\") + *",
+     "ke": 0
+    },
+    "teks": "Alamat foto wajah yang akan bicara. Bisa dipilih dari Aset terbaru di halaman detail karakter."
+   },
+   {
+    "sasaran": {
+     "css": "label:has-text(\"URL audio\") + *",
+     "ke": 0
+    },
+    "teks": "Isi kalau audionya sudah ada. Kalau kolom naskah diisi, kolom ini diabaikan."
+   },
+   {
+    "sasaran": {
+     "css": "label:has-text(\"Durasi\") + *",
+     "ke": 0
+    },
+    "teks": "Lama video yang diminta. Yang ditagih nanti durasi yang benar-benar dihasilkan."
+   },
+   {
+    "sasaran": {
+     "peran": "button",
+     "nama": "Generate"
+    },
+    "teks": "Mengirim dua pekerjaan berurutan, suara lalu video. Memakai saldo sungguhan."
+   }
+  ],
+  "narasi": "Untuk video orang bicara, pilih Talking. Rahasianya ada di kolom Naskah yang diucapkan. Isi di situ, dan satu kali kirim sudah membuat suaranya, lalu langsung jadi video. Kamu nggak perlu membuat suara dulu lalu menyalin alamatnya. Kolom alamat audio hanya untuk yang audionya sudah ada. Satu kali kirim ini memakai saldo untuk keduanya."
+ },
+ {
+  "id": "studio-04-character-sheet",
+  "bagian": "Production Studio",
+  "judul": "Tab Character sheet: banyak sudut sekaligus",
+  "route": "/studio?tab=sheet",
+  "login": true,
+  "menuLengkap": true,
+  "mock": {
+   "influencerAktif": "nadia",
+   "kecepatanJob": 0
+  },
+  "langkah": [
+   {
+    "pilih": {
+     "css": "select",
+     "ke": 0
+    },
+    "dengan": {
+     "label": "Nadia Larasati"
+    }
+   },
+   {
+    "jeda": 600
+   }
+  ],
+  "callouts": [
+   {
+    "sasaran": {
+     "teks": "🎭 Character sheet",
+     "persis": true
+    },
+    "teks": "Tab kedua. Satu klik menghasilkan beberapa gambar acuan karakter sekaligus."
+   },
+   {
+    "sasaran": {
+     "css": "label:has-text(\"Model gambar\") + *",
+     "ke": 0
+    },
+    "teks": "Pilih model yang membaca foto Identity Kit supaya semua gambar menampilkan orang yang sama."
+   },
+   {
+    "sasaran": {
+     "css": "label:has-text(\"Shot yang dibuat\") + *",
+     "ke": 0
+    },
+    "teks": "Centang sudut dan ekspresi yang dibutuhkan. Jumlah gambar tertulis di judul kolom."
+   },
+   {
+    "sasaran": {
+     "css": "label:has-text(\"Latar & pencahayaan\") + *",
+     "ke": 0
+    },
+    "teks": "Pilih latar netral supaya tidak ikut terkunci ke karakter."
+   },
+   {
+    "sasaran": {
+     "peran": "button",
+     "nama": "Buat character sheet"
+    },
+    "teks": "Satu gambar per sudut yang dicentang, semuanya memakai saldo. Biaya sama dengan harga satu gambar dikali jumlah sudut."
+   }
+  ],
+  "narasi": "Tab Character sheet membuat banyak foto acuan karakter dalam sekali klik. Satu gambar per sudut atau ekspresi, semuanya dengan identity prompt yang sama. Pilih modelnya, centang sudut yang kamu butuh, dan pilih latar netral. Tombol di bawah memakai saldo, sebesar harga satu gambar dikali jumlah sudut yang kamu centang. Hasilnya masuk ke Karya dengan nama yang mudah dibaca."
+ },
+ {
+  "id": "studio-05-riwayat",
+  "bagian": "Production Studio",
+  "judul": "Tab Riwayat job: hasil dan biaya",
+  "route": "/studio?tab=riwayat",
+  "login": true,
+  "menuLengkap": true,
+  "mock": {
+   "influencerAktif": "nadia",
+   "kecepatanJob": 60000
+  },
+  "langkah": [
+   {
+    "jeda": 800
+   }
+  ],
+  "callouts": [
+   {
+    "sasaran": {
+     "teks": "Riwayat job · ",
+     "induk": 0
+    },
+    "teks": "Angka di label tab, kalau ada, adalah job yang masih berjalan, supaya kamu tidak menekan Generate lagi karena mengira gagal terkirim."
+   },
+   {
+    "sasaran": {
+     "teks": "Biaya",
+     "persis": true
+    },
+    "teks": "Biaya tiap job. Yang gagal atau batal tertulis tidak ditagih; yang masih berjalan ditulis ditahan."
+   },
+   {
+    "sasaran": {
+     "teks": "tidak ditagih",
+     "induk": 1
+    },
+    "teks": "Job yang gagal menjelaskan sebabnya dengan bahasa biasa dan tidak ditagih. Tidak perlu menekan Generate lagi karena mengira ada yang hilang."
+   },
+   {
+    "sasaran": {
+     "peran": "button",
+     "nama": "Jejak",
+     "ke": 1
+    },
+    "teks": "Menunjukkan apa yang sebenarnya dikirim ke penyedia: prompt akhir, foto acuan, model, dan pesan error. Gratis."
+   },
+   {
+    "sasaran": {
+     "peran": "button",
+     "nama": "Hapus",
+     "ke": 1
+    },
+    "teks": "Membuang catatan job saja. Hasilnya tetap ada di Karya, dan catatan pengeluaran tidak hilang."
+   }
+  ],
+  "narasi": "Riwayat job menampilkan dua puluh pekerjaan terakhir, lengkap dengan status dan biaya sebenarnya. Job yang gagal tidak ditagih, dan sebabnya ditulis dengan bahasa biasa. Angka di label tab, kalau ada, menandakan masih ada yang berjalan, jadi jangan tekan Generate lagi. Jejak membuka rincian yang dikirim ke penyedia, dan Hapus hanya membuang catatannya."
+ },
+ {
+  "id": "storyboard-01-form",
+  "bagian": "Storyboard",
+  "judul": "Storyboard: mulai dari ide",
+  "route": "/storyboard",
+  "login": true,
+  "menuLengkap": true,
+  "mock": {
+   "influencerAktif": "nadia",
+   "kecepatanJob": 0
+  },
+  "langkah": [
+   {
+    "pilih": {
+     "css": "select",
+     "ke": 0
+    },
+    "dengan": {
+     "label": "Nadia Larasati"
+    }
+   },
+   {
+    "isi": {
+     "placeholder": "mis. 3 kesalahan"
+    },
+    "dengan": "Sehari bersama Kopi Susu Aren Senja: dari menyeduh sampai tegukan pertama"
+   }
+  ],
+  "callouts": [
+   {
+    "sasaran": {
+     "teks": "Susun storyboard baru",
+     "induk": 1
+    },
+    "teks": "Satu ide dipecah jadi beberapa shot, lalu jadi satu video multi-shot. Untuk orang bicara ke kamera, pakai Video UGC."
+   },
+   {
+    "sasaran": {
+     "teks": "Influencer",
+     "persis": true,
+     "induk": 1
+    },
+    "teks": "Wajah di setiap shot diambil dari foto acuan orang ini. Tanpa influencer, wajah tidak bisa dikunci."
+   },
+   {
+    "sasaran": {
+     "teks": "Platform",
+     "persis": true,
+     "induk": 1
+    },
+    "teks": "Tujuan videomu: TikTok, Instagram Reels, atau YouTube Shorts."
+   },
+   {
+    "sasaran": {
+     "teks": "Foto dari HP-mu",
+     "induk": 1
+    },
+    "teks": "Foto dapur, kemasan, atau pembeli jadi bahan adegan. Belum terkirim sebelum kamu menekan Susun shot list."
+   },
+   {
+    "sasaran": {
+     "teks": "Ide video",
+     "induk": 1
+    },
+    "teks": "Ceritakan videomu dalam satu dua kalimat. Satu-satunya isian wajib di formulir ini."
+   }
+  ],
+  "narasi": "Storyboard cocok untuk cerita yang berpindah-pindah adegan, bukan untuk orang bicara ke kamera. Mulainya dari satu ide. Pilih influencernya supaya wajahnya terkunci di setiap adegan, lalu ceritakan idenya. Kalau punya foto dari ponsel, misalnya dapur atau kemasan, unggah saja. Tiap foto jadi bahan satu adegan. Foto ini belum terkirim sebelum kamu menekan tombol penyusun."
+ },
+ {
+  "id": "storyboard-02-bentuk-durasi",
+  "bagian": "Storyboard",
+  "judul": "Bentuk cerita dan total durasi",
+  "route": "/storyboard",
+  "login": true,
+  "menuLengkap": true,
+  "mock": {
+   "influencerAktif": "nadia",
+   "kecepatanJob": 0
+  },
+  "langkah": [
+   {
+    "pilih": {
+     "css": "select",
+     "ke": 0
+    },
+    "dengan": {
+     "label": "Nadia Larasati"
+    }
+   },
+   {
+    "isi": {
+     "placeholder": "mis. 3 kesalahan"
+    },
+    "dengan": "Sehari bersama Kopi Susu Aren Senja"
+   },
+   {
+    "gulir": {
+     "teks": "Susun shot list"
+    },
+    "posisi": "end"
+   }
+  ],
+  "callouts": [
+   {
+    "sasaran": {
+     "teks": "Bentuk cerita",
+     "induk": 1
+    },
+    "teks": "Pola menentukan urutan adegan dan ritmenya. Penulis AI yang membagi detiknya, kamu tidak perlu menghitung. Pilihan terakhir di daftar, \"Atur sendiri\", untuk yang mau menentukan sendiri jumlah shot dan durasi tiap shot."
+   },
+   {
+    "sasaran": {
+     "teks": "Total durasi",
+     "induk": 1
+    },
+    "teks": "Pilih 10, 15, 20, atau 30 detik. Penulis membaginya ke tiga sampai enam adegan."
+   },
+   {
+    "sasaran": {
+     "teks": "Susun shot list"
+    },
+    "teks": "Penulis AI menyusun daftar shot. Langkah ini memakai saldo; hasilnya kamu periksa dulu."
+   }
+  ],
+  "narasi": "Pilih bentuk ceritanya, misalnya masalah, produk, lalu hasil. Penulis AI yang memutuskan berapa adegan dan berapa detik tiap adegan, jadi kamu nggak perlu menghitung. Kalau kamu memang mau mengatur sendiri, ada pilihan Atur sendiri. Lalu pilih total durasi, dan tekan Susun shot list. Langkah ini memakai saldo, karena penulis AI yang bekerja."
+ },
+ {
+  "id": "storyboard-03-draf",
+  "bagian": "Storyboard",
+  "judul": "Periksa shot list sebelum disimpan",
+  "route": "/storyboard",
+  "login": true,
+  "menuLengkap": true,
+  "mock": {
+   "influencerAktif": "nadia",
+   "kecepatanJob": 0
+  },
+  "langkah": [
+   {
+    "pilih": {
+     "css": "select",
+     "ke": 0
+    },
+    "dengan": {
+     "label": "Nadia Larasati"
+    }
+   },
+   {
+    "isi": {
+     "placeholder": "mis. 3 kesalahan"
+    },
+    "dengan": "Sehari bersama Kopi Susu Aren Senja"
+   },
+   {
+    "klik": {
+     "teks": "Susun shot list"
+    }
+   },
+   {
+    "gulir": {
+     "teks": "Kontinuitas"
+    },
+    "posisi": "start"
+   },
+   {
+    "tunggu": {
+     "teks": "Simpan & lanjut produksi"
+    }
+   }
+  ],
+  "callouts": [
+   {
+    "sasaran": {
+     "teks": "mustard-yellow linen shirt"
+    },
+    "teks": "Hal yang harus sama di semua adegan: baju, lokasi, cahaya. Inilah yang membuatnya terasa satu video."
+   },
+   {
+    "sasaran": {
+     "teks": "Close-up of hands pouring",
+     "induk": 1
+    },
+    "teks": "Tiap kartu: nomor, inti adegan, jenis kamera, detik, deskripsi gambar, dan kalimat yang diucapkan."
+   },
+   {
+    "sasaran": {
+     "teks": "Simpan & lanjut produksi"
+    },
+    "teks": "Menyimpan storyboard dan membuka layar produksi. Belum ada gambar atau video yang dibayar di sini."
+   },
+   {
+    "sasaran": {
+     "teks": "Susun ulang"
+    },
+    "teks": "Minta shot list versi lain. Memakai saldo, dan draf yang sekarang diganti."
+   },
+   {
+    "sasaran": {
+     "teks": "Buang"
+    },
+    "teks": "Membuang draf dan kembali ke formulir. Tidak ada yang tersimpan."
+   }
+  ],
+  "narasi": "Inilah shot list rancangan penulis AI. Di atas ada kontinuitas, hal-hal yang harus sama di semua adegan, seperti baju dan lokasi. Di bawahnya tiap adegan punya nomor, sudut kamera, lama, dan kalimat yang diucapkan. Kalau sudah cocok, Simpan dan lanjut produksi. Belum cocok? Susun ulang, memakai saldo lagi. Atau Buang, tanpa menyimpan apa pun."
+ },
+ {
+  "id": "storyboard-04-naskah",
+  "bagian": "Storyboard",
+  "judul": "Langkah Naskah: kesiapan dan ubah adegan",
+  "route": "/storyboard?board=22222222-2222-4222-8222-222222220002",
+  "login": true,
+  "menuLengkap": true,
+  "mock": {
+   "influencerAktif": "nadia",
+   "kecepatanJob": 0
+  },
+  "langkah": [
+   {
+    "isi": {
+     "placeholder": "Ubah adegan ini"
+    },
+    "dengan": "dia tertawa, bukan serius"
+   },
+   {
+    "gulirY": 230
+   }
+  ],
+  "callouts": [
+   {
+    "sasaran": {
+     "css": "textarea"
+    },
+    "teks": "Mengubah baju atau lokasi cukup sekali di sini; berlaku ke semua shot sekaligus."
+   },
+   {
+    "sasaran": {
+     "teks": "Kesiapan",
+     "persis": true,
+     "induk": 2
+    },
+    "teks": "Daftar yang harus beres sebelum lanjut, mis. minimal dua foto wajah. Tulisan merah wajib diperbaiki."
+   },
+   {
+    "sasaran": {
+     "placeholder": "Ubah adegan ini"
+    },
+    "teks": "Tulis satu kalimat, mis. dia tertawa, bukan serius. Penulis AI menulis ulang adegan itu saja."
+   },
+   {
+    "sasaran": {
+     "peran": "button",
+     "nama": "Ubah ·"
+    },
+    "teks": "Menjalankan penulis AI untuk satu adegan. Memakai saldo; hasilnya langsung dipasang, dan Batalkan gratis."
+   },
+   {
+    "sasaran": {
+     "peran": "button",
+     "nama": "Lanjut ke produksi"
+    },
+    "teks": "Ke langkah berikutnya. Aktif setelah semua yang merah beres."
+   }
+  ],
+  "narasi": "Di langkah Naskah, periksa dulu kesiapannya. Kalau ada tulisan merah, bereskan. Kontinuitas ditempel ke semua adegan, jadi mengganti baju cukup sekali di sini. Mau mengubah satu adegan? Tulis saja satu kalimat biasa, misalnya dia tertawa, bukan serius. Penulis AI menulis ulang adegan itu, memakai saldo. Nggak suka hasilnya? Batalkan, gratis."
+ },
+ {
+  "id": "storyboard-05-produksi",
+  "bagian": "Storyboard",
+  "judul": "Produksi: rincian dan gambar pembuka",
+  "route": "/storyboard?board=22222222-2222-4222-8222-222222220002",
+  "login": true,
+  "menuLengkap": true,
+  "mock": {
+   "influencerAktif": "nadia",
+   "kecepatanJob": 0
+  },
+  "langkah": [
+   {
+    "klik": {
+     "teks": "Lanjut ke produksi"
+    }
+   }
+  ],
+  "callouts": [
+   {
+    "sasaran": {
+     "teks": "Dua tahap",
+     "induk": 1
+    },
+    "teks": "Gambar pembuka dibuat dulu dan menentukan wajah, baju, dan latar seluruh video. Videonya dibayar sesudah kamu setuju."
+   },
+   {
+    "sasaran": {
+     "teks": "Total"
+    },
+    "teks": "Rincian harga gambar pembuka dan video, serta totalnya, tertulis sebelum apa pun dikirim."
+   },
+   {
+    "sasaran": {
+     "teks": "Ganti model"
+    },
+    "teks": "Model sudah dipilih otomatis. Buka kalau kamu mau mengganti model gambar atau video."
+   },
+   {
+    "sasaran": {
+     "teks": "Buat gambar pembuka"
+    },
+    "teks": "Langkah termurah dulu: satu gambar diam. Memakai saldo."
+   },
+   {
+    "sasaran": {
+     "teks": "Lembar storyboard"
+    },
+    "teks": "Opsional: semua panel dalam satu gambar untuk ditinjau manusia. Tidak dipakai untuk membuat video."
+   }
+  ],
+  "narasi": "Produksi dibagi dua tahap, dan ini yang melindungi saldomu. Tahap pertama, gambar pembuka, satu gambar diam yang murah. Gambar ini menentukan wajah, baju, dan latar seluruh video. Tahap kedua, videonya, bagian yang mahal. Rincian harga sudah tertulis di atas. Tekan Buat gambar pembuka, memakai saldo, dan kamu lihat dulu hasilnya sebelum lanjut."
+ },
+ {
+  "id": "storyboard-06-periksa-gambar",
+  "bagian": "Storyboard",
+  "judul": "Periksa gambar pembuka, baru bayar video",
+  "route": "/storyboard?board=22222222-2222-4222-8222-222222220002",
+  "login": true,
+  "menuLengkap": true,
+  "mock": {
+   "influencerAktif": "nadia",
+   "kecepatanJob": 0
+  },
+  "langkah": [
+   {
+    "klik": {
+     "teks": "Lanjut ke produksi"
+    }
+   },
+   {
+    "klik": {
+     "teks": "Buat gambar pembuka"
+    }
+   },
+   {
+    "tunggu": {
+     "teks": "Ya, buat video"
+    }
+   }
+  ],
+  "callouts": [
+   {
+    "sasaran": {
+     "css": "img"
+    },
+    "teks": "Inilah frame pertama video. Perhatikan wajah, baju, dan latarnya; semuanya akan terbawa ke seluruh video."
+   },
+   {
+    "sasaran": {
+     "teks": "Wajahnya mirip",
+     "induk": 1
+    },
+    "teks": "Pertanyaan penentu. Kalau meleset, ulangi gambar ini yang murah, bukan videonya yang mahal. Mau ganti latar atau pakaian? Ubah di kotak kontinuitas pada langkah Naskah, lalu tekan Coba lagi."
+   },
+   {
+    "sasaran": {
+     "peran": "button",
+     "nama": "Coba lagi"
+    },
+    "teks": "Membuat gambar pembuka baru dengan prompt sama. Dihitung lagi sebesar harga satu gambar."
+   },
+   {
+    "sasaran": {
+     "teks": "Ya, buat video"
+    },
+    "teks": "Mengirim video multi-shot. Bagian termahal, ditagih per detik yang dihasilkan. Memakai saldo."
+   }
+  ],
+  "narasi": "Inilah momen yang paling penting. Gambar pembuka sudah jadi, dan kamu bertanya pada diri sendiri, wajahnya mirip? Latar dan bajunya benar? Kalau meleset, tekan Coba lagi. Biayanya cuma sebesar satu gambar. Jauh lebih murah daripada mengulang video. Kalau sudah yakin, baru tekan Ya, buat video. Itu bagian termahal, dan memakai saldo."
+ },
+ {
+  "id": "storyboard-07-hasil",
+  "bagian": "Storyboard",
+  "judul": "Hasil: tonton, unduh, dan buat versi lain",
+  "route": "/storyboard?board=22222222-2222-4222-8222-222222220001",
+  "login": true,
+  "menuLengkap": true,
+  "mock": {
+   "influencerAktif": "nadia",
+   "kecepatanJob": 0
+  },
+  "langkah": [
+   {
+    "klik": {
+     "teks": "Buat versi lain"
+    }
+   },
+   {
+    "gulir": {
+     "peran": "button",
+     "nama": "Bagikan",
+     "persis": true
+    },
+    "posisi": "start"
+   }
+  ],
+  "callouts": [
+   {
+    "sasaran": {
+     "peran": "button",
+     "nama": "Bagikan",
+     "persis": true
+    },
+    "teks": "Membuka menu bagikan di ponsel. Di komputer, videonya diunduh. Kamu sendiri yang mengunggah ke media sosial."
+   },
+   {
+    "sasaran": {
+     "teks": "Unduh video"
+    },
+    "teks": "Menyimpan berkas video ke perangkatmu. Video juga tersimpan di Karya."
+   },
+   {
+    "sasaran": {
+     "peran": "button",
+     "nama": "Buat ulang"
+    },
+    "teks": "Kembali ke Produksi untuk membuat ulang video dengan gambar pembuka yang sama. Dibayar lagi."
+   },
+   {
+    "sasaran": {
+     "teks": "Salin jadi versi baru"
+    },
+    "teks": "Menyalin storyboard jadi versi baru. Gambar pembuka dipakai ulang gratis, hanya videonya yang nanti dibayar lagi."
+   },
+   {
+    "sasaran": {
+     "placeholder": "mis. bahasa Inggris"
+    },
+    "teks": "Isi mis. bahasa Inggris atau lebih lucu, penulis AI menulis ulang narasinya (memakai saldo). Kosong: salinan persis, gratis."
+   }
+  ],
+  "narasi": "Videonya sudah jadi. Tonton, lalu unduh atau bagikan lewat menu ponselmu. Kamu sendiri yang mengunggahnya ke media sosial. Mau variasi? Tekan Buat versi lain. Gambar pembukanya dipakai ulang, jadi wajahnya tetap sama dan gratis. Cuma videonya nanti yang dibayar lagi. Isi kolom perbedaan untuk menulis ulang narasi, memakai saldo, atau kosongkan untuk salinan persis."
+ },
+ {
+  "id": "ugc-01-form-atas",
+  "bagian": "Video UGC",
+  "judul": "Video UGC: pilih orang dan produk",
+  "route": "/ugc",
+  "login": true,
+  "menuLengkap": true,
+  "mock": {
+   "influencerAktif": "nadia",
+   "kecepatanJob": 0
+  },
+  "langkah": [
+   {
+    "pilih": {
+     "css": "select",
+     "ke": 0
+    },
+    "dengan": {
+     "label": "Nadia Larasati"
+    }
+   },
+   {
+    "pilih": {
+     "css": "select",
+     "ke": 1
+    },
+    "dengan": {
+     "label": "Kopi Susu Aren Senja (2 foto)"
+    }
+   }
+  ],
+  "callouts": [
+   {
+    "sasaran": {
+     "teks": "Buat video UGC baru",
+     "induk": 1
+    },
+    "teks": "Produk, orang, suara, dan naskah jadi satu video orang bicara ke kamera. Jalur untuk endorse."
+   },
+   {
+    "sasaran": {
+     "css": "select",
+     "ke": 0,
+     "induk": 1
+    },
+    "teks": "Wajah diambil dari Identity Kit, suara dari pengaturan suaranya. Wajib dipilih."
+   },
+   {
+    "sasaran": {
+     "css": "select",
+     "ke": 1,
+     "induk": 1
+    },
+    "teks": "Pilih produk dari Product Kit. Foto kemasan aslinya dikirim agar kemasan tidak dikarang."
+   },
+   {
+    "sasaran": {
+     "peran": "button",
+     "nama": "+ Produk baru"
+    },
+    "teks": "Menyimpan produk baru di tempat, tanpa pindah halaman. Tersimpan ke Product Kit juga."
+   },
+   {
+    "sasaran": {
+     "css": "select",
+     "ke": 2,
+     "induk": 1
+    },
+    "teks": "Tujuan videomu: TikTok, Instagram Reels, atau YouTube Shorts."
+   }
+  ],
+  "narasi": "Video UGC itu karakter kamu bicara ke kamera tentang produk, cocok untuk endorse. Cuma ada lima hal yang kamu isi, yaitu produk, influencer, naskah, durasi, dan latar. Mulainya dari pilih influencer dan produk. Wajah diambil dari Identity Kit, suaranya dari pengaturan suara. Belum punya produk? Tambahkan di tempat, lewat Produk baru."
+ },
+ {
+  "id": "ugc-02-naskah-form",
+  "bagian": "Video UGC",
+  "judul": "Sudut cerita, durasi, dan naskah",
+  "route": "/ugc",
+  "login": true,
+  "menuLengkap": true,
+  "mock": {
+   "influencerAktif": "nadia",
+   "kecepatanJob": 0
+  },
+  "langkah": [
+   {
+    "pilih": {
+     "css": "select",
+     "ke": 0
+    },
+    "dengan": {
+     "label": "Nadia Larasati"
+    }
+   },
+   {
+    "pilih": {
+     "css": "select",
+     "ke": 1
+    },
+    "dengan": {
+     "label": "Kopi Susu Aren Senja (2 foto)"
+    }
+   },
+   {
+    "isi": {
+     "placeholder": "mis. review jujur"
+    },
+    "dengan": "review jujur setelah 2 minggu pakai"
+   },
+   {
+    "gulir": {
+     "peran": "button",
+     "nama": "Susun naskah dengan AI"
+    },
+    "posisi": "end"
+   }
+  ],
+  "callouts": [
+   {
+    "sasaran": {
+     "css": "select",
+     "ke": 3
+    },
+    "teks": "Contoh latar dan gaya siap pakai. Memilih satu mengisi sudut cerita dan latar secara otomatis. Gratis."
+   },
+   {
+    "sasaran": {
+     "placeholder": "mis. review jujur"
+    },
+    "teks": "Satu kalimat arah naskah, mis. review jujur setelah dua minggu pakai."
+   },
+   {
+    "sasaran": {
+     "css": "input[type=number]"
+    },
+    "teks": "Target untuk penulis naskah, bukan kenop. Panjang video mengikuti naskah, dan biayanya dihitung dari naskah itu."
+   },
+   {
+    "sasaran": {
+     "css": "textarea"
+    },
+    "teks": "Tulis naskah sendiri (gratis), atau kosongkan dan biarkan penulis AI menyusunnya."
+   },
+   {
+    "sasaran": {
+     "peran": "button",
+     "nama": "Susun naskah dengan AI"
+    },
+    "teks": "Penulis AI menyusun naskah dari keunggulan produk. Memakai saldo, dan hasilnya kamu periksa dulu."
+   }
+  ],
+  "narasi": "Di bagian bawah, kamu menentukan arah ceritanya dan target durasi. Durasi itu cuma target, panjang video sebenarnya mengikuti naskah yang dibacakan. Punya naskah sendiri? Tulis di kolom kata-kata yang diucapkan, itu gratis. Atau kosongkan, dan tekan Susun naskah dengan AI. Langkah itu memakai saldo, dan hasilnya kamu periksa dulu."
+ },
+ {
+  "id": "ugc-03-draf-naskah",
+  "bagian": "Video UGC",
+  "judul": "Periksa naskah dari penulis AI",
+  "route": "/ugc",
+  "login": true,
+  "menuLengkap": true,
+  "mock": {
+   "influencerAktif": "nadia",
+   "kecepatanJob": 0
+  },
+  "langkah": [
+   {
+    "pilih": {
+     "css": "select",
+     "ke": 0
+    },
+    "dengan": {
+     "label": "Nadia Larasati"
+    }
+   },
+   {
+    "pilih": {
+     "css": "select",
+     "ke": 1
+    },
+    "dengan": {
+     "label": "Granola Pagi (1 foto)"
+    }
+   },
+   {
+    "klik": {
+     "teks": "Susun naskah dengan AI"
+    }
+   },
+   {
+    "tunggu": {
+     "peran": "button",
+     "nama": "Simpan & lanjut produksi"
+    }
+   },
+   {
+    "gulir": {
+     "teks": "Naskah ·"
+    },
+    "posisi": "start"
+   }
+  ],
+  "callouts": [
+   {
+    "sasaran": {
+     "teks": "Jujur ya, aku dulu"
+    },
+    "teks": "Naskah yang akan dibacakan, lengkap dengan jumlah kata dan perkiraan detiknya."
+   },
+   {
+    "sasaran": {
+     "teks": "Cerita singkat soal Granola Pagi"
+    },
+    "teks": "Teks di bawah postingan. Dibaca orang, bukan dibacakan di video."
+   },
+   {
+    "sasaran": {
+     "teks": "candid selfie taken"
+    },
+    "teks": "Tempat dan suasana untuk gambar pertama. Ditulis Inggris karena model gambar lebih paham."
+   },
+   {
+    "sasaran": {
+     "peran": "button",
+     "nama": "Simpan & lanjut produksi"
+    },
+    "teks": "Menyimpan proyek dan membuka layar produksi. Belum ada gambar atau suara yang dibayar."
+   },
+   {
+    "sasaran": {
+     "peran": "button",
+     "nama": "Susun ulang"
+    },
+    "teks": "Minta naskah versi lain. Memakai saldo. Semua bagian masih bisa diubah di langkah berikutnya."
+   }
+  ],
+  "narasi": "Inilah naskah usulan penulis AI, lengkap dengan caption, latar gambar, dan gaya penyampaiannya. Perhatikan jumlah kata dan perkiraan detiknya. Video akan sepanjang naskah ini. Kalau sudah pas, tekan Simpan dan lanjut produksi. Belum membayar apa pun untuk gambar dan suara. Kalau kurang suka, Susun ulang, memakai saldo lagi, atau ubah sendiri di langkah berikutnya."
+ },
+ {
+  "id": "ugc-04-langkah-naskah",
+  "bagian": "Video UGC",
+  "judul": "Langkah Naskah: kata-kata dan kesiapan",
+  "route": "/ugc?project=11111111-1111-4111-8111-111111110002",
+  "login": true,
+  "menuLengkap": true,
+  "mock": {
+   "influencerAktif": "nadia",
+   "kecepatanJob": 0
+  },
+  "langkah": [
+   {
+    "isi": {
+     "css": "textarea",
+     "ke": 1
+    },
+    "dengan": "candid selfie in a cozy home kitchen in the morning, holding a bowl of granola at chest height, soft window light"
+   },
+   {
+    "isi": {
+     "css": "textarea",
+     "ke": 2
+    },
+    "dengan": "talking casually to the phone camera like a friend recommending breakfast, relaxed, small hand gestures"
+   }
+  ],
+  "callouts": [
+   {
+    "sasaran": {
+     "css": "textarea",
+     "ke": 0
+    },
+    "teks": "Naskah yang dibacakan. Memangkas kata memangkas biaya, karena video sepanjang audionya."
+   },
+   {
+    "sasaran": {
+     "css": "textarea",
+     "ke": 1
+    },
+    "teks": "Tempat dan suasana gambar pertama. Wajah dan kemasan datang dari foto acuan."
+   },
+   {
+    "sasaran": {
+     "teks": "Kesiapan",
+     "persis": true,
+     "induk": 2
+    },
+    "teks": "Daftar yang harus beres: foto wajah, suara, dan model. Tulisan merah wajib diperbaiki dulu."
+   },
+   {
+    "sasaran": {
+     "peran": "button",
+     "nama": "Lanjut ke produksi"
+    },
+    "teks": "Ke langkah Produksi. Aktif kalau semua yang merah sudah beres."
+   }
+  ],
+  "narasi": "Langkah Naskah mengumpulkan semua yang perlu diperiksa. Di atas, kata-kata yang akan diucapkan. Ubah kalau ada yang kurang pas, dan ingat, makin pendek naskah, makin murah videonya. Di bawahnya latar gambar dan gaya penyampaian, dalam bahasa Inggris. Lalu kartu Kesiapan. Kalau ada tulisan merah, bereskan dulu. Setelah itu, lanjut ke produksi."
+ },
+ {
+  "id": "ugc-05-pratinjau",
+  "bagian": "Video UGC",
+  "judul": "Produksi: pratinjau gambar dan suara",
+  "route": "/ugc?project=11111111-1111-4111-8111-111111110002",
+  "login": true,
+  "menuLengkap": true,
+  "mock": {
+   "influencerAktif": "nadia",
+   "kecepatanJob": 0
+  },
+  "langkah": [
+   {
+    "klik": {
+     "teks": "Lanjut ke produksi"
+    }
+   }
+  ],
+  "callouts": [
+   {
+    "sasaran": {
+     "teks": "1 · Pratinjau"
+    },
+    "teks": "Gambar pertama dan suaramu dibuat bersamaan. Ini bagian murah, dan kamu meninjaunya sebelum video dibayar."
+   },
+   {
+    "sasaran": {
+     "teks": "Gambar belum dibuat"
+    },
+    "teks": "Tempat gambar pertama nanti muncul: wajahmu memegang produk, dari foto acuan dan foto kemasan."
+   },
+   {
+    "sasaran": {
+     "teks": "Buat pratinjau"
+    },
+    "teks": "Membuat gambar dan suara sekaligus. Memakai saldo, harga tertulis di tombol."
+   },
+   {
+    "sasaran": {
+     "teks": "Ganti model"
+    },
+    "teks": "Model gambar, suara, dan avatar sudah dipilih otomatis. Buka kalau kamu mau mengganti."
+   },
+   {
+    "sasaran": {
+     "teks": "2 · Video"
+    },
+    "teks": "Bagian termahal. Baru aktif setelah gambar dan suara kamu setujui."
+   }
+  ],
+  "narasi": "Produksi dimulai dengan pratinjau. Gambar pertama dan suaramu dibuat bersamaan, karena dua-duanya murah dan nggak saling menunggu. Tekan Buat pratinjau, dan harganya sudah tertulis di tombolnya. Langkah ini memakai saldo. Lihat dulu hasilnya. Kartu Video di bawahnya masih redup, karena bagian yang mahal itu baru bisa dibuat setelah kamu setuju."
+ },
+ {
+  "id": "ugc-06-tinjau-video",
+  "bagian": "Video UGC",
+  "judul": "Setujui gambar dan suara, lalu buat video",
+  "route": "/ugc?project=11111111-1111-4111-8111-111111110002",
+  "login": true,
+  "menuLengkap": true,
+  "mock": {
+   "influencerAktif": "nadia",
+   "kecepatanJob": 0
+  },
+  "langkah": [
+   {
+    "klik": {
+     "teks": "Lanjut ke produksi"
+    }
+   },
+   {
+    "klik": {
+     "teks": "Buat pratinjau"
+    }
+   },
+   {
+    "tunggu": {
+     "teks": "Ulang gambar"
+    }
+   }
+  ],
+  "callouts": [
+   {
+    "sasaran": {
+     "css": "img"
+    },
+    "teks": "Pastikan wajahnya benar dan kemasan produknya sama dengan foto asli. Kalau meleset, ubah latar di langkah Naskah."
+   },
+   {
+    "sasaran": {
+     "css": "audio"
+    },
+    "teks": "Kalau terdengar seperti dibacakan mesin, tulis naskah lebih seperti orang ngobrol atau ganti suaranya."
+   },
+   {
+    "sasaran": {
+     "peran": "button",
+     "nama": "Ulang gambar"
+    },
+    "teks": "Membuat gambar baru saja. Memakai saldo kecil, jauh lebih murah daripada mengulang video."
+   },
+   {
+    "sasaran": {
+     "peran": "button",
+     "nama": "Ulang suara"
+    },
+    "teks": "Membuat suara baru saja. Juga murah dan memakai saldo."
+   },
+   {
+    "sasaran": {
+     "peran": "button",
+     "nama": "Buat video ·"
+    },
+    "teks": "Bagian termahal: gambar digerakkan mengikuti suara. Memakai saldo, ditagih per detik yang dihasilkan."
+   }
+  ],
+  "narasi": "Pratinjau sudah jadi. Periksa gambarnya, wajahnya mirip kamu, kemasan produknya sama dengan aslinya. Lalu dengarkan suaranya sampai habis. Ada yang meleset? Ulang gambar atau ulang suara saja, memakai saldo, tapi jauh lebih murah daripada mengulang video. Kalau sudah puas, tekan Buat video. Itu bagian termahal, dan butuh dua sampai enam menit."
+ },
+ {
+  "id": "ugc-07-hasil",
+  "bagian": "Video UGC",
+  "judul": "Hasil: tonton, caption, dan bagikan",
+  "route": "/ugc?project=11111111-1111-4111-8111-111111110001",
+  "login": true,
+  "menuLengkap": true,
+  "mock": {
+   "influencerAktif": "nadia",
+   "kecepatanJob": 0
+  },
+  "langkah": [
+   {
+    "gulir": {
+     "peran": "button",
+     "nama": "Bagikan",
+     "persis": true
+    },
+    "posisi": "end"
+   },
+   {
+    "js": "window.scrollBy(0,90)"
+   }
+  ],
+  "callouts": [
+   {
+    "sasaran": {
+     "peran": "button",
+     "nama": "Bagikan",
+     "persis": true
+    },
+    "teks": "Membuka menu bagikan di ponsel. Di komputer, videonya diunduh. Kamu sendiri yang mengunggah ke media sosial."
+   },
+   {
+    "sasaran": {
+     "peran": "link",
+     "nama": "Unduh"
+    },
+    "teks": "Menyimpan berkas video ke perangkatmu. Video juga tersimpan di Karya."
+   },
+   {
+    "sasaran": {
+     "peran": "button",
+     "nama": "Buat ulang"
+    },
+    "teks": "Kembali ke Produksi. Membuat ulang video memakai saldo penuh, jadi ulang gambar atau suaranya dulu bila perlu."
+   },
+   {
+    "sasaran": {
+     "css": "textarea",
+     "ke": 0
+    },
+    "teks": "Satu kalimat pendek di bawah postingan, berbeda dari naskah yang diucapkan. Boleh kamu ubah."
+   },
+   {
+    "sasaran": {
+     "peran": "button",
+     "nama": "Salin caption"
+    },
+    "teks": "Menyalin caption dan hashtag sekaligus, siap ditempel saat kamu mengunggah."
+   }
+  ],
+  "narasi": "Videonya jadi. Tonton dulu. Suka? Tekan Bagikan dan pilih aplikasinya dari menu ponselmu, atau Unduh untuk disimpan. Kamu sendiri yang mengunggahnya, aplikasi ini tidak memposting otomatis. Di sebelahnya ada caption dan hashtag. Ubah kalau perlu, lalu tekan Salin supaya tinggal ditempel. Mau coba lagi? Buat ulang, tapi itu membayar video penuh."
+ },
+ {
+  "id": "penutup",
+  "jenis": "daftar",
+  "bagian": "Penutup",
+  "judul": "Urutan langkah pertama yang disarankan",
+  "isi": [
+   {
+    "nama": "Masuk atau daftar",
+    "untuk": "Satu akun, satu ruang kerja."
+   },
+   {
+    "nama": "Arah Konten",
+    "untuk": "Jawab 12 pertanyaan, dapatkan blueprint. Cukup sekali."
+   },
+   {
+    "nama": "Profil saya",
+    "untuk": "Foto wajah, rekam suara, pilih bahasa. Cukup sekali."
+   },
+   {
+    "nama": "Product Kit",
+    "untuk": "Simpan satu produk dengan foto kemasan asli, kalau mau video bicara ke kamera."
+   },
+   {
+    "nama": "Ide dan naskah",
+    "untuk": "Di Arah Konten, pilih satu ide dan tulis naskahnya."
+   },
+   {
+    "nama": "Buat Video",
+    "untuk": "Jawab pertanyaannya, tinjau naskah dan harganya, setujui gambar dan suara, lalu video dibuat."
+   },
+   {
+    "nama": "Tonton dan unduh",
+    "untuk": "Video yang jadi tampil di layar hasil. Publikasi selalu kamu lakukan sendiri."
+   }
+  ],
+  "narasi": "Itu dia isi aplikasi yang dibahas panduan ini. Kalau bingung harus mulai dari mana, ikuti urutan ini. Masuk, jawab pertanyaan di Arah Konten, isi Profil saya, simpan satu produk kalau perlu, tulis naskah, lalu Buat Video. Setelah video jadi, tonton, unduh, dan unggah sendiri. Biasakan membaca keterangan di tombol sebelum menekannya, karena sebagian langkah memakai saldo. Selamat mencoba, dan nikmati prosesnya."
+ }
+]

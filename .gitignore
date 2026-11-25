@@ -5,3 +5,4 @@ dist/
 *.log
 deno.lock
 supabase/.temp/
+scripts/manual/tangkapan/
