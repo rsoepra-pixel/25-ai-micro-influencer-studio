@@ -128,7 +128,7 @@ const html = `<!doctype html><html lang="id"><head><meta charset="utf-8" />
   .no{ width:34px; height:34px; border-radius:50%; background:var(--aksi); border:2.5px solid var(--ink); display:inline-flex;
        align-items:center; justify-content:center; font-weight:700; font-size:18px; line-height:1 }
   .no.titik{ z-index:4; position:absolute; width:30px; height:30px; font-size:16px; box-shadow:2px 2px 0 var(--ink) }
-  .sorot{ position:absolute; border:3px solid var(--brand); border-radius:10px; box-shadow:0 0 0 3px rgba(255,255,255,.9), 0 0 0 4px rgba(166,30,92,.25) }
+  .sorot{ position:absolute; border:3px solid var(--brand); border-radius:10px; background:rgba(236,106,156,.07) }
 
   .sampul{ background:linear-gradient(135deg,#fdeef4 0%,#f1effb 55%,#e1dcf6 100%); display:flex; align-items:center; padding:0 150px }
   .sampul h1{ font-size:128px; line-height:1.02; margin:18px 0 26px }
@@ -217,6 +217,21 @@ function susun(sec) {
     }
   }
 
+  // Garis boleh melintasi layar, tapi tidak boleh menembus sorotan callout
+  // lain — di situ orang kehilangan jejak garis mana menuju ke mana. Jadi
+  // tiap garis mencoba tiga titik akhir (sisi yang menghadap kotak, tepi
+  // bawah, tepi atas) dan memakai yang pertama tidak menabrak.
+  const potong = (ax, ay, bx, by, r) => {
+    const x0 = r.x - 4, y0 = r.y - 4, x1 = r.x + r.w + 4, y1 = r.y + r.h + 4;
+    let t0 = 0, t1 = 1; const dx = bx - ax, dy = by - ay;
+    for (const [p, q] of [[-dx, ax - x0], [dx, x1 - ax], [-dy, ay - y0], [dy, y1 - ay]]) {
+      if (p === 0) { if (q < 0) return false; continue; }
+      const t = q / p;
+      if (p < 0) { if (t > t1) return false; if (t > t0) t0 = t; }
+      else { if (t < t0) return false; if (t < t1) t1 = t; }
+    }
+    return t0 < t1;
+  };
   let g = "";
   for (const it of item) {
     if (!it.r) continue;
@@ -227,20 +242,19 @@ function susun(sec) {
     const kiri = it.s === "kiri";
     const x1 = kiri ? it.x + 296 + 4 : it.x - 2;
     const y1 = it.y + Math.min(it.t / 2, 40);
-    const x2 = kiri ? it.r.x : it.r.x + it.r.w;
-    const y2 = Math.min(Math.max(y1, it.r.y + 8), it.r.y + it.r.h - 8);
-    // Siku: mendatar dari kotak, lalu miring ke sasaran — lebih mudah diikuti
-    // mata daripada garis lurus yang saling menyilang.
-    const xm = kiri ? Math.min(x1 + 22, x2) : Math.max(x1 - 22, x2);
+    const xm = kiri ? x1 + 22 : x1 - 22;
+    const cxr = Math.min(Math.max(it.r.x + it.r.w / 2, it.r.x + 12), it.r.x + it.r.w - 12);
+    const calon = [
+      [kiri ? it.r.x : it.r.x + it.r.w, Math.min(Math.max(y1, it.r.y + 8), it.r.y + it.r.h - 8)],
+      [cxr, it.r.y + it.r.h],
+      [cxr, it.r.y],
+    ];
+    const lain = item.filter((o) => o !== it && o.r);
+    const [x2, y2] = calon.find(([x, y]) => !lain.some((o) => potong(xm, y1, x, y, o.r))) || calon[0];
     const d = "M" + x1 + " " + y1 + " L" + xm + " " + y1 + " L" + x2 + " " + y2;
     g += '<path d="' + d + '" fill="none" stroke="#fff" stroke-width="8" stroke-linecap="round" stroke-linejoin="round"/>'
        + '<path d="' + d + '" fill="none" stroke="#1e1b2e" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>'
-       + '<circle cx="' + x2 + '" cy="' + y2 + '" r="7" fill="#ec6a9c" stroke="#1e1b2e" stroke-width="3"/>';
-    const t = document.createElement("span");
-    t.className = "no titik"; t.textContent = it.i + 1;
-    t.style.left = (kiri ? it.r.x + it.r.w - 15 : it.r.x - 15) + "px";
-    t.style.top = (it.r.y - 15) + "px";
-    panggung.appendChild(t);
+       + '<circle cx="' + x2 + '" cy="' + y2 + '" r="8" fill="#ec6a9c" stroke="#1e1b2e" stroke-width="3"/>';
   }
   svg.innerHTML = g;
 }
