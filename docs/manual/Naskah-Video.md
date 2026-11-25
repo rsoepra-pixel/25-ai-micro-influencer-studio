@@ -8,21 +8,27 @@ Satu bagian di bawah = satu halaman PDF = satu berkas di `slide/`. Bacakan naras
 
 Halo, selamat datang di AI Influencer Studio. Di sini kamu bisa membuat karakter sendiri, lalu menjadikannya video, gambar, dan suara untuk jualan atau konten sehari-hari. Panduan ini dibuat pendek. Satu halaman, satu hal. Kamu tinggal ikuti nomornya, dari masuk ke aplikasi sampai video pertamamu jadi. Santai saja, nggak perlu buru-buru.
 
-## 2. Cara membaca panduan ini
+## 2. Daftar isi
 
-*Slide: `02-cara-membaca.jpg` · Bagian: Pengantar*
+*Slide: `02-daftar-isi.jpg` · Bagian: Daftar Isi*
+
+Panduan ini dibagi menjadi sebelas episode. Kamu bisa membacanya berurutan, atau langsung lompat ke topik yang sedang kamu butuhkan.
+
+## 3. Cara membaca panduan ini
+
+*Slide: `03-cara-membaca.jpg` · Bagian: Pengantar*
 
 Setiap halaman panduan ini berisi satu layar aplikasi. Di sekelilingnya ada kotak-kotak bernomor, dan garis dari tiap kotak menunjuk ke bagian layar yang dijelaskan. Bacalah dari nomor satu, lalu dua, dan seterusnya. Kalau ada langkah yang memakai saldo, kami tulis jelas di kotaknya. Oh ya, semua gambar layar di sini memakai data contoh, jadi angka yang berlaku adalah yang tampil di layarmu sendiri.
 
-## 3. Peta menu: apa ada di mana
+## 4. Peta menu: apa ada di mana
 
-*Slide: `03-peta-menu.jpg` · Bagian: Pengantar*
+*Slide: `04-peta-menu.jpg` · Bagian: Pengantar*
 
 Ini peta singkat isi aplikasi. Untuk pemula, cukup empat tempat: Beranda, Arah Konten, Profil saya, dan Buat Video. Menu lain seperti Influencers, Product Kit, Production Studio, Storyboard, dan Video UGC ada di Semua menu. Itu alat untuk yang mau mengatur sendiri lebih rinci. Kamu nggak harus membuka semuanya.
 
-## 4. Masuk ke aplikasi
+## 5. Masuk ke aplikasi
 
-*Slide: `04-masuk-01-masuk.jpg` · Bagian: Masuk & Daftar*
+*Slide: `05-masuk-01-masuk.jpg` · Bagian: Masuk & Daftar*
 
 Begini tampilan pertama saat kamu membuka aplikasi. Kamu bisa masuk dengan akun Google, cuma sekali ketuk. Atau pakai email dan password seperti biasa. Kalau salah isi, layar akan bilang apa masalahnya, jadi kamu nggak perlu menebak-nebak. Dan kalau ini pertama kalinya, tekan tulisan Belum punya akun di bagian bawah.
 
@@ -34,9 +40,9 @@ Yang ditunjuk di layar:
 4. Tekan setelah email dan password terisi. Kalau gagal, layar menyebut sebabnya.
 5. Baru pertama kali? Tekan ini untuk pindah ke formulir daftar.
 
-## 5. Daftar akun baru
+## 6. Daftar akun baru
 
-*Slide: `05-masuk-02-daftar.jpg` · Bagian: Masuk & Daftar*
+*Slide: `06-masuk-02-daftar.jpg` · Bagian: Masuk & Daftar*
 
 Kalau kamu belum punya akun, pilih daftar. Isi email dan password, lalu tekan Daftar. Begitu jadi, kamu langsung dapat ruang kerja sendiri, dan kamu pemiliknya. Nggak perlu menunggu persetujuan siapa pun. Kalau ternyata sudah pernah daftar, tekan Sudah punya akun untuk kembali. Kebijakan privasi dan syaratnya bisa kamu baca di bawah.
 
@@ -47,9 +53,9 @@ Yang ditunjuk di layar:
 3. Salah halaman? Tekan ini untuk kembali ke formulir masuk.
 4. Tautan ke kebijakan privasi dan syarat penggunaan ada di bagian bawah kartu.
 
-## 6. Menu di sisi kiri layar
+## 7. Menu di sisi kiri layar
 
-*Slide: `06-kerangka-01-sidebar.jpg` · Bagian: Kerangka Aplikasi*
+*Slide: `07-kerangka-01-sidebar.jpg` · Bagian: Kerangka Aplikasi*
 
 Di sebelah kiri ada menu utama. Paling atas ada Cara mulai, tempat terbaik kalau kamu baru. Di bawahnya ada tujuh menu utama, termasuk Arah Konten untuk mencari ide dan Buat Video untuk membuatnya. Mau melihat menu yang lebih lengkap? Tekan Semua menu. Di kiri bawah ada kartu saldo, dan di bawahnya tombol kecil untuk keluar dari akun.
 
@@ -60,9 +66,9 @@ Yang ditunjuk di layar:
 3. Pintu utama membuat video: beberapa pertanyaan, lalu kamu meninjau naskah dan harganya sebelum videonya dibuat.
 4. Membuka daftar lengkap, termasuk Influencers dan Product Kit. Pilihanmu diingat di perangkat ini.
 
-## 7. Semua menu, petunjuk, dan bantuan
+## 8. Semua menu, petunjuk, dan bantuan
 
-*Slide: `07-kerangka-02-semua-menu.jpg` · Bagian: Kerangka Aplikasi*
+*Slide: `08-kerangka-02-semua-menu.jpg` · Bagian: Kerangka Aplikasi*
 
 Tekan Semua menu, dan daftar menunya jadi lengkap, ada Influencers, Product Kit, dan alat produksi lainnya. Coba sorot satu menu, nanti muncul kotak kecil yang menjelaskan isinya. Ikon i di samping label juga begitu. Dan kalau masih bingung, tombol tanda tanya di pojok kanan bawah siap menjawab pertanyaanmu.
 
@@ -74,9 +80,9 @@ Yang ditunjuk di layar:
 4. Ikon i di label mana pun menjelaskan label itu. Sorot atau ketuk untuk membacanya.
 5. Asisten bantuan. Tanyakan cara pakai atau kenapa sesuatu gagal; ia tahu kamu sedang di layar mana.
 
-## 8. Beranda dan daftar langkah awal
+## 9. Beranda dan daftar langkah awal
 
-*Slide: `08-beranda-01-mulai-dari-sini.jpg` · Bagian: Beranda*
+*Slide: `09-beranda-01-mulai-dari-sini.jpg` · Bagian: Beranda*
 
 Ini Beranda, ruang kerjamu. Kalau kamu masih baru, di atas ada kartu Mulai dari sini, daftar enam langkah awal. Kamu nggak perlu mencentangnya sendiri. Langkah akan tercentang otomatis begitu datanya terisi. Mau yang ringkas? Tekan Cara cepat untuk mengisi foto, suara, dan bahasa sekaligus. Kalau masih bingung, ada tautan ke halaman Cara mulai.
 
@@ -88,9 +94,9 @@ Yang ditunjuk di layar:
 4. Membuka halaman Cara mulai yang bisa dicetak jadi satu lembar.
 5. Langkah terakhir daftar. Membuka wizard Buat Video; rincian harganya tampil di langkah tinjau.
 
-## 9. Kartu ringkasan di Beranda
+## 10. Kartu ringkasan di Beranda
 
-*Slide: `09-beranda-02-kartu.jpg` · Bagian: Beranda*
+*Slide: `10-beranda-02-kartu.jpg` · Bagian: Beranda*
 
 Di bawahnya ada beberapa kartu ringkasan. Kartu Influencers menunjukkan karakter-karakter kamu. Produksi Terbaru memperlihatkan pekerjaan terakhir, apakah berhasil, gagal, atau masih jalan. Dan ada kartu Kelola lewat Claude kalau kamu lebih suka minta lewat chat. Semua ini cuma ringkasan, tempat bekerjanya ada di menu masing-masing.
 
@@ -100,9 +106,9 @@ Yang ditunjuk di layar:
 2. Lima job terakhir. Tanda centang berarti berhasil, silang gagal, bulat masih berjalan.
 3. Opsional. Cara menghubungkan ruang kerja ke Claude supaya bisa meminta lewat percakapan biasa.
 
-## 10. Cara mulai: empat langkah
+## 11. Cara mulai: empat langkah
 
-*Slide: `10-mulai-01-infografis.jpg` · Bagian: Cara Mulai*
+*Slide: `11-mulai-01-infografis.jpg` · Bagian: Cara Mulai*
 
 Kalau kamu bingung mulai dari mana, halaman ini jawabannya. Ada empat langkah. Pertama Arah Konten, lalu Profil saya, kemudian Buat Video, dan terakhir tonton serta bagikan. Dua langkah pertama cukup sekali saja. Di bawahnya ada garis kapan uang keluar, dari yang gratis sampai video yang paling besar, dan itu selalu dibayar paling akhir. Bisa dicetak juga.
 
@@ -114,9 +120,9 @@ Yang ditunjuk di layar:
 4. Lima hal yang bikin lancar: waktu, foto wajah, tempat sunyi, foto kemasan asli, dan saldo.
 5. Menyimpan halaman ini sebagai PDF satu lembar, atau mencetaknya.
 
-## 11. Cara mulai lewat Claude: menyambungkan
+## 12. Cara mulai lewat Claude: menyambungkan
 
-*Slide: `11-mulai-02-lewat-claude-a.jpg` · Bagian: Cara Mulai*
+*Slide: `12-mulai-02-lewat-claude-a.jpg` · Bagian: Cara Mulai*
 
 Buat yang lebih nyaman mengetik seperti di WhatsApp, kamu bisa mengatur semuanya lewat chat Claude. Cek dulu syaratnya, karena fitur ini hanya ada di paket Claude tertentu. Penyambungannya empat langkah dan dilakukan sekali saja, sekitar sepuluh menit. Alamat connector bisa kamu salin dengan satu tombol, lalu tempel di claude.ai.
 
@@ -126,9 +132,9 @@ Yang ditunjuk di layar:
 2. Empat langkah penyambungan, dilakukan satu kali, sekitar sepuluh menit. Minta bantuan kalau perlu.
 3. Menyalin alamat connector atau kalimat contoh, lalu tempel di claude.ai atau chat Claude.
 
-## 12. Cara mulai lewat Claude: kalimat pertama
+## 13. Cara mulai lewat Claude: kalimat pertama
 
-*Slide: `12-mulai-02-lewat-claude-b.jpg` · Bagian: Cara Mulai*
+*Slide: `13-mulai-02-lewat-claude-b.jpg` · Bagian: Cara Mulai*
 
 Habis tersambung, tinggal ngobrol. Ada tiga kalimat contoh yang bisa kamu salin lewat tombol Salin. Claude akan menyebut harga dulu dan menunggu kamu bilang ya sebelum membuat sesuatu yang berbayar. Kalau ada yang tidak jalan, lihat daftar masalah umum di bawahnya. Satu catatan, foto wajah dan rekaman suara tetap diisi di aplikasi, lewat Profil saya.
 
@@ -138,9 +144,9 @@ Yang ditunjuk di layar:
 2. Tombol Salin di tiap contoh menyalin kalimatnya, tinggal tempel di chat Claude.
 3. Daftar masalah umum dan jalan keluarnya, mis. connector belum dinyalakan di chat.
 
-## 13. Arah Konten: titik awal
+## 14. Arah Konten: titik awal
 
-*Slide: `13-arah-01-depan.jpg` · Bagian: Arah Konten*
+*Slide: `14-arah-01-depan.jpg` · Bagian: Arah Konten*
 
 Arah Konten menjawab satu pertanyaan, konten apa yang sebaiknya kamu buat. Halaman ini nggak membuat video, cuma ide dan naskah. Mulai dari dua belas pertanyaan, sekitar delapan menit. Nggak tahu jawabannya? Pilih Belum tahu. Atau kalau kamu sudah punya profil usaha, unggah saja dokumennya. Di bawah ada tempat ide dan naskah yang nanti terisi.
 
@@ -152,9 +158,9 @@ Yang ditunjuk di layar:
 4. Tempat mencari ide: sepuluh usulan sekali tekan, lengkap dengan pilar dan tujuannya.
 5. Daftar naskah yang sudah kamu tulis. Masih kosong sampai kamu menulis satu.
 
-## 14. Menjawab 12 pertanyaan
+## 15. Menjawab 12 pertanyaan
 
-*Slide: `14-arah-02-pertanyaan.jpg` · Bagian: Arah Konten*
+*Slide: `15-arah-02-pertanyaan.jpg` · Bagian: Arah Konten*
 
 Tiap layar cuma satu pertanyaan, dengan contoh jawaban di bawahnya. Jawab seadanya saja, seperti ngobrol. Yang wajib cuma tiga, yaitu nomor satu, dua, dan enam. Sisanya, kalau belum tahu, tekan Belum tahu. Tenang, nggak ada jawaban yang salah. Kalau capek, tekan Simpan dan keluar, besok bisa lanjut dari tempat yang sama.
 
@@ -166,9 +172,9 @@ Yang ditunjuk di layar:
 4. Boleh berhenti di tengah jalan. Jawabanmu tetap tersimpan di perangkat ini.
 5. Ke pertanyaan berikutnya. Di akhir, kamu melihat ringkasan semua jawaban.
 
-## 15. Periksa jawaban, lalu susun blueprint
+## 16. Periksa jawaban, lalu susun blueprint
 
-*Slide: `15-arah-03-susun-blueprint.jpg` · Bagian: Arah Konten*
+*Slide: `16-arah-03-susun-blueprint.jpg` · Bagian: Arah Konten*
 
 Sampai di sini semua jawabanmu terkumpul dalam satu daftar. Periksa dulu, dan ketuk jawaban yang mau diubah. Kalau sudah pas, tekan Susun blueprint. Langkah ini memakai saldo, karena penulis AI yang bekerja menyusunnya. Tapi tenang, hasilnya kamu lihat dulu dan bisa kamu ubah sesukamu. Belum ada video atau gambar yang dibuat di sini.
 
@@ -179,9 +185,9 @@ Yang ditunjuk di layar:
 3. Pengingat tertulis di bawah tombol: hasil bisa kamu periksa dan ubah, tidak langsung dipakai.
 4. Kembali ke pertanyaan sebelumnya kalau ada yang mau diubah.
 
-## 16. Blueprint: siapa kamu dan untuk siapa
+## 17. Blueprint: siapa kamu dan untuk siapa
 
-*Slide: `16-arah-04-blueprint-atas.jpg` · Bagian: Arah Konten*
+*Slide: `17-arah-04-blueprint-atas.jpg` · Bagian: Arah Konten*
 
 Inilah blueprint kamu, ringkasan arah kontenmu dalam satu halaman. Di atas ada positioning, satu kalimat tentang siapa kamu. Lalu tiga keunggulan, dan gambaran audiensmu, termasuk kata-kata yang mereka pakai sendiri. Kalau ada yang kurang pas, tekan Ubah di bagian itu. Mengubah sendiri gratis, dan editanmulah yang dipakai seterusnya.
 
@@ -192,9 +198,9 @@ Yang ditunjuk di layar:
 3. Siapa mereka, masalahnya, yang diinginkan, dan kata-kata yang mereka pakai sendiri.
 4. Tiap bagian bisa kamu ubah sendiri, gratis. Hasil editanmu yang dipakai seterusnya.
 
-## 17. Blueprint: pilar, ritme, dan susun ulang
+## 18. Blueprint: pilar, ritme, dan susun ulang
 
-*Slide: `17-arah-05-blueprint-bawah.jpg` · Bagian: Arah Konten*
+*Slide: `18-arah-05-blueprint-bawah.jpg` · Bagian: Arah Konten*
 
 Lebih ke bawah ada pilar konten, tiga sampai lima tema yang akan terus kamu bahas. Lalu ritme per minggu, berapa konten untuk berkenalan, membangun percaya, dan mengajak beli. Mau mengisi ulang? Ada dua pilihan. Susun ulang dari jawaban langsung memakai saldo. Ulangi dua belas pertanyaan hanya membuka pertanyaannya lagi, dan baru memakai saldo saat kamu menyusun blueprint.
 
@@ -205,9 +211,9 @@ Yang ditunjuk di layar:
 3. Menjalankan penulis AI lagi dari jawaban tersimpan. Memakai saldo, dan hasil lama diganti.
 4. Membuka pertanyaan lagi, terisi jawabanmu. Blueprint lama tidak berubah sampai kamu menyusun lagi.
 
-## 18. Mencari ide konten
+## 19. Mencari ide konten
 
-*Slide: `18-arah-06-ide.jpg` · Bagian: Arah Konten*
+*Slide: `19-arah-06-ide.jpg` · Bagian: Arah Konten*
 
 Di sini kamu bisa minta sepuluh ide sekaligus. Mau ide untuk pilar tertentu, atau untuk tujuan tertentu seperti kenalan, percaya, atau beli? Tinggal pilih dulu. Tombol Sepuluh ide memakai saldo. Hasilnya belum tersimpan, jadi kamu pilih dulu. Yang cocok, tekan Simpan, atau Simpan semua kalau semuanya bagus. Menyimpan dan menghapus gratis.
 
@@ -219,9 +225,9 @@ Yang ditunjuk di layar:
 4. Menyimpan satu usulan sebagai ide. Gratis. Yang tidak cocok dihapus dengan tanda ×.
 5. Menyimpan semua usulan yang tersisa sekaligus. Gratis; pilar yang belum ada ikut dibuat.
 
-## 19. Memilih kalimat pembuka naskah
+## 20. Memilih kalimat pembuka naskah
 
-*Slide: `19-arah-07-pembuka.jpg` · Bagian: Arah Konten*
+*Slide: `20-arah-07-pembuka.jpg` · Bagian: Arah Konten*
 
 Naskah dimulai dari pembuka, kalimat pertama yang bikin orang berhenti scroll. Tekan Beri lima pembuka, dan penulis AI menyodorkan lima gaya berbeda, misalnya cerita, pertanyaan, atau angka. Langkah itu memakai saldo. Suka salah satu? Klik. Atau tulis sendiri, itu gratis. Ada juga Remix, kalau kamu mau meniru pola video orang lain, bukan kalimatnya.
 
@@ -232,9 +238,9 @@ Yang ditunjuk di layar:
 3. Pilih salah satu usulan, atau tulis sendiri (gratis). Naskah dilanjutkan persis dari kalimat ini.
 4. Tempel teks atau garis besar video orang lain. Yang dipakai polanya, bukan kalimatnya. Memakai saldo.
 
-## 20. Menulis naskah yang enak didengar
+## 21. Menulis naskah yang enak didengar
 
-*Slide: `20-arah-08-naskah.jpg` · Bagian: Arah Konten*
+*Slide: `21-arah-08-naskah.jpg` · Bagian: Arah Konten*
 
 Pilih berapa lama videonya, lalu tekan Tulis naskahnya. Penulis AI akan melanjutkan dari pembuka yang kamu pilih. Naskahnya ditulis untuk didengar, jadi kalimatnya pendek, seperti orang ngobrol. Itu memakai saldo. Setelah muncul, kamu boleh mengubah pembuka, isi, atau ajakan sesukamu. Mengubah naskah sendiri tidak memakai saldo.
 
@@ -246,9 +252,9 @@ Yang ditunjuk di layar:
 4. Ditulis untuk didengar: kalimat pendek dan jeda pakai titik-titik. Boleh kamu ubah, gratis.
 5. Kalimat penutup yang menyuruh penonton berbuat sesuatu, disesuaikan dengan tujuan idenya.
 
-## 21. Caption, simpan, dan lanjut ke video
+## 22. Caption, simpan, dan lanjut ke video
 
-*Slide: `21-arah-09-serah-terima.jpg` · Bagian: Arah Konten*
+*Slide: `22-arah-09-serah-terima.jpg` · Bagian: Arah Konten*
 
 Di bagian bawah ada caption, yaitu teks yang dibaca di bawah postingan. Caption sengaja dibuat pendek dan berbeda dari naskah. Kalau sudah pas, tekan Simpan. Terakhir, tombol Buat videonya akan membawamu ke Buat Video dengan naskah yang sudah terisi. Menekan tombol itu belum memakai saldo. Arah Konten memang berhenti di naskah.
 
@@ -259,9 +265,9 @@ Yang ditunjuk di layar:
 3. Menyimpan pembuka, naskah, caption, dan tagar ke konten ini. Gratis.
 4. Membuka Buat Video dengan naskah ini sudah terisi. Gambar, suara, dan videonya baru dibuat di sana.
 
-## 22. Profil saya: wajahmu
+## 23. Profil saya: wajahmu
 
-*Slide: `22-profil-01-wajah.jpg` · Bagian: Profil Saya*
+*Slide: `23-profil-01-wajah.jpg` · Bagian: Profil Saya*
 
 Langkah pertama di Profil saya adalah wajahmu. Isi nama panggilan, lalu pilih dua sampai empat foto yang jelas, tanpa kacamata hitam dan tanpa filter. Foto ini membuat wajahmu tetap sama di semua video. Tekan Simpan wajah saya. Langkah ini memakai saldo sedikit, karena penulis AI membaca ciri wajahmu dari foto. Menambah foto berikutnya gratis.
 
@@ -272,9 +278,9 @@ Yang ditunjuk di layar:
 3. Pilih sampai empat foto dari galeri sekaligus. Belum terkirim sebelum kamu menekan tombol simpan.
 4. Membuat profilmu. Penulis AI membaca ciri wajah dari foto, jadi langkah ini memakai saldo sedikit.
 
-## 23. Profil saya: suaramu
+## 24. Profil saya: suaramu
 
-*Slide: `23-profil-02-suara.jpg` · Bagian: Profil Saya*
+*Slide: `24-profil-02-suara.jpg` · Bagian: Profil Saya*
 
 Sekarang suaramu. Rekam sepuluh sampai tiga puluh detik di tempat sunyi, tanpa musik. Ceritakan saja apa yang kamu jual, seperti ngobrol. Atau unggah rekaman dari ponselmu. Dengarkan dulu hasilnya. Kalau sudah pas, tekan tombol untuk memakai rekaman itu. Sistem butuh sekitar satu menit untuk menirunya. Langkah suara ini tidak memotong saldomu.
 
@@ -286,9 +292,9 @@ Yang ditunjuk di layar:
 4. Putar rekamanmu dulu. Kalau ada suara latar atau terpotong, rekam ulang sebelum dipakai.
 5. Mengirim rekaman untuk ditiru, sekitar satu menit. Tidak memotong saldo; suara lama diganti. Kalau belum ada suara, tombolnya bertuliskan Pakai rekaman ini.
 
-## 24. Profil saya: bahasa dan siap video
+## 25. Profil saya: bahasa dan siap video
 
-*Slide: `24-profil-03-bahasa-siap.jpg` · Bagian: Profil Saya*
+*Slide: `25-profil-03-bahasa-siap.jpg` · Bagian: Profil Saya*
 
 Terakhir, pilih bahasa videomu, Indonesia, English, atau campuran. Pilihannya langsung tersimpan. Di bawahnya ada kartu Sudah siap, yang tandanya terisi sendiri saat wajah dan suara sudah ada. Kalau sudah hijau, tekan Buat video pertama. Ingat, video bicara ke kamera masih butuh satu produk di Product Kit. Mau mengatur lebih rinci? Ada Pengaturan lengkap.
 
@@ -300,9 +306,9 @@ Yang ditunjuk di layar:
 4. Membuka wizard Buat Video. Baru aktif kalau wajah dan suara sudah ada.
 5. Membuka halaman detail karakter ini untuk mengatur lebih rinci.
 
-## 25. Buat Video: pilih jenis video
+## 26. Buat Video: pilih jenis video
 
-*Slide: `25-buat-video-01-apa-bicara.jpg` · Bagian: Buat Video*
+*Slide: `26-buat-video-01-apa-bicara.jpg` · Bagian: Buat Video*
 
 Buat Video itu seperti wawancara singkat, cuma empat pertanyaan. Pertama, kamu mau video seperti apa? Bicara ke kamera, cocok untuk jualan dan endorse. Atau cerita beberapa adegan. Lalu ceritakan videonya dalam satu dua kalimat saja. Harga perkiraannya sudah tertulis di sini, dalam rupiah, jadi kamu tahu dari awal. Di langkah ini belum ada yang dibayar.
 
@@ -314,9 +320,9 @@ Yang ditunjuk di layar:
 4. Satu atau dua kalimat cukup. Penulis AI menyusun naskah lengkapnya nanti.
 5. Perkiraan harga untuk beberapa pilihan durasi sudah tertulis, dalam rupiah, sebelum kamu lanjut.
 
-## 26. Jalur cerita: bentuk dan gaya gambar
+## 27. Jalur cerita: bentuk dan gaya gambar
 
-*Slide: `26-buat-video-02-apa-cerita.jpg` · Bagian: Buat Video*
+*Slide: `27-buat-video-02-apa-cerita.jpg` · Bagian: Buat Video*
 
 Kalau kamu pilih cerita beberapa adegan, ada tiga pilihan tambahan. Bentuk ceritanya, misalnya masalah, produk, lalu hasil. Kamu nggak perlu menghitung adegan, penulis AI yang membagi. Lalu gaya gambar, foto nyata atau kolase kertas. Harganya sama saja. Terakhir, foto dari HP kamu, kalau ada, untuk bahan adegan. Semua ini opsional.
 
@@ -327,9 +333,9 @@ Yang ditunjuk di layar:
 3. Foto dapur, kemasan, atau pembeli jadi bahan adegan. Belum terkirim sebelum naskah ditulis.
 4. Satu atau dua kalimat cukup, mis. pagi di dapur, menggoreng keripik, sampai ke tangan pembeli.
 
-## 27. Siapa yang tampil dan produk apa
+## 28. Siapa yang tampil dan produk apa
 
-*Slide: `27-buat-video-03-siapa.jpg` · Bagian: Buat Video*
+*Slide: `28-buat-video-03-siapa.jpg` · Bagian: Buat Video*
 
 Langkah dua, siapa yang tampil. Wajah dan suaranya diambil dari Profil saya. Kalau ada yang belum siap, misalnya foto wajah, suara, atau produk, layar bilang sekarang juga, lengkap dengan tautan untuk memperbaikinya, jadi kamu nggak kecele setelah naskah dibayar. Untuk video bicara, pilih produknya. Belum ada? Tekan Produk baru.
 
@@ -341,9 +347,9 @@ Yang ditunjuk di layar:
 4. Simpan produk baru di sini tanpa pindah halaman: nama, keunggulan, dan foto kemasan asli.
 5. Kalau belum bisa ditekan, alasannya tertulis di bawah tombol, lengkap dengan tautan memperbaikinya.
 
-## 28. Berapa lama videonya
+## 29. Berapa lama videonya
 
-*Slide: `28-buat-video-04-berapa-lama.jpg` · Bagian: Buat Video*
+*Slide: `29-buat-video-04-berapa-lama.jpg` · Bagian: Buat Video*
 
 Sekarang pilih berapa lama videonya. Setiap tombol menuliskan perkiraan harganya langsung, jadi nggak ada kejutan. Maksimal tiga puluh detik per video. Kalau butuh lebih panjang, bagi jadi beberapa video pendek. Lalu tekan Tulis naskahnya. Langkah ini memakai saldo, karena penulis AI yang menulis. Gambar, suara, dan video belum dibuat sama sekali.
 
@@ -354,9 +360,9 @@ Yang ditunjuk di layar:
 3. Video lebih panjang belum bisa. Untuk sekarang, bagi jadi beberapa video pendek.
 4. Penulis AI menyusun naskah. Langkah ini memakai saldo. Gambar, suara, dan video belum dibuat.
 
-## 29. Tinjau naskah dan harga: bicara ke kamera
+## 30. Tinjau naskah dan harga: bicara ke kamera
 
-*Slide: `29-buat-video-05-tinjau-bicara.jpg` · Bagian: Buat Video*
+*Slide: `30-buat-video-05-tinjau-bicara.jpg` · Bagian: Buat Video*
 
 Inilah naskah yang akan kamu ucapkan. Baca pelan-pelan, dan ubah kalau ada kata yang kurang pas. Mengubah naskah gratis, dan harga di bawahnya ikut menyesuaikan. Kalau sudah cocok, tekan Ya, buat pratinjau. Langkah ini memakai saldo. Yang dibuat dulu cuma gambar pertama dan suaramu, bagian yang murah. Videonya baru dibayar setelah kamu menyetujui keduanya.
 
@@ -368,9 +374,9 @@ Yang ditunjuk di layar:
 4. Ini yang memakai saldo: gambar pertama dan suaramu dibuat bersamaan. Videonya baru dibayar sesudah kamu setuju.
 5. Minta naskah versi lain. Memakai saldo, dan perubahanmu di kolom naskah ikut terganti.
 
-## 30. Tinjau naskah dan harga: jalur cerita
+## 31. Tinjau naskah dan harga: jalur cerita
 
-*Slide: `30-buat-video-06-tinjau-cerita.jpg` · Bagian: Buat Video*
+*Slide: `31-buat-video-06-tinjau-cerita.jpg` · Bagian: Buat Video*
 
 Untuk jalur cerita, kamu melihat daftar adegan beserta narasi dan lamanya. Penulis AI yang membaginya, jadi nggak perlu menghitung sendiri. Di bawahnya ada rincian harga. Tekan Ya, buat video ini, dan kamu dibawa ke layar produksi. Di sana gambar pembuka dibuat dulu supaya kamu bisa lihat wajah dan latarnya sebelum videonya dibayar. Daftar adegan bisa diubah di sana.
 
@@ -382,9 +388,9 @@ Yang ditunjuk di layar:
 4. Minta naskah versi lain dari cerita yang sama. Memakai saldo.
 5. Mengubah durasi. Naskah yang sudah ditulis dibuang.
 
-## 31. Daftar karakter AI-mu
+## 32. Daftar karakter AI-mu
 
-*Slide: `31-influencers-01-daftar.jpg` · Bagian: Influencers*
+*Slide: `32-influencers-01-daftar.jpg` · Bagian: Influencers*
 
 Influencers adalah daftar karakter AI milikmu. Satu karakter menyimpan wajah, suara, dan kepribadiannya, supaya tetap sama di semua video. Tiap kartu menunjukkan nama dan niche. Klik untuk membuka detailnya. Kalau ada tanda peringatan Character sheet belum dibuat, artinya karakter itu belum punya lembar foto acuan. Mau menambah karakter? Tekan Buat Influencer Baru.
 
@@ -395,9 +401,9 @@ Yang ditunjuk di layar:
 3. Foto, nama, handle, niche, dan status. Klik kartunya untuk membuka halaman detail karakter itu.
 4. Penanda: karakter ini belum punya lembar foto acuan dari berbagai sudut. Bisa dibuat kapan saja.
 
-## 32. Formulir membuat karakter baru
+## 33. Formulir membuat karakter baru
 
-*Slide: `32-influencers-02-formulir.jpg` · Bagian: Influencers*
+*Slide: `33-influencers-02-formulir.jpg` · Bagian: Influencers*
 
 Ada dua cara mengisi formulir ini. Pertama, manual, mulai dari ide niche yang sudah disediakan sebagai pancingan. Kedua, dibantu AI, tinggal jawab beberapa pertanyaan atau unggah foto. Bantuan AI memakai saldo. Satu-satunya kolom yang wajib adalah nama. Sisanya bisa diisi sambil jalan, dan bisa diubah kapan saja di halaman detail.
 
@@ -409,9 +415,9 @@ Yang ditunjuk di layar:
 4. Topik kontenmu. Teks bebas, jadi daftar ide di atasnya hanya titik mulai.
 5. Indonesia, English, atau Campuran. Menentukan bahasa naskah dan suara karakter ini.
 
-## 33. Dibantu AI membuat karakter
+## 34. Dibantu AI membuat karakter
 
-*Slide: `33-influencers-03-bantuan-ai.jpg` · Bagian: Influencers*
+*Slide: `34-influencers-03-bantuan-ai.jpg` · Bagian: Influencers*
 
 Di jendela ini kamu cukup menjawab seadanya. Yang kosong akan diisi AI. Kalau punya foto, unggah saja, sampai empat. AI akan membaca ciri wajah dari foto itu, jauh lebih tepat daripada hanya menebak dari kata-kata. Pilih basis karakter, lalu tekan Buatkan deskripsi. Itu memakai saldo. Hasilnya muncul dulu, bisa kamu edit, baru kamu pakai.
 
@@ -422,9 +428,9 @@ Yang ditunjuk di layar:
 3. Fleksibel, Fiktif sepenuhnya, atau Ikuti deskripsi saya.
 4. Menjalankan penulis AI. Memakai saldo. Hasilnya kamu tinjau dulu sebelum dipakai di formulir.
 
-## 34. Deskripsi fisik dan simpan karakter
+## 35. Deskripsi fisik dan simpan karakter
 
-*Slide: `34-influencers-04-identity.jpg` · Bagian: Influencers*
+*Slide: `35-influencers-04-identity.jpg` · Bagian: Influencers*
 
 Bagian terpenting adalah identity prompt, deskripsi fisik karakter dalam bahasa Inggris. Isinya cuma ciri tetap, seperti wajah dan rambut. Jangan masukkan latar atau baju, karena nanti ikut muncul di semua gambar. Ada juga foto look-alike kalau kamu punya contoh. Kalau sudah, tekan Buat Influencer. Setelah itu kamu ditawari langkah berikutnya, character sheet.
 
@@ -435,9 +441,9 @@ Yang ditunjuk di layar:
 3. Unggah satu foto acuan, lalu pilih yang ditiru: karakter wajahnya atau suasananya.
 4. Menyimpan karakter. Langkah character sheet langsung ditawarkan sesudahnya.
 
-## 35. Langkah 2: character sheet
+## 36. Langkah 2: character sheet
 
-*Slide: `35-influencers-05-character-sheet.jpg` · Bagian: Influencers*
+*Slide: `36-influencers-05-character-sheet.jpg` · Bagian: Influencers*
 
 Begitu karakter tersimpan, kamu ditawari character sheet, beberapa foto wajah dari sudut dan ekspresi berbeda. Foto-foto ini jadi patokan di semua produksi berikutnya, supaya wajahnya nggak bergeser. Centang sudut yang kamu mau, pilih latar netral, lalu tekan Buat character sheet. Tiap gambar memakai saldo. Belum siap? Lewati dulu, bisa dibuat kapan saja.
 
@@ -449,9 +455,9 @@ Yang ditunjuk di layar:
 4. Studio abu netral disarankan, supaya latar tidak ikut terkunci ke karakter.
 5. Satu gambar per sudut yang dicentang. Semuanya memakai saldo; perkiraan total tertulis di sampingnya.
 
-## 36. Halaman detail karakter
+## 37. Halaman detail karakter
 
-*Slide: `36-influencers-06-detail.jpg` · Bagian: Influencers*
+*Slide: `37-influencers-06-detail.jpg` · Bagian: Influencers*
 
 Ini halaman detail satu karakter. Di kiri, kartu Character Sheet berisi nama, niche, bahasa, bio, dan identity prompt. Gembok kecil mengunci identity prompt, supaya nggak berubah tanpa sengaja. Di kanan ada Identity Kit, foto acuan wajahnya. Foto inilah yang membuat wajah tetap sama di semua gambar. Setelah mengubah sesuatu, ingat tekan Simpan.
 
@@ -463,9 +469,9 @@ Yang ditunjuk di layar:
 4. Foto acuan wajah dari berbagai sudut. Foto inilah yang dikirim saat membuat gambar agar wajah konsisten.
 5. Menyimpan perubahan formulir kiri. Bio dan identity prompt baru permanen setelah ini ditekan.
 
-## 37. Suara karakter di halaman detail
+## 38. Suara karakter di halaman detail
 
-*Slide: `37-influencers-07-suara.jpg` · Bagian: Influencers*
+*Slide: `38-influencers-07-suara.jpg` · Bagian: Influencers*
 
 Di bawah Identity Kit ada tiga kartu suara. Yang paling penting, klon suara untuk video UGC. Unggah satu rekaman bersih, tanpa musik, minimal sepuluh detik, dan suaramu dipakai untuk membaca naskah. Satu lagi untuk video cerita di Storyboard, tidak wajib. Klon suara tidak memotong saldomu. Cara paling cepat tetap lewat halaman Profil saya.
 
@@ -477,9 +483,9 @@ Yang ditunjuk di layar:
 4. Mengirim rekaman untuk ditiru. Tidak memotong saldomu.
 5. Lencana status: belum ada, atau sudah diklon.
 
-## 38. Menyimpan produk dengan foto asli
+## 39. Menyimpan produk dengan foto asli
 
-*Slide: `38-product-kit-01-tambah.jpg` · Bagian: Product Kit*
+*Slide: `39-product-kit-01-tambah.jpg` · Bagian: Product Kit*
 
 Product Kit adalah tempat menyimpan produkmu sekali, lalu dipakai di banyak video. Isi nama, keunggulan satu per baris, dan klaim yang tidak boleh diucapkan, misalnya menyembuhkan. Yang paling penting adalah fotonya, harus foto kemasan asli, bukan buatan AI. Tanpa foto asli, label dan bentuk kemasan bakal dikarang mesin dan berubah-ubah antar video.
 
@@ -491,9 +497,9 @@ Yang ditunjuk di layar:
 4. Kata yang tidak boleh keluar di video, misalnya menyembuhkan atau 100% aman.
 5. Wajib foto asli kemasan. Tanpa foto, model gambar mengarang label dan bentuk kemasan.
 
-## 39. Kelola produk yang tersimpan
+## 40. Kelola produk yang tersimpan
 
-*Slide: `39-product-kit-02-tersimpan.jpg` · Bagian: Product Kit*
+*Slide: `40-product-kit-02-tersimpan.jpg` · Bagian: Product Kit*
 
 Produk yang sudah disimpan muncul sebagai kartu. Dari sini kamu bisa mengubah isinya, menambah foto, atau menghapusnya. Kalau ada kartu dengan peringatan kuning belum ada foto, tambahkan dulu, karena tanpa foto kemasannya akan dikarang. Menyimpan dan mengubah produk tidak memakai saldo. Produknya nanti tinggal kamu pilih saat membuat video bicara ke kamera.
 
@@ -505,9 +511,9 @@ Yang ditunjuk di layar:
 4. Peringatan: tanpa foto, kemasan produk akan dikarang model. Tambah foto sebelum dipakai di video.
 5. Menghapus produk beserta fotonya. Video UGC yang memakainya tetap ada, tapi kehilangan produknya.
 
-## 40. Studio: pilih jenis hasil dan model
+## 41. Studio: pilih jenis hasil dan model
 
-*Slide: `40-studio-01-generate.jpg` · Bagian: Production Studio*
+*Slide: `41-studio-01-generate.jpg` · Bagian: Production Studio*
 
 Production Studio adalah alat mentahnya. Kamu mengirim satu pekerjaan per kali, entah gambar, video, suara, atau orang bicara. Pilih Task dulu, lalu model. Modelnya dibagi dua daftar, murah dan premium, jadi keputusan biaya diambil sebelum kamu terpaku pada nama modelnya. Pilih influencer supaya wajahnya konsisten. Untuk cara yang dipandu, pakai Buat Video.
 
@@ -519,9 +525,9 @@ Yang ditunjuk di layar:
 4. Pilih agar foto Identity Kit dan identity prompt-nya dipakai otomatis supaya wajah konsisten.
 5. Menandai hasil ini milik ide konten yang mana. Dikosongkan untuk b-roll umum atau uji coba.
 
-## 41. Menulis prompt dan menjalankan Generate
+## 42. Menulis prompt dan menjalankan Generate
 
-*Slide: `41-studio-02-prompt.jpg` · Bagian: Production Studio*
+*Slide: `42-studio-02-prompt.jpg` · Bagian: Production Studio*
 
 Di bawahnya ada kolom prompt. Bingung menulis dari nol? Mulai dari pustaka, contoh siap pakai yang gratis. Atau minta AI mencarikan prompt per industri, itu memakai saldo. Setelah prompt siap, tekan Generate. Tombol itu memakai saldo sungguhan, tapi kalau job gagal, nggak ditagih. Perkiraan biayanya tertulis tepat di sebelahnya.
 
@@ -533,9 +539,9 @@ Yang ditunjuk di layar:
 4. Mengirim job. Memakai saldo sungguhan, dan kalau gagal tidak ditagih.
 5. Perkiraan biaya di samping tombol. Ditulis indikatif karena yang ditagih adalah hasil sebenarnya.
 
-## 42. Orang bicara dengan satu kali kirim
+## 43. Orang bicara dengan satu kali kirim
 
-*Slide: `42-studio-03-talking.jpg` · Bagian: Production Studio*
+*Slide: `43-studio-03-talking.jpg` · Bagian: Production Studio*
 
 Untuk video orang bicara, pilih Talking. Rahasianya ada di kolom Naskah yang diucapkan. Isi di situ, dan satu kali kirim sudah membuat suaranya, lalu langsung jadi video. Kamu nggak perlu membuat suara dulu lalu menyalin alamatnya. Kolom alamat audio hanya untuk yang audionya sudah ada. Satu kali kirim ini memakai saldo untuk keduanya.
 
@@ -547,9 +553,9 @@ Yang ditunjuk di layar:
 4. Lama video yang diminta. Yang ditagih nanti durasi yang benar-benar dihasilkan.
 5. Mengirim dua pekerjaan berurutan, suara lalu video. Memakai saldo sungguhan.
 
-## 43. Tab Character sheet: banyak sudut sekaligus
+## 44. Tab Character sheet: banyak sudut sekaligus
 
-*Slide: `43-studio-04-character-sheet.jpg` · Bagian: Production Studio*
+*Slide: `44-studio-04-character-sheet.jpg` · Bagian: Production Studio*
 
 Tab Character sheet membuat banyak foto acuan karakter dalam sekali klik. Satu gambar per sudut atau ekspresi, semuanya dengan identity prompt yang sama. Pilih modelnya, centang sudut yang kamu butuh, dan pilih latar netral. Tombol di bawah memakai saldo, sebesar harga satu gambar dikali jumlah sudut yang kamu centang. Hasilnya masuk ke Karya dengan nama yang mudah dibaca.
 
@@ -561,9 +567,9 @@ Yang ditunjuk di layar:
 4. Pilih latar netral supaya tidak ikut terkunci ke karakter.
 5. Satu gambar per sudut yang dicentang, semuanya memakai saldo. Biaya sama dengan harga satu gambar dikali jumlah sudut.
 
-## 44. Tab Riwayat job: hasil dan biaya
+## 45. Tab Riwayat job: hasil dan biaya
 
-*Slide: `44-studio-05-riwayat.jpg` · Bagian: Production Studio*
+*Slide: `45-studio-05-riwayat.jpg` · Bagian: Production Studio*
 
 Riwayat job menampilkan dua puluh pekerjaan terakhir, lengkap dengan status dan biaya sebenarnya. Job yang gagal tidak ditagih, dan sebabnya ditulis dengan bahasa biasa. Angka di label tab, kalau ada, menandakan masih ada yang berjalan, jadi jangan tekan Generate lagi. Jejak membuka rincian yang dikirim ke penyedia, dan Hapus hanya membuang catatannya.
 
@@ -575,9 +581,9 @@ Yang ditunjuk di layar:
 4. Menunjukkan apa yang sebenarnya dikirim ke penyedia: prompt akhir, foto acuan, model, dan pesan error. Gratis.
 5. Membuang catatan job saja. Hasilnya tetap ada di Karya, dan catatan pengeluaran tidak hilang.
 
-## 45. Storyboard: mulai dari ide
+## 46. Storyboard: mulai dari ide
 
-*Slide: `45-storyboard-01-form.jpg` · Bagian: Storyboard*
+*Slide: `46-storyboard-01-form.jpg` · Bagian: Storyboard*
 
 Storyboard cocok untuk cerita yang berpindah-pindah adegan, bukan untuk orang bicara ke kamera. Mulainya dari satu ide. Pilih influencernya supaya wajahnya terkunci di setiap adegan, lalu ceritakan idenya. Kalau punya foto dari ponsel, misalnya dapur atau kemasan, unggah saja. Tiap foto jadi bahan satu adegan. Foto ini belum terkirim sebelum kamu menekan tombol penyusun.
 
@@ -589,9 +595,9 @@ Yang ditunjuk di layar:
 4. Foto dapur, kemasan, atau pembeli jadi bahan adegan. Belum terkirim sebelum kamu menekan Susun shot list.
 5. Ceritakan videomu dalam satu dua kalimat. Satu-satunya isian wajib di formulir ini.
 
-## 46. Bentuk cerita dan total durasi
+## 47. Bentuk cerita dan total durasi
 
-*Slide: `46-storyboard-02-bentuk-durasi.jpg` · Bagian: Storyboard*
+*Slide: `47-storyboard-02-bentuk-durasi.jpg` · Bagian: Storyboard*
 
 Pilih bentuk ceritanya, misalnya masalah, produk, lalu hasil. Penulis AI yang memutuskan berapa adegan dan berapa detik tiap adegan, jadi kamu nggak perlu menghitung. Kalau kamu memang mau mengatur sendiri, ada pilihan Atur sendiri. Lalu pilih total durasi, dan tekan Susun shot list. Langkah ini memakai saldo, karena penulis AI yang bekerja.
 
@@ -601,9 +607,9 @@ Yang ditunjuk di layar:
 2. Pilih 10, 15, 20, atau 30 detik. Penulis membaginya ke tiga sampai enam adegan.
 3. Penulis AI menyusun daftar shot. Langkah ini memakai saldo; hasilnya kamu periksa dulu.
 
-## 47. Periksa shot list sebelum disimpan
+## 48. Periksa shot list sebelum disimpan
 
-*Slide: `47-storyboard-03-draf.jpg` · Bagian: Storyboard*
+*Slide: `48-storyboard-03-draf.jpg` · Bagian: Storyboard*
 
 Inilah shot list rancangan penulis AI. Di atas ada kontinuitas, hal-hal yang harus sama di semua adegan, seperti baju dan lokasi. Di bawahnya tiap adegan punya nomor, sudut kamera, lama, dan kalimat yang diucapkan. Kalau sudah cocok, Simpan dan lanjut produksi. Belum cocok? Susun ulang, memakai saldo lagi. Atau Buang, tanpa menyimpan apa pun.
 
@@ -615,9 +621,9 @@ Yang ditunjuk di layar:
 4. Minta shot list versi lain. Memakai saldo, dan draf yang sekarang diganti.
 5. Membuang draf dan kembali ke formulir. Tidak ada yang tersimpan.
 
-## 48. Langkah Naskah: kesiapan dan ubah adegan
+## 49. Langkah Naskah: kesiapan dan ubah adegan
 
-*Slide: `48-storyboard-04-naskah.jpg` · Bagian: Storyboard*
+*Slide: `49-storyboard-04-naskah.jpg` · Bagian: Storyboard*
 
 Di langkah Naskah, periksa dulu kesiapannya. Kalau ada tulisan merah, bereskan. Kontinuitas ditempel ke semua adegan, jadi mengganti baju cukup sekali di sini. Mau mengubah satu adegan? Tulis saja satu kalimat biasa, misalnya dia tertawa, bukan serius. Penulis AI menulis ulang adegan itu, memakai saldo. Nggak suka hasilnya? Batalkan, gratis.
 
@@ -629,9 +635,9 @@ Yang ditunjuk di layar:
 4. Menjalankan penulis AI untuk satu adegan. Memakai saldo; hasilnya langsung dipasang, dan Batalkan gratis.
 5. Ke langkah berikutnya. Aktif setelah semua yang merah beres.
 
-## 49. Produksi: rincian dan gambar pembuka
+## 50. Produksi: rincian dan gambar pembuka
 
-*Slide: `49-storyboard-05-produksi.jpg` · Bagian: Storyboard*
+*Slide: `50-storyboard-05-produksi.jpg` · Bagian: Storyboard*
 
 Produksi dibagi dua tahap, dan ini yang melindungi saldomu. Tahap pertama, gambar pembuka, satu gambar diam yang murah. Gambar ini menentukan wajah, baju, dan latar seluruh video. Tahap kedua, videonya, bagian yang mahal. Rincian harga sudah tertulis di atas. Tekan Buat gambar pembuka, memakai saldo, dan kamu lihat dulu hasilnya sebelum lanjut.
 
@@ -643,9 +649,9 @@ Yang ditunjuk di layar:
 4. Langkah termurah dulu: satu gambar diam. Memakai saldo.
 5. Opsional: semua panel dalam satu gambar untuk ditinjau manusia. Tidak dipakai untuk membuat video.
 
-## 50. Periksa gambar pembuka, baru bayar video
+## 51. Periksa gambar pembuka, baru bayar video
 
-*Slide: `50-storyboard-06-periksa-gambar.jpg` · Bagian: Storyboard*
+*Slide: `51-storyboard-06-periksa-gambar.jpg` · Bagian: Storyboard*
 
 Inilah momen yang paling penting. Gambar pembuka sudah jadi, dan kamu bertanya pada diri sendiri, wajahnya mirip? Latar dan bajunya benar? Kalau meleset, tekan Coba lagi. Biayanya cuma sebesar satu gambar. Jauh lebih murah daripada mengulang video. Kalau sudah yakin, baru tekan Ya, buat video. Itu bagian termahal, dan memakai saldo.
 
@@ -656,9 +662,9 @@ Yang ditunjuk di layar:
 3. Membuat gambar pembuka baru dengan prompt sama. Dihitung lagi sebesar harga satu gambar.
 4. Mengirim video multi-shot. Bagian termahal, ditagih per detik yang dihasilkan. Memakai saldo.
 
-## 51. Hasil: tonton, unduh, dan buat versi lain
+## 52. Hasil: tonton, unduh, dan buat versi lain
 
-*Slide: `51-storyboard-07-hasil.jpg` · Bagian: Storyboard*
+*Slide: `52-storyboard-07-hasil.jpg` · Bagian: Storyboard*
 
 Videonya sudah jadi. Tonton, lalu unduh atau bagikan lewat menu ponselmu. Kamu sendiri yang mengunggahnya ke media sosial. Mau variasi? Tekan Buat versi lain. Gambar pembukanya dipakai ulang, jadi wajahnya tetap sama dan gratis. Cuma videonya nanti yang dibayar lagi. Isi kolom perbedaan untuk menulis ulang narasi, memakai saldo, atau kosongkan untuk salinan persis.
 
@@ -670,9 +676,9 @@ Yang ditunjuk di layar:
 4. Menyalin storyboard jadi versi baru. Gambar pembuka dipakai ulang gratis, hanya videonya yang nanti dibayar lagi.
 5. Isi mis. bahasa Inggris atau lebih lucu, penulis AI menulis ulang narasinya (memakai saldo). Kosong: salinan persis, gratis.
 
-## 52. Video UGC: pilih orang dan produk
+## 53. Video UGC: pilih orang dan produk
 
-*Slide: `52-ugc-01-form-atas.jpg` · Bagian: Video UGC*
+*Slide: `53-ugc-01-form-atas.jpg` · Bagian: Video UGC*
 
 Video UGC itu karakter kamu bicara ke kamera tentang produk, cocok untuk endorse. Cuma ada lima hal yang kamu isi, yaitu produk, influencer, naskah, durasi, dan latar. Mulainya dari pilih influencer dan produk. Wajah diambil dari Identity Kit, suaranya dari pengaturan suara. Belum punya produk? Tambahkan di tempat, lewat Produk baru.
 
@@ -684,9 +690,9 @@ Yang ditunjuk di layar:
 4. Menyimpan produk baru di tempat, tanpa pindah halaman. Tersimpan ke Product Kit juga.
 5. Tujuan videomu: TikTok, Instagram Reels, atau YouTube Shorts.
 
-## 53. Sudut cerita, durasi, dan naskah
+## 54. Sudut cerita, durasi, dan naskah
 
-*Slide: `53-ugc-02-naskah-form.jpg` · Bagian: Video UGC*
+*Slide: `54-ugc-02-naskah-form.jpg` · Bagian: Video UGC*
 
 Di bagian bawah, kamu menentukan arah ceritanya dan target durasi. Durasi itu cuma target, panjang video sebenarnya mengikuti naskah yang dibacakan. Punya naskah sendiri? Tulis di kolom kata-kata yang diucapkan, itu gratis. Atau kosongkan, dan tekan Susun naskah dengan AI. Langkah itu memakai saldo, dan hasilnya kamu periksa dulu.
 
@@ -698,9 +704,9 @@ Yang ditunjuk di layar:
 4. Tulis naskah sendiri (gratis), atau kosongkan dan biarkan penulis AI menyusunnya.
 5. Penulis AI menyusun naskah dari keunggulan produk. Memakai saldo, dan hasilnya kamu periksa dulu.
 
-## 54. Periksa naskah dari penulis AI
+## 55. Periksa naskah dari penulis AI
 
-*Slide: `54-ugc-03-draf-naskah.jpg` · Bagian: Video UGC*
+*Slide: `55-ugc-03-draf-naskah.jpg` · Bagian: Video UGC*
 
 Inilah naskah usulan penulis AI, lengkap dengan caption, latar gambar, dan gaya penyampaiannya. Perhatikan jumlah kata dan perkiraan detiknya. Video akan sepanjang naskah ini. Kalau sudah pas, tekan Simpan dan lanjut produksi. Belum membayar apa pun untuk gambar dan suara. Kalau kurang suka, Susun ulang, memakai saldo lagi, atau ubah sendiri di langkah berikutnya.
 
@@ -712,9 +718,9 @@ Yang ditunjuk di layar:
 4. Menyimpan proyek dan membuka layar produksi. Belum ada gambar atau suara yang dibayar.
 5. Minta naskah versi lain. Memakai saldo. Semua bagian masih bisa diubah di langkah berikutnya.
 
-## 55. Langkah Naskah: kata-kata dan kesiapan
+## 56. Langkah Naskah: kata-kata dan kesiapan
 
-*Slide: `55-ugc-04-langkah-naskah.jpg` · Bagian: Video UGC*
+*Slide: `56-ugc-04-langkah-naskah.jpg` · Bagian: Video UGC*
 
 Langkah Naskah mengumpulkan semua yang perlu diperiksa. Di atas, kata-kata yang akan diucapkan. Ubah kalau ada yang kurang pas, dan ingat, makin pendek naskah, makin murah videonya. Di bawahnya latar gambar dan gaya penyampaian, dalam bahasa Inggris. Lalu kartu Kesiapan. Kalau ada tulisan merah, bereskan dulu. Setelah itu, lanjut ke produksi.
 
@@ -725,9 +731,9 @@ Yang ditunjuk di layar:
 3. Daftar yang harus beres: foto wajah, suara, dan model. Tulisan merah wajib diperbaiki dulu.
 4. Ke langkah Produksi. Aktif kalau semua yang merah sudah beres.
 
-## 56. Produksi: pratinjau gambar dan suara
+## 57. Produksi: pratinjau gambar dan suara
 
-*Slide: `56-ugc-05-pratinjau.jpg` · Bagian: Video UGC*
+*Slide: `57-ugc-05-pratinjau.jpg` · Bagian: Video UGC*
 
 Produksi dimulai dengan pratinjau. Gambar pertama dan suaramu dibuat bersamaan, karena dua-duanya murah dan nggak saling menunggu. Tekan Buat pratinjau, dan harganya sudah tertulis di tombolnya. Langkah ini memakai saldo. Lihat dulu hasilnya. Kartu Video di bawahnya masih redup, karena bagian yang mahal itu baru bisa dibuat setelah kamu setuju.
 
@@ -739,9 +745,9 @@ Yang ditunjuk di layar:
 4. Model gambar, suara, dan avatar sudah dipilih otomatis. Buka kalau kamu mau mengganti.
 5. Bagian termahal. Baru aktif setelah gambar dan suara kamu setujui.
 
-## 57. Setujui gambar dan suara, lalu buat video
+## 58. Setujui gambar dan suara, lalu buat video
 
-*Slide: `57-ugc-06-tinjau-video.jpg` · Bagian: Video UGC*
+*Slide: `58-ugc-06-tinjau-video.jpg` · Bagian: Video UGC*
 
 Pratinjau sudah jadi. Periksa gambarnya, wajahnya mirip kamu, kemasan produknya sama dengan aslinya. Lalu dengarkan suaranya sampai habis. Ada yang meleset? Ulang gambar atau ulang suara saja, memakai saldo, tapi jauh lebih murah daripada mengulang video. Kalau sudah puas, tekan Buat video. Itu bagian termahal, dan butuh dua sampai enam menit.
 
@@ -753,9 +759,9 @@ Yang ditunjuk di layar:
 4. Membuat suara baru saja. Juga murah dan memakai saldo.
 5. Bagian termahal: gambar digerakkan mengikuti suara. Memakai saldo, ditagih per detik yang dihasilkan.
 
-## 58. Hasil: tonton, caption, dan bagikan
+## 59. Hasil: tonton, caption, dan bagikan
 
-*Slide: `58-ugc-07-hasil.jpg` · Bagian: Video UGC*
+*Slide: `59-ugc-07-hasil.jpg` · Bagian: Video UGC*
 
 Videonya jadi. Tonton dulu. Suka? Tekan Bagikan dan pilih aplikasinya dari menu ponselmu, atau Unduh untuk disimpan. Kamu sendiri yang mengunggahnya, aplikasi ini tidak memposting otomatis. Di sebelahnya ada caption dan hashtag. Ubah kalau perlu, lalu tekan Salin supaya tinggal ditempel. Mau coba lagi? Buat ulang, tapi itu membayar video penuh.
 
@@ -767,8 +773,8 @@ Yang ditunjuk di layar:
 4. Satu kalimat pendek di bawah postingan, berbeda dari naskah yang diucapkan. Boleh kamu ubah.
 5. Menyalin caption dan hashtag sekaligus, siap ditempel saat kamu mengunggah.
 
-## 59. Urutan langkah pertama yang disarankan
+## 60. Urutan langkah pertama yang disarankan
 
-*Slide: `59-penutup.jpg` · Bagian: Penutup*
+*Slide: `60-penutup.jpg` · Bagian: Penutup*
 
 Itu dia isi aplikasi yang dibahas panduan ini. Kalau bingung harus mulai dari mana, ikuti urutan ini. Masuk, jawab pertanyaan di Arah Konten, isi Profil saya, simpan satu produk kalau perlu, tulis naskah, lalu Buat Video. Setelah video jadi, tonton, unduh, dan unggah sendiri. Biasakan membaca keterangan di tombol sebelum menekannya, karena sebagian langkah memakai saldo. Selamat mencoba, dan nikmati prosesnya.

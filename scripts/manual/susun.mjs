@@ -51,7 +51,7 @@ function halamanLayar(h, no, total) {
   if (!fs.existsSync(jpg) || fs.statSync(jpg).mtimeMs < fs.statSync(png).mtimeMs)
     execFileSync("ffmpeg", ["-y", "-loglevel", "error", "-i", png, "-q:v", "6", jpg]);
   return `
-<section class="hal layar" data-callouts='${esc(JSON.stringify(callouts))}'>
+<section class="hal layar" id="${esc(h.id)}" data-callouts='${esc(JSON.stringify(callouts))}'>
   ${kepala(h, no, total)}
   <div class="panggung">
     <div class="bingkai"><img src="${dataUri(jpg)}" width="${LAYAR.w}" height="${LAYAR.h}" /></div>
@@ -73,7 +73,7 @@ function kepala(h, no, total) {
 
 function halamanSampul(h) {
   return `
-<section class="hal sampul">
+<section class="hal sampul" id="${esc(h.id)}">
   <div class="sampul-isi">
     <div class="bagian">PANDUAN PENGGUNA</div>
     <h1><span class="grad">AI Influencer</span> Studio</h1>
@@ -88,7 +88,7 @@ function halamanDaftar(h, no, total) {
   const isi = h.isi || [];
   const kolom = isi.length > 6 ? 2 : 1;
   return `
-<section class="hal daftar">
+<section class="hal daftar" id="${esc(h.id)}">
   ${kepala(h, no, total)}
   <div class="daftar-isi">
     ${h.pengantar ? `<p class="pengantar">${esc(h.pengantar)}</p>` : ""}
@@ -99,11 +99,41 @@ function halamanDaftar(h, no, total) {
 </section>`;
 }
 
+// Daftar isi: nomor halaman dihitung dari id halaman pertama dan terakhir tiap
+// episode, bukan ditulis tangan — kalau satu halaman ditambah atau dibuang,
+// nomornya ikut bergeser sendiri. Tiap baris juga tautan ke halamannya.
+function halamanIsi(h, no, total) {
+  const ke = (id) => {
+    const i = halaman.findIndex((x) => x.id === id);
+    if (i < 0) throw new Error(`Daftar isi menunjuk halaman yang tidak ada: ${id}`);
+    return i + 1;
+  };
+  const baris = (h.isi || []).map((e, i) => {
+    const a = ke(e.dari), b = ke(e.sampai);
+    return `<a class="baris" href="#${esc(e.dari)}"><span class="lencana">${i + 1}</span><b>${esc(e.judul)}</b>
+      <span class="hal-no">${a === b ? a : `${a}–${b}`}</span><span class="jml">${b - a + 1} hal.</span><span class="menit">${esc(e.menit)}</span></a>`;
+  }).join("");
+  const p = h.penutup ? halaman.find((x) => x.id === h.penutup) : null;
+  return `
+<section class="hal isi" id="${esc(h.id)}">
+  ${kepala(h, no, total)}
+  <div class="isi-badan">
+    ${h.pengantar ? `<p class="pengantar">${esc(h.pengantar)}</p>` : ""}
+    <div class="tabel">
+      <div class="kepala-tabel"><span>#</span><span>Episode</span><span>Halaman</span><span>Jumlah</span><span>Perkiraan</span></div>
+      ${baris}
+    </div>
+    ${p ? `<a class="lanjut" href="#${esc(p.id)}">Penutup — ${esc(p.judul)} <b>hal. ${ke(p.id)}</b></a>` : ""}
+  </div>
+</section>`;
+}
+
 const total = halaman.length;
 const badan = halaman.map((h, i) => {
   const no = i + 1;
   if (h.jenis === "sampul") return halamanSampul(h);
   if (h.jenis === "daftar") return halamanDaftar(h, no, total);
+  if (h.jenis === "isi") return halamanIsi(h, no, total);
   return halamanLayar(h, no, total);
 }).join("\n");
 
@@ -153,6 +183,21 @@ const html = `<!doctype html><html lang="id"><head><meta charset="utf-8" />
   .lencana{ flex:none; width:44px; height:44px; border-radius:50%; background:var(--tag); border:2.5px solid var(--ink); display:flex; align-items:center; justify-content:center; font-weight:700; font-size:21px }
   .daftar li b{ display:block; font-size:25px }
   .daftar li div span{ display:block; font-size:20.5px; color:var(--muted); line-height:1.38; margin-top:3px }
+
+  .isi-badan{ padding:0 120px }
+  .isi .pengantar{ margin-bottom:22px }
+  .tabel{ background:#fff; border:2.5px solid var(--ink); border-radius:20px; box-shadow:5px 5px 0 var(--ink); overflow:hidden }
+  .kepala-tabel, .baris{ display:grid; grid-template-columns:70px 1fr 170px 140px 170px; align-items:center; column-gap:18px; padding:0 28px }
+  .kepala-tabel{ height:56px; background:var(--ink); color:#fff; font-family:"Space Mono",monospace; font-size:16px; letter-spacing:.12em; text-transform:uppercase }
+  .baris{ height:55px; color:var(--ink); text-decoration:none; border-top:1.5px solid var(--border); font-size:23px }
+  .baris:nth-child(odd){ background:var(--blue-soft) }
+  .baris .lencana{ width:38px; height:38px; font-size:18px }
+  .baris b{ font-weight:600 }
+  .hal-no{ font-weight:700; color:var(--brand) }
+  .jml{ color:var(--muted); font-size:20px }
+  .menit{ justify-self:start; background:var(--brand-soft); border:2px solid var(--brand-line); color:var(--brand); border-radius:999px; padding:3px 14px; font-size:19px; font-weight:600 }
+  .lanjut{ display:inline-block; margin-top:22px; color:var(--muted); font-size:21px; text-decoration:none }
+  .lanjut b{ color:var(--brand); margin-left:6px }
 </style></head><body>
 ${badan}
 <script>
