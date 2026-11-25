@@ -121,7 +121,9 @@ function rakit(pasangan, keluar) {
   // sendiri yang panjangnya tidak seragam, dan jeda antar kalimat diatur di sini.
   const rapi = "silenceremove=start_periods=1:start_threshold=-45dB,areverse,silenceremove=start_periods=1:start_threshold=-45dB,areverse";
   f += pasangan.map((_, i) => `[${n + i}:a]${rapi},adelay=${Math.round(mulai[i] * 1000)}:all=1[a${i}];`).join("");
-  f += pasangan.map((_, i) => `[a${i}]`).join("") + `amix=inputs=${n}:normalize=0,aresample=48000,aformat=channel_layouts=stereo[a]`;
+  f += pasangan.map((_, i) => `[a${i}]`).join("") + `amix=inputs=${n}:normalize=0,aresample=48000,aformat=channel_layouts=stereo,apad=whole_dur=${total.toFixed(3)}[a]`;
+  // apad: suara tiap adegan harus sepanjang gambarnya. Tanpa itu suara berakhir
+  // lebih cepat, dan saat adegan disambung selisihnya menumpuk jadi tidak sinkron.
   execFileSync("ffmpeg", [...arg, "-filter_complex", f, "-map", `[${prev}]`, "-map", "[a]", "-t", total.toFixed(3),
     "-c:v", "libx264", "-preset", "medium", "-crf", "18", "-r", "30", "-pix_fmt", "yuv420p", "-c:a", "aac", "-b:a", "160k", keluar]);
   return total;

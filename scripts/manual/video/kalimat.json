@@ -1,0 +1,115 @@
+{
+ "cara-membaca": [
+  "Setiap halaman menampilkan satu layar aplikasi, dengan kotak teks yang menjelaskan bagian layar itu.",
+  "Kotak teks akan muncul satu per satu, dan garisnya menunjuk persis ke bagian yang dibahas.",
+  "Kalau sebuah langkah memakai saldo, itu ditulis terang di kotaknya, supaya kamu tahu sebelum menekan tombol.",
+  "Semua gambar layar memakai data contoh, jadi yang berlaku adalah angka yang tampil di layarmu sendiri."
+ ],
+ "peta-menu": [
+  "Ini peta singkat isi aplikasi, supaya kamu tahu apa ada di mana.",
+  "Untuk pemula, cukup empat tempat: Beranda, Arah Konten, Profil saya, dan Buat Video.",
+  "Menu lain, seperti Influencers, Product Kit, Production Studio, Storyboard, dan Video UGC, ada di Semua menu.",
+  "Menu itu alat untuk yang ingin mengatur lebih rinci, jadi kamu tidak harus membuka semuanya."
+ ],
+ "masuk-01-masuk": [
+  "Sekarang kita mulai dari layar pertama yang kamu lihat saat membuka aplikasi.",
+  "Cara tercepat adalah Masuk dengan Google. Kalau kamu belum punya akun, akun dibuatkan otomatis.",
+  "Kalau lebih suka cara biasa, ketik alamat email akunmu di kolom ini.",
+  "Lalu isi password akunmu. Panjangnya minimal delapan karakter.",
+  "Tekan Masuk setelah email dan password terisi. Kalau gagal, layar akan menyebut sebabnya.",
+  "Baru pertama kali? Tekan tulisan Daftar di bagian bawah untuk pindah ke formulir pendaftaran."
+ ],
+ "masuk-02-daftar": [
+  "Setelah menekan Daftar, tampilannya berubah menjadi formulir untuk membuat akun baru.",
+  "Dengan mendaftar, kamu langsung mendapat ruang kerja sendiri dan kamu pemiliknya, tanpa menunggu undangan.",
+  "Isi email dan password, lalu tekan Daftar. Akun dan ruang kerjamu langsung jadi.",
+  "Kalau ternyata sudah punya akun, tekan Masuk di bagian bawah untuk kembali ke formulir masuk.",
+  "Di bagian bawah kartu ada tautan Kebijakan Privasi dan syarat penggunaan, kalau kamu ingin membacanya."
+ ],
+ "kerangka-01-sidebar": [
+  "Sesudah masuk, kamu akan melihat menu utama di sisi kiri layar.",
+  "Paling atas ada Cara mulai. Isinya empat langkah, kapan uang keluar, dan hal yang perlu disiapkan.",
+  "Arah Konten menjawab pertanyaan konten apa yang sebaiknya kamu buat, lewat dua belas pertanyaan, ide, lalu naskah.",
+  "Buat Video adalah pintu utama membuat video. Kamu meninjau naskah dan rinciannya dulu sebelum videonya dibuat.",
+  "Mau melihat lebih banyak? Tekan Semua menu, dan pilihanmu akan diingat di perangkat ini."
+ ],
+ "kerangka-02-semua-menu": [
+  "Setelah Semua menu ditekan, daftar menu di sisi kiri menjadi lengkap.",
+  "Kalau sudah cukup, tekan Menu ringkas untuk kembali ke tujuh menu utama.",
+  "Influencers hanya ada di daftar lengkap. Di sinilah kamu mengatur wajah dan suara karaktermu lebih rinci.",
+  "Coba sorot menu mana pun, maka muncul penjelasan singkat isinya. Di ponsel, cukup ketuk.",
+  "Ikon i di samping label juga begitu. Sorot atau ketuk untuk membaca penjelasan label itu.",
+  "Kalau masih bingung, tekan tombol tanda tanya di pojok kanan bawah. Asisten bantuan tahu kamu sedang di layar mana."
+ ],
+ "beranda-01-mulai-dari-sini": [
+  "Sekarang kita lihat Beranda, yang di layar tertulis Ruang Kerja.",
+  "Ruang Kerja adalah ringkasan sekilas isi ruang kerjamu, bukan tempat untuk bekerja.",
+  "Di bawahnya ada kartu Mulai dari sini, berisi enam langkah awal yang tercentang sendiri saat datanya ada.",
+  "Mau jalan pintas? Tekan Cara cepat untuk mengisi foto, suara, dan bahasa dalam satu halaman.",
+  "Kalau masih bingung, tekan tautan ini untuk membuka halaman Cara mulai yang bisa dicetak jadi satu lembar.",
+  "Langkah terakhir adalah Buat video pertama, yang membuka wizard Buat Video. Rinciannya tampil di langkah tinjau."
+ ],
+ "beranda-02-kartu": [
+  "Kalau layar digulir ke bawah, kamu akan menemukan beberapa kartu ringkasan.",
+  "Kartu Influencers menampilkan karakter AI-mu beserta foto profil. Klik satu nama untuk membuka halaman detailnya.",
+  "Produksi Terbaru memperlihatkan lima pekerjaan terakhir: tanda centang berarti berhasil, silang gagal, dan bulat masih berjalan.",
+  "Kartu Kelola lewat Claude bersifat opsional, untuk kamu yang lebih suka meminta lewat percakapan biasa."
+ ],
+ "mulai-01-infografis": [
+  "Kalau masih bingung harus mulai dari mana, halaman Cara mulai ini jawabannya.",
+  "Langkah pertama adalah Arah Konten: jawab dua belas pertanyaan dan dapatkan blueprint. Cukup sekali, sekitar sepuluh menit.",
+  "Langkah kedua, isi Profil saya: foto wajah, rekam suara, dan pilih bahasa. Ini juga cukup sekali.",
+  "Bagian Kapan uang keluar menunjukkan urutan dari yang gratis sampai yang paling mahal. Video selalu paling akhir.",
+  "Siapkan dulu lima hal: waktu, foto wajah, tempat sunyi, foto kemasan asli, dan saldo.",
+  "Tombol Cetak menyimpan halaman ini sebagai PDF satu lembar, atau langsung mencetaknya."
+ ],
+ "mulai-02-lewat-claude-a": [
+  "Kalau kamu lebih nyaman mengetik seperti di WhatsApp, ada jalur lewat chat Claude.",
+  "Cek syaratnya dulu, karena fitur ini hanya ada di paket Claude tertentu yang mendukung connector.",
+  "Penyambungan terdiri dari empat langkah, dilakukan satu kali saja, sekitar sepuluh menit. Minta bantuan kalau perlu.",
+  "Tombol Salin menyalin alamat connector, yang kemudian kamu tempel di pengaturan Claude."
+ ],
+ "mulai-02-lewat-claude-b": [
+  "Setelah tersambung, kamu tinggal mengobrol dengan Claude. Gulir ke bawah untuk melihat kalimat contoh.",
+  "Ada tiga contoh kalimat. Claude diminta menyebut harga dan menunggu kata ya sebelum membuat yang berbayar.",
+  "Tombol Salin di tiap contoh menyalin kalimatnya, jadi kamu tinggal menempelkannya di chat Claude.",
+  "Kalau ada yang tidak jalan, lihat daftar masalah umum ini, misalnya connector yang belum dinyalakan di chat."
+ ],
+ "arah-01-depan": [
+  "Sekarang kita ke Arah Konten, tempat mencari ide dan naskah. Video dibuatnya nanti di Buat Video.",
+  "Mulai dari dua belas pertanyaan, satu per layar. Tidak tahu jawabannya? Pilih Belum tahu, pemula tanpa pengikut pun bisa.",
+  "Tekan Mulai. Jawabanmu tersimpan otomatis di perangkat, jadi boleh berhenti dan lanjut. Langkah ini belum memakai saldo.",
+  "Punya profil usaha tertulis? Unggah lewat Isi dari dokumen, lalu periksa hasilnya. Langkah ini memakai saldo.",
+  "Di bawahnya ada Ide konten, tempat mencari ide: sepuluh usulan sekali tekan, lengkap dengan pilar dan tujuannya.",
+  "Di sebelahnya ada Naskah siap baca, daftar naskah yang sudah kamu tulis. Masih kosong sampai kamu menulis satu."
+ ],
+ "arah-02-pertanyaan": [
+  "Begitu Mulai ditekan, kamu langsung masuk ke pertanyaan pertama.",
+  "Di bagian atas ada penunjuk posisi. Hanya pertanyaan satu, dua, dan enam yang wajib, sisanya boleh dijawab Belum tahu.",
+  "Tiap layar hanya satu pertanyaan, dengan contoh jawaban di bawahnya. Tulis seadanya, pakai bahasa sehari-hari.",
+  "Belum punya jawaban? Pilih Belum tahu. Tanpa pengikut atau belum jualan pun, kamu tetap bisa mengisi.",
+  "Kalau lelah, tekan Simpan dan keluar. Jawabanmu tetap tersimpan di perangkat ini, jadi besok bisa lanjut.",
+  "Tekan Lanjut untuk ke pertanyaan berikutnya. Di akhir, kamu akan melihat ringkasan semua jawabanmu."
+ ],
+ "arah-03-susun-blueprint": [
+  "Setelah dua belas pertanyaan terjawab, semua jawabanmu terkumpul di layar Siap disusun.",
+  "Periksa dulu ringkasannya. Ketuk jawaban mana pun untuk mengubahnya sebelum lanjut.",
+  "Kalau sudah pas, tekan Susun blueprint. Penulis AI menyusunnya dari jawabanmu, dan langkah ini memakai saldo.",
+  "Ada pengingat tertulis di bawah tombol: hasilnya bisa kamu periksa dan ubah, tidak langsung dipakai.",
+  "Kalau ada yang ingin diubah, tekan Kembali untuk mundur ke pertanyaan sebelumnya."
+ ],
+ "arah-04-blueprint-atas": [
+  "Setelah blueprint tersusun, tekan Lihat dan ubah untuk membukanya. Inilah ringkasan arah kontenmu dalam satu halaman.",
+  "Di bagian atas ada Positioning, satu kalimat tentang untuk siapa kamu membantu, membantu apa, dan dengan cara apa.",
+  "Lalu Keunggulanmu, tiga alasan orang memilih kamu dan bukan orang lain.",
+  "Berikutnya Audiens: siapa mereka, masalahnya, yang diinginkan, dan kata-kata yang mereka pakai sendiri.",
+  "Kalau ada yang kurang pas, tekan Ubah di bagian itu. Mengubah sendiri gratis, dan hasil ubahanmu yang dipakai seterusnya."
+ ],
+ "arah-05-blueprint-bawah": [
+  "Kalau blueprint digulir ke bawah, kamu akan menemukan bagian pilar dan ritme.",
+  "Pilar konten adalah tiga sampai lima tema yang terus kamu ulang, masing-masing dengan alasan kenapa audiensmu peduli.",
+  "Ritme Kenalan, Percaya, Beli menunjukkan berapa konten per minggu untuk mengenalkan, membuat percaya, dan mengajak beli.",
+  "Mau mengisi ulang? Susun ulang dari jawaban menjalankan penulis AI lagi. Langkah ini memakai saldo, dan hasil lama diganti.",
+  "Ulangi dua belas pertanyaan hanya membuka pertanyaannya lagi, terisi jawabanmu. Blueprint lama tidak berubah sampai kamu menyusun lagi."
+ ]
+}
