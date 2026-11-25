@@ -60,6 +60,14 @@ function halamanLayar(h, no, total) {
 </section>`;
 }
 
+// Tombol "Daftar isi" di tiap halaman (kecuali daftar isi itu sendiri).
+// Kenapa: PDF 59 halaman yang dibaca pelanggan biasanya dibuka untuk satu
+// topik, lalu orangnya ingin pindah topik — tanpa tombol ini ia harus
+// menggulir balik ke halaman i.
+const ID_ISI = halaman.find((x) => x.jenis === "isi")?.id;
+const IKON_RUMAH = `<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M3 10.5 12 3l9 7.5"/><path d="M5 9.5V21h5v-6h4v6h5V9.5"/></svg>`;
+const tombolRumah = (h) => ID_ISI && h.id !== ID_ISI ? `<a class="rumah" href="#${esc(ID_ISI)}">${IKON_RUMAH}<span>Daftar isi</span></a>` : "";
+
 function kepala(h, no, total) {
   return `
   <header>
@@ -67,7 +75,7 @@ function kepala(h, no, total) {
       <div class="bagian">${esc(h.bagian || "")}</div>
       <h1>${esc(h.judul)}</h1>
     </div>
-    <div class="nomor"><span>Panduan Pengguna · AI Influencer Studio</span><b>${no}</b>${/^\d+$/.test(no) ? `<i>/ ${total}</i>` : ""}</div>
+    <div class="nomor">${tombolRumah(h)}<span>Panduan Pengguna · AI Influencer Studio</span><b>${no}</b>${/^\d+$/.test(no) ? `<i>/ ${total}</i>` : ""}</div>
   </header>`;
 }
 
@@ -81,6 +89,7 @@ function halamanSampul(h) {
     <div class="pil">${(h.isi || []).map((x) => `<span>${esc(x)}</span>`).join("")}</div>
   </div>
   <footer>${esc(h.kaki || "")}</footer>
+  <div class="rumah-sampul">${tombolRumah(h)}</div>
 </section>`;
 }
 
@@ -220,6 +229,13 @@ const html = `<!doctype html><html lang="id"><head><meta charset="utf-8" />
   .menit{ justify-self:start; background:var(--brand-soft); border:2px solid var(--brand-line); color:var(--brand); border-radius:999px; padding:3px 14px; font-size:19px; font-weight:600 }
   .lanjut{ display:inline-block; margin-top:22px; color:var(--muted); font-size:21px; text-decoration:none }
   .lanjut b{ color:var(--brand); margin-left:6px }
+
+  .rumah{ display:inline-flex; align-items:center; gap:8px; margin-right:22px; align-self:center; padding:7px 16px 7px 12px; background:#fff;
+          border:2.5px solid var(--ink); border-radius:999px; box-shadow:3px 3px 0 var(--ink); color:var(--brand); text-decoration:none;
+          font-size:18px; font-weight:600; transform:translateY(-4px) }
+  .rumah span{ color:var(--ink) }
+  .rumah-sampul{ position:absolute; right:56px; top:48px }
+  .rumah-sampul .rumah{ margin:0; font-size:22px; padding:10px 22px 10px 16px }
 </style></head><body>
 ${badan}
 <script>
@@ -233,7 +249,9 @@ const ATAS = 20, BAWAH = 910, JARAK = 18;
 function susun(sec) {
   const data = JSON.parse(sec.dataset.callouts);
   const panggung = sec.querySelector(".panggung");
-  const svg = sec.querySelector("svg");
+  // "svg.garis", bukan "svg": ikon tombol Daftar isi di kepala halaman juga
+  // sebuah svg dan letaknya lebih dulu — garis callout akan tergambar di sana.
+  const svg = sec.querySelector("svg.garis");
   const item = data.map((c, i) => {
     const el = document.createElement("div");
     el.className = "kotak";
