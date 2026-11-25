@@ -23,7 +23,9 @@ import { fileURLToPath } from "node:url";
 const { chromium } = createRequire(import.meta.url)("playwright");
 
 const DI_SINI = path.dirname(fileURLToPath(import.meta.url));
-const [dirKerja, dirKeluar, ...pilih] = process.argv.slice(2);
+const [dirKerjaArg, dirKeluar, ...pilih] = process.argv.slice(2);
+// Path mutlak: daftar klip untuk ffmpeg dibaca relatif terhadap berkas daftarnya, bukan terhadap folder kerja kita.
+const dirKerja = dirKerjaArg && path.resolve(dirKerjaArg);
 if (!dirKerja || !dirKeluar) { console.error("Pakai: video.mjs <folder-kerja> <folder-keluar> [no-episode …]"); process.exit(1); }
 const baca = (f) => JSON.parse(fs.readFileSync(f, "utf8"));
 const halaman = baca(path.join(DI_SINI, "halaman.json"));
