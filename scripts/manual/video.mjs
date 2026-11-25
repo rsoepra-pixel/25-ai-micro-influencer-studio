@@ -48,17 +48,23 @@ const browser = await chromium.launch();
 const page = await browser.newPage({ viewport: { width: 1920, height: 1080 }, deviceScaleFactor: 1 });
 await page.goto("file://" + path.join(process.env.DIR_TANGKAPAN || path.join(DI_SINI, "tangkapan"), "_panduan.html"));
 await page.waitForFunction(() => document.body.dataset.siap === "1");
-const semuaSec = await page.$$(".hal");
+// Tombol "Daftar isi" hanya berguna di PDF (bisa diklik); di video ia cuma
+// hiasan yang mengundang orang menekan layar.
+await page.addStyleTag({ content: ".rumah{display:none!important}" });
 
 /** Satu gambar per langkah: kotak ke-k menonjol, yang lewat memudar, yang belum dibahas belum muncul. */
 async function gambarHalaman(id) {
   const urut = halaman.findIndex((h) => h.id === id);
   if (urut < 0) throw new Error(`Halaman tidak dikenal: ${id}`);
-  const sec = semuaSec[urut], n = (halaman[urut].callouts || []).length, hasil = [];
+  // Dicari lewat id, bukan urutan: PDF punya halaman tambahan (daftar isi)
+  // sehingga urutan section tidak lagi sama dengan urutan di halaman.json.
+  const sec = await page.$(`section.hal[id="${id}"]`);
+  if (!sec) throw new Error(`Halaman ${id} tidak ada di _panduan.html — jalankan susun.mjs dulu`);
+  const n = (halaman[urut].callouts || []).length, hasil = [];
   for (let k = 0; k <= n; k++) {
     const file = path.join(dirGambar, `${id}-${k}.png`);
     await sec.evaluate((el, k) => {
-      const svg = el.querySelector("svg");
+      const svg = el.querySelector("svg.garis");            // bukan "svg": kepala halaman juga punya ikon svg
       if (!svg) return;                                    // halaman tanpa tangkapan layar
       const atur = (node, i) => {
         const s = i + 1 < k ? "lewat" : i + 1 === k ? "aktif" : "nanti";

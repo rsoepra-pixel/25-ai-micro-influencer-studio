@@ -1,20 +1,98 @@
 [
- {"no": 1, "seri": "Dasar", "judul": "Kenalan dengan aplikasinya",
+ {
+  "no": 1,
+  "seri": "Dasar",
+  "judul": "Kenalan dengan aplikasinya",
   "ringkas": "Cara membaca panduan, masuk dan daftar, lalu menu di sisi kiri layar.",
   "buka": "Selamat datang di panduan AI Influencer Studio. Di episode pertama ini kita berkenalan dengan aplikasinya: cara masuk, dan menu-menu utamanya.",
-  "halaman": ["cara-membaca", "peta-menu", "masuk-01-masuk", "masuk-02-daftar", "kerangka-01-sidebar", "kerangka-02-semua-menu"],
+  "halaman": [
+   "cara-membaca",
+   "peta-menu",
+   "masuk-01-masuk",
+   "masuk-02-daftar",
+   "kerangka-01-sidebar",
+   "kerangka-02-semua-menu"
+  ],
   "tutup": "Sekarang kamu sudah mengenal kerangka aplikasinya. Di episode berikutnya, kita melihat Beranda dan halaman Cara mulai.",
-  "berikut": "Episode 2 — Beranda & Cara mulai"},
- {"no": 2, "seri": "Dasar", "judul": "Beranda & Cara mulai",
+  "berikut": "Episode 2 — Beranda & Cara mulai"
+ },
+ {
+  "no": 2,
+  "seri": "Dasar",
+  "judul": "Beranda & Cara mulai",
   "ringkas": "Ringkasan ruang kerjamu, dan langkah-langkah menuju video pertama.",
   "buka": "Di episode ini kita melihat Beranda, lalu halaman Cara mulai, yang merangkum langkah-langkah menuju video pertamamu.",
-  "halaman": ["beranda-01-mulai-dari-sini", "beranda-02-kartu", "mulai-01-infografis", "mulai-02-lewat-claude-a", "mulai-02-lewat-claude-b"],
+  "halaman": [
+   "beranda-01-mulai-dari-sini",
+   "beranda-02-kartu",
+   "mulai-01-infografis",
+   "mulai-02-lewat-claude-a",
+   "mulai-02-lewat-claude-b"
+  ],
   "tutup": "Berikutnya kita masuk ke Arah Konten, tempat kamu menentukan konten apa yang sebaiknya dibuat.",
-  "berikut": "Episode 3 — Arah Konten: dari pertanyaan ke blueprint"},
- {"no": 3, "seri": "Dasar", "judul": "Arah Konten: dari pertanyaan ke blueprint",
+  "berikut": "Episode 3 — Arah Konten: dari pertanyaan ke blueprint"
+ },
+ {
+  "no": 3,
+  "seri": "Dasar",
+  "judul": "Arah Konten: dari pertanyaan ke blueprint",
   "ringkas": "Menjawab dua belas pertanyaan, lalu menyusun blueprint kontenmu.",
   "buka": "Di episode ini kita membahas Arah Konten: menjawab dua belas pertanyaan, lalu menyusun blueprint kontenmu.",
-  "halaman": ["arah-01-depan", "arah-02-pertanyaan", "arah-03-susun-blueprint", "arah-04-blueprint-atas", "arah-05-blueprint-bawah"],
+  "halaman": [
+   "arah-01-depan",
+   "arah-02-pertanyaan",
+   "arah-03-susun-blueprint",
+   "arah-04-blueprint-atas",
+   "arah-05-blueprint-bawah"
+  ],
   "tutup": "Blueprint kontenmu sudah siap. Di episode berikutnya, kita memakainya untuk mencari ide dan menulis naskah.",
-  "berikut": "Episode 4 — Arah Konten: ide dan naskah"}
+  "berikut": "Episode 4 — Arah Konten: ide dan naskah"
+ },
+ {
+  "no": 4,
+  "seri": "Dasar",
+  "judul": "Arah Konten: ide dan naskah",
+  "ringkas": "Mencari ide, memilih kalimat pembuka, lalu menulis naskah yang siap dibacakan.",
+  "buka": "Di episode ini kita memakai blueprint untuk mencari ide konten, memilih kalimat pembuka, lalu menulis naskahnya.",
+  "halaman": [
+   "arah-06-ide",
+   "arah-07-pembuka",
+   "arah-08-naskah",
+   "arah-09-serah-terima"
+  ],
+  "tutup": "Naskahmu sudah siap. Sebelum membuat video, di episode berikutnya kita siapkan wajah dan suaramu di Profil saya.",
+  "berikut": "Episode 5 — Profil saya"
+ },
+ {
+  "no": 5,
+  "seri": "Dasar",
+  "judul": "Profil saya",
+  "ringkas": "Wajah, suara, dan bahasa videomu. Cukup diisi sekali.",
+  "buka": "Di episode ini kita mengisi Profil saya: wajah, suara, dan bahasa videomu. Semuanya cukup dilakukan satu kali.",
+  "halaman": [
+   "profil-01-wajah",
+   "profil-02-suara",
+   "profil-03-bahasa-siap"
+  ],
+  "tutup": "Profilmu sudah lengkap. Di episode berikutnya, kita membuat video pertamamu di Buat Video.",
+  "berikut": "Episode 6 — Buat Video"
+ },
+ {
+  "no": 6,
+  "seri": "Dasar",
+  "judul": "Buat Video",
+  "ringkas": "Dari memilih jenis video sampai meninjau naskah dan rinciannya.",
+  "buka": "Di episode ini kita membuat video lewat Buat Video, dari memilih jenis videonya sampai meninjau naskah dan rinciannya.",
+  "halaman": [
+   "buat-video-01-apa-bicara",
+   "buat-video-02-apa-cerita",
+   "buat-video-03-siapa",
+   "buat-video-04-berapa-lama",
+   "buat-video-05-tinjau-bicara",
+   "buat-video-06-tinjau-cerita",
+   "penutup"
+  ],
+  "tutup": "Itulah seluruh bagian dasar. Di episode lanjutan, kita membahas menu untuk kamu yang ingin mengatur lebih rinci, dimulai dari Influencers.",
+  "berikut": "Episode 7 — Influencers"
+ }
 ]

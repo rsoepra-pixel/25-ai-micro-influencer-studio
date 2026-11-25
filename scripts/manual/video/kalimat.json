@@ -111,5 +111,110 @@
   "Ritme Kenalan, Percaya, Beli menunjukkan berapa konten per minggu untuk mengenalkan, membuat percaya, dan mengajak beli.",
   "Mau mengisi ulang? Susun ulang dari jawaban menjalankan penulis AI lagi. Langkah ini memakai saldo, dan hasil lama diganti.",
   "Ulangi dua belas pertanyaan hanya membuka pertanyaannya lagi, terisi jawabanmu. Blueprint lama tidak berubah sampai kamu menyusun lagi."
+ ],
+ "arah-06-ide": [
+  "Blueprint sudah jadi, sekarang saatnya mencari ide konten pertamamu.",
+  "Pertama, saring ide menurut pilar kontenmu. Pilih Semua kalau kamu ingin hasil yang campur.",
+  "Lalu pilih tujuannya: Kenalan, Percaya, atau Beli. Tanpa pilihan, tujuan dibagi mengikuti ritme di blueprint.",
+  "Tombol ini meminta sepuluh usulan sekaligus. Langkah ini memakai saldo.",
+  "Kalau ada usulan yang cocok, tekan Simpan. Menyimpan gratis, dan yang tidak cocok bisa kamu hapus.",
+  "Kalau semuanya bagus, tekan Simpan semua. Ini juga gratis, dan pilar yang belum ada ikut dibuat."
+ ],
+ "arah-07-pembuka": [
+  "Sudah punya ide? Sekarang kita tulis naskahnya, dimulai dari kalimat pembuka.",
+  "Pembuka adalah kalimat pertama yang membuat orang berhenti menggulir layar. Karena itu bagian ini paling menentukan.",
+  "Penulis AI bisa menyodorkan lima pembuka dengan gaya yang berbeda. Langkah ini memakai saldo.",
+  "Pilih satu usulan yang kamu suka, atau tulis sendiri dengan gratis. Naskah akan dilanjutkan dari kalimat ini.",
+  "Mau meniru pola video orang lain? Tempel teksnya di Remix. Yang dipakai polanya saja, dan langkah ini memakai saldo."
+ ],
+ "arah-08-naskah": [
+  "Pembuka sudah ada, jadi sekarang kita menulis naskah lengkapnya.",
+  "Pertama, pilih lama videonya. Samakan dengan video yang nanti akan kamu buat.",
+  "Lalu minta penulis AI menulis naskahnya. Ia melanjutkan pembukamu, dan langkah ini memakai saldo. Menulis ulang mengganti naskah yang lama.",
+  "Bagian ini adalah yang diucapkan di video. Perkiraan lama bicaranya tertulis di sebelah kanan.",
+  "Naskahnya ditulis untuk didengar, jadi kalimatnya pendek dengan jeda. Kamu boleh mengubahnya sesukamu, dan itu gratis.",
+  "Di bagian akhir ada ajakan yang menyuruh penonton berbuat sesuatu, disesuaikan dengan tujuan idemu."
+ ],
+ "arah-09-serah-terima": [
+  "Naskah sudah selesai. Tinggal caption, menyimpan, lalu lanjut ke pembuatan video.",
+  "Caption adalah teks pendek di bawah postingan. Sengaja dibuat berbeda dari naskah yang diucapkan.",
+  "Di sebelahnya ada tagar. Pisahkan dengan spasi, dan tanda pagar boleh kamu tulis atau tidak.",
+  "Kalau semuanya sudah pas, tekan Simpan. Pembuka, naskah, caption, dan tagar tersimpan di konten ini, gratis.",
+  "Terakhir, tekan Buat videonya. Kamu dibawa ke Buat Video dengan naskah terisi. Gambar, suara, dan video baru dibuat di sana."
+ ],
+ "profil-01-wajah": [
+  "Sekarang kita ke Profil saya, dan langkah pertamanya adalah wajahmu.",
+  "Foto acuan ini membuat wajahmu tetap sama di semua video. Pakai dua sampai empat foto yang jelas, tanpa kacamata hitam.",
+  "Isi nama panggilanmu. Penulis naskah memakainya saat menyebut dirimu, dan kamu bisa menggantinya kapan saja.",
+  "Pilih sampai empat foto dari galeri sekaligus. Fotonya belum terkirim sebelum kamu menekan tombol simpan.",
+  "Tekan Simpan wajah saya. Penulis AI membaca ciri wajahmu dari foto, jadi langkah ini memakai saldo."
+ ],
+ "profil-02-suara": [
+  "Wajahmu sudah siap. Berikutnya adalah suaramu, supaya naskah dibacakan dengan suara yang mirip kamu.",
+  "Dari satu rekaman, suaramu ditiru untuk membaca naskah di semua video. Langkah suara ini tidak memotong saldo.",
+  "Rekam lewat mikrofon selama sepuluh sampai tiga puluh detik, di tempat yang sunyi.",
+  "Atau unggah rekaman dari ponselmu. Ini pilihan paling aman kalau rekaman dari browser ditolak.",
+  "Putar rekamanmu dulu. Kalau ada suara latar atau terpotong, rekam ulang sebelum dipakai.",
+  "Lalu kirim rekaman untuk ditiru, sekitar satu menit. Langkah ini tidak memotong saldo, dan suara lama diganti."
+ ],
+ "profil-03-bahasa-siap": [
+  "Tinggal satu langkah lagi di Profil saya, yaitu bahasa dan memastikan semuanya siap.",
+  "Pilih bahasa naskah dan suaramu: Indonesia, English, atau campuran. Pilihan Mandarin menyusul nanti.",
+  "Pilihan campuran artinya Indonesia dengan sisipan istilah Inggris, seperti bicara sehari-hari. Pilihanmu langsung tersimpan.",
+  "Kartu Sudah siap terisi sendiri saat wajah, suara, dan bahasa ada. Video bicara masih butuh satu produk di Product Kit.",
+  "Kalau semuanya sudah terisi, tekan Buat video pertama. Tombol ini baru aktif setelah wajah dan suaramu ada.",
+  "Ingin mengatur lebih rinci? Tekan Pengaturan lengkap untuk membuka halaman detail karakter ini."
+ ],
+ "buat-video-01-apa-bicara": [
+  "Buat Video bekerja seperti wawancara singkat.",
+  "Di bagian atas ada empat langkahnya: Apa, Siapa, Berapa lama, lalu Tinjau dan harga.",
+  "Pilih Saya bicara ke kamera, kalau kamu ingin berjualan atau endorse produk.",
+  "Atau pilih Cerita beberapa adegan, untuk video bernarasi tanpa bicara ke kamera.",
+  "Setelah itu, ceritakan videonya. Cukup satu atau dua kalimat.",
+  "Perkiraan harganya langsung tertulis di bawah, sebelum kamu melanjutkan."
+ ],
+ "buat-video-02-apa-cerita": [
+  "Kalau kamu memilih cerita beberapa adegan, ada beberapa pilihan tambahan di layar ini.",
+  "Pertama, pilih bentuk ceritanya, misalnya Masalah, Produk, Hasil. Kamu tidak perlu menghitung adegan, penulis AI yang membaginya.",
+  "Lalu pilih gaya gambar: foto nyata, atau kolase kertas untuk video penjelasan. Harganya sama saja.",
+  "Kalau punya, tambahkan foto dari ponselmu, misalnya dapur atau kemasan, sebagai bahan adegan. Fotonya belum terkirim sebelum naskah ditulis.",
+  "Terakhir, ceritakan videonya dengan satu atau dua kalimat. Semua pilihan tambahan ini boleh dilewati."
+ ],
+ "buat-video-03-siapa": [
+  "Langkah kedua adalah Siapa, yaitu siapa yang tampil dan produk apa yang dibahas.",
+  "Wajah dan suaranya diambil dari Profil saya. Kalau ada beberapa karakter, pilih salah satunya di sini.",
+  "Lencana hijau berarti foto wajahmu sudah cukup. Kalau kuning, tambahkan foto di Profil saya.",
+  "Untuk video bicara, pilih produknya dari Product Kit. Foto kemasan aslinya menjadi acuan supaya kemasan tidak dikarang.",
+  "Belum ada produk? Tekan Produk baru, lalu simpan nama, keunggulan, dan foto kemasan asli tanpa pindah halaman.",
+  "Kalau tombol Lanjut belum bisa ditekan, alasannya tertulis di bawahnya, lengkap dengan tautan untuk memperbaikinya."
+ ],
+ "buat-video-04-berapa-lama": [
+  "Langkah ketiga adalah Berapa lama, yaitu menentukan panjang videomu.",
+  "Pilih target durasi. Maksimal tiga puluh detik per video, dan video bicara mengikuti panjang naskahnya.",
+  "Setiap tombol langsung menuliskan perkiraan harganya dalam rupiah. Pilih yang sesuai dengan keperluanmu.",
+  "Butuh video lebih panjang? Itu belum bisa, jadi bagi saja menjadi beberapa video pendek.",
+  "Lalu tekan Tulis naskahnya. Langkah ini memakai saldo. Gambar, suara, dan video belum dibuat sama sekali."
+ ],
+ "buat-video-05-tinjau-bicara": [
+  "Sampai di langkah terakhir, Tinjau dan harga, untuk jalur bicara ke kamera.",
+  "Ini naskah yang akan dibacakan suara tiruanmu. Baca pelan-pelan, dan ubah kalau ada kata yang kurang pas. Mengubah gratis.",
+  "Di bawahnya ada caption, teks di bawah postingan. Isinya bukan yang diucapkan, dan sengaja dibuat pendek.",
+  "Rincian biaya tiap bagian dan totalnya tertulis di sini. Angkanya ikut menyesuaikan panjang naskahmu.",
+  "Tekan Ya, buat pratinjau. Langkah ini memakai saldo: gambar pertama dan suaramu dibuat bersamaan. Videonya baru dibayar setelah kamu setuju.",
+  "Kurang cocok dengan naskahnya? Minta versi lain. Langkah ini memakai saldo, dan perubahanmu di kolom naskah ikut terganti."
+ ],
+ "buat-video-06-tinjau-cerita": [
+  "Sekarang langkah Tinjau dan harga untuk jalur cerita beberapa adegan.",
+  "Jumlah adegan dan detik tiap adegan ditentukan penulis AI mengikuti bentuk ceritamu. Tiap baris di bawahnya adalah satu adegan.",
+  "Rincian biaya gambar pembuka dan video, beserta totalnya, tertulis di sini dalam rupiah.",
+  "Tekan Ya, buat video ini untuk membuka layar produksi. Gambar pembuka dibuat dulu supaya kamu bisa melihatnya sebelum video dibayar.",
+  "Kalau ingin naskah lain dari cerita yang sama, minta versi lain. Langkah ini memakai saldo.",
+  "Mengubah durasi juga bisa, tetapi naskah yang sudah ditulis akan dibuang."
+ ],
+ "penutup": [
+  "Kalau bingung harus mulai dari mana, ikuti urutan langkah pertama yang disarankan ini.",
+  "Mulai dengan masuk atau daftar, lalu jawab pertanyaan di Arah Konten dan isi Profil saya. Keduanya cukup dilakukan sekali.",
+  "Simpan satu produk di Product Kit untuk video bicara ke kamera. Lalu pilih ide, tulis naskah, dan buka Buat Video.",
+  "Setelah video jadi, tonton dan unduh. Publikasi selalu kamu lakukan sendiri. Biasakan membaca keterangan tombol, karena sebagian langkah memakai saldo."
  ]
 }
