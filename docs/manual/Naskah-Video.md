@@ -8,6 +8,12 @@ Satu bagian di bawah = satu halaman PDF = satu berkas di `slide/`. Bacakan naras
 
 Halo, selamat datang di AI Influencer Studio. Di sini kamu bisa membuat karakter sendiri, lalu menjadikannya video, gambar, dan suara untuk jualan atau konten sehari-hari. Panduan ini dibuat pendek. Satu halaman, satu hal. Kamu tinggal ikuti nomornya, dari masuk ke aplikasi sampai video pertamamu jadi. Santai saja, nggak perlu buru-buru.
 
+## i. Daftar isi
+
+*Slide: `01i-daftar-isi.jpg` · Bagian: Daftar Isi*
+
+Panduan ini dibagi menjadi sebelas episode. Kamu bisa membacanya berurutan, atau langsung lompat ke topik yang sedang kamu butuhkan.
+
 ## 2. Cara membaca panduan ini
 
 *Slide: `02-cara-membaca.jpg` · Bagian: Pengantar*

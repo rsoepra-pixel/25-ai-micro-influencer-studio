@@ -19,6 +19,84 @@
   "narasi": "Halo, selamat datang di AI Influencer Studio. Di sini kamu bisa membuat karakter sendiri, lalu menjadikannya video, gambar, dan suara untuk jualan atau konten sehari-hari. Panduan ini dibuat pendek. Satu halaman, satu hal. Kamu tinggal ikuti nomornya, dari masuk ke aplikasi sampai video pertamamu jadi. Santai saja, nggak perlu buru-buru."
  },
  {
+  "id": "daftar-isi",
+  "jenis": "isi",
+  "tambahan": true,
+  "bagian": "Daftar Isi",
+  "judul": "Daftar isi",
+  "pengantar": "Panduan ini dibagi menjadi 11 episode. Tiap episode bisa dibaca sendiri — klik judulnya untuk langsung membuka topik yang kamu butuhkan.",
+  "isi": [
+   {
+    "judul": "Kenalan: cara membaca, masuk, menu kiri",
+    "dari": "cara-membaca",
+    "sampai": "kerangka-02-semua-menu",
+    "menit": "3–4 mnt"
+   },
+   {
+    "judul": "Beranda & Cara mulai",
+    "dari": "beranda-01-mulai-dari-sini",
+    "sampai": "mulai-02-lewat-claude-b",
+    "menit": "2–3 mnt"
+   },
+   {
+    "judul": "Arah Konten 1: 12 pertanyaan sampai blueprint",
+    "dari": "arah-01-depan",
+    "sampai": "arah-05-blueprint-bawah",
+    "menit": "2–3 mnt"
+   },
+   {
+    "judul": "Arah Konten 2: ide, pembuka, naskah",
+    "dari": "arah-06-ide",
+    "sampai": "arah-09-serah-terima",
+    "menit": "2 mnt"
+   },
+   {
+    "judul": "Profil saya: wajah, suara, bahasa",
+    "dari": "profil-01-wajah",
+    "sampai": "profil-03-bahasa-siap",
+    "menit": "1–2 mnt"
+   },
+   {
+    "judul": "Buat Video",
+    "dari": "buat-video-01-apa-bicara",
+    "sampai": "buat-video-06-tinjau-cerita",
+    "menit": "3 mnt"
+   },
+   {
+    "judul": "Influencers",
+    "dari": "influencers-01-daftar",
+    "sampai": "influencers-07-suara",
+    "menit": "3–4 mnt"
+   },
+   {
+    "judul": "Product Kit",
+    "dari": "product-kit-01-tambah",
+    "sampai": "product-kit-02-tersimpan",
+    "menit": "1 mnt"
+   },
+   {
+    "judul": "Production Studio",
+    "dari": "studio-01-generate",
+    "sampai": "studio-05-riwayat",
+    "menit": "2–3 mnt"
+   },
+   {
+    "judul": "Storyboard",
+    "dari": "storyboard-01-form",
+    "sampai": "storyboard-07-hasil",
+    "menit": "3–4 mnt"
+   },
+   {
+    "judul": "Video UGC",
+    "dari": "ugc-01-form-atas",
+    "sampai": "ugc-07-hasil",
+    "menit": "3–4 mnt"
+   }
+  ],
+  "penutup": "penutup",
+  "narasi": "Panduan ini dibagi menjadi sebelas episode. Kamu bisa membacanya berurutan, atau langsung lompat ke topik yang sedang kamu butuhkan."
+ },
+ {
   "id": "cara-membaca",
   "jenis": "daftar",
   "bagian": "Pengantar",

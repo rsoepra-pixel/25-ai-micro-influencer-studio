@@ -51,7 +51,7 @@ function halamanLayar(h, no, total) {
   if (!fs.existsSync(jpg) || fs.statSync(jpg).mtimeMs < fs.statSync(png).mtimeMs)
     execFileSync("ffmpeg", ["-y", "-loglevel", "error", "-i", png, "-q:v", "6", jpg]);
   return `
-<section class="hal layar" data-callouts='${esc(JSON.stringify(callouts))}'>
+<section class="hal layar" id="${esc(h.id)}" data-callouts='${esc(JSON.stringify(callouts))}'>
   ${kepala(h, no, total)}
   <div class="panggung">
     <div class="bingkai"><img src="${dataUri(jpg)}" width="${LAYAR.w}" height="${LAYAR.h}" /></div>
@@ -60,6 +60,14 @@ function halamanLayar(h, no, total) {
 </section>`;
 }
 
+// Tombol "Daftar isi" di tiap halaman (kecuali daftar isi itu sendiri).
+// Kenapa: PDF 59 halaman yang dibaca pelanggan biasanya dibuka untuk satu
+// topik, lalu orangnya ingin pindah topik — tanpa tombol ini ia harus
+// menggulir balik ke halaman i.
+const ID_ISI = halaman.find((x) => x.jenis === "isi")?.id;
+const IKON_RUMAH = `<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M3 10.5 12 3l9 7.5"/><path d="M5 9.5V21h5v-6h4v6h5V9.5"/></svg>`;
+const tombolRumah = (h) => ID_ISI && h.id !== ID_ISI ? `<a class="rumah" href="#${esc(ID_ISI)}">${IKON_RUMAH}<span>Daftar isi</span></a>` : "";
+
 function kepala(h, no, total) {
   return `
   <header>
@@ -67,13 +75,13 @@ function kepala(h, no, total) {
       <div class="bagian">${esc(h.bagian || "")}</div>
       <h1>${esc(h.judul)}</h1>
     </div>
-    <div class="nomor"><span>Panduan Pengguna · AI Influencer Studio</span><b>${no}</b><i>/ ${total}</i></div>
+    <div class="nomor">${tombolRumah(h)}<span>Panduan Pengguna · AI Influencer Studio</span><b>${no}</b>${/^\d+$/.test(no) ? `<i>/ ${total}</i>` : ""}</div>
   </header>`;
 }
 
 function halamanSampul(h) {
   return `
-<section class="hal sampul">
+<section class="hal sampul" id="${esc(h.id)}">
   <div class="sampul-isi">
     <div class="bagian">PANDUAN PENGGUNA</div>
     <h1><span class="grad">AI Influencer</span> Studio</h1>
@@ -81,6 +89,7 @@ function halamanSampul(h) {
     <div class="pil">${(h.isi || []).map((x) => `<span>${esc(x)}</span>`).join("")}</div>
   </div>
   <footer>${esc(h.kaki || "")}</footer>
+  <div class="rumah-sampul">${tombolRumah(h)}</div>
 </section>`;
 }
 
@@ -88,7 +97,7 @@ function halamanDaftar(h, no, total) {
   const isi = h.isi || [];
   const kolom = isi.length > 6 ? 2 : 1;
   return `
-<section class="hal daftar">
+<section class="hal daftar" id="${esc(h.id)}">
   ${kepala(h, no, total)}
   <div class="daftar-isi">
     ${h.pengantar ? `<p class="pengantar">${esc(h.pengantar)}</p>` : ""}
@@ -99,11 +108,63 @@ function halamanDaftar(h, no, total) {
 </section>`;
 }
 
-const total = halaman.length;
+// Daftar isi: nomor halaman dihitung dari id halaman pertama dan terakhir tiap
+// episode, bukan ditulis tangan. Tiap baris juga tautan ke halamannya.
+function halamanIsi(h, no, total) {
+  const ke = (id) => {
+    const i = halaman.findIndex((x) => x.id === id);
+    if (i < 0) throw new Error(`Daftar isi menunjuk halaman yang tidak ada: ${id}`);
+    return nomor[i].label;
+  };
+  const baris = (h.isi || []).map((e, i) => {
+    const a = ke(e.dari), b = ke(e.sampai);
+    return `<a class="baris" href="#${esc(e.dari)}"><span class="lencana">${i + 1}</span><b>${esc(e.judul)}</b>
+      <span class="hal-no">${a === b ? a : `${a}–${b}`}</span><span class="jml">${b - a + 1} hal.</span><span class="menit">${esc(e.menit)}</span></a>`;
+  }).join("");
+  const p = h.penutup ? halaman.find((x) => x.id === h.penutup) : null;
+  return `
+<section class="hal isi" id="${esc(h.id)}">
+  ${kepala(h, no, total)}
+  <div class="isi-badan">
+    ${h.pengantar ? `<p class="pengantar">${esc(h.pengantar)}</p>` : ""}
+    <div class="tabel">
+      <div class="kepala-tabel"><span>#</span><span>Episode</span><span>Halaman</span><span>Jumlah</span><span>Perkiraan</span></div>
+      ${baris}
+    </div>
+    ${p ? `<a class="lanjut" href="#${esc(p.id)}">Penutup — ${esc(p.judul)} <b>hal. ${ke(p.id)}</b></a>` : ""}
+  </div>
+</section>`;
+}
+
+// Penomoran. Halaman bertanda `"tambahan": true` (mis. daftar isi) diberi
+// angka romawi kecil (i, ii, iii) dan TIDAK ikut dihitung di nomor biasa.
+// Kenapa: nomor halaman panduan sudah dipakai di luar PDF ini — nama berkas
+// slide, naskah video per episode, dan obrolan dengan pelanggan ("lihat
+// halaman 46"). Menyisipkan satu halaman tidak boleh menggeser semua itu.
+const romawi = (n) => [["m", 1000], ["cm", 900], ["d", 500], ["cd", 400], ["c", 100], ["xc", 90], ["l", 50], ["xl", 40], ["x", 10], ["ix", 9], ["v", 5], ["iv", 4], ["i", 1]]
+  .reduce((a, [h, v]) => { while (n >= v) { a += h; n -= v; } return a; }, "");
+const nomor = [];
+{
+  let biasa = 0, tambahan = 0;
+  for (const h of halaman) {
+    if (h.tambahan) {
+      tambahan++;
+      // Nama berkas menempel pada halaman biasa sebelumnya ("01i-…"), supaya
+      // urutan abjad di folder slide sama dengan urutan di PDF tanpa
+      // mengubah nama berkas yang sudah ada.
+      nomor.push({ label: romawi(tambahan), berkas: `${String(biasa).padStart(2, "0")}${romawi(tambahan)}`, romawi: true });
+    } else {
+      biasa++;
+      nomor.push({ label: String(biasa), berkas: String(biasa).padStart(2, "0"), romawi: false });
+    }
+  }
+}
+const total = nomor.filter((x) => !x.romawi).length;
 const badan = halaman.map((h, i) => {
-  const no = i + 1;
+  const no = nomor[i].label;
   if (h.jenis === "sampul") return halamanSampul(h);
   if (h.jenis === "daftar") return halamanDaftar(h, no, total);
+  if (h.jenis === "isi") return halamanIsi(h, no, total);
   return halamanLayar(h, no, total);
 }).join("\n");
 
@@ -153,6 +214,28 @@ const html = `<!doctype html><html lang="id"><head><meta charset="utf-8" />
   .lencana{ flex:none; width:44px; height:44px; border-radius:50%; background:var(--tag); border:2.5px solid var(--ink); display:flex; align-items:center; justify-content:center; font-weight:700; font-size:21px }
   .daftar li b{ display:block; font-size:25px }
   .daftar li div span{ display:block; font-size:20.5px; color:var(--muted); line-height:1.38; margin-top:3px }
+
+  .isi-badan{ padding:0 120px }
+  .isi .pengantar{ margin-bottom:22px }
+  .tabel{ background:#fff; border:2.5px solid var(--ink); border-radius:20px; box-shadow:5px 5px 0 var(--ink); overflow:hidden }
+  .kepala-tabel, .baris{ display:grid; grid-template-columns:70px 1fr 170px 140px 170px; align-items:center; column-gap:18px; padding:0 28px }
+  .kepala-tabel{ height:56px; background:var(--ink); color:#fff; font-family:"Space Mono",monospace; font-size:16px; letter-spacing:.12em; text-transform:uppercase }
+  .baris{ height:55px; color:var(--ink); text-decoration:none; border-top:1.5px solid var(--border); font-size:23px }
+  .baris:nth-child(odd){ background:var(--blue-soft) }
+  .baris .lencana{ width:38px; height:38px; font-size:18px }
+  .baris b{ font-weight:600 }
+  .hal-no{ font-weight:700; color:var(--brand) }
+  .jml{ color:var(--muted); font-size:20px }
+  .menit{ justify-self:start; background:var(--brand-soft); border:2px solid var(--brand-line); color:var(--brand); border-radius:999px; padding:3px 14px; font-size:19px; font-weight:600 }
+  .lanjut{ display:inline-block; margin-top:22px; color:var(--muted); font-size:21px; text-decoration:none }
+  .lanjut b{ color:var(--brand); margin-left:6px }
+
+  .rumah{ display:inline-flex; align-items:center; gap:8px; margin-right:22px; align-self:center; padding:7px 16px 7px 12px; background:#fff;
+          border:2.5px solid var(--ink); border-radius:999px; box-shadow:3px 3px 0 var(--ink); color:var(--brand); text-decoration:none;
+          font-size:18px; font-weight:600; transform:translateY(-4px) }
+  .rumah span{ color:var(--ink) }
+  .rumah-sampul{ position:absolute; right:56px; top:48px }
+  .rumah-sampul .rumah{ margin:0; font-size:22px; padding:10px 22px 10px 16px }
 </style></head><body>
 ${badan}
 <script>
@@ -166,7 +249,9 @@ const ATAS = 20, BAWAH = 910, JARAK = 18;
 function susun(sec) {
   const data = JSON.parse(sec.dataset.callouts);
   const panggung = sec.querySelector(".panggung");
-  const svg = sec.querySelector("svg");
+  // "svg.garis", bukan "svg": ikon tombol Daftar isi di kepala halaman juga
+  // sebuah svg dan letaknya lebih dulu — garis callout akan tergambar di sana.
+  const svg = sec.querySelector("svg.garis");
   const item = data.map((c, i) => {
     const el = document.createElement("div");
     el.className = "kotak";
@@ -279,13 +364,38 @@ await page.goto("file://" + fileHtml);
 await page.waitForFunction(() => document.body.dataset.siap === "1");
 await page.pdf({ path: path.join(DIR_KELUAR, "Panduan-Pengguna.pdf"), width: "1920px", height: "1080px", printBackground: true });
 
+// Label halaman di PDF (yang tampil di kotak nomor halaman penampil PDF)
+// disamakan dengan nomor tercetak: tanpa ini penampil menulis "3" untuk
+// halaman yang tercetak "2". Butuh pypdf; kalau tidak ada, PDF tetap jadi,
+// hanya labelnya mengikuti urutan fisik.
+{
+  const rentang = [];
+  nomor.forEach((n, i) => {
+    const akhir = rentang[rentang.length - 1];
+    if (!akhir || akhir.romawi !== n.romawi) rentang.push({ dari: i, romawi: n.romawi, mulai: n.romawi ? nomor.slice(0, i + 1).filter((x) => x.romawi).length : Number(n.label) });
+  });
+  try {
+    execFileSync("python3", ["-c", `
+import sys, json, pypdf
+from pypdf.constants import PageLabelStyle
+f = sys.argv[1]; r = pypdf.PdfReader(f); w = pypdf.PdfWriter(clone_from=r)
+for x in json.loads(sys.argv[2]):
+    w.set_page_label(x["dari"], x["sampai"], style=PageLabelStyle.LOWERCASE_ROMAN if x["romawi"] else PageLabelStyle.DECIMAL, start=x["mulai"])
+w.write(f)
+`, path.join(DIR_KELUAR, "Panduan-Pengguna.pdf"),
+      JSON.stringify(rentang.map((x, k) => ({ ...x, sampai: (rentang[k + 1]?.dari ?? nomor.length) - 1 })))], { stdio: "pipe" });
+  } catch (e) {
+    console.warn("Label halaman PDF dilewati (pypdf tidak tersedia?):", String(e.stderr || e.message).trim().split("\n").pop());
+  }
+}
+
 if (!TANPA_SLIDE) {
   const dirSlide = path.join(DIR_KELUAR, "slide");
   fs.rmSync(dirSlide, { recursive: true, force: true });
   fs.mkdirSync(dirSlide, { recursive: true });
   const hal = await page.$$(".hal");
   for (let i = 0; i < hal.length; i++) {
-    const nama = `${String(i + 1).padStart(2, "0")}-${halaman[i].id}.jpg`;
+    const nama = `${nomor[i].berkas}-${halaman[i].id}.jpg`;
     await hal[i].screenshot({ path: path.join(dirSlide, nama), type: "jpeg", quality: 88 });
   }
 }
@@ -295,7 +405,7 @@ await browser.close();
 const naskah = ["# Naskah video — Panduan Pengguna AI Influencer Studio", "",
   "Satu bagian di bawah = satu halaman PDF = satu berkas di `slide/`. Bacakan narasinya sambil menampilkan slide yang nomornya sama.", ""];
 halaman.forEach((h, i) => {
-  naskah.push(`## ${i + 1}. ${h.judul}`, "", `*Slide: \`${String(i + 1).padStart(2, "0")}-${h.id}.jpg\`${h.bagian ? ` · Bagian: ${h.bagian}` : ""}*`, "", h.narasi || "", "");
+  naskah.push(`## ${nomor[i].label}. ${h.judul}`, "", `*Slide: \`${nomor[i].berkas}-${h.id}.jpg\`${h.bagian ? ` · Bagian: ${h.bagian}` : ""}*`, "", h.narasi || "", "");
   if (h.callouts?.length) {
     naskah.push("Yang ditunjuk di layar:", "", ...h.callouts.map((c, n) => `${n + 1}. ${c.teks}`), "");
   }
