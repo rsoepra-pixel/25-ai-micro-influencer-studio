@@ -67,7 +67,7 @@ function kepala(h, no, total) {
       <div class="bagian">${esc(h.bagian || "")}</div>
       <h1>${esc(h.judul)}</h1>
     </div>
-    <div class="nomor"><span>Panduan Pengguna · AI Influencer Studio</span><b>${no}</b><i>/ ${total}</i></div>
+    <div class="nomor"><span>Panduan Pengguna · AI Influencer Studio</span><b>${no}</b>${/^\d+$/.test(no) ? `<i>/ ${total}</i>` : ""}</div>
   </header>`;
 }
 
@@ -100,13 +100,12 @@ function halamanDaftar(h, no, total) {
 }
 
 // Daftar isi: nomor halaman dihitung dari id halaman pertama dan terakhir tiap
-// episode, bukan ditulis tangan — kalau satu halaman ditambah atau dibuang,
-// nomornya ikut bergeser sendiri. Tiap baris juga tautan ke halamannya.
+// episode, bukan ditulis tangan. Tiap baris juga tautan ke halamannya.
 function halamanIsi(h, no, total) {
   const ke = (id) => {
     const i = halaman.findIndex((x) => x.id === id);
     if (i < 0) throw new Error(`Daftar isi menunjuk halaman yang tidak ada: ${id}`);
-    return i + 1;
+    return nomor[i].label;
   };
   const baris = (h.isi || []).map((e, i) => {
     const a = ke(e.dari), b = ke(e.sampai);
@@ -128,9 +127,32 @@ function halamanIsi(h, no, total) {
 </section>`;
 }
 
-const total = halaman.length;
+// Penomoran. Halaman bertanda `"tambahan": true` (mis. daftar isi) diberi
+// angka romawi kecil (i, ii, iii) dan TIDAK ikut dihitung di nomor biasa.
+// Kenapa: nomor halaman panduan sudah dipakai di luar PDF ini — nama berkas
+// slide, naskah video per episode, dan obrolan dengan pelanggan ("lihat
+// halaman 46"). Menyisipkan satu halaman tidak boleh menggeser semua itu.
+const romawi = (n) => [["m", 1000], ["cm", 900], ["d", 500], ["cd", 400], ["c", 100], ["xc", 90], ["l", 50], ["xl", 40], ["x", 10], ["ix", 9], ["v", 5], ["iv", 4], ["i", 1]]
+  .reduce((a, [h, v]) => { while (n >= v) { a += h; n -= v; } return a; }, "");
+const nomor = [];
+{
+  let biasa = 0, tambahan = 0;
+  for (const h of halaman) {
+    if (h.tambahan) {
+      tambahan++;
+      // Nama berkas menempel pada halaman biasa sebelumnya ("01i-…"), supaya
+      // urutan abjad di folder slide sama dengan urutan di PDF tanpa
+      // mengubah nama berkas yang sudah ada.
+      nomor.push({ label: romawi(tambahan), berkas: `${String(biasa).padStart(2, "0")}${romawi(tambahan)}`, romawi: true });
+    } else {
+      biasa++;
+      nomor.push({ label: String(biasa), berkas: String(biasa).padStart(2, "0"), romawi: false });
+    }
+  }
+}
+const total = nomor.filter((x) => !x.romawi).length;
 const badan = halaman.map((h, i) => {
-  const no = i + 1;
+  const no = nomor[i].label;
   if (h.jenis === "sampul") return halamanSampul(h);
   if (h.jenis === "daftar") return halamanDaftar(h, no, total);
   if (h.jenis === "isi") return halamanIsi(h, no, total);
@@ -324,13 +346,38 @@ await page.goto("file://" + fileHtml);
 await page.waitForFunction(() => document.body.dataset.siap === "1");
 await page.pdf({ path: path.join(DIR_KELUAR, "Panduan-Pengguna.pdf"), width: "1920px", height: "1080px", printBackground: true });
 
+// Label halaman di PDF (yang tampil di kotak nomor halaman penampil PDF)
+// disamakan dengan nomor tercetak: tanpa ini penampil menulis "3" untuk
+// halaman yang tercetak "2". Butuh pypdf; kalau tidak ada, PDF tetap jadi,
+// hanya labelnya mengikuti urutan fisik.
+{
+  const rentang = [];
+  nomor.forEach((n, i) => {
+    const akhir = rentang[rentang.length - 1];
+    if (!akhir || akhir.romawi !== n.romawi) rentang.push({ dari: i, romawi: n.romawi, mulai: n.romawi ? nomor.slice(0, i + 1).filter((x) => x.romawi).length : Number(n.label) });
+  });
+  try {
+    execFileSync("python3", ["-c", `
+import sys, json, pypdf
+from pypdf.constants import PageLabelStyle
+f = sys.argv[1]; r = pypdf.PdfReader(f); w = pypdf.PdfWriter(clone_from=r)
+for x in json.loads(sys.argv[2]):
+    w.set_page_label(x["dari"], x["sampai"], style=PageLabelStyle.LOWERCASE_ROMAN if x["romawi"] else PageLabelStyle.DECIMAL, start=x["mulai"])
+w.write(f)
+`, path.join(DIR_KELUAR, "Panduan-Pengguna.pdf"),
+      JSON.stringify(rentang.map((x, k) => ({ ...x, sampai: (rentang[k + 1]?.dari ?? nomor.length) - 1 })))], { stdio: "pipe" });
+  } catch (e) {
+    console.warn("Label halaman PDF dilewati (pypdf tidak tersedia?):", String(e.stderr || e.message).trim().split("\n").pop());
+  }
+}
+
 if (!TANPA_SLIDE) {
   const dirSlide = path.join(DIR_KELUAR, "slide");
   fs.rmSync(dirSlide, { recursive: true, force: true });
   fs.mkdirSync(dirSlide, { recursive: true });
   const hal = await page.$$(".hal");
   for (let i = 0; i < hal.length; i++) {
-    const nama = `${String(i + 1).padStart(2, "0")}-${halaman[i].id}.jpg`;
+    const nama = `${nomor[i].berkas}-${halaman[i].id}.jpg`;
     await hal[i].screenshot({ path: path.join(dirSlide, nama), type: "jpeg", quality: 88 });
   }
 }
@@ -340,7 +387,7 @@ await browser.close();
 const naskah = ["# Naskah video — Panduan Pengguna AI Influencer Studio", "",
   "Satu bagian di bawah = satu halaman PDF = satu berkas di `slide/`. Bacakan narasinya sambil menampilkan slide yang nomornya sama.", ""];
 halaman.forEach((h, i) => {
-  naskah.push(`## ${i + 1}. ${h.judul}`, "", `*Slide: \`${String(i + 1).padStart(2, "0")}-${h.id}.jpg\`${h.bagian ? ` · Bagian: ${h.bagian}` : ""}*`, "", h.narasi || "", "");
+  naskah.push(`## ${nomor[i].label}. ${h.judul}`, "", `*Slide: \`${nomor[i].berkas}-${h.id}.jpg\`${h.bagian ? ` · Bagian: ${h.bagian}` : ""}*`, "", h.narasi || "", "");
   if (h.callouts?.length) {
     naskah.push("Yang ditunjuk di layar:", "", ...h.callouts.map((c, n) => `${n + 1}. ${c.teks}`), "");
   }

@@ -21,6 +21,7 @@
  {
   "id": "daftar-isi",
   "jenis": "isi",
+  "tambahan": true,
   "bagian": "Daftar Isi",
   "judul": "Daftar isi",
   "pengantar": "Panduan ini dibagi menjadi 11 episode. Tiap episode bisa dibaca sendiri — klik judulnya untuk langsung membuka topik yang kamu butuhkan.",
