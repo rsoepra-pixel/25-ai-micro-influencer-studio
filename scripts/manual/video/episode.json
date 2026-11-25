@@ -1,0 +1,20 @@
+[
+ {"no": 1, "seri": "Dasar", "judul": "Kenalan dengan aplikasinya",
+  "ringkas": "Cara membaca panduan, masuk dan daftar, lalu menu di sisi kiri layar.",
+  "buka": "Selamat datang di panduan AI Influencer Studio. Di episode pertama ini kita berkenalan dengan aplikasinya: cara masuk, dan menu-menu utamanya.",
+  "halaman": ["cara-membaca", "peta-menu", "masuk-01-masuk", "masuk-02-daftar", "kerangka-01-sidebar", "kerangka-02-semua-menu"],
+  "tutup": "Sekarang kamu sudah mengenal kerangka aplikasinya. Di episode berikutnya, kita melihat Beranda dan halaman Cara mulai.",
+  "berikut": "Episode 2 — Beranda & Cara mulai"},
+ {"no": 2, "seri": "Dasar", "judul": "Beranda & Cara mulai",
+  "ringkas": "Ringkasan ruang kerjamu, dan langkah-langkah menuju video pertama.",
+  "buka": "Di episode ini kita melihat Beranda, lalu halaman Cara mulai, yang merangkum langkah-langkah menuju video pertamamu.",
+  "halaman": ["beranda-01-mulai-dari-sini", "beranda-02-kartu", "mulai-01-infografis", "mulai-02-lewat-claude-a", "mulai-02-lewat-claude-b"],
+  "tutup": "Berikutnya kita masuk ke Arah Konten, tempat kamu menentukan konten apa yang sebaiknya dibuat.",
+  "berikut": "Episode 3 — Arah Konten: dari pertanyaan ke blueprint"},
+ {"no": 3, "seri": "Dasar", "judul": "Arah Konten: dari pertanyaan ke blueprint",
+  "ringkas": "Menjawab dua belas pertanyaan, lalu menyusun blueprint kontenmu.",
+  "buka": "Di episode ini kita membahas Arah Konten: menjawab dua belas pertanyaan, lalu menyusun blueprint kontenmu.",
+  "halaman": ["arah-01-depan", "arah-02-pertanyaan", "arah-03-susun-blueprint", "arah-04-blueprint-atas", "arah-05-blueprint-bawah"],
+  "tutup": "Blueprint kontenmu sudah siap. Di episode berikutnya, kita memakainya untuk mencari ide dan menulis naskah.",
+  "berikut": "Episode 4 — Arah Konten: ide dan naskah"}
+]

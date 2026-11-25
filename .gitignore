@@ -6,3 +6,5 @@ dist/
 deno.lock
 supabase/.temp/
 scripts/manual/tangkapan/
+scripts/manual/video/gambar/
+scripts/manual/video/klip/
