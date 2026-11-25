@@ -5,13 +5,14 @@
 // Isinya karangan yang terdengar wajar, bukan hasil model sungguhan. Tujuannya
 // satu: layar yang menampilkan naskah terlihat seperti dipakai orang.
 
+const lc = (s) => s.charAt(0).toLowerCase() + s.slice(1);
 const kata = (s) => String(s || "").split(/\s+/).filter(Boolean).length;
 const adaKopi = (inf, prod) => /kopi|kafe|barista/i.test(`${inf?.niche || ""} ${inf?.name || ""} ${prod?.name || ""}`);
 
 export function tulis(body, { inf, prod, item, board, shot }) {
   const kind = body.kind || "script";
   const nama = (inf?.name || "Kamu").split(" ")[0];
-  const kopi = adaKopi(inf, prod);
+  const kopi = prod ? /kopi/i.test(prod.name) : adaKopi(inf, prod);
   const produk = prod?.name || (kopi ? "Kopi Susu Aren Senja" : "produk ini");
 
   if (kind === "persona") {
@@ -41,27 +42,36 @@ export function tulis(body, { inf, prod, item, board, shot }) {
   }
   if (kind === "dari_dokumen") {
     const j = (jawaban) => ({ jawaban, kutipan: jawaban.slice(0, 60) });
+    const kopiDok = adaKopi(inf);
     return {
-      ok: true, ditolak: [], kosong: ["q12"], terpotong: false, catatan: "Beberapa jawaban disusun dari dua paragraf pertama dokumen.",
-      usulan: {
-        q1: j("Penjual kue kering rumahan di Bekasi yang membuat semuanya sendiri."),
-        q2: j("Ibu muda yang ingin kue kering enak untuk keluarga tanpa repot memanggang."),
-        q3: j("Kue kering toko terlalu manis dan sering sudah tidak renyah saat sampai."),
-        q4: j("Kue kering renyah yang dikirim cepat dan aman sampai rumah."),
-        q5: j("Sudah lima tahun berjualan dan hampir semua pelanggan memesan lagi."),
-        q6: j("Kue kering dalam toples dan paket hampers."), q7: j("Rp 45.000 – Rp 150.000"),
+      ok: true, ditolak: [], kosong: ["q8", "q9", "q10", "q11", "q12"], terpotong: false,
+      catatan: "Jawaban disusun dari dua paragraf pertama dokumen; yang tidak disebut dibiarkan kosong.",
+      usulan: kopiDok ? {
+        q1: j("Barista rumahan di Jakarta Selatan yang membuat kopi susu botol sendiri."),
+        q2: j("Pekerja kantoran 22–35 tahun yang suka kopi tapi bosan dengan kopi kemasan yang terlalu manis."),
+        q3: j("Kopi botolan terlalu manis, kopi kafe mahal, dan pagi yang selalu buru-buru."),
+        q4: j("Kopi enak yang praktis setiap hari tanpa bikin dompet menipis."),
+        q5: j("Tiga tahun menyeduh sendiri dan menjual ke tetangga sebelum membuka toko online."),
+        q6: j("Kopi Susu Aren Senja dan Granola Pagi."), q7: j("Rp 22.000 – Rp 38.000"),
+      } : {
+        q1: j("Pelatih kebugaran untuk pekerja kantoran yang jarang punya waktu olahraga."),
+        q2: j("Karyawan kantoran 25–40 tahun yang duduk lebih dari delapan jam sehari."),
+        q3: j("Badan pegal, tidak sempat ke gym, dan bingung mulai dari mana."),
+        q4: j("Badan terasa ringan dan punya kebiasaan gerak yang bisa dijaga."),
+        q5: j("Sepuluh tahun melatih pekerja kantoran di Jakarta."),
+        q6: j("Program latihan 14 hari dan panduan gerak di meja kerja."), q7: j("Rp 149.000 – Rp 299.000"),
       },
     };
   }
   if (kind === "blueprint") {
     const a = body.answers || {};
     const bp = {
-      positioning: `Untuk ${(a.q2 || "audiens yang tepat").replace(/\.$/, "")}, ${nama} membantu ${(a.q4 || "mendapat hasil yang mereka inginkan").toLowerCase().replace(/\.$/, "")} lewat cerita sehari-hari yang jujur dan mudah dicoba.`,
+      positioning: `Untuk ${lc((a.q2 || "audiens yang tepat").replace(/\.$/, ""))}, ${nama} membantu mereka sampai ke keadaan ketika ${lc((a.q4 || "hasil yang diinginkan tercapai").replace(/\.$/, ""))} — lewat cerita sehari-hari yang jujur dan mudah dicoba.`,
       usp: [a.q1 ? a.q1.replace(/\.$/, "") : "Pengalaman langsung yang dibagikan apa adanya", a.q5 && !/belum/i.test(a.q5) ? a.q5.replace(/\.$/, "") : "Berangkat dari kebiasaan nyata, bukan teori", "Mudah ditiru tanpa alat atau biaya besar"],
       audience: { who: a.q2 || "Pekerja kantoran 22–35 tahun", pain: a.q3 || "Waktu sempit dan tidak tahu harus mulai dari mana", desire: a.q4 || "Hasil nyata yang bisa dijaga", language: "nggak sempat, ribet, pengin yang praktis, yang penting konsisten" },
       pillars: String(a.q9 || "dasar, kebiasaan kecil, mitos, cerita pribadi").split(",").map((s) => s.trim()).filter(Boolean).slice(0, 4).map((n, i) => ({
         name: n.charAt(0).toUpperCase() + n.slice(1),
-        why: ["Audiens butuh langkah pertama yang jelas.", "Kebiasaan kecil terasa bisa dilakukan hari ini.", "Meluruskan salah paham membuat orang percaya.", "Cerita pribadi membuat audiens merasa terwakili."][i],
+        why: ["Audiens butuh langkah pertama yang jelas dan bisa dicoba hari ini.", "Topik yang sering ditanyakan membuat orang kembali menonton.", "Meluruskan salah paham membuat orang percaya.", "Topik yang dekat dengan rutinitas harian mudah dibagikan."][i],
       })),
       tone: { style: a.q8 || "Santai seperti ngobrol dengan teman.", do: ["pakai kata sehari-hari", "ceritakan pengalaman sendiri", "akhiri dengan ajakan ringan"], avoid: ["bahasa iklan yang kaku", "klaim berlebihan", "menggurui"] },
       funnel_ratio: { tofu: 3, mofu: 2, bofu: 1 },
@@ -109,7 +119,7 @@ export function tulis(body, { inf, prod, item, board, shot }) {
     const ide = String(body.idea || "ide ini").toLowerCase();
     return {
       ok: true, hooks: [
-        { text: `Aku dulu salah soal ${ide.split(" ").slice(0, 4).join(" ")}, dan ternyata banyak yang begitu.`, category: "Pengakuan" },
+        { text: "Aku dulu salah soal ini, dan ternyata banyak yang begitu.", category: "Pengakuan" },
         { text: "Pernah nggak, udah semangat tapi hasilnya begitu-begitu aja?", category: "Pertanyaan" },
         { text: "Tiga hal kecil ini yang bikin bedanya kerasa banget.", category: "Angka" },
         { text: "Kelihatannya sepele, tapi ini yang paling sering terlewat.", category: "Kontras" },
@@ -160,7 +170,7 @@ export function tulis(body, { inf, prod, item, board, shot }) {
       ugc: {
         hook: pilih[0], script,
         caption: kopi ? "Gula aren asli itu rasanya lebih dalam. Kamu tim manis atau tim pekat?" : `Cerita singkat soal ${produk}. Link ada di bio.`,
-        hashtags: kopi ? ["kopisusuaren", "kopisenja", "jakarta"] : ["rekomendasi", "produklokal"],
+        hashtags: kopi ? ["kopisusuaren", "kopisenja", "jakarta"] : [produk.toLowerCase().replace(/[^a-z0-9]/g, ""), "rekomendasi", "produklokal"],
         scene: "candid selfie taken with a phone front camera at arm's length, face and shoulders clearly visible, holding the product at chest height with its label facing the camera, soft natural window light, cozy home kitchen slightly out of focus, vertical 9:16",
         delivery: "talking casually to the phone camera like a friend recommending a product, relaxed and natural, small hand gestures, briefly lifting the product into frame, genuine smiles between sentences",
         words: kata(script), est_seconds: Math.max(3, Math.round(kata(script) / 2.3)), word_budget: anggaran,
@@ -187,8 +197,8 @@ export function tulis(body, { inf, prod, item, board, shot }) {
       ["Ajakan", "Close-up of the man giving a thumbs up to the camera", "Coba sekarang, selagi ingat.", "close-up"],
     ];
     const shots = Array.from({ length: n }, (_, i) => {
-      const b = beats[Math.min(i, beats.length - 1)];
-      return { position: i + 1, photo: null, beat: i === n - 1 ? "Ajakan" : b[0], visual_prompt: b[1], narration: b[2], camera: b[3], seconds: per };
+      const b = i === n - 1 ? beats[beats.length - 1] : beats[Math.min(i, beats.length - 2)];
+      return { position: i + 1, photo: null, beat: b[0], visual_prompt: b[1], narration: b[2], camera: b[3], seconds: per };
     });
     return {
       ok: true,

@@ -64,17 +64,39 @@ function model(n, m) {
 
 export function katalogModel() {
   return [
-    model(1, { model_key: "fal-ai/flux/schnell", label: "FLUX schnell", task: "image", quality_tier: "budget", est_price_usd: 0.003, description: "Cepat dan murah untuk coba-coba komposisi. Wajah tidak dikunci dari foto." }),
-    model(2, { model_key: "fal-ai/flux-pro/v1.1", label: "FLUX 1.1 pro", task: "image", quality_tier: "premium", est_price_usd: 0.04, description: "Detail dan pencahayaan paling rapi untuk gambar tanpa wajah influencer." }),
-    model(3, { model_key: "fal-ai/nano-banana/edit", label: "Nano Banana Edit — wajah konsisten dari Identity Kit", task: "image", quality_tier: "standard", est_price_usd: 0.039, keeps_identity: true, accepts_init_image: true, init_image_field: "image_urls", ref_image_field: "image_urls", ref_image_multi: true, description: "Membaca foto Identity Kit dan foto produk, jadi wajah dan kemasan tetap sama di setiap gambar." }),
-    model(4, { model_key: "fal-ai/kling-video/v2.1/standard/image-to-video", label: "Kling 2.1 Standard (gambar jadi video)", task: "video", quality_tier: "standard", unit: "per_second", est_price_usd: 0.05, accepts_init_image: true, init_image_field: "image_url", duration_field: "duration", duration_values: ["5", "10"], prompt_field: "prompt", description: "Menghidupkan satu gambar menjadi klip pendek." }),
-    model(5, { model_key: "fal-ai/veo3/fast", label: "Veo 3 Fast", task: "video", quality_tier: "premium", unit: "per_second", est_price_usd: 0.4, duration_field: "duration", duration_values: ["4s", "6s", "8s"], prompt_field: "prompt", description: "Video dengan suara bawaan, mahal tapi paling natural." }),
-    model(6, { model_key: "fal-ai/kling-video/v3/pro/text-to-video", label: "Kling 3 Pro (video cerita multi-shot)", task: "video", quality_tier: "premium", unit: "per_second", est_price_usd: 0.168, voice_price_usd: 0.196, accepts_init_image: true, init_image_field: "start_image_url", duration_field: "duration", duration_values: ["3", "5", "8", "10", "15"], multishot_field: "multi_prompt", ref_image_field: "elements", ref_image_multi: true, prompt_field: "prompt", description: "Beberapa adegan dalam satu video dengan wajah yang sama." }),
-    model(7, { model_key: "fal-ai/minimax/speech-02-hd", label: "MiniMax Speech-02 HD", task: "tts", est_price_usd: 0.1, unit: "per_1k_chars", voice_field: "voice_setting.voice_id", description: "Suara berbahasa Indonesia yang natural; mendukung klon suara." }),
-    model(8, { model_key: "fal-ai/elevenlabs/tts/eleven-v3", label: "ElevenLabs v3", task: "tts", quality_tier: "premium", est_price_usd: 0.1, unit: "per_1k_chars", voice_field: "voice", description: "Ekspresif, cocok untuk narasi." }),
-    model(9, { model_key: "fal-ai/kling-video/ai-avatar/v2/standard", label: "Kling AI Avatar v2 Standard (foto + suara jadi video bicara)", task: "lipsync", est_price_usd: 0.0562, unit: "per_second", accepts_init_image: true, init_image_field: "image_url", audio_field: "audio_url", prompt_field: "prompt", description: "Foto dan audio menjadi orang yang bicara ke kamera." }),
-    model(10, { model_key: "fal-ai/sync-lipsync/v2", label: "Sync Lipsync 2 (video + suara)", task: "lipsync", est_price_usd: 0.08, unit: "per_second", accepts_init_image: true, init_image_field: "video_url", audio_field: "audio_url", description: "Menyelaraskan mulut pada video yang sudah ada." }),
+    model(1, { attempts: 44, succeeded: 41, model_key: "fal-ai/flux/schnell", label: "FLUX schnell", task: "image", quality_tier: "budget", est_price_usd: 0.003, description: "Cepat dan murah untuk coba-coba komposisi. Wajah tidak dikunci dari foto." }),
+    model(2, { attempts: 9, succeeded: 9, model_key: "fal-ai/flux-pro/v1.1", label: "FLUX 1.1 pro", task: "image", quality_tier: "premium", est_price_usd: 0.04, description: "Detail dan pencahayaan paling rapi untuk gambar tanpa wajah influencer." }),
+    model(3, { attempts: 38, succeeded: 36, model_key: "fal-ai/nano-banana/edit", label: "Nano Banana Edit — wajah konsisten dari Identity Kit", task: "image", quality_tier: "standard", est_price_usd: 0.039, keeps_identity: true, accepts_init_image: true, init_image_field: "image_urls", ref_image_field: "image_urls", ref_image_multi: true, description: "Membaca foto Identity Kit dan foto produk, jadi wajah dan kemasan tetap sama di setiap gambar." }),
+    model(4, { attempts: 14, succeeded: 12, model_key: "fal-ai/kling-video/v2.1/standard/image-to-video", label: "Kling 2.1 Standard (gambar jadi video)", task: "video", quality_tier: "standard", unit: "per_second", est_price_usd: 0.05, accepts_init_image: true, init_image_field: "image_url", duration_field: "duration", duration_values: ["5", "10"], prompt_field: "prompt", description: "Menghidupkan satu gambar menjadi klip pendek." }),
+    model(5, { attempts: 3, succeeded: 3, model_key: "fal-ai/veo3/fast", label: "Veo 3 Fast", task: "video", quality_tier: "premium", unit: "per_second", est_price_usd: 0.4, duration_field: "duration", duration_values: ["4s", "6s", "8s"], prompt_field: "prompt", description: "Video dengan suara bawaan, mahal tapi paling natural." }),
+    model(6, { attempts: 11, succeeded: 9, model_key: "fal-ai/kling-video/v3/pro/text-to-video", label: "Kling 3 Pro (video cerita multi-shot)", task: "video", quality_tier: "premium", unit: "per_second", est_price_usd: 0.168, voice_price_usd: 0.196, accepts_init_image: true, init_image_field: "start_image_url", duration_field: "duration", duration_values: ["3", "5", "8", "10", "15"], multishot_field: "multi_prompt", ref_image_field: "elements", ref_image_multi: true, prompt_field: "prompt", description: "Beberapa adegan dalam satu video dengan wajah yang sama." }),
+    model(7, { attempts: 21, succeeded: 21, model_key: "fal-ai/minimax/speech-02-hd", label: "MiniMax Speech-02 HD", task: "tts", est_price_usd: 0.1, unit: "per_1k_chars", voice_field: "voice_setting.voice_id", description: "Suara berbahasa Indonesia yang natural; mendukung klon suara." }),
+    model(8, { attempts: 4, succeeded: 4, model_key: "fal-ai/elevenlabs/tts/eleven-v3", label: "ElevenLabs v3", task: "tts", quality_tier: "premium", est_price_usd: 0.1, unit: "per_1k_chars", voice_field: "voice", description: "Ekspresif, cocok untuk narasi." }),
+    model(9, { attempts: 17, succeeded: 15, model_key: "fal-ai/kling-video/ai-avatar/v2/standard", label: "Kling AI Avatar v2 Standard (foto + suara jadi video bicara)", task: "lipsync", est_price_usd: 0.0562, unit: "per_second", accepts_init_image: true, init_image_field: "image_url", audio_field: "audio_url", prompt_field: "prompt", description: "Foto dan audio menjadi orang yang bicara ke kamera." }),
+    model(10, { attempts: 5, succeeded: 4, model_key: "fal-ai/sync-lipsync/v2", label: "Sync Lipsync 2 (video + suara)", task: "lipsync", est_price_usd: 0.08, unit: "per_second", accepts_init_image: true, init_image_field: "video_url", audio_field: "audio_url", description: "Menyelaraskan mulut pada video yang sudah ada." }),
   ];
+}
+
+/** Jejak produksi (production_jobs.audit) untuk satu job, supaya tombol "Jejak" terisi. */
+export function auditJob(j, { models, influencers, character_assets }) {
+  const m = models.find((x) => x.model_key === j.model_key) || {};
+  const inf = influencers.find((x) => x.id === j.influencer_id);
+  const refs = inf && m.keeps_identity ? character_assets.filter((c) => c.influencer_id === inf.id && c.kind === "reference").slice(0, 3).map((c) => c.url) : [];
+  const identity = inf?.identity_prompt || "";
+  const selesai = j.status === "succeeded" || j.status === "failed";
+  const t0 = new Date(j.created_at).getTime();
+  return {
+    origin: j.origin || "studio", action: "submit", mode: "live", actor: USER.id, submitted_at: j.created_at,
+    ...(selesai ? { finished_at: new Date(t0 + (j.task === "image" ? 24 : j.task === "tts" ? 9 : 160) * 1000).toISOString() } : {}),
+    model: { label: m.label || j.model_key, provider: "fal", est_price_usd: m.est_price_usd, unit: m.unit, keeps_identity: !!m.keeps_identity, accepts_init_image: !!m.accepts_init_image, duration_field: m.duration_field || null },
+    request: { prompt: j.prompt || "", ...(m.unit === "per_second" ? { duration_requested: j.task === "lipsync" ? 15 : 5 } : {}) },
+    composed: {
+      final_prompt: [identity, j.prompt].filter(Boolean).join(", "), identity_prompt_injected: !!identity && j.task === "image",
+      identity_prompt_chars: identity.length, ref_photos: refs, voice_locked: j.task === "tts" || j.task === "lipsync",
+      ...(m.unit === "per_second" ? { billed_seconds: j.task === "lipsync" ? 15 : 5 } : {}),
+    },
+    result: selesai && j.status === "succeeded" ? { task_status: "COMPLETED", request_id: String(j.external_id || "demo-request"), seed: 421337 } : { task_status: j.status === "failed" ? "FAILED" : "IN_PROGRESS" },
+  };
 }
 
 // -------------------------------------------------------------------- dunia
@@ -181,6 +203,7 @@ export function bangunDunia(opsi = {}) {
       ledger.push({ id: id("led", nLed), workspace_id: WS_ID, kind: "usage", delta_usd: -baris.cost_actual_usd, note: baris.label || baris.task, created_at: baris.created_at });
     }
     delete baris.__aset;
+    baris.audit = auditJob(baris, { models: katalogModel(), influencers, character_assets });
     return baris;
   }
   const SHEET = (inf, nm) => ["Depan (netral)", "Serong 3/4", "Samping (profil)", "Ekspresi: senyum", "Setengah badan", "Full body (depan)"]

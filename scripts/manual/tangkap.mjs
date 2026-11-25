@@ -24,7 +24,7 @@ const APP_URL = process.env.APP_URL || "http://localhost:5173";
 const DIR = process.env.DIR_TANGKAPAN || path.join(DI_SINI, "tangkapan");
 const LAYAR = { width: 1200, height: 844 };
 
-const semua = JSON.parse(fs.readFileSync(path.join(DI_SINI, "halaman.json"), "utf8"));
+const semua = JSON.parse(fs.readFileSync(process.env.HALAMAN || path.join(DI_SINI, "halaman.json"), "utf8"));
 const pilih = process.argv.slice(2);
 const daftar = semua.filter((h) => h.route && (!pilih.length || pilih.includes(h.id)));
 fs.mkdirSync(DIR, { recursive: true });

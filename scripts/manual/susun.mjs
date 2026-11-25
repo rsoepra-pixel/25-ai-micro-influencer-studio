@@ -23,14 +23,14 @@ import { fileURLToPath } from "node:url";
 const DI_SINI = path.dirname(fileURLToPath(import.meta.url));
 const AKAR = path.resolve(DI_SINI, "../..");
 const DIR_TANGKAPAN = process.env.DIR_TANGKAPAN || path.join(DI_SINI, "tangkapan");
-const DIR_KELUAR = path.join(AKAR, "docs/manual");
+const DIR_KELUAR = process.env.DIR_KELUAR || path.join(AKAR, "docs/manual");
 const TANPA_SLIDE = process.argv.includes("--tanpa-slide");
 
 // Ukuran layar aplikasi saat ditangkap. Dipakai apa adanya (skala 1) supaya
 // tulisan di layar tetap terbaca saat halaman diputar sebagai video 1080p.
 const LAYAR = { w: 1200, h: 844 };
 
-const halaman = JSON.parse(fs.readFileSync(path.join(DI_SINI, "halaman.json"), "utf8"));
+const halaman = JSON.parse(fs.readFileSync(process.env.HALAMAN || path.join(DI_SINI, "halaman.json"), "utf8"));
 
 const esc = (s) => String(s ?? "").replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
 const dataUri = (file) => {

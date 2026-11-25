@@ -24,7 +24,7 @@
 //   saldoUsd       12.5              saldo awal
 //   font           true              izinkan Google Fonts (satu-satunya host luar yang lolos)
 //   log            fn                pencatat peringatan (default console.warn)
-import { bangunDunia, USER, WS_ID, REF, MEDIA, TTS_KEY, id as buatId, potret, produkFoto, adegan, video, suara, lalu } from "./fixtures.mjs";
+import { bangunDunia, auditJob, USER, WS_ID, REF, MEDIA, TTS_KEY, id as buatId, potret, produkFoto, adegan, video, suara, lalu } from "./fixtures.mjs";
 import { layaniMedia } from "./media.mjs";
 import { tulis } from "./tulis.mjs";
 
@@ -196,7 +196,7 @@ export async function pasangMock(target, opsi = {}) {
     if (j.task === "image") {
       const urut = ["Depan", "Serong", "Samping", "senyum", "Setengah", "Full"].findIndex((k) => label.includes(k));
       if (urut >= 0 && label.startsWith("Character sheet")) return potret(slug, urut);
-      if (j.origin === "ugc") return potret(slug, 5);
+      if (j.origin === "ugc") return potret(slug, 3);
       if (!j.influencer_id) return produkFoto("kopi", 2);
       return potret(slug, 3 + (n % 4));
     }
@@ -209,6 +209,7 @@ export async function pasangMock(target, opsi = {}) {
     j.output_url = j.output_url || keluaranJob(j);
     j.cost_actual_usd = j.cost_estimate_usd;
     delete j._selesaiPada;
+    j.audit = auditJob(j, { models: db.provider_models, influencers: db.influencers, character_assets: db.character_assets });
     if (j.output_url && j.origin !== "storyboard_sheet") {
       db.assets.push({
         id: uuid(), workspace_id: WS_ID, influencer_id: j.influencer_id, kind: j.task === "image" ? "image" : j.task === "tts" ? "audio" : "video",
@@ -237,7 +238,7 @@ export async function pasangMock(target, opsi = {}) {
       origin: body.origin || "studio", audit: {}, external_url: null, created_at: new Date().toISOString(),
       _selesaiPada: Date.now() + o.kecepatanJob, ...extra,
     };
-    if (j.task === "tts" && !j.output_url) j.output_url = null;
+    j.audit = auditJob(j, { models: db.provider_models, influencers: db.influencers, character_assets: db.character_assets });
     db.production_jobs.push(j);
     return j;
   }
@@ -348,7 +349,8 @@ export async function pasangMock(target, opsi = {}) {
       case "members": return { ok: true, members: [{ user_id: USER.id, email: USER.email, role: "owner", credit_quota_usd: null, credit_quota_pct: null, spent_usd: 0, quota_state: "unlimited", created_at: lalu(60), last_seen_at: lalu(0, 2) }], invites: [], seats: { used: 1, max: 3 }, role: "owner" };
       case "mcp_token": return b.mode === "status" ? { ok: true, active: false, connector_url: "https://25-ai-microinfluencer.netlify.app/mcp" } : { ok: true, token: "demo-token" };
       case "mcp_connections": return { ok: true, connections: [] };
-      case "admin_overview": return { ok: false, error: "Akses khusus operator platform." };
+      case "admin_overview": return { email: USER.email, role: "owner", is_owner: true, members: [{ user_id: USER.id, role: "owner", joined_at: lalu(60), email: USER.email, last_sign_in_at: lalu(0, 1) }] };
+      case "platform_config_status": return { ok: true, is_platform_admin: false, keys: [] };
       case "help_articles_list": return { ok: true, articles: [] };
       case "plans": return { ok: true, plans: [] };
       case "signup": return { ok: true };

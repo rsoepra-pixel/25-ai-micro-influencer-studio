@@ -205,10 +205,10 @@ export function mp4Dari(svg, kunci) {
   const p = (async () => {
     const svgFile = join(CACHE, `${kunci}.svg`);
     const png = join(CACHE, `${kunci}.png`);
-    writeFileSync(svgFile, svg.replace("<svg ", '<svg width="720" height="960" '));
+    writeFileSync(svgFile, svg.replace("<svg ", `<svg width="720" height="1280" `));
     await jalan("ffmpeg", ["-y", "-loglevel", "error", "-i", svgFile, "-frames:v", "1", png]);
     await jalan("ffmpeg", ["-y", "-loglevel", "error", "-loop", "1", "-i", png, "-t", "5",
-      "-vf", "scale=720:960,zoompan=z='1+0.0007*on':x='iw/2-(iw/zoom/2)':y='ih/2-(ih/zoom/2)':d=125:s=360x480:fps=25,format=yuv420p",
+      "-vf", "scale=720:1280,zoompan=z='1+0.0007*on':x='iw/2-(iw/zoom/2)':y='ih/2-(ih/zoom/2)':d=125:s=360x640:fps=25,format=yuv420p",
       "-c:v", "libvpx", "-b:v", "600k", "-deadline", "realtime", "-cpu-used", "8", "-an", berkas]);
     return readFileSync(berkas);
   })().finally(() => sedangDibuat.delete(kunci));
@@ -230,4 +230,38 @@ export async function layaniMedia(path) {
     return { tipe: "video/webm", body: await mp4Dari(svg, `v-${a}-${n}`) };
   }
   return { tipe: "image/svg+xml", body: svgUmum(path) };
+}
+
+/**
+ * Berkas contoh di disk untuk setInputFiles() saat menjalani alur unggah foto/suara.
+ *   const f = await contohBerkas();
+ *   await page.setInputFiles('input[type=file]', f.fotoWajah);
+ * Hasilnya: { fotoWajah: [png...], fotoProduk: [png...], suara: wav 14 detik, dokumen: .txt profil usaha }
+ */
+export async function contohBerkas() {
+  const png = async (nama, svg) => {
+    const s = join(CACHE, `${nama}.svg`), p = join(CACHE, `${nama}.png`);
+    if (!existsSync(p)) {
+      writeFileSync(s, svg.replace("<svg ", '<svg width="720" height="960" '));
+      await jalan("ffmpeg", ["-y", "-loglevel", "error", "-i", s, "-frames:v", "1", p]);
+    }
+    return p;
+  };
+  const suaraPath = join(CACHE, "contoh-suara-14s.wav");
+  if (!existsSync(suaraPath)) writeFileSync(suaraPath, wavContoh(0, 14));
+  const dokPath = join(CACHE, "profil-usaha-raka-fit.txt");
+  if (!existsSync(dokPath)) writeFileSync(dokPath, [
+    "Raka Fit Kantor — profil usaha",
+    "Raka Fit Kantor adalah layanan pelatihan kebugaran untuk pekerja kantoran di Jakarta. Pendirinya, Raka Pratama, sudah sepuluh tahun melatih karyawan yang duduk lebih dari delapan jam sehari.",
+    "Pelanggan kami umumnya berusia 25 sampai 40 tahun, sering pegal, tidak sempat ke gym, dan bingung mulai dari mana. Kami membantu mereka punya kebiasaan gerak singkat yang bisa dilakukan di meja kerja.",
+    "Produk utama kami adalah program latihan 14 hari dan panduan gerak di meja kerja dengan harga Rp 149.000 sampai Rp 299.000. Semua latihan bisa dilakukan tanpa alat dalam waktu lima menit.",
+  ].join("\n\n"));
+  return {
+    dokumen: dokPath,
+    fotoWajah: [await png("wajah-0", svgPotret("nadia", 0)), await png("wajah-1", svgPotret("nadia", 1)), await png("wajah-2", svgPotret("nadia", 2))],
+    fotoWajahRaka: [await png("wajah-raka-0", svgPotret("raka", 0)), await png("wajah-raka-1", svgPotret("raka", 1))],
+    fotoProduk: [await png("produk-kopi-0", svgProduk("kopi", 0)), await png("produk-kopi-1", svgProduk("kopi", 1))],
+    fotoProdukGranola: [await png("produk-granola-0", svgProduk("granola", 0))],
+    suara: suaraPath,
+  };
 }

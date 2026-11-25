@@ -5,7 +5,7 @@
 // melaporkan permintaan yang belum di-mock, error konsol, gambar rusak, dan
 // tulisan "Gagal memuat"/"Memuat…" yang menggantung.
 import { mkdirSync } from "node:fs";
-import { bukaPeramban, konteksDemo, catatError, APP_URL } from "./peramban.mjs";
+import { bukaPeramban, konteksDemo, catatError, awasiKebocoran, APP_URL } from "./peramban.mjs";
 import { id } from "./fixtures.mjs";
 
 const CEK_DIR = process.env.CEK_DIR || "/tmp/claude-0/-home-user-25-ai-micro-influencer-studio/442d8275-367f-5321-84ea-cd9224bce66c/scratchpad/cek";
@@ -48,6 +48,7 @@ if (import.meta.url === `file://${process.argv[1]}`) {
     const { context, mock } = await konteksDemo(browser, opsi);
     const page = await context.newPage();
     const errs = catatError(page);
+    const bocor = awasiKebocoran(page);
     await page.goto(`${APP_URL}/#${hash}`, { waitUntil: "load" });
     await page.waitForLoadState("networkidle").catch(() => {});
     await page.waitForTimeout(1200);
@@ -69,6 +70,7 @@ if (import.meta.url === `file://${process.argv[1]}`) {
     if (diag.memuat) ringkas.push("MEMUAT-MENGGANTUNG");
     if (diag.halamanGagal) ringkas.push("HALAMAN-CRASH");
     if (diag.rusak.length) ringkas.push(`GAMBAR-RUSAK: ${diag.rusak.join(", ")}`);
+    if (bocor.length) ringkas.push(`BOCOR-KE-BACKEND-SUNGGUHAN: ${bocor.join(", ")}`);
     if (mock.diblokir.size) ringkas.push(`HOST-DIBLOKIR: ${[...mock.diblokir].join(",")}`);
     if (ringkas.length) masalah++;
     console.log(`${ringkas.length ? "!!" : "ok"} ${nama}  #${hash}${ringkas.length ? "\n     " + ringkas.join("\n     ") : ""}`);
