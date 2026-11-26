@@ -216,5 +216,114 @@
   "Mulai dengan masuk atau daftar, lalu jawab pertanyaan di Arah Konten dan isi Profil saya. Keduanya cukup dilakukan sekali.",
   "Simpan satu produk di Product Kit untuk video bicara ke kamera. Lalu pilih ide, tulis naskah, dan buka Buat Video.",
   "Setelah video jadi, tonton dan unduh. Publikasi selalu kamu lakukan sendiri. Biasakan membaca keterangan tombol, karena sebagian langkah memakai saldo."
+ ],
+ "influencers-01-daftar": [
+  "Menu Influencers adalah tempat menyimpan karakter AI milikmu, lengkap dengan wajah, suara, dan kepribadiannya.",
+  "Tombol Buat Influencer Baru membuka formulir untuk menambah karakter, yang akan kita isi di halaman berikutnya.",
+  "Satu ruang kerja punya batas jumlah karakter, dan jumlah yang sudah terpakai ditulis tepat di bawah judul.",
+  "Tiap kartu menampilkan foto, nama, handle, topik konten, dan status. Klik kartunya untuk membuka halaman detail.",
+  "Tanda Character sheet belum dibuat berarti karakter ini belum punya lembar foto acuan dari berbagai sudut. Bisa dibuat kapan saja."
+ ],
+ "influencers-02-formulir": [
+  "Setelah menekan Buat Influencer Baru, formulir pembuatan karakter terbuka di bawah daftar.",
+  "Tombol Bantu buat dengan AI menyusun niche, bio, dan deskripsi fisik dari jawaban atau fotomu. Langkah ini memakai saldo.",
+  "Bingung memulai? Klik satu ide niche untuk mengisi bio awal. Tanda peringatan berarti ada hal yang perlu dicek dulu.",
+  "Hanya kolom nama yang wajib diisi. Semua yang lain bisa dilengkapi nanti di halaman detail.",
+  "Di kolom niche, yaitu topik kontenmu, tulis dengan bebas. Daftar ide di atasnya hanyalah titik mulai.",
+  "Pilih Indonesia, English, atau Campuran. Pilihan ini menentukan bahasa naskah dan suara karakter ini."
+ ],
+ "influencers-03-bantuan-ai": [
+  "Tombol Bantu buat dengan AI membuka jendela kecil, tempat kamu cukup menjawab seadanya.",
+  "Isi yang kamu tahu saja. Bagian yang kosong akan diisi AI, dan hasilnya bisa kamu edit sebelum dipakai.",
+  "Kalau punya foto, unggah, sampai empat. AI membaca ciri wajah dari foto, jauh lebih tepat daripada menebak dari kata-kata.",
+  "Pilih basis karakter, yaitu Fleksibel, Fiktif sepenuhnya, atau Ikuti deskripsi saya.",
+  "Tekan Buatkan deskripsi untuk menjalankan penulis AI. Langkah ini memakai saldo, dan hasilnya kamu tinjau dulu sebelum dipakai."
+ ],
+ "influencers-04-identity": [
+  "Sekarang kita turun ke bagian bawah formulir, tempat deskripsi fisik karakter ditulis dan karakternya disimpan.",
+  "Identity prompt adalah deskripsi ciri fisik tetap, seperti wajah dan rambut, dalam bahasa Inggris. Jangan masukkan latar atau baju.",
+  "Catatan gaya visual berisi suasana yang kamu suka. Isinya tidak otomatis dipakai, hanya jadi pilihan saat membuat gambar.",
+  "Kalau punya contoh, unggah satu foto acuan, lalu pilih yang ditiru: wajah karakternya atau suasananya.",
+  "Tekan Buat Influencer untuk menyimpan karakter. Setelah itu, langkah character sheet langsung ditawarkan."
+ ],
+ "influencers-05-character-sheet": [
+  "Begitu karakter tersimpan, muncul langkah kedua, yaitu membuat character sheet.",
+  "Character sheet adalah lembar foto wajah dari berbagai sudut dan ekspresi, yang jadi patokan supaya wajahnya tidak bergeser.",
+  "Belum siap? Tekan Lewati dulu. Karakter diberi tanda di daftar, dan sheet-nya bisa dibuat kapan saja.",
+  "Centang sudut dan ekspresi yang kamu mau, misalnya depan, profil, senyum, atau seluruh badan.",
+  "Pilih latar studio abu netral, seperti yang disarankan, supaya latarnya tidak ikut terkunci ke karakter.",
+  "Tekan Buat character sheet. Satu gambar dibuat untuk tiap sudut yang dicentang, dan semuanya memakai saldo."
+ ],
+ "influencers-06-detail": [
+  "Setelah karakter jadi, kamu bisa membukanya dari daftar. Ini halaman detail satu karakter.",
+  "Di kartu Character Sheet sebelah kiri, kamu bisa mengubah nama, handle, niche, status, bahasa, dan bio.",
+  "Tombol Perbaiki dengan AI merapikan deskripsi yang sudah ada, bukan menggantinya. Langkah ini memakai saldo.",
+  "Tombol Terkunci menjaga identity prompt supaya tidak tertimpa hasil AI atau berubah tanpa sengaja.",
+  "Identity Kit adalah foto acuan wajah dari berbagai sudut. Foto inilah yang membuat wajah tetap sama di setiap gambar.",
+  "Setelah mengubah sesuatu di formulir kiri, ingat tekan Simpan. Perubahan bio dan identity prompt baru permanen sesudahnya."
+ ],
+ "influencers-07-suara": [
+  "Di bawah Identity Kit ada tiga kartu untuk mengatur suara karakter.",
+  "Kartu Suara memasang suara bawaan penyedia lewat voice id, yaitu kode suara dari penyedia. Daftar sarannya belum diuji aplikasi.",
+  "Untuk video UGC, unggah rekaman minimal sepuluh detik berisi satu suara. Tanpa ini, UGC menolak karakter ini di langkah suara.",
+  "Kartu ketiga untuk video cerita di Storyboard, dengan rekaman lima sampai tiga puluh detik. Tidak wajib, tapi suaranya jadi tetap.",
+  "Tombol Unggah rekaman suara mengirim rekamanmu untuk ditiru. Langkah ini tidak memotong saldomu.",
+  "Lencana di sudut kartu menunjukkan status suara, belum ada atau sudah diklon."
+ ],
+ "product-kit-01-tambah": [
+  "Product Kit adalah menu untuk menyimpan produk yang akan tampil di video UGC.",
+  "Kamu menyimpan produk sekali saja. Foto kemasan aslinya dikirim sebagai acuan, supaya kemasannya tidak dikarang.",
+  "Isi nama produk. Ini satu-satunya kolom yang wajib.",
+  "Tulis satu keunggulan per baris. Penulis naskah hanya memilih satu atau dua untuk tiap video.",
+  "Di kolom klaim yang dilarang, tulis kata yang tidak boleh diucapkan di video, misalnya menyembuhkan.",
+  "Terakhir, unggah foto asli kemasan. Tanpa foto, model gambar mengarang label dan bentuk kemasan, dan berubah-ubah antar video."
+ ],
+ "product-kit-02-tersimpan": [
+  "Produk yang sudah disimpan muncul sebagai kartu di bawah formulir.",
+  "Daftar ini berisi semua produk yang sudah kamu simpan, lengkap dengan nama, keunggulan, dan fotonya.",
+  "Tombol Ubah dipakai untuk mengedit nama, deskripsi, keunggulan, klaim yang dilarang, dan tautan beli.",
+  "Tombol Tambah foto menambah foto kemasan sampai total enam. Ini gratis.",
+  "Kotak peringatan ini berarti produk belum punya foto, jadi kemasannya akan dikarang. Tambah foto sebelum dipakai di video.",
+  "Tombol Hapus membuang produk beserta fotonya. Video UGC yang sudah memakainya tetap ada, tapi kehilangan produknya."
+ ],
+ "studio-01-generate": [
+  "Sekarang kita pindah ke Production Studio, alat untuk membuat gambar, video, atau suara satu per satu.",
+  "Tab Generate mengirim satu job per kali. Job artinya satu pekerjaan produksi, entah gambar, video, atau suara.",
+  "Pilih Task dulu: Gambar, Video, Suara, atau Talking, yang disebut juga lip sync, yaitu gerak bibir mengikuti suara.",
+  "Modelnya dibagi dua daftar, murah dan premium. Putuskan soal biaya dulu, baru pilih nama modelnya.",
+  "Pilih influencer supaya foto Identity Kit dan identity prompt-nya dipakai otomatis, jadi wajahnya konsisten.",
+  "Kolom Untuk konten menandai hasil ini milik ide konten yang mana. Kosongkan untuk uji coba."
+ ],
+ "studio-02-prompt": [
+  "Turun ke bawahnya, ada kolom prompt, yaitu teks perintah yang menjelaskan isi gambar atau klip yang kamu mau.",
+  "Tombol Cari prompt dengan AI per industri menyusun tiga paket prompt, hook, naskah, dan caption. Langkah ini memakai saldo.",
+  "Bingung menulis dari nol? Mulai dari pustaka, contoh prompt siap pakai per kategori. Gratis dan tidak memanggil AI.",
+  "Di kolom prompt, tulis isi gambar atau klipnya. Identity prompt influencer otomatis ikut ditempel.",
+  "Tekan Generate untuk mengirim job. Tombol ini memakai saldo sungguhan, tapi kalau job gagal, tidak ditagih.",
+  "Di sampingnya tertulis perkiraan biaya. Sifatnya indikatif, karena yang ditagih adalah hasil sebenarnya."
+ ],
+ "studio-03-talking": [
+  "Untuk video orang bicara, pilih Talking. Rahasianya ada di kolom naskah, yang membuat semuanya cukup sekali kirim.",
+  "Tulis kalimat yang mau diucapkan di kolom Naskah yang diucapkan. Suara dibuat otomatis, lalu langsung jadi video, sekali kirim.",
+  "Kolom URL gambar sumber diisi alamat foto wajah yang akan bicara, bisa dipilih dari Aset terbaru.",
+  "Kolom URL audio hanya untuk audio yang sudah ada. Kalau naskah diisi, kolom ini diabaikan.",
+  "Durasi menentukan lama video yang diminta. Yang ditagih nanti adalah durasi yang benar-benar dihasilkan.",
+  "Tombol Generate mengirim dua pekerjaan berurutan, suara lalu video. Langkah ini memakai saldo sungguhan."
+ ],
+ "studio-04-character-sheet": [
+  "Kembali ke Production Studio, sekarang di tab Character sheet, tempat membuat banyak foto acuan karakter sekaligus.",
+  "Tab Character sheet menghasilkan beberapa gambar acuan karakter dalam sekali klik, semuanya dengan identity prompt yang sama.",
+  "Pilih model gambar yang membaca foto Identity Kit, supaya semua gambar menampilkan orang yang sama.",
+  "Centang sudut dan ekspresi yang kamu butuhkan. Jumlah gambarnya tertulis di judul kolom.",
+  "Pilih latar netral supaya latarnya tidak ikut terkunci ke karakter.",
+  "Tombol Buat character sheet membuat satu gambar per sudut yang dicentang. Semuanya memakai saldo."
+ ],
+ "studio-05-riwayat": [
+  "Tab terakhir adalah Riwayat job, yang menampilkan pekerjaan terakhirmu beserta status dan biayanya.",
+  "Angka di label tab menandakan job yang masih berjalan, jadi kamu tidak perlu menekan Generate lagi.",
+  "Kolom Biaya menunjukkan biaya tiap job. Yang gagal atau batal tertulis tidak ditagih, yang masih berjalan ditahan.",
+  "Job yang gagal menjelaskan sebabnya dengan bahasa biasa dan tidak ditagih. Kamu tidak perlu menekan Generate lagi.",
+  "Tombol Jejak membuka rincian yang dikirim ke penyedia, seperti prompt akhir, foto acuan, model, dan pesan error. Gratis.",
+  "Tombol Hapus hanya membuang catatan job. Hasilnya tetap ada, dan catatan pengeluaran tidak hilang."
  ]
 }

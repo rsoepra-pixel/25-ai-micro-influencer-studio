@@ -94,5 +94,52 @@
   ],
   "tutup": "Itulah seluruh bagian dasar. Di episode lanjutan, kita membahas menu untuk kamu yang ingin mengatur lebih rinci, dimulai dari Influencers.",
   "berikut": "Episode 7 — Influencers"
+ },
+ {
+  "no": 7,
+  "seri": "Lanjutan",
+  "judul": "Influencers",
+  "ringkas": "Membuat karakter AI, character sheet, dan mengatur suaranya.",
+  "buka": "Selamat datang di bagian lanjutan. Di episode ini kita membahas menu Influencers: membuat karakter, lembar foto acuannya, dan mengatur suaranya.",
+  "halaman": [
+   "influencers-01-daftar",
+   "influencers-02-formulir",
+   "influencers-03-bantuan-ai",
+   "influencers-04-identity",
+   "influencers-05-character-sheet",
+   "influencers-06-detail",
+   "influencers-07-suara"
+  ],
+  "tutup": "Karaktermu sudah lengkap. Di episode berikutnya, kita menyimpan produk di Product Kit.",
+  "berikut": "Episode 8 — Product Kit"
+ },
+ {
+  "no": 8,
+  "seri": "Lanjutan",
+  "judul": "Product Kit",
+  "ringkas": "Menyimpan produk dengan foto kemasan asli, sekali untuk semua video.",
+  "buka": "Di episode singkat ini kita membahas Product Kit, tempat menyimpan produk beserta foto kemasan aslinya.",
+  "halaman": [
+   "product-kit-01-tambah",
+   "product-kit-02-tersimpan"
+  ],
+  "tutup": "Produkmu sudah tersimpan. Di episode berikutnya, kita membuka Production Studio.",
+  "berikut": "Episode 9 — Production Studio"
+ },
+ {
+  "no": 9,
+  "seri": "Lanjutan",
+  "judul": "Production Studio",
+  "ringkas": "Alat satuan: satu gambar, video, atau suara per kirim, dan riwayat pekerjaannya.",
+  "buka": "Di episode ini kita membahas Production Studio, alat untuk membuat satu gambar, video, atau suara per kirim.",
+  "halaman": [
+   "studio-01-generate",
+   "studio-02-prompt",
+   "studio-03-talking",
+   "studio-04-character-sheet",
+   "studio-05-riwayat"
+  ],
+  "tutup": "Itulah Production Studio. Di episode berikutnya, kita membuat video beberapa adegan di Storyboard.",
+  "berikut": "Episode 10 — Storyboard"
  }
 ]
